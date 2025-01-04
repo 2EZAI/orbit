@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { SafeAreaView, TouchableOpacity, View } from "react-native";
 import { supabase } from "../../src/lib/supabase";
 import { router } from "expo-router";
 import { Input } from "~/src/components/ui/input";
@@ -51,61 +51,53 @@ export default function SignIn(): JSX.Element {
   }
 
   return (
-    <View className="flex-1 justify-center p-5 bg-background">
-      <View className="p-4 mb-4">
-        <TouchableOpacity
-          className="flex-row items-center"
-          onPress={() => router.back()}
-        >
-          <ChevronLeft size={24} className="text-foreground" />
-          <Text className="text-foreground ml-1">Back</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View className="space-y-6 gap-4">
-        <View className="gap-2">
-          <Text className="text-4xl font-bold tracking-tight text-foreground">
-            Welcome back! 👋🏾
-          </Text>
-          <Text className="text-xl text-muted-foreground">
-            Sign in to your account
-          </Text>
-        </View>
-
-        <View className="space-y-4 gap-4">
-          <View className="space-y-2">
-            <Input
-              placeholder="Email"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              autoComplete="email"
-              keyboardType="email-address"
-              editable={!loading}
-            />
+    <SafeAreaView className="flex-1 bg-background">
+      <View className="justify-center flex-1 p-5 bg-background">
+        <View className="gap-4 space-y-6">
+          <View className="gap-2">
+            <Text className="text-4xl font-bold tracking-tight text-foreground">
+              Welcome back! 👋🏾
+            </Text>
+            <Text className="text-xl text-muted-foreground">
+              Sign in to your account
+            </Text>
           </View>
 
-          <View className="space-y-2">
-            <Input
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoComplete="password"
-            />
-          </View>
-        </View>
+          <View className="gap-4 space-y-4">
+            <View className="space-y-2">
+              <Input
+                placeholder="Email"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                autoComplete="email"
+                keyboardType="email-address"
+                editable={!loading}
+              />
+            </View>
 
-        <View className="space-y-4">
-          <Button variant="default" onPress={signIn} disabled={loading}>
-            <Text>Sign In</Text>
+            <View className="space-y-2">
+              <Input
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoComplete="password"
+              />
+            </View>
+          </View>
+
+          <View className="space-y-4">
+            <Button variant="default" onPress={signIn} disabled={loading}>
+              <Text>Sign In</Text>
+            </Button>
+          </View>
+
+          <Button variant="outline" onPress={() => router.push("/sign-up")}>
+            <Text>Don't have an account? Sign up</Text>
           </Button>
         </View>
-
-        <Button variant="outline" onPress={() => router.push("/sign-up")}>
-          <Text>Don't have an account? Sign up</Text>
-        </Button>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }

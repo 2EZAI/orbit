@@ -1,6 +1,11 @@
+// ~app/_layout.tsx
 import { AuthProvider } from "~/src/lib/auth";
 
-import { Theme, ThemeProvider } from "@react-navigation/native";
+import {
+  NavigationContainer,
+  Theme,
+  ThemeProvider,
+} from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as React from "react";
@@ -59,66 +64,63 @@ const DARK_THEME: Theme = {
 
 const toastConfig = {
   success: (props: any) => (
-    <View className="bg-green-500 px-4 py-3 rounded-lg mx-4 w-3/4">
-      <Text className="text-white font-medium">{props.text1}</Text>
+    <View className="w-3/4 px-4 py-3 mx-4 bg-green-500 rounded-lg">
+      <Text className="font-medium text-white">{props.text1}</Text>
       {props.text2 && (
-        <Text className="text-white text-sm mt-1">{props.text2}</Text>
+        <Text className="mt-1 text-sm text-white">{props.text2}</Text>
       )}
     </View>
   ),
   error: (props: any) => (
-    <View className="bg-red-500 px-4 py-3 rounded-lg mx-4 w-3/4">
-      <Text className="text-white font-medium">{props.text1}</Text>
+    <View className="w-3/4 px-4 py-3 mx-4 bg-red-500 rounded-lg">
+      <Text className="font-medium text-white">{props.text1}</Text>
       {props.text2 && (
-        <Text className="text-white text-sm mt-1">{props.text2}</Text>
+        <Text className="mt-1 text-sm text-white">{props.text2}</Text>
       )}
     </View>
   ),
 };
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from "expo-router";
+export { ErrorBoundary } from "expo-router";
 
 export default function RootLayout() {
-  const hasMounted = React.useRef(false);
-  const { colorScheme, isDarkColorScheme } = useColorScheme();
-  const [isColorSchemeLoaded, setIsColorSchemeLoaded] = React.useState(false);
-
-  useIsomorphicLayoutEffect(() => {
-    if (hasMounted.current) {
-      return;
-    }
-
-    if (Platform.OS === "web") {
-      document.documentElement.classList.add("bg-background");
-    }
-    setIsColorSchemeLoaded(true);
-    hasMounted.current = true;
-  }, []);
-
-  if (!isColorSchemeLoaded) {
-    return null;
-  }
+  const { isDarkColorScheme } = useColorScheme();
 
   return (
     <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
       <AuthProvider>
-        <Stack screenOptions={{ headerShown: false }}>
-          <StatusBar style={isDarkColorScheme ? "light" : "dark"} />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            gestureEnabled: false,
+            animation: "none",
+          }}
+        >
           <Stack.Screen
             name="index"
             options={{
-              title: "Welcome",
-              animation: "fade",
-              headerShown: false,
+              gestureEnabled: false,
+              presentation: "containedModal",
             }}
           />
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(app)" />
+          <Stack.Screen
+            name="(auth)"
+            options={{
+              presentation: Platform.OS === "ios" ? "modal" : "containedModal",
+              animation: "default",
+            }}
+          />
+          <Stack.Screen
+            name="(app)"
+            options={{
+              presentation: "containedModal",
+              animation: "none",
+              gestureEnabled: false,
+            }}
+          />
         </Stack>
         <Toast topOffset={100} config={toastConfig} />
+        <StatusBar style={isDarkColorScheme ? "light" : "dark"} />
       </AuthProvider>
     </ThemeProvider>
   );
