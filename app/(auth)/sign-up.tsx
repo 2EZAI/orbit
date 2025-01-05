@@ -12,9 +12,11 @@ import { router } from "expo-router";
 import { Input } from "~/src/components/ui/input";
 import { Button } from "~/src/components/ui/button";
 import { Text } from "~/src/components/ui/text";
-import { Camera, UserCircle } from "lucide-react-native";
+import { Camera, Lock, Mail, Phone, UserCircle } from "lucide-react-native";
 import Toast from "react-native-toast-message";
 import * as ImagePicker from "expo-image-picker";
+import { MotiView } from "moti";
+import { BlurView } from "expo-blur";
 
 export default function SignUp() {
   const [loading, setLoading] = useState(false);
@@ -93,124 +95,168 @@ export default function SignUp() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
-        <View className="justify-center flex-1 p-5 bg-background">
-          {/* Header */}
-          <Text className="mb-1 text-3xl font-bold">Create Account</Text>
-          <Text className="mb-6 text-base text-muted-foreground">
-            Fill in your details to get started
+      <ScrollView
+        className="flex-1 px-6"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
+        {/* Header */}
+        <MotiView
+          from={{ opacity: 0, translateY: -20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: "timing", duration: 1000 }}
+          className="pt-12 pb-8"
+        >
+          <Text className="text-4xl font-bold">Create Your Account</Text>
+          <Text className="mt-3 text-base text-muted-foreground">
+            Join the community and start exploring
           </Text>
-        </View>
+        </MotiView>
 
         {/* Profile Picture */}
-        <View className="items-center mb-6">
+        <MotiView
+          from={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", delay: 200 }}
+          className="items-center mb-8"
+        >
           <TouchableOpacity onPress={pickImage} className="relative">
-            {profileImage ? (
-              <Image
-                source={{ uri: profileImage }}
-                className="w-24 h-24 rounded-full bg-muted"
-              />
-            ) : (
-              <View className="items-center justify-center w-24 h-24 rounded-full bg-muted">
-                <UserCircle size={40} className="text-muted-foreground" />
-              </View>
-            )}
-            <View className="absolute bottom-0 right-0 p-2 rounded-full bg-primary">
-              <Camera size={16} className="text-primary-foreground" />
+            <BlurView intensity={20} className="overflow-hidden rounded-full">
+              {profileImage ? (
+                <Image
+                  source={{ uri: profileImage }}
+                  className="rounded-full w-28 h-28"
+                />
+              ) : (
+                <View className="items-center justify-center rounded-full w-28 h-28 bg-primary/5">
+                  <UserCircle size={44} className="text-primary" />
+                </View>
+              )}
+            </BlurView>
+            <View className="absolute bottom-0 right-0 p-3 rounded-full bg-primary">
+              <Camera size={18} className="text-primary-foreground" />
             </View>
           </TouchableOpacity>
-          <Text className="mt-2 text-sm text-muted-foreground">
-            Tap to add profile picture
-          </Text>
-        </View>
+        </MotiView>
 
-        {/* Form Fields */}
-        <View className="space-y-4">
-          {/* Name Fields */}
-          <View className="flex-row gap-3">
-            <View className="flex-1">
-              <Text className="text-sm mb-1.5">First Name</Text>
-              <Input
-                placeholder="John"
-                value={firstName}
-                onChangeText={setFirstName}
-                autoCapitalize="words"
-                className="bg-muted/50"
-              />
+        {/* Form Card */}
+        <MotiView
+          from={{ opacity: 0, translateY: 20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: "spring", delay: 400 }}
+        >
+          <View className="gap-2 p-2 rounded-3xl bg-content2">
+            {/* Name Fields */}
+            <View className="flex-row gap-4 mb-6">
+              <View className="flex-1">
+                <Text className="mb-1 text-lg font-medium">First Name</Text>
+                <View className="h-14 bg-input rounded-xl">
+                  <Input
+                    placeholder="John"
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    autoCapitalize="words"
+                    className="px-4 bg-transparent border-0 h-14"
+                  />
+                </View>
+              </View>
+
+              <View className="flex-1">
+                <Text className="mb-1 text-lg font-medium">Last Name</Text>
+                <View className="h-14 bg-input rounded-xl">
+                  <Input
+                    placeholder="Doe"
+                    value={lastName}
+                    onChangeText={setLastName}
+                    autoCapitalize="words"
+                    className="px-4 bg-transparent border-0 h-14"
+                  />
+                </View>
+              </View>
             </View>
 
-            <View className="flex-1">
-              <Text className="text-sm mb-1.5">Last Name</Text>
-              <Input
-                placeholder="Doe"
-                value={lastName}
-                onChangeText={setLastName}
-                autoCapitalize="words"
-                className="bg-muted/50"
-              />
+            {/* Other Fields */}
+            <View className="space-y-6">
+              <View>
+                <Text className="mb-1 text-lg font-medium">Email Address</Text>
+                <View className="flex-row items-center h-14 bg-input rounded-xl">
+                  <View className="px-4">
+                    <Mail size={22} className="text-primary" />
+                  </View>
+                  <Input
+                    placeholder="you@example.com"
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    className="flex-1 bg-transparent border-0 h-14"
+                  />
+                </View>
+              </View>
+
+              <View>
+                <Text className="mb-1 text-lg font-medium">Phone Number</Text>
+                <View className="flex-row items-center h-14 bg-input rounded-xl">
+                  <View className="px-4">
+                    <Phone size={22} className="text-primary" />
+                  </View>
+                  <Input
+                    placeholder="+1 (555) 000-0000"
+                    value={phone}
+                    onChangeText={setPhone}
+                    keyboardType="phone-pad"
+                    className="flex-1 bg-transparent border-0 h-14"
+                  />
+                </View>
+              </View>
+
+              <View>
+                <Text className="mb-1 text-lg font-medium">Password</Text>
+                <View className="flex-row items-center h-14 bg-input rounded-xl">
+                  <View className="px-4">
+                    <Lock size={22} className="text-primary" />
+                  </View>
+                  <Input
+                    placeholder="••••••••"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                    className="flex-1 bg-transparent border-0 h-14"
+                  />
+                </View>
+              </View>
+            </View>
+
+            {/* Create Account Button */}
+            <View className="mt-8">
+              <Button
+                onPress={signUp}
+                disabled={loading}
+                className="h-14 bg-primary rounded-xl"
+              >
+                {loading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text className="text-lg font-medium text-primary-foreground">
+                    Create Account
+                  </Text>
+                )}
+              </Button>
             </View>
           </View>
 
-          <View>
-            <Text className="text-sm mb-1.5">Email</Text>
-            <Input
-              placeholder="your@email.com"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              className="bg-muted/50"
-            />
-          </View>
-
-          <View>
-            <Text className="text-sm mb-1.5">Phone Number (Optional)</Text>
-            <Input
-              placeholder="+1 (555) 000-0000"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              className="bg-muted/50"
-            />
-          </View>
-
-          <View>
-            <Text className="text-sm mb-1.5">Password</Text>
-            <Input
-              placeholder="Choose a strong password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              className="bg-muted/50"
-            />
-          </View>
-        </View>
-
-        {/* Action Buttons */}
-        <View className="mt-6 space-y-4">
-          <Button
-            onPress={signUp}
-            disabled={loading}
-            className="py-3 bg-primary rounded-xl"
-          >
-            {loading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text className="font-medium text-primary-foreground">
-                Create Account
-              </Text>
-            )}
-          </Button>
-
-          <View className="flex-row justify-center">
-            <Text className="text-muted-foreground">
+          {/* Sign In Link */}
+          <View className="flex-row items-center justify-center mt-8">
+            <Text className="text-base text-muted-foreground">
               Already have an account?{" "}
             </Text>
             <TouchableOpacity onPress={() => router.push("/sign-in")}>
-              <Text className="font-medium text-primary">Sign in</Text>
+              <Text className="text-base font-medium text-primary">
+                Sign in
+              </Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </MotiView>
       </ScrollView>
     </SafeAreaView>
   );

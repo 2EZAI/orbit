@@ -20,7 +20,7 @@ const TabBar = () => {
 
   return (
     <View className="absolute bottom-8 left-6 right-6">
-      <View className="flex-row items-center justify-between px-6 py-4 bg-white rounded-full shadow-lg">
+      <View className="flex-row items-center justify-between px-6 py-4 rounded-full shadow-lg bg-background/20">
         {TAB_ROUTES.map(({ route, Icon, isMain }) => (
           <Pressable
             key={route}
@@ -30,12 +30,12 @@ const TabBar = () => {
             <View
               className={`
                 items-center justify-center rounded-full
-                ${isMain ? "bg-blue-500 p-4 shadow-lg -mt-6" : "p-3"}
+                ${isMain ? "bg-blue-500 p-4 shadow-lg -mt-9" : "p-3"}
               `}
               style={{
-                elevation: isMain ? 4 : 0,
+                elevation: isMain ? 8 : 0,
                 shadowColor: isMain ? "#4169E1" : "transparent",
-                shadowOffset: { width: 0, height: 4 },
+                shadowOffset: { width: 0, height: 9 },
                 shadowOpacity: isMain ? 0.3 : 0,
                 shadowRadius: 8,
               }}

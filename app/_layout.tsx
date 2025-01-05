@@ -92,8 +92,12 @@ export default function RootLayout() {
         <Stack
           screenOptions={{
             headerShown: false,
-            gestureEnabled: false,
             animation: "none",
+            contentStyle: {
+              backgroundColor: isDarkColorScheme
+                ? DARK_THEME.colors.background
+                : LIGHT_THEME.colors.background,
+            },
           }}
         >
           <Stack.Screen
@@ -106,8 +110,13 @@ export default function RootLayout() {
           <Stack.Screen
             name="(auth)"
             options={{
-              presentation: Platform.OS === "ios" ? "modal" : "containedModal",
-              animation: "default",
+              presentation: "modal",
+              animation: "slide_from_bottom",
+              gestureEnabled: true,
+              gestureDirection: "vertical",
+              headerShown: false,
+              headerLeft: () => null,
+              headerTitle: "",
             }}
           />
           <Stack.Screen

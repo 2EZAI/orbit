@@ -3,10 +3,11 @@ import { Stack, Redirect } from "expo-router";
 import { useAuth } from "../../src/lib/auth";
 import TabBar from "../../src/components/TabBar";
 import { View } from "react-native";
+import { useColorScheme } from "~/src/lib/useColorScheme";
 
 export default function AppLayout() {
   const { session, loading } = useAuth();
-
+  const { isDarkColorScheme } = useColorScheme();
   if (loading) {
     return null;
   }
@@ -16,14 +17,13 @@ export default function AppLayout() {
   }
 
   return (
-    <View className="flex-1">
+    <View className="flex-1 bg-background">
       <Stack
         screenOptions={{
           headerShown: false,
-          animation: "none", // Disable animations
-          gestureEnabled: false, // Disable gestures
-          presentation: "containedModal", // Full screen presentation
-          contentStyle: { backgroundColor: "white" },
+          animation: "none",
+          gestureEnabled: false,
+          presentation: "containedModal",
         }}
       >
         <Stack.Screen name="home" options={{ title: "Orbit" }} />
