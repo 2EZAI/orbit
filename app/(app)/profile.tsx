@@ -2,27 +2,47 @@ import React, { useState } from "react";
 import {
   View,
   TouchableOpacity,
-  Image,
   ScrollView,
   ActivityIndicator,
+  Platform,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "~/src/lib/supabase";
 import * as ImagePicker from "expo-image-picker";
-import { Camera, UserCircle, Mail, User, AtSign } from "lucide-react-native";
+import {
+  Camera,
+  UserCircle,
+  Mail,
+  User,
+  AtSign,
+  LogOut,
+} from "lucide-react-native";
 import { useUser } from "~/hooks/useUserData";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
 import { Button } from "~/src/components/ui/button";
 import { MotiView } from "moti";
 import Toast from "react-native-toast-message";
+import { Label } from "~/src/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "~/src/components/ui/card";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "~/src/components/ui/avatar";
+import { Separator } from "~/src/components/ui/separator";
 
 export default function Profile() {
+  const insets = useSafeAreaInsets();
   const { user, loading, updateUser } = useUser();
   const [editing, setEditing] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | undefined>(
-    undefined
-  );
 
   // Form state
   const [username, setUsername] = useState(user?.username || "");
@@ -41,77 +61,60 @@ export default function Profile() {
       setEditing(false);
       Toast.show({
         type: "success",
-        text1: "Success",
-        text2: "Profile updated successfully",
+        text1: "Profile updated successfully",
       });
     } catch (error) {
       Toast.show({
         type: "error",
-        text1: "Error",
-        text2: "Failed to update profile",
+        text1: "Failed to update profile",
       });
     }
   };
 
   async function pickImage() {
     try {
-      // Request permissions first
       const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         Toast.show({
           type: "error",
-          text1: "Permission needed",
-          text2: "Please allow access to your photo library",
+          text1: "Please allow access to your photo library",
         });
         return;
       }
 
-      // Launch picker
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        allowsEditing: false,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
         aspect: [1, 1],
         quality: 1,
-        allowsMultipleSelection: false,
       });
 
-      if (result.canceled) {
-        return;
-      }
-
-      if (result.assets?.[0]) {
+      if (!result.canceled && result.assets?.[0]) {
         setUploadingImage(true);
 
         try {
           const file = result.assets[0];
-
-          // Fetch the image and convert to blob
-          const fetchResponse = await fetch(file.uri);
-          const imageBlob = await fetchResponse.blob();
-
-          // Generate unique filename
-          const fileExt = file.uri.substring(file.uri.lastIndexOf(".") + 1);
+          const response = await fetch(file.uri);
+          const blob = await response.blob();
+          const fileExt = file.uri.split(".").pop();
           const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
 
-          // Upload to Supabase storage with proper content type
           const { error: uploadError } = await supabase.storage
             .from("profile-pictures")
-            .upload(`avatars/${fileName}`, imageBlob, {
+            .upload(`avatars/${fileName}`, blob, {
               contentType: `image/${fileExt}`,
-              upsert: false,
+              upsert: true,
             });
 
           if (uploadError) throw uploadError;
 
-          // Get the public URL
           const {
             data: { publicUrl },
           } = supabase.storage
             .from("profile-pictures")
             .getPublicUrl(`avatars/${fileName}`);
 
-          // Update user profile
           await updateUser({
             avatar_url: publicUrl,
             updated_at: new Date().toISOString(),
@@ -119,15 +122,13 @@ export default function Profile() {
 
           Toast.show({
             type: "success",
-            text1: "Success",
-            text2: "Profile picture updated",
+            text1: "Profile picture updated",
           });
         } catch (error) {
           console.error("Upload error:", error);
           Toast.show({
             type: "error",
-            text1: "Upload failed",
-            text2: "Please try again",
+            text1: "Failed to upload image",
           });
         }
       }
@@ -135,225 +136,239 @@ export default function Profile() {
       console.error("Image picker error:", error);
       Toast.show({
         type: "error",
-        text1: "Error",
-        text2: "Failed to select image",
+        text1: "Failed to select image",
       });
     } finally {
       setUploadingImage(false);
     }
   }
 
-  const handleSignOut = () => supabase.auth.signOut();
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error("Sign out error:", error);
+      Toast.show({
+        type: "error",
+        text1: "Failed to sign out",
+      });
+    }
+  };
 
   if (loading) {
     return (
-      <View className="items-center justify-center flex-1 ">
+      <View className="items-center justify-center flex-1">
         <ActivityIndicator size="large" className="text-primary" />
       </View>
     );
   }
 
   return (
-    <ScrollView className="flex-1">
-      {/* Profile Header with Image */}
-      <MotiView
-        from={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ type: "timing", duration: 1000 }}
-        className="relative h-52 bg-content1"
+    <View className="flex-1 bg-background">
+      {/* Header with Safe Area */}
+      <View
+        className="bg-content1"
+        style={{
+          paddingTop: insets.top + 16,
+          paddingBottom: 10,
+          marginVertical: 16,
+        }}
       >
-        <View className="absolute w-full px-6 -bottom-16">
-          <View className="flex-row items-end">
-            <TouchableOpacity onPress={pickImage} className="relative">
-              {user?.avatar_url ? (
-                <Image
-                  source={{ uri: user.avatar_url }}
-                  className="w-32 h-32 border-4 rounded-full border-background bg-muted"
-                />
-              ) : (
-                <View className="items-center justify-center w-32 h-32 border-4 rounded-full border-background bg-primary/5">
-                  <UserCircle size={50} className="text-primary/60" />
-                </View>
-              )}
-              {uploadingImage ? (
-                <View className="absolute bottom-0 right-0 p-3 rounded-full bg-primary">
-                  <ActivityIndicator size="small" color="white" />
-                </View>
-              ) : (
-                <View className="absolute bottom-0 right-0 p-3 rounded-full shadow-lg bg-primary">
-                  <Camera size={18} className="text-primary-foreground" />
-                </View>
-              )}
-            </TouchableOpacity>
-
-            <View className="flex-1 mb-4 ml-4">
-              <Text className="text-2xl font-bold">
-                {user?.first_name} {user?.last_name}
-              </Text>
-              <Text className="text-muted-foreground">
-                @{user?.username || "username"}
-              </Text>
-            </View>
+        <View className="px-6">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-3xl font-semibold text-primary-foreground">
+              Profile
+            </Text>
+            <Button
+              variant="secondary"
+              size="icon"
+              onPress={handleSignOut}
+              className="w-10 h-10 rounded-full bg-primary-foreground/10"
+            >
+              <LogOut size={20} className="text-primary-foreground" />
+            </Button>
           </View>
         </View>
-      </MotiView>
-
-      {/* Profile Content */}
-      <View className="px-6 pt-20 ">
-        {editing ? (
-          <MotiView
-            from={{ opacity: 0, translateY: 20 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            transition={{ type: "spring" }}
-            className="space-y-6"
-          >
-            {/* Username Input */}
-            <View>
-              <Text className="mb-2 text-base font-medium">Username</Text>
-              <View className="flex-row items-center h-12 overflow-hidden bg-input/5 rounded-2xl">
-                <View className="px-4">
-                  <AtSign size={20} className="text-primary" />
-                </View>
-                <Input
-                  value={username}
-                  onChangeText={setUsername}
-                  placeholder="Enter username"
-                  className="flex-1 h-12 bg-transparent border-0"
-                />
-              </View>
-            </View>
-
-            {/* Name Inputs */}
-            <View className="flex-row gap-4">
-              <View className="flex-1">
-                <Text className="mb-2 text-base font-medium">First Name</Text>
-                <View className="flex-row items-center h-12 overflow-hidden bg-input/5 rounded-2xl">
-                  <View className="px-4">
-                    <User size={20} className="text-primary" />
-                  </View>
-                  <Input
-                    value={firstName}
-                    onChangeText={setFirstName}
-                    placeholder="First name"
-                    className="flex-1 h-12 bg-transparent border-0"
-                  />
-                </View>
-              </View>
-
-              <View className="flex-1">
-                <Text className="mb-2 text-base font-medium">Last Name</Text>
-                <View className="flex-row items-center h-12 overflow-hidden bg-input/5 rounded-2xl">
-                  <View className="px-4">
-                    <User size={20} className="text-primary" />
-                  </View>
-                  <Input
-                    value={lastName}
-                    onChangeText={setLastName}
-                    placeholder="Last name"
-                    className="flex-1 h-12 bg-transparent border-0"
-                  />
-                </View>
-              </View>
-            </View>
-
-            {/* Email Display */}
-            <View>
-              <Text className="mb-2 text-base font-medium">Email</Text>
-              <View className="flex-row items-center h-12 px-4 bg-input/5 rounded-2xl">
-                <Mail size={20} className="mr-3 text-primary" />
-                <Text className="text-muted-foreground">{user?.email}</Text>
-              </View>
-            </View>
-
-            {/* Action Buttons */}
-            <View className="flex-row gap-4 pt-4">
-              <Button
-                variant="outline"
-                onPress={() => setEditing(false)}
-                className="flex-1 h-12 rounded-2xl"
-              >
-                <Text className="text-base font-medium">Cancel</Text>
-              </Button>
-              <Button
-                onPress={handleUpdateProfile}
-                className="flex-1 h-12 bg-primary rounded-2xl"
-              >
-                <Text className="text-base font-medium text-primary-foreground">
-                  Save Changes
-                </Text>
-              </Button>
-            </View>
-          </MotiView>
-        ) : (
-          <MotiView
-            from={{ opacity: 0, translateY: 20 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            transition={{ type: "spring" }}
-            className="space-y-6"
-          >
-            {/* Info Card */}
-            <View className="p-6 space-y-6 bg-card rounded-3xl">
-              <View>
-                <Text className="mb-1 text-sm text-muted-foreground">
-                  Username
-                </Text>
-                <View className="flex-row items-center">
-                  <AtSign size={18} className="mr-2 text-primary" />
-                  <Text className="text-lg">{user?.username || "Not set"}</Text>
-                </View>
-              </View>
-
-              <View>
-                <Text className="mb-1 text-sm text-muted-foreground">
-                  Full Name
-                </Text>
-                <View className="flex-row items-center">
-                  <User size={18} className="mr-2 text-primary" />
-                  <Text className="text-lg">
-                    {user?.first_name} {user?.last_name}
-                  </Text>
-                </View>
-              </View>
-
-              <View>
-                <Text className="mb-1 text-sm text-muted-foreground">
-                  Email
-                </Text>
-                <View className="flex-row items-center">
-                  <Mail size={18} className="mr-2 text-primary" />
-                  <Text className="text-lg">{user?.email}</Text>
-                </View>
-              </View>
-            </View>
-
-            <View className="flex-row gap-4 justify-bottom">
-              {/* Edit Button */}
-              <Button
-                onPress={() => setEditing(true)}
-                className="h-12 bg-primary rounded-2xl"
-              >
-                <Text className="text-base font-medium text-primary-foreground">
-                  Edit Profile
-                </Text>
-              </Button>
-
-              {/* Sign Out Button */}
-              <Button
-                variant="destructive"
-                onPress={handleSignOut}
-                className="h-12 rounded-2xl"
-              >
-                <Text className="text-base font-medium text-destructive-foreground">
-                  Sign Out
-                </Text>
-              </Button>
-            </View>
-          </MotiView>
-        )}
       </View>
 
-      {/* Bottom Spacing */}
-      <View className="h-20" />
-    </ScrollView>
+      {/* Scrollable Content */}
+      <ScrollView
+        className="flex-1 pt-5"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingBottom: insets.bottom + 24,
+        }}
+      >
+        {/* Profile Content */}
+        <View className="px-6 -mt-1">
+          <MotiView
+            from={{ opacity: 0, translateY: 20 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: "spring", damping: 18 }}
+          >
+            <Card className="bg-content1 backdrop-blur-lg">
+              <CardHeader className="items-center pb-2">
+                <TouchableOpacity onPress={pickImage} className="relative mb-3">
+                  <Avatar
+                    alt="profile"
+                    className="w-24 h-24 border-4 border-background"
+                  >
+                    <AvatarImage
+                      source={{ uri: user?.avatar_url || undefined }}
+                      className="bg-muted"
+                    />
+                    <AvatarFallback>
+                      <UserCircle size={40} className="text-muted-foreground" />
+                    </AvatarFallback>
+                    {uploadingImage ? (
+                      <View className="absolute bottom-0 right-0 p-2 rounded-full bg-primary">
+                        <ActivityIndicator size="small" color="white" />
+                      </View>
+                    ) : (
+                      <View className="absolute bottom-0 right-0 p-2 rounded-full bg-primary">
+                        <Camera size={16} className="text-primary-foreground" />
+                      </View>
+                    )}
+                  </Avatar>
+                </TouchableOpacity>
+
+                <Text className="mt-2 text-xl font-semibold">
+                  {user?.first_name} {user?.last_name}
+                </Text>
+                <Text className="text-muted-foreground">
+                  @{user?.username || "username"}
+                </Text>
+              </CardHeader>
+
+              <CardContent className="pt-4">
+                {editing ? (
+                  <View className="space-y-6">
+                    <View>
+                      <Label className="mb-2 text-muted-foreground">
+                        <Text className="text-foreground">Username</Text>
+                      </Label>
+                      <View className="flex-row items-center">
+                        <AtSign size={20} className="mr-2 text-primary" />
+                        <Input
+                          value={username}
+                          onChangeText={setUsername}
+                          placeholder="Enter username"
+                          className="flex-1"
+                        />
+                      </View>
+                    </View>
+
+                    <View>
+                      <Label className="mb-2 text-muted-foreground">
+                        <Text className="text-foreground">Full Name</Text>
+                      </Label>
+                      <View className="space-y-3">
+                        <View className="flex-row items-center">
+                          <User size={20} className="mr-2 text-primary" />
+                          <Input
+                            value={firstName}
+                            onChangeText={setFirstName}
+                            placeholder="First name"
+                            className="flex-1"
+                          />
+                        </View>
+                        <View className="flex-row items-center">
+                          <User size={20} className="mr-2 text-primary" />
+                          <Input
+                            value={lastName}
+                            onChangeText={setLastName}
+                            placeholder="Last name"
+                            className="flex-1"
+                          />
+                        </View>
+                      </View>
+                    </View>
+
+                    <View>
+                      <Label className="mb-2 text-muted-foreground">
+                        <Text className="text-foreground">Email</Text>
+                      </Label>
+                      <View className="flex-row items-center p-4 rounded-md bg-muted">
+                        <Mail size={20} className="mr-2 text-primary" />
+                        <Text className="text-muted-foreground">
+                          {user?.email}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                ) : (
+                  <View className="space-y-6">
+                    <View>
+                      <Label className="mb-2 text-muted-foreground">
+                        <Text className="text-foreground">Username</Text>
+                      </Label>
+                      <View className="flex-row items-center">
+                        <AtSign size={18} className="mr-2 text-primary" />
+                        <Text>{user?.username || "Not set"}</Text>
+                      </View>
+                    </View>
+
+                    <Separator />
+
+                    <View>
+                      <Label className="mb-2 text-muted-foreground">
+                        <Text className="text-foreground">Full Name</Text>
+                      </Label>
+                      <View className="flex-row items-center">
+                        <User size={18} className="mr-2 text-primary" />
+                        <Text>
+                          {user?.first_name} {user?.last_name}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Separator />
+
+                    <View>
+                      <Label className="mb-2 text-muted-foreground">
+                        <Text className="text-foreground">Email</Text>
+                      </Label>
+                      <View className="flex-row items-center">
+                        <Mail size={18} className="mr-2 text-primary" />
+                        <Text>{user?.email}</Text>
+                      </View>
+                    </View>
+                  </View>
+                )}
+              </CardContent>
+
+              <CardFooter className="pt-6">
+                {editing ? (
+                  <View className="flex-row w-full gap-4">
+                    <Button
+                      variant="outline"
+                      onPress={() => setEditing(false)}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="default"
+                      onPress={handleUpdateProfile}
+                      className="flex-1"
+                    >
+                      Save Changes
+                    </Button>
+                  </View>
+                ) : (
+                  <Button
+                    variant="default"
+                    onPress={() => setEditing(true)}
+                    className="w-full"
+                  >
+                    <Text className="text-foreground">Edit Profile</Text>
+                  </Button>
+                )}
+              </CardFooter>
+            </Card>
+          </MotiView>
+        </View>
+      </ScrollView>
+    </View>
   );
 }

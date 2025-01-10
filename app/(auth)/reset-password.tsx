@@ -11,42 +11,35 @@ import { Input } from "~/src/components/ui/input";
 import { Button } from "~/src/components/ui/button";
 import { Text } from "~/src/components/ui/text";
 import Toast from "react-native-toast-message";
-import { Lock, Mail, AlertTriangle } from "lucide-react-native";
-import { MotiView, AnimatePresence } from "moti";
+import { Mail } from "lucide-react-native";
+import { MotiView } from "moti";
 
-export default function SignIn(): JSX.Element {
+export default function ResetPassword(): JSX.Element {
   const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string>("");
 
-  async function signIn(): Promise<void> {
-    if (!email || !password) {
-      setError("Please fill in all fields.");
+  async function handleForgotPassword(): Promise<void> {
+    if (!email) {
       Toast.show({
         type: "error",
         text1: "Error",
-        text2: "Please fill in all fields",
+        text2: "Please enter your email address.",
       });
       return;
     }
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: "your-app://reset-password", // Replace this with your app's deep link for password reset
       });
 
       if (error) {
         console.log(error);
-        setError(
-          "Invalid login credentials or no account associated with email."
-        );
         Toast.show({
           type: "error",
           text1: "Error",
-          text2: error.message || "Invalid login credentials",
+          text2: error.message || "Unable to send reset email.",
         });
         return;
       }
@@ -54,14 +47,13 @@ export default function SignIn(): JSX.Element {
       Toast.show({
         type: "success",
         text1: "Success",
-        text2: "Signed in successfully",
+        text2: "Password reset email sent. Please check your inbox.",
       });
 
-      // Navigate to the home screen or another screen after successful login
-      router.replace("/(app)/home");
+      // Optionally redirect the user back to the sign-in page
+      router.push("/sign-in");
     } catch (error) {
       if (error instanceof Error) {
-        setError(error.message || "An unexpected error occurred.");
         Toast.show({
           type: "error",
           text1: "Error",
@@ -83,9 +75,9 @@ export default function SignIn(): JSX.Element {
           transition={{ type: "timing", duration: 1000 }}
           className="pt-12 pb-8"
         >
-          <Text className="w-full text-4xl font-bold">Welcome Back 👋</Text>
+          <Text className="w-full text-4xl font-bold">Forgot Password</Text>
           <Text className="mt-3 text-base text-muted-foreground">
-            Sign in to continue your journey
+            Enter your email address to reset your password.
           </Text>
         </MotiView>
 
@@ -97,29 +89,6 @@ export default function SignIn(): JSX.Element {
             transition={{ type: "spring", delay: 300 }}
             className="p-6 rounded-3xl bg-content2"
           >
-            {/* Error UI */}
-            <AnimatePresence>
-              {error && (
-                <MotiView
-                  from={{ opacity: 0, translateY: -10 }}
-                  animate={{ opacity: 1, translateY: 0 }}
-                  exit={{ opacity: 0, translateY: -10 }}
-                  className="flex-row items-center p-4 mb-4 bg-red-100 rounded-lg"
-                >
-                  <AlertTriangle size={20} className="mr-3 text-red-500" />
-                  <Text className="flex-1 text-sm text-red-500">{error}</Text>
-                  <TouchableOpacity
-                    onPress={() => setError("")}
-                    className="p-2"
-                  >
-                    <Text className="text-sm font-medium text-red-500">
-                      Dismiss
-                    </Text>
-                  </TouchableOpacity>
-                </MotiView>
-              )}
-            </AnimatePresence>
-
             {/* Email Input */}
             <View className="mb-6">
               <Text className="mb-4 text-lg font-medium">Email Address</Text>
@@ -140,37 +109,9 @@ export default function SignIn(): JSX.Element {
               </View>
             </View>
 
-            {/* Password Input */}
-            <View className="mb-4">
-              <Text className="mb-4 text-lg font-medium">Password</Text>
-              <View className="flex-row items-center h-14 bg-input rounded-xl">
-                <View className="px-4">
-                  <Lock size={22} className="text-primary" />
-                </View>
-                <Input
-                  placeholder="••••••••"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoComplete="password"
-                  className="flex-1 bg-transparent border-0 h-14"
-                />
-              </View>
-            </View>
-
-            {/* Forgot Password */}
-            <TouchableOpacity
-              className="self-end mb-6"
-              onPress={() => {
-                router.push("/(auth)/reset-password");
-              }}
-            >
-              <Text className="text-base text-primary">Forgot password?</Text>
-            </TouchableOpacity>
-
-            {/* Sign In Button */}
+            {/* Reset Password Button */}
             <Button
-              onPress={signIn}
+              onPress={handleForgotPassword}
               disabled={loading}
               className="h-14 bg-primary rounded-xl"
             >
@@ -178,22 +119,22 @@ export default function SignIn(): JSX.Element {
                 <ActivityIndicator color="white" />
               ) : (
                 <Text className="text-lg font-medium text-primary-foreground">
-                  Sign In
+                  Reset Password
                 </Text>
               )}
             </Button>
           </MotiView>
         </View>
 
-        {/* Sign Up Link */}
+        {/* Back to Sign In Link */}
         <View className="justify-end flex-1 pb-8">
           <View className="flex-row items-center justify-center">
             <Text className="text-base text-muted-foreground">
-              Don't have an account?{" "}
+              Remember your password?{" "}
             </Text>
-            <TouchableOpacity onPress={() => router.push("/sign-up")}>
+            <TouchableOpacity onPress={() => router.push("/sign-in")}>
               <Text className="text-base font-medium text-primary">
-                Sign up
+                Sign In
               </Text>
             </TouchableOpacity>
           </View>

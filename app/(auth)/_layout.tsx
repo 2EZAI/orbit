@@ -26,6 +26,12 @@ export default function AuthLayout() {
           title: "Create Account",
         }}
       />
+      <Stack.Screen
+        name="reset-password"
+        options={{
+          title: "Reset Password",
+        }}
+      />
     </Stack>
   );
 }
