@@ -8,10 +8,7 @@ export default function AuthLayout() {
       screenOptions={{
         headerShown: false,
         gestureEnabled: true,
-        gestureDirection: "horizontal",
         animation: Platform.OS === "ios" ? "default" : "slide_from_right",
-        presentation: Platform.OS === "ios" ? "card" : "card",
-        fullScreenGestureEnabled: true,
       }}
     >
       <Stack.Screen

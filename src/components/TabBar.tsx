@@ -1,52 +1,78 @@
 import React from "react";
-import { View, Pressable } from "react-native";
-import { useRouter, usePathname } from "expo-router";
-import { MessageCircle, Map, Plus, User, Home } from "lucide-react-native";
+import { View, TouchableOpacity, Dimensions } from "react-native";
+import { usePathname, router } from "expo-router";
+import { Home, Map, MessageCircle, Plus, User } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const TAB_ROUTES = [
-  { route: "/(app)/chat", Icon: MessageCircle },
-  { route: "/(app)/map", Icon: Map },
-  { route: "/(app)/create", Icon: Plus, isMain: true },
-  { route: "/(app)/profile", Icon: User },
-  { route: "/(app)/home", Icon: Home },
-];
+const { width } = Dimensions.get("window");
+const TAB_BAR_WIDTH = width * 0.9; // 90% of screen width
+const TAB_WIDTH = TAB_BAR_WIDTH / 5; // Equal width for each tab
 
-const TabBar = () => {
-  const router = useRouter();
+const TABS = [
+  {
+    name: "Home",
+    path: "/(app)/home",
+    icon: Home,
+  },
+  {
+    name: "Chat",
+    path: "/(app)/chat",
+    icon: MessageCircle,
+  },
+  {
+    name: "Create",
+    path: "/(app)/create",
+    icon: Plus,
+  },
+  {
+    name: "Map",
+    path: "/(app)/map",
+    icon: Map,
+  },
+  {
+    name: "Profile",
+    path: "/(app)/profile",
+    icon: User,
+  },
+] as const;
 
-  const handlePress = (route: string) => {
-    router.replace(route);
-  };
+export default function TabBar() {
+  const pathname = usePathname();
+  const insets = useSafeAreaInsets();
 
   return (
-    <View className="absolute bottom-8 left-6 right-6">
-      <View className="flex-row items-center justify-between px-6 py-4 bg-gray-800 rounded-full shadow-lg backdrop-blur-3xl">
-        {TAB_ROUTES.map(({ route, Icon, isMain }) => (
-          <Pressable
-            key={route}
-            onPress={() => handlePress(route)}
-            className="items-center justify-center"
-          >
-            <View
-              className={`
-                items-center justify-center rounded-full
-                ${isMain ? "bg-primary p-4 shadow-lg -mt-9" : "p-3"}
-              `}
-              style={{
-                elevation: isMain ? 8 : 0,
-                shadowColor: isMain ? "bg-primary" : "transparent",
-                shadowOffset: { width: 0, height: 9 },
-                shadowOpacity: isMain ? 0.3 : 0,
-                shadowRadius: 8,
-              }}
+    <View
+      className="absolute bottom-0 left-0 right-0 items-center"
+      style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+    >
+      <View
+        className="flex-row items-center p-3 rounded-2xl bg-background/60 backdrop-blur-lg border border-border"
+        style={{ width: TAB_BAR_WIDTH }}
+      >
+        {TABS.map((tab) => {
+          const isActive = pathname.includes(tab.path);
+          const Icon = tab.icon;
+
+          return (
+            <TouchableOpacity
+              key={tab.path}
+              onPress={() => router.push(tab.path)}
+              className="items-center justify-center"
+              style={{ width: TAB_WIDTH }}
             >
-              <Icon size={24} color={isMain ? "white" : "#94A3B8"} />
-            </View>
-          </Pressable>
-        ))}
+              <View className="items-center justify-center w-10 h-10">
+                <Icon
+                  size={24}
+                  className={
+                    isActive ? "text-primary" : "text-muted-foreground"
+                  }
+                  strokeWidth={2}
+                />
+              </View>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );
-};
-
-export default TabBar;
+}

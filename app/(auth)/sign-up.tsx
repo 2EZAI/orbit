@@ -17,6 +17,13 @@ import Toast from "react-native-toast-message";
 import * as ImagePicker from "expo-image-picker";
 import { MotiView } from "moti";
 import { BlurView } from "expo-blur";
+import Constants from "expo-constants";
+
+console.log("Supabase URL:", Constants.expoConfig?.extra?.supabaseUrl);
+console.log(
+  "Supabase Key:",
+  Constants.expoConfig?.extra?.supabaseAnonKey?.slice(0, 5) + "..."
+);
 
 export default function SignUp() {
   const [loading, setLoading] = useState(false);
@@ -28,53 +35,47 @@ export default function SignUp() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
 
   async function signUp() {
-    if (!email || !password || !firstName || !lastName) {
+    setLoading(true);
+    try {
+      if (!email || !password) {
+        throw new Error("Email and password are required");
+      }
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName || null,
+            last_name: lastName || null,
+            phone: phone || null,
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      if (!data?.user) {
+        throw new Error("Failed to create account");
+      }
+
+      // Since email verification is disabled, we can proceed directly
+      Toast.show({
+        type: "success",
+        text1: "Welcome!",
+        text2: "Your account has been created successfully",
+      });
+
+      // Navigate to onboarding with correct path
+      router.replace("/onboarding");
+    } catch (error) {
+      console.error("Error:", error);
       Toast.show({
         type: "error",
         text1: "Error",
-        text2: "Please fill in all required fields",
+        text2:
+          error instanceof Error ? error.message : "Failed to create account",
       });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // 1. Sign up the user with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      if (authError) throw authError;
-
-      // 2. Create the user profile if auth was successful
-      if (authData.user) {
-        const { error: profileError } = await supabase.from("users").insert({
-          id: authData.user.id,
-          email,
-          first_name: firstName,
-          last_name: lastName,
-          phone_number: phone || null,
-        });
-
-        if (profileError) throw profileError;
-      }
-
-      Toast.show({
-        type: "success",
-        text1: "Success",
-        text2: "Account created successfully",
-      });
-
-      // User will be automatically redirected by the auth listener
-    } catch (error) {
-      if (error instanceof Error) {
-        Toast.show({
-          type: "error",
-          text1: "Error",
-          text2: error.message,
-        });
-      }
     } finally {
       setLoading(false);
     }
