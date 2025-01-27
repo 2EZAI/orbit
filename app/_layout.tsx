@@ -1,13 +1,17 @@
 // app/_layout.tsx
-import { AuthProvider } from "~/src/lib/auth";
-import { Stack } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import * as React from "react";
 import { View } from "react-native";
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Toast from "react-native-toast-message";
-import "~/src/styles/global.css";
+import "react-native-reanimated";
+
 import { Text } from "~/src/components/ui/text";
 import { ThemeProvider, useTheme } from "~/src/components/ThemeProvider";
+import { AuthProvider } from "~/src/lib/auth";
+import { ChatProvider } from "~/src/lib/chat";
+import "~/src/styles/global.css";
 
 const toastConfig = {
   success: (props: any) => (
@@ -32,7 +36,7 @@ function RootLayoutContent() {
   const { isDarkMode, theme } = useTheme();
 
   return (
-    <AuthProvider>
+    <>
       <Stack
         screenOptions={{
           headerShown: false,
@@ -72,14 +76,20 @@ function RootLayoutContent() {
       </Stack>
       <Toast topOffset={100} config={toastConfig} />
       <StatusBar style={isDarkMode ? "light" : "dark"} />
-    </AuthProvider>
+    </>
   );
 }
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <RootLayoutContent />
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <AuthProvider>
+          <ChatProvider>
+            <RootLayoutContent />
+          </ChatProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }

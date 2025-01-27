@@ -67,7 +67,7 @@ export default function SignUp() {
       });
 
       // Navigate to onboarding with correct path
-      router.replace("/onboarding");
+      router.replace("/(auth)/(onboarding)");
     } catch (error) {
       console.error("Error:", error);
       Toast.show({
@@ -251,7 +251,7 @@ export default function SignUp() {
             <Text className="text-base text-muted-foreground">
               Already have an account?{" "}
             </Text>
-            <TouchableOpacity onPress={() => router.push("/sign-in")}>
+            <TouchableOpacity onPress={() => router.push("/(auth)/sign-in")}>
               <Text className="text-base font-medium text-primary">
                 Sign in
               </Text>

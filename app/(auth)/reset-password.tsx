@@ -51,7 +51,7 @@ export default function ResetPassword(): JSX.Element {
       });
 
       // Optionally redirect the user back to the sign-in page
-      router.push("/sign-in");
+      router.push("/(auth)/sign-in");
     } catch (error) {
       if (error instanceof Error) {
         Toast.show({
@@ -132,7 +132,7 @@ export default function ResetPassword(): JSX.Element {
             <Text className="text-base text-muted-foreground">
               Remember your password?{" "}
             </Text>
-            <TouchableOpacity onPress={() => router.push("/sign-in")}>
+            <TouchableOpacity onPress={() => router.push("/(auth)/sign-in")}>
               <Text className="text-base font-medium text-primary">
                 Sign In
               </Text>

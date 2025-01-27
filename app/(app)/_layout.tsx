@@ -1,15 +1,15 @@
-//
-import { Stack, Redirect } from "expo-router";
-import { usePathname } from "expo-router";
+// ~/app/(app)/_layout.tsx
+import { Tabs } from "expo-router";
 import { View } from "react-native";
 import { useAuth } from "~/src/lib/auth";
-import TabBar from "~/src/components/TabBar";
 import { useTheme } from "~/src/components/ThemeProvider";
+import TabBar from "~/src/components/shared/TabBar";
+import { Redirect } from "expo-router";
+import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
 export default function AppLayout() {
   const { theme } = useTheme();
   const { session, loading } = useAuth();
-  const pathname = usePathname();
 
   if (loading) {
     return null;
@@ -19,35 +19,26 @@ export default function AppLayout() {
     return <Redirect href="/(auth)/sign-in" />;
   }
 
-  const showTabBar = !pathname.includes("/edit");
-
   return (
-    <View
-      className="flex-1"
-      style={{ backgroundColor: theme.colors.background }}
-    >
-      <Stack
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <Tabs
         screenOptions={{
           headerShown: false,
-          animation: "none",
-          contentStyle: {
-            backgroundColor: theme.colors.background,
-          },
+        }}
+        tabBar={(props: BottomTabBarProps) => {
+          // Only render the TabBar when not on the onboarding screen
+          return props.state.routeNames[props.state.index] !== "onboarding" ? (
+            <TabBar />
+          ) : null;
         }}
       >
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen
-          name="[id]"
-          options={{
-            presentation: "modal",
-            animation: "slide_from_bottom",
-            headerShown: false,
-            gestureEnabled: true,
-            gestureDirection: "vertical",
-          }}
-        />
-      </Stack>
-      {showTabBar && <TabBar />}
+        <Tabs.Screen name="(home)" />
+        <Tabs.Screen name="(chat)" />
+        <Tabs.Screen name="(create)" />
+        <Tabs.Screen name="(map)" />
+        <Tabs.Screen name="(profile)" />
+        <Tabs.Screen name="onboarding" />
+      </Tabs>
     </View>
   );
 }
