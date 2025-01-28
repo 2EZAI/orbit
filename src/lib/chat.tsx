@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { StreamChat } from "stream-chat";
 import { DefaultStreamChatGenerics } from "stream-chat-expo";
 import { useAuth } from "./auth";
@@ -6,7 +6,12 @@ import { useUser } from "~/hooks/useUserData";
 import Constants from "expo-constants";
 
 const STREAM_API_KEY = Constants.expoConfig?.extra?.streamApiKey || "";
-console.log("Stream API Key:", STREAM_API_KEY); // Debug log
+const MAX_RECONNECT_ATTEMPTS = 3;
+const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl;
+
+if (!BACKEND_URL) {
+  throw new Error("Backend URL is not configured");
+}
 
 type ChatContextType = {
   client: StreamChat<DefaultStreamChatGenerics> | null;
@@ -28,20 +33,74 @@ const chatClient =
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
-  const { user } = useUser();
-  const [client, setClient] =
-    useState<StreamChat<DefaultStreamChatGenerics> | null>(chatClient);
+  const { user, loading: userLoading } = useUser();
+  const [client] = useState<StreamChat<DefaultStreamChatGenerics>>(chatClient);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionError, setConnectionError] = useState<Error | null>(null);
+  const initializationAttemptsRef = useRef(0);
+  const isUnmountedRef = useRef(false);
+  const currentTokenRef = useRef<string | null>(null);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (chatClient) {
-        chatClient.disconnectUser();
+  const getNewToken = async () => {
+    if (!session?.access_token) {
+      console.log("No session access token available");
+      return null;
+    }
+
+    try {
+      console.log("Requesting new chat token...");
+      const response = await fetch(`${BACKEND_URL}/chat/token`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get chat token: ${await response.text()}`);
       }
-    };
-  }, []);
+
+      const data = await response.json();
+      console.log("Raw token response:", data);
+
+      // Validate token response
+      if (!data.token || typeof data.token !== "string") {
+        console.error("Invalid token response:", data);
+        throw new Error("Invalid token received from server");
+      }
+
+      // Handle both timestamp and duration formats
+      let expiresIn: number;
+      if (data.expires) {
+        // If we get a timestamp, convert it to duration
+        const expiresAt = new Date(data.expires);
+        expiresIn = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
+      } else if (data.expiresIn && typeof data.expiresIn === "number") {
+        expiresIn = data.expiresIn;
+      } else {
+        console.error("Invalid expiration format:", data);
+        throw new Error("Invalid token expiration format");
+      }
+
+      // Validate expiration
+      if (expiresIn <= 0) {
+        console.error("Token is already expired:", { expiresIn });
+        throw new Error("Received expired token from server");
+      }
+
+      console.log("Got new token:", {
+        expiresIn,
+        tokenLength: data.token.length,
+        expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
+      });
+
+      return data.token;
+    } catch (error) {
+      console.error("Error getting new token:", error);
+      return null;
+    }
+  };
 
   const connectUser = async (token: string) => {
     if (!session?.user || !user || !client) {
@@ -50,22 +109,29 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         hasUser: !!user,
         hasClient: !!client,
       });
-      throw new Error("Missing required data for connection");
+      return;
+    }
+
+    if (isConnecting) {
+      console.log("Already connecting, skipping...");
+      return;
+    }
+
+    // If we're already connected with this token, skip
+    if (currentTokenRef.current === token && client.userID) {
+      console.log("Already connected with this token");
+      return;
     }
 
     try {
       setIsConnecting(true);
       setConnectionError(null);
 
-      // Check if user is already connected with the same ID
-      if (client.userID === session.user.id) {
-        console.log("User already connected:", client.userID);
-        return;
-      }
-
-      // If a different user was connected, disconnect them first
+      // Ensure clean disconnect
       if (client.userID) {
+        console.log("Disconnecting existing user...");
         await client.disconnectUser();
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
       console.log("Connecting user to Stream...", {
@@ -82,20 +148,103 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         token
       );
 
-      console.log("User connected successfully to Stream");
-    } catch (error) {
+      currentTokenRef.current = token;
+      initializationAttemptsRef.current = 0;
+      console.log("Successfully connected to Stream");
+    } catch (error: any) {
       console.error("Error connecting to chat:", error);
-      if (error instanceof Error) {
-        console.error("Error details:", error.message, error.stack);
+      const errorMessage = error.message || "Unknown error";
+      console.log("Connection error details:", {
+        message: errorMessage,
+        code: error.code,
+        statusCode: error.StatusCode,
+      });
+
+      // Clear current token if it's expired
+      if (errorMessage.includes("token is expired")) {
+        console.log("Token expired, clearing current token");
+        currentTokenRef.current = null;
+
+        if (initializationAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+          console.log(
+            `Attempt ${
+              initializationAttemptsRef.current + 1
+            }/${MAX_RECONNECT_ATTEMPTS} to get new token`
+          );
+          initializationAttemptsRef.current++;
+          const newToken = await getNewToken();
+          if (newToken) {
+            return connectUser(newToken);
+          }
+        } else {
+          console.log("Max reconnection attempts reached");
+        }
       }
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to connect to chat";
-      setConnectionError(new Error(errorMessage));
-      throw error;
+
+      setConnectionError(
+        error instanceof Error ? error : new Error("Connection failed")
+      );
     } finally {
-      setIsConnecting(false);
+      if (!isUnmountedRef.current) {
+        setIsConnecting(false);
+      }
     }
   };
+
+  useEffect(() => {
+    const initializeChat = async () => {
+      if (
+        !session?.access_token ||
+        !user ||
+        userLoading ||
+        !client ||
+        isConnecting
+      ) {
+        console.log("Skipping chat initialization:", {
+          hasSession: !!session?.access_token,
+          hasUser: !!user,
+          isLoading: userLoading,
+          hasClient: !!client,
+          isConnecting,
+        });
+        return;
+      }
+
+      try {
+        // Only get a new token if we don't have a valid connection
+        if (!currentTokenRef.current || !client.userID) {
+          console.log("No current token or user ID, getting new token");
+          const token = await getNewToken();
+          if (token) {
+            await connectUser(token);
+          } else {
+            console.error("Failed to get new token");
+          }
+        } else {
+          console.log("Using existing connection");
+        }
+      } catch (error) {
+        console.error("Failed to initialize chat:", error);
+        setConnectionError(
+          error instanceof Error
+            ? error
+            : new Error("Failed to initialize chat")
+        );
+      }
+    };
+
+    initializeChat();
+  }, [session?.access_token, user, userLoading]);
+
+  useEffect(() => {
+    isUnmountedRef.current = false;
+    return () => {
+      isUnmountedRef.current = true;
+      if (client) {
+        client.disconnectUser();
+      }
+    };
+  }, []);
 
   return (
     <ChatContext.Provider
