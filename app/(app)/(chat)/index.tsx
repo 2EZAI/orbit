@@ -4,11 +4,15 @@ import {
   Chat,
   OverlayProvider,
   DefaultStreamChatGenerics,
+  Channel as ChannelComponent,
+  MessageList,
+  MessageInput,
+  Thread,
 } from "stream-chat-expo";
-import type { Channel } from "stream-chat";
 import { useChat } from "~/src/lib/chat";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { router } from "expo-router";
+import { Channel } from "stream-chat";
 
 export default function ChatScreen() {
   const { client } = useChat();
@@ -20,7 +24,7 @@ export default function ChatScreen() {
   };
 
   const sort = {
-    last_message_at: -1,
+    last_message_at: -1 as const,
   };
 
   const onChannelPressed = (channel: Channel<DefaultStreamChatGenerics>) => {

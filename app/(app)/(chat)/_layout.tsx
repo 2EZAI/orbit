@@ -14,13 +14,13 @@ export default function ChatLayout() {
           headerShown: false,
         }}
       />
-      {/* <Stack.Screen
+      <Stack.Screen
         name="[id]"
         options={{
           headerShown: false,
           gestureEnabled: true,
         }}
-      /> */}
+      />
     </Stack>
   );
 }
