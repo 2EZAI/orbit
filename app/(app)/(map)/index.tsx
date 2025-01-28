@@ -9,12 +9,17 @@ import {
 import { Text } from "~/src/components/ui/text";
 import * as Location from "expo-location";
 import { useTheme } from "~/src/components/ThemeProvider";
-import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
+import MapboxGL from "@rnmapbox/maps";
 import { useUser } from "~/hooks/useUserData";
 import { MapControls } from "~/src/components/map/MapControls";
 import { Navigation2 } from "lucide-react-native";
 
-// Custom style URLs
+// Replace with your Mapbox access token
+MapboxGL.setAccessToken(
+  "pk.eyJ1IjoidGFuZ2VudGRpZ2l0YWxhZ2VuY3kiLCJhIjoiY2xwMHR0bTVmMGJwbTJtbzhxZ2pvZWNoYiJ9.ZGwLHw0gLeEVxPhoYq2WyA"
+);
+
+// Custom style URLs - now these will work with Mapbox
 const CUSTOM_LIGHT_STYLE =
   "mapbox://styles/tangentdigitalagency/clzwv4xtp002y01psdttf9jhr";
 const CUSTOM_DARK_STYLE =
@@ -59,7 +64,8 @@ export default function Map() {
   } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isFollowingUser, setIsFollowingUser] = useState(true);
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<MapboxGL.MapView>(null);
+  const cameraRef = useRef<MapboxGL.Camera>(null);
 
   useEffect(() => {
     let locationSubscription: Location.LocationSubscription;
@@ -87,8 +93,8 @@ export default function Map() {
         locationSubscription = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.BestForNavigation,
-            distanceInterval: 0, // Update on any movement
-            timeInterval: 1000, // Update every 1 second
+            distanceInterval: 0,
+            timeInterval: 1000,
           },
           (newLocation) => {
             setLocation({
@@ -97,12 +103,13 @@ export default function Map() {
               heading: newLocation.coords.heading || undefined,
             });
 
-            if (isFollowingUser && mapRef.current) {
-              mapRef.current.animateCamera({
-                center: {
-                  latitude: newLocation.coords.latitude,
-                  longitude: newLocation.coords.longitude,
-                },
+            if (isFollowingUser && cameraRef.current) {
+              cameraRef.current.setCamera({
+                centerCoordinate: [
+                  newLocation.coords.longitude,
+                  newLocation.coords.latitude,
+                ],
+                animationDuration: 500,
               });
             }
           }
@@ -115,7 +122,6 @@ export default function Map() {
       }
     })();
 
-    // Cleanup subscription on unmount
     return () => {
       if (locationSubscription) {
         locationSubscription.remove();
@@ -128,14 +134,12 @@ export default function Map() {
   };
 
   const handleRecenter = () => {
-    if (location && mapRef.current) {
+    if (location && cameraRef.current) {
       setIsFollowingUser(true);
-      mapRef.current.animateCamera({
-        center: {
-          latitude: location.latitude,
-          longitude: location.longitude,
-        },
-        zoom: 16,
+      cameraRef.current.setCamera({
+        centerCoordinate: [location.longitude, location.latitude],
+        zoomLevel: 16,
+        animationDuration: 500,
       });
     }
   };
@@ -158,41 +162,34 @@ export default function Map() {
 
   return (
     <View className="flex-1">
-      <MapView
+      <MapboxGL.MapView
         ref={mapRef}
         style={styles.map}
-        provider={PROVIDER_DEFAULT}
-        showsUserLocation
-        showsMyLocationButton={false}
+        styleURL={isDarkMode ? CUSTOM_DARK_STYLE : CUSTOM_LIGHT_STYLE}
         rotateEnabled
         scrollEnabled
         zoomEnabled
-        initialRegion={{
-          latitude: location.latitude,
-          longitude: location.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        }}
-        onPanDrag={() => setIsFollowingUser(false)}
-        userInterfaceStyle={isDarkMode ? "dark" : "light"}
+        onTouchMove={() => setIsFollowingUser(false)}
       >
-        <Marker
-          coordinate={{
-            latitude: location.latitude,
-            longitude: location.longitude,
-          }}
-          rotation={location.heading || 0}
+        <MapboxGL.Camera
+          ref={cameraRef}
+          zoomLevel={16}
+          centerCoordinate={[location.longitude, location.latitude]}
+        />
+
+        <MapboxGL.PointAnnotation
+          id="userLocation"
+          coordinate={[location.longitude, location.latitude]}
         >
           <UserMarker
             avatarUrl={user?.avatar_url}
             heading={location.heading || undefined}
           />
-        </Marker>
-      </MapView>
+        </MapboxGL.PointAnnotation>
+      </MapboxGL.MapView>
 
       <MapControls onSearch={handleSearch} />
 
-      {/* Recenter Button */}
       {!isFollowingUser && (
         <TouchableOpacity
           onPress={handleRecenter}
