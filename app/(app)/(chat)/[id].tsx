@@ -5,7 +5,6 @@ import {
   Chat,
   MessageList,
   MessageInput,
-  OverlayProvider,
   DefaultStreamChatGenerics,
 } from "stream-chat-expo";
 import type { Channel as ChannelType } from "stream-chat";
@@ -73,14 +72,10 @@ export default function ChannelScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <OverlayProvider>
-        <Chat client={client}>
-          <Channel channel={channel}>
-            <MessageList />
-            <MessageInput />
-          </Channel>
-        </Chat>
-      </OverlayProvider>
+      <Channel channel={channel}>
+        <MessageList />
+        <MessageInput />
+      </Channel>
     </SafeAreaView>
   );
 }

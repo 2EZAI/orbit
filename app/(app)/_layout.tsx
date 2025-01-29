@@ -25,6 +25,7 @@ export default function AppLayout() {
         screenOptions={{
           headerShown: false,
         }}
+        initialRouteName="(map)"
         tabBar={(props: BottomTabBarProps) => {
           // Only render the TabBar when not on the onboarding screen
           return props.state.routeNames[props.state.index] !== "onboarding" ? (
@@ -32,10 +33,10 @@ export default function AppLayout() {
           ) : null;
         }}
       >
-        <Tabs.Screen name="(home)" />
+        <Tabs.Screen name="(map)" />
         <Tabs.Screen name="(chat)" />
         <Tabs.Screen name="(create)" />
-        <Tabs.Screen name="(map)" />
+        <Tabs.Screen name="(home)" />
         <Tabs.Screen name="(profile)" />
         <Tabs.Screen name="onboarding" />
       </Tabs>

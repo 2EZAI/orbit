@@ -11,8 +11,10 @@ import { usePathname, router } from "expo-router";
 // Define the tab routes
 const TAB_ROUTES = [
   { path: "/(app)/(home)", icon: Home },
+
   { path: "/(app)/(chat)", icon: MessageCircle },
   { path: "/(app)/(create)", icon: PlusCircle },
+
   { path: "/(app)/(map)", icon: Map },
   { path: "/(app)/(profile)", icon: User },
 ];
@@ -27,8 +29,9 @@ export default function TabBar() {
       <View className="flex-row items-center p-3 mx-4 mb-8 border rounded-2xl bg-background border-border">
         {TAB_ROUTES.map((tab) => {
           // Improved route matching: check if the pathname exactly matches or starts with the tab path
-          const isActive =
-            pathname === tab.path || pathname.startsWith(tab.path); // Match dynamic routes too
+          const isActive = pathname?.startsWith(
+            tab.path.replace("/(app)/", "/")
+          );
 
           const Icon = tab.icon; // Get the icon based on the current tab
 
@@ -37,13 +40,13 @@ export default function TabBar() {
               key={tab.path}
               onPress={() => {
                 console.log("Navigating to:", tab.path); // Log the navigation target
-                router.push(tab.path);
-              }} // Navigate to the selected path
+                router.replace(tab.path);
+              }}
               className="items-center flex-1"
             >
               <Icon
                 size={24}
-                className={isActive ? "text-primary" : "text-muted-foreground"} // Highlight the active tab
+                className={isActive ? "text-primary" : "text-muted-foreground"}
               />
             </TouchableOpacity>
           );

@@ -98,7 +98,7 @@ export default function Intro() {
 
   useEffect(() => {
     if (session) {
-      router.replace("/(app)/home");
+      router.replace("/(app)/(map)/index");
     }
   }, [session]);
 
