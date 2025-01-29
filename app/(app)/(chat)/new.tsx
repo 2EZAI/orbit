@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { SafeAreaView, View, FlatList } from "react-native";
+import { SafeAreaView, View, FlatList, Alert } from "react-native";
 import { useChat } from "~/src/lib/chat";
 import { useRouter } from "expo-router";
 import { supabase } from "~/src/lib/supabase";
@@ -22,6 +22,14 @@ interface User extends AuthUser {
   avatar_url: string | null;
 }
 
+interface DatabaseUser {
+  id: string;
+  email: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+}
+
 export default function NewChatScreen() {
   const router = useRouter();
   const { client } = useChat();
@@ -38,17 +46,44 @@ export default function NewChatScreen() {
     const fetchUsers = async () => {
       setIsLoading(true);
       try {
-        if (!client?.userID) return;
+        if (!client?.userID) {
+          console.log("No client user ID, skipping fetch");
+          return;
+        }
 
+        console.log("Fetching users for client ID:", client.userID);
+
+        // Get users from the public view
         const { data: users, error } = await supabase
-          .from("users")
+          .from("public_users")
           .select("*")
-          .neq("id", client.userID) // Exclude current user
-          .order("email")
-          .limit(50); // Limit to prevent loading too many users at once
+          .neq("id", client.userID)
+          .order("first_name");
 
-        if (error) throw error;
-        setAllUsers(users || []);
+        if (error) {
+          console.error("Error fetching users:", error);
+          throw error;
+        }
+
+        console.log("Users:", users);
+
+        // Format users for the UI
+        const formattedUsers = (users || []).map((user) => ({
+          id: user.id,
+          email: user.email || "",
+          first_name: user.first_name,
+          last_name: user.last_name,
+          username: null,
+          avatar_url: user.avatar_url,
+          aud: "authenticated",
+          app_metadata: {},
+          user_metadata: {},
+          created_at: "",
+          updated_at: "",
+        }));
+
+        console.log("Formatted users:", formattedUsers);
+        setAllUsers(formattedUsers);
       } catch (error) {
         console.error("Error fetching users:", error);
       } finally {
@@ -57,7 +92,7 @@ export default function NewChatScreen() {
     };
 
     fetchUsers();
-  }, [client?.userID]); // Re-run when client.userID changes
+  }, [client?.userID]);
 
   // Filter users based on search text
   const filteredUsers = searchText.trim()
@@ -78,29 +113,40 @@ export default function NewChatScreen() {
   };
 
   const createChat = async () => {
-    if (!client || selectedUsers.length === 0) return;
+    console.log("Starting createChat function");
+    console.log("Checking prerequisites:", {
+      hasClientId: Boolean(client?.userID),
+      selectedUsersCount: selectedUsers.length,
+    });
+
+    if (!client?.userID || selectedUsers.length === 0) {
+      console.log("Prerequisites not met, returning early");
+      return;
+    }
 
     try {
-      // Create the Stream chat channel
-      const channelId = `${client.userID}-${selectedUsers
-        .map((u) => u.id)
-        .join("-")}`;
-      const members = [client.userID, ...selectedUsers.map((u) => u.id)].filter(
-        (id): id is string => id !== undefined
-      );
-      const channelData = {
-        members,
+      // Get all member IDs including the current user
+      const memberIds = [client.userID, ...selectedUsers.map((u) => u.id)];
+      console.log("Member IDs:", memberIds);
+
+      // Create the channel with members list (Stream will auto-generate channel ID)
+      console.log("Creating Stream channel");
+      const channel = client.channel("messaging", undefined, {
+        members: memberIds,
         name: isGroupChat ? groupName : undefined,
-      };
+      });
 
-      const channel = client.channel("messaging", channelId, channelData);
-      await channel.create();
+      // This both creates the channel and subscribes to it
+      console.log("Watching channel");
+      await channel.watch();
+      console.log("Channel created and watching:", channel.id);
 
-      // Create record in chat_channels table
+      // Now create the database records
+      console.log("Creating chat channel record in Supabase");
       const { data: chatChannel, error: channelError } = await supabase
         .from("chat_channels")
         .insert({
-          stream_channel_id: channelId,
+          stream_channel_id: channel.id,
           channel_type: "messaging",
           created_by: client.userID,
           name: isGroupChat ? groupName : null,
@@ -108,24 +154,45 @@ export default function NewChatScreen() {
         .select()
         .single();
 
-      if (channelError) throw channelError;
+      if (channelError) {
+        console.error("Error creating chat channel:", channelError);
+        throw channelError;
+      }
 
-      // Create records in chat_channel_members table
-      const memberRecords = members.map((userId) => ({
+      console.log("Chat channel record created successfully:", chatChannel);
+
+      // Create member records
+      console.log("Preparing member records");
+      const memberRecords = memberIds.map((userId) => ({
         channel_id: chatChannel.id,
         user_id: userId,
         role: userId === client.userID ? "admin" : "member",
       }));
+      console.log("Member records prepared:", memberRecords);
 
+      console.log("Inserting member records into Supabase");
       const { error: membersError } = await supabase
         .from("chat_channel_members")
         .insert(memberRecords);
 
-      if (membersError) throw membersError;
+      if (membersError) {
+        console.error("Error creating channel members:", membersError);
+        throw membersError;
+      }
 
+      console.log("Channel members created successfully");
+      console.log("Navigating to chat screen");
       router.push(`/(app)/(chat)/${channel.id}`);
-    } catch (error) {
-      console.error("Error creating chat:", error);
+      console.log("Navigation triggered");
+    } catch (error: any) {
+      console.error("Final error in chat creation:", {
+        name: error?.name,
+        message: error?.message,
+        code: error?.code,
+        status: error?.status,
+        details: error?.details || {},
+      });
+      Alert.alert("Error", "Failed to create chat. Please try again.");
     }
   };
 
@@ -182,8 +249,16 @@ export default function NewChatScreen() {
                     onPress={() => toggleUserSelection(user)}
                     className="flex-row items-center space-x-2"
                   >
+                    <Avatar
+                      className="w-8 h-8 mr-3"
+                      alt={`${user.email}'s avatar`}
+                    >
+                      <AvatarFallback>
+                        <Users size={16} className="text-muted-foreground" />
+                      </AvatarFallback>
+                    </Avatar>
                     <Text className="text-secondary-foreground">
-                      {user.email}
+                      {user.first_name} {user.last_name}
                     </Text>
                     <X size={16} className="text-secondary-foreground" />
                   </Button>
