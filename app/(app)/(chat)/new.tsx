@@ -130,19 +130,27 @@ export default function NewChatScreen() {
       console.log("Member IDs:", memberIds);
 
       // Create the channel with members list (Stream will auto-generate channel ID)
-      console.log("Creating Stream channel");
+      console.log("[NewChat] Creating Stream channel with config:", {
+        members: memberIds,
+        name: isGroupChat ? groupName : undefined,
+      });
       const channel = client.channel("messaging", undefined, {
         members: memberIds,
         name: isGroupChat ? groupName : undefined,
       });
 
       // This both creates the channel and subscribes to it
-      console.log("Watching channel");
+      console.log("[NewChat] Watching channel...");
       await channel.watch();
-      console.log("Channel created and watching:", channel.id);
+      console.log("[NewChat] Channel created and watching:", {
+        channelId: channel.id,
+        channelType: channel.type,
+        channelData: channel.data,
+        memberCount: channel.state.members?.size,
+      });
 
-      // Now create the database records
-      console.log("Creating chat channel record in Supabase");
+      // First create your own member record
+      console.log("[NewChat] Creating chat channel in Supabase");
       const { data: chatChannel, error: channelError } = await supabase
         .from("chat_channels")
         .insert({
@@ -159,30 +167,56 @@ export default function NewChatScreen() {
         throw channelError;
       }
 
-      console.log("Chat channel record created successfully:", chatChannel);
+      console.log("Chat channel created:", chatChannel);
 
-      // Create member records
-      console.log("Preparing member records");
-      const memberRecords = memberIds.map((userId) => ({
-        channel_id: chatChannel.id,
-        user_id: userId,
-        role: userId === client.userID ? "admin" : "member",
-      }));
-      console.log("Member records prepared:", memberRecords);
-
-      console.log("Inserting member records into Supabase");
-      const { error: membersError } = await supabase
+      // Create your own member record first
+      console.log("Creating own member record");
+      const { error: ownMemberError } = await supabase
         .from("chat_channel_members")
-        .insert(memberRecords);
+        .insert({
+          channel_id: chatChannel.id,
+          user_id: client.userID,
+          role: "admin",
+        });
 
-      if (membersError) {
-        console.error("Error creating channel members:", membersError);
-        throw membersError;
+      if (ownMemberError) {
+        console.error("Error creating own member record:", ownMemberError);
+        throw ownMemberError;
       }
 
-      console.log("Channel members created successfully");
+      // Then create other member records
+      console.log("Creating other member records");
+      const otherMembers = memberIds.filter((id) => id !== client.userID);
+      for (const memberId of otherMembers) {
+        const { error: memberError } = await supabase
+          .from("chat_channel_members")
+          .insert({
+            channel_id: chatChannel.id,
+            user_id: memberId,
+            role: "member",
+          });
+
+        if (memberError) {
+          console.error("Error creating member record:", {
+            memberId,
+            error: memberError,
+          });
+          throw memberError;
+        }
+      }
+
+      console.log("All member records created successfully");
+
       console.log("Navigating to chat screen");
-      router.push(`/(app)/(chat)/${channel.id}`);
+      // First close the new chat modal
+      router.back();
+      // Then navigate to the chat screen
+      router.push({
+        pathname: `/(app)/(chat)/${channel.id}`,
+        params: {
+          name: isGroupChat ? groupName : selectedUsers[0].first_name,
+        },
+      });
       console.log("Navigation triggered");
     } catch (error: any) {
       console.error("Final error in chat creation:", {
@@ -192,7 +226,12 @@ export default function NewChatScreen() {
         status: error?.status,
         details: error?.details || {},
       });
-      Alert.alert("Error", "Failed to create chat. Please try again.");
+
+      // Show a more specific error message
+      Alert.alert(
+        "Error",
+        error?.message || "Failed to create chat. Please try again."
+      );
     }
   };
 

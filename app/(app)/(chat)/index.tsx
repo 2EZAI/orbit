@@ -20,7 +20,7 @@ import {
 } from "stream-chat-expo";
 import { useChat } from "~/src/lib/chat";
 import { useAuth } from "~/src/lib/auth";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import Constants from "expo-constants";
 import type { ChannelFilters, ChannelSort, Channel } from "stream-chat";
 import { Plus } from "lucide-react-native";
@@ -67,6 +67,7 @@ export default function ChatListScreen() {
   const searchBarHeight = useRef(new Animated.Value(0)).current;
   const [isLoading, setIsLoading] = useState(true);
   const renderCount = useRef(0);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Log component lifecycle
   useEffect(() => {
@@ -231,6 +232,15 @@ export default function ChatListScreen() {
     [showSearchBar, hideSearchBar]
   );
 
+  // Add focus effect to refresh channel list
+  useFocusEffect(
+    useCallback(() => {
+      console.log("[ChatList] Screen focused, refreshing channel list");
+      // Force a refresh of the channel list
+      setRefreshKey((prev) => prev + 1);
+    }, [])
+  );
+
   if (isLoading || isConnecting || !isConnected) {
     return (
       <SafeAreaView className="flex-1 bg-background">
@@ -293,6 +303,7 @@ export default function ChatListScreen() {
 
         <View style={{ flex: 1 }}>
           <ChannelList
+            key={refreshKey}
             filters={filters}
             sort={CHANNEL_SORT}
             options={CHANNEL_LIST_OPTIONS}
@@ -302,22 +313,31 @@ export default function ChatListScreen() {
             numberOfSkeletons={3}
             loadMoreThreshold={0.2}
             List={({ loadingChannels, channels, error }) => {
-              console.log("[ChatList] Rendering channel list:", {
-                loading: loadingChannels,
-                channelCount: channels?.length || 0,
-                hasError: !!error,
-              });
+              // Move logging here since we can't use the event handlers
+              if (loadingChannels) {
+                console.log(
+                  "[ChatList] Channels loading with filters:",
+                  filters
+                );
+              } else if (channels) {
+                console.log("[ChatList] Channels loaded:", {
+                  count: channels.length,
+                  channelIds: channels.map((channel) => channel.id),
+                  filters,
+                });
+              } else if (error) {
+                console.error("[ChatList] Channel list error:", error);
+              }
 
               if (error) {
-                console.error("[ChatList] Channel list error:", error);
                 return (
-                  <View className="flex-1 items-center justify-center">
-                    <Text className="text-red-500 text-center px-4">
+                  <View className="items-center justify-center flex-1">
+                    <Text className="px-4 text-center text-red-500">
                       Error loading chats: {error.message}
                     </Text>
                     <TouchableOpacity
                       onPress={() => setIsLoading(true)}
-                      className="mt-4 p-2 rounded bg-primary"
+                      className="p-2 mt-4 rounded bg-primary"
                     >
                       <Text className="text-white">Retry</Text>
                     </TouchableOpacity>
@@ -326,9 +346,8 @@ export default function ChatListScreen() {
               }
 
               if (loadingChannels) {
-                console.log("[ChatList] Channels loading");
                 return (
-                  <View className="flex-1 items-center justify-center">
+                  <View className="items-center justify-center flex-1">
                     <ActivityIndicator size="large" color="#0000ff" />
                     <Text className="mt-4 text-foreground">
                       Loading channels...
@@ -338,18 +357,13 @@ export default function ChatListScreen() {
               }
 
               if (!channels?.length) {
-                console.log("[ChatList] No channels found");
                 return (
-                  <View className="flex-1 items-center justify-center">
+                  <View className="items-center justify-center flex-1">
                     <Text className="text-foreground">No chats yet</Text>
                   </View>
                 );
               }
 
-              console.log("[ChatList] Channels loaded:", {
-                channelCount: channels.length,
-                channelIds: channels.map((c) => c.id),
-              });
               return null;
             }}
           />

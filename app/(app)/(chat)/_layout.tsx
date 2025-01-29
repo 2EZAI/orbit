@@ -16,10 +16,17 @@ export default function ChatLayout() {
       isConnecting,
     });
 
+    // Ensure client is properly connected
+    if (client && !isConnecting) {
+      console.log("[ChatLayout] Reconnecting client on mount");
+      client.connectUser(client.user!, client.userID!);
+    }
+
     return () => {
       console.log("[ChatLayout] Unmounting");
+      // Don't disconnect on unmount as it might be just a screen change
     };
-  }, []);
+  }, [client, isConnecting]);
 
   useEffect(() => {
     console.log("[ChatLayout] Client state changed:", {
@@ -28,6 +35,12 @@ export default function ChatLayout() {
       clientWsConnection: client?.wsConnection?.isHealthy,
       isConnecting,
     });
+
+    // If client exists but isn't connected, try to reconnect
+    if (client && !client.wsConnection?.isHealthy && !isConnecting) {
+      console.log("[ChatLayout] Attempting to reconnect unhealthy client");
+      client.connectUser(client.user!, client.userID!);
+    }
   }, [client, isConnecting]);
 
   if (isConnecting || !client) {
@@ -69,6 +82,9 @@ export default function ChatLayout() {
               name="[id]"
               options={{
                 title: "Chat",
+                headerShown: true,
+                headerTitleAlign: "center",
+                animation: "slide_from_right",
                 presentation: "card",
               }}
             />
@@ -77,6 +93,8 @@ export default function ChatLayout() {
               options={{
                 title: "New Message",
                 presentation: "modal",
+                animation: "slide_from_bottom",
+                headerTitleAlign: "center",
               }}
             />
           </Stack>

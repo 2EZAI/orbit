@@ -2,14 +2,13 @@ import { useEffect, useState } from "react";
 import { SafeAreaView, Text } from "react-native";
 import {
   Channel,
-  Chat,
   MessageList,
   MessageInput,
   DefaultStreamChatGenerics,
 } from "stream-chat-expo";
 import type { Channel as ChannelType } from "stream-chat";
 import { useChat } from "~/src/lib/chat";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, Stack } from "expo-router";
 
 export default function ChannelScreen() {
   const { client, isConnecting, connectionError } = useChat();
@@ -71,11 +70,21 @@ export default function ChannelScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <Channel channel={channel}>
-        <MessageList />
-        <MessageInput />
-      </Channel>
-    </SafeAreaView>
+    <>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: channel.data?.name || "Chat",
+          headerTitleAlign: "center",
+          animation: "slide_from_right",
+        }}
+      />
+      <SafeAreaView className="flex-1 bg-background">
+        <Channel channel={channel}>
+          <MessageList />
+          <MessageInput />
+        </Channel>
+      </SafeAreaView>
+    </>
   );
 }
