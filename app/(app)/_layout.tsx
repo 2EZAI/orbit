@@ -27,8 +27,8 @@ export default function AppLayout() {
         }}
         initialRouteName="(map)"
         tabBar={(props: BottomTabBarProps) => {
-          // Only render the TabBar when not on the onboarding screen
-          return props.state.routeNames[props.state.index] !== "onboarding" ? (
+          return props.state.routeNames[props.state.index] !== "onboarding" &&
+            props.state.routeNames[props.state.index] !== "chat" ? (
             <TabBar />
           ) : null;
         }}

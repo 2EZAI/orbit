@@ -1,4 +1,11 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+  Component,
+} from "react";
 import {
   SafeAreaView,
   Text,
@@ -6,7 +13,6 @@ import {
   TouchableOpacity,
   TextInput,
   Animated,
-  Platform,
   ActivityIndicator,
 } from "react-native";
 import {
@@ -37,9 +43,10 @@ if (!BACKEND_URL) {
 const CHANNEL_LIST_OPTIONS = {
   state: true,
   watch: true,
-  presence: true,
-  limit: 10,
+  presence: false,
+  limit: 30,
   messages_limit: 10,
+  member_limit: 30,
 };
 
 // Static sort for ChannelList
@@ -49,12 +56,49 @@ const CHANNEL_SORT: ChannelSort<DefaultStreamChatGenerics> = [
 
 // Static FlatList props
 const FLAT_LIST_PROPS = {
-  initialNumToRender: 7,
+  initialNumToRender: 10,
   maxToRenderPerBatch: 3,
-  windowSize: 7,
+  windowSize: 10,
   removeClippedSubviews: true,
   updateCellsBatchingPeriod: 150,
 };
+
+// Error boundary component
+class ChannelListErrorBoundary extends Component<
+  { children: React.ReactNode; onError: (error: Error) => void },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: {
+    children: React.ReactNode;
+    onError: (error: Error) => void;
+  }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("[ChatList] Error boundary caught error:", error, errorInfo);
+    this.props.onError(error);
+  }
+
+  render() {
+    if (this.state.hasError && this.state.error) {
+      return (
+        <View className="items-center justify-center flex-1">
+          <Text className="px-4 text-center text-red-500">
+            Error loading channels: {this.state.error.message}
+          </Text>
+        </View>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 export default function ChatListScreen() {
   const { theme } = useTheme();
@@ -102,11 +146,12 @@ export default function ChatListScreen() {
     console.log("[ChatList] Creating filters:", {
       hasUserId: !!client?.userID,
       searchText: searchText || "none",
+      userId: client?.userID,
     });
     if (!client?.userID) return { type: "messaging" };
     return {
       type: "messaging",
-      members: { $in: [client.userID as string] },
+      members: { $in: [client.userID] },
       ...(searchText
         ? {
             name: { $autocomplete: searchText },
@@ -115,30 +160,8 @@ export default function ChatListScreen() {
     };
   }, [client?.userID, searchText]);
 
-  const handleNewChat = useCallback(() => {
-    if (!client?.userID) {
-      console.log("[ChatList] Cannot create chat: No user ID");
-      return;
-    }
-    console.log("[ChatList] Navigating to new chat screen");
-    router.push("/(app)/(chat)/new");
-  }, [client?.userID, router]);
-
-  const handleChannelSelect = useCallback(
-    (channel: any) => {
-      if (!client?.userID) {
-        console.log("[ChatList] Cannot open chat: No user ID");
-        return;
-      }
-      console.log("[ChatList] Opening channel:", {
-        channelId: channel.id,
-        channelType: channel.type,
-        memberCount: channel.state.members?.length,
-      });
-      router.push(`/(app)/(chat)/${channel.id}`);
-    },
-    [client?.userID, router]
-  );
+  // Add channel state tracking
+  const [manualChannels, setManualChannels] = useState<Channel[]>([]);
 
   // Handle initial loading state with timeout and logging
   useEffect(() => {
@@ -150,6 +173,9 @@ export default function ChatListScreen() {
         hasUserId: !!client?.userID,
         isConnected,
         isLoading,
+        activeChannels: client?.activeChannels
+          ? Object.keys(client.activeChannels).length
+          : 0,
       });
 
       if (!client?.userID || !isConnected) {
@@ -169,10 +195,27 @@ export default function ChatListScreen() {
           }
         }, 10000);
 
-        // Add a small delay to ensure Stream client is fully initialized
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        // Try to query channels directly to verify connection
+        const channels = await client.queryChannels(
+          filters,
+          CHANNEL_SORT,
+          CHANNEL_LIST_OPTIONS
+        );
+
+        console.log("[ChatList] Initial channel query result:", {
+          channelCount: channels.length,
+          channelIds: channels.map((c) => c.id),
+          channelData: channels.map((c) => ({
+            id: c.id,
+            type: c.type,
+            memberCount: Object.keys(c.state.members || {}).length,
+            members: Object.keys(c.state.members || {}),
+          })),
+          filters,
+        });
 
         if (mounted) {
+          setManualChannels(channels);
           console.log("[ChatList] Initialization complete");
           setIsLoading(false);
           clearTimeout(timeoutId);
@@ -193,18 +236,32 @@ export default function ChatListScreen() {
       mounted = false;
       clearTimeout(timeoutId);
     };
-  }, [client?.userID, isConnected]);
+  }, [client?.userID, isConnected, filters]);
 
-  // Log render states
-  useEffect(() => {
-    console.log("[ChatList] Render state:", {
-      isLoading,
-      isConnecting,
-      isConnected,
-      hasError: !!error || !!connectionError,
-      hasClient: !!client,
-    });
-  }, [isLoading, isConnecting, isConnected, error, connectionError, client]);
+  const handleNewChat = useCallback(() => {
+    if (!client?.userID) {
+      console.log("[ChatList] Cannot create chat: No user ID");
+      return;
+    }
+    console.log("[ChatList] Navigating to new chat screen");
+    router.push("/(app)/(chat)/new");
+  }, [client?.userID, router]);
+
+  const handleChannelSelect = useCallback(
+    (channel: Channel) => {
+      if (!client?.userID) {
+        console.log("[ChatList] Cannot open chat: No user ID");
+        return;
+      }
+      console.log("[ChatList] Opening channel:", {
+        channelId: channel.id,
+        channelType: channel.type,
+        memberCount: channel.state.members?.length,
+      });
+      router.push(`/(app)/(chat)/${channel.id}`);
+    },
+    [client?.userID, router]
+  );
 
   const showSearchBar = useCallback(() => {
     setIsSearchVisible(true);
@@ -236,7 +293,6 @@ export default function ChatListScreen() {
   useFocusEffect(
     useCallback(() => {
       console.log("[ChatList] Screen focused, refreshing channel list");
-      // Force a refresh of the channel list
       setRefreshKey((prev) => prev + 1);
     }, [])
   );
@@ -245,7 +301,7 @@ export default function ChatListScreen() {
     return (
       <SafeAreaView className="flex-1 bg-background">
         <View className="items-center justify-center flex-1">
-          <ActivityIndicator size="large" color="#0000ff" />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text className="mt-4 text-foreground">
             {isConnecting ? "Connecting to chat..." : "Loading chats..."}
           </Text>
@@ -302,71 +358,128 @@ export default function ChatListScreen() {
         </Animated.View>
 
         <View style={{ flex: 1 }}>
-          <ChannelList
-            key={refreshKey}
-            filters={filters}
-            sort={CHANNEL_SORT}
-            options={CHANNEL_LIST_OPTIONS}
-            onSelect={handleChannelSelect}
-            Preview={ChannelPreview}
-            additionalFlatListProps={additionalFlatListProps}
-            numberOfSkeletons={3}
-            loadMoreThreshold={0.2}
-            List={({ loadingChannels, channels, error }) => {
-              // Move logging here since we can't use the event handlers
-              if (loadingChannels) {
-                console.log(
-                  "[ChatList] Channels loading with filters:",
-                  filters
-                );
-              } else if (channels) {
-                console.log("[ChatList] Channels loaded:", {
-                  count: channels.length,
-                  channelIds: channels.map((channel) => channel.id),
-                  filters,
-                });
-              } else if (error) {
-                console.error("[ChatList] Channel list error:", error);
-              }
-
-              if (error) {
-                return (
-                  <View className="items-center justify-center flex-1">
-                    <Text className="px-4 text-center text-red-500">
-                      Error loading chats: {error.message}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => setIsLoading(true)}
-                      className="p-2 mt-4 rounded bg-primary"
-                    >
-                      <Text className="text-white">Retry</Text>
-                    </TouchableOpacity>
-                  </View>
-                );
-              }
-
-              if (loadingChannels) {
-                return (
-                  <View className="items-center justify-center flex-1">
-                    <ActivityIndicator size="large" color="#0000ff" />
-                    <Text className="mt-4 text-foreground">
-                      Loading channels...
-                    </Text>
-                  </View>
-                );
-              }
-
-              if (!channels?.length) {
-                return (
-                  <View className="items-center justify-center flex-1">
-                    <Text className="text-foreground">No chats yet</Text>
-                  </View>
-                );
-              }
-
-              return null;
+          <ChannelListErrorBoundary
+            onError={(error) => {
+              console.error("[ChatList] Channel list error boundary:", error);
+              setError(error.message);
             }}
-          />
+          >
+            <ChannelList
+              key={`${refreshKey}-${client?.wsConnection?.connectionID}`}
+              filters={filters}
+              sort={CHANNEL_SORT}
+              options={{
+                ...CHANNEL_LIST_OPTIONS,
+                state: true,
+                watch: true,
+              }}
+              onSelect={handleChannelSelect}
+              Preview={ChannelPreview}
+              additionalFlatListProps={additionalFlatListProps}
+              numberOfSkeletons={3}
+              loadMoreThreshold={0.2}
+              List={({ loadingChannels, channels, error }) => {
+                // Move logging here since we can't use the event handlers
+                if (loadingChannels) {
+                  console.log(
+                    "[ChatList] Channels loading with filters:",
+                    filters,
+                    "Active channels:",
+                    client?.activeChannels
+                      ? Object.keys(client.activeChannels).length
+                      : 0,
+                    "Manual channels:",
+                    manualChannels.length
+                  );
+                } else if (channels) {
+                  console.log("[ChatList] Channels loaded in List component:", {
+                    count: channels.length,
+                    channelIds: channels.map((channel) => channel.id),
+                    channelData: channels.map((channel) => ({
+                      id: channel.id,
+                      type: channel.type,
+                      memberCount: Object.keys(channel.state.members || {})
+                        .length,
+                      members: Object.keys(channel.state.members || {}),
+                    })),
+                    filters,
+                    activeChannels: client?.activeChannels
+                      ? Object.keys(client.activeChannels).length
+                      : 0,
+                  });
+                } else if (error) {
+                  console.error("[ChatList] Channel list error:", error);
+                }
+
+                if (error) {
+                  return (
+                    <View className="items-center justify-center flex-1">
+                      <Text className="px-4 text-center text-red-500">
+                        Error loading chats: {error.message}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => setIsLoading(true)}
+                        className="p-2 mt-4 rounded bg-primary"
+                      >
+                        <Text className="text-white">Retry</Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                }
+
+                if (loadingChannels) {
+                  return (
+                    <View className="items-center justify-center flex-1">
+                      <ActivityIndicator
+                        size="large"
+                        color={theme.colors.primary}
+                      />
+                      <Text className="mt-4 text-foreground">
+                        Loading channels...
+                      </Text>
+                    </View>
+                  );
+                }
+
+                // If no channels from Stream but we have manual channels, show those
+                if (!channels?.length && manualChannels.length > 0) {
+                  console.log(
+                    "[ChatList] Using manual channels:",
+                    manualChannels.length
+                  );
+                  return (
+                    <View className="flex-1">
+                      {manualChannels.map((channel) => (
+                        <TouchableOpacity
+                          key={channel.id}
+                          onPress={() => handleChannelSelect(channel)}
+                          className="p-4 border-b border-gray-200"
+                        >
+                          <Text className="text-foreground">
+                            Channel: {channel.id}
+                          </Text>
+                          <Text className="text-sm text-gray-500">
+                            Members:{" "}
+                            {Object.keys(channel.state.members || {}).length}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  );
+                }
+
+                if (!channels?.length) {
+                  return (
+                    <View className="items-center justify-center flex-1">
+                      <Text className="text-foreground">No chats yet</Text>
+                    </View>
+                  );
+                }
+
+                return null;
+              }}
+            />
+          </ChannelListErrorBoundary>
         </View>
 
         <TouchableOpacity

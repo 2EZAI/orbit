@@ -2,7 +2,7 @@ import { Stack } from "expo-router";
 import { Chat, OverlayProvider } from "stream-chat-expo";
 import { ChatThemeProvider } from "~/src/components/chat/ChatThemeProvider";
 import { useChat } from "~/src/lib/chat";
-import { View, Text } from "react-native";
+import { View, Text, ActivityIndicator } from "react-native";
 import { useEffect } from "react";
 
 export default function ChatLayout() {
@@ -16,9 +16,9 @@ export default function ChatLayout() {
       isConnecting,
     });
 
-    // Ensure client is properly connected
-    if (client && !isConnecting) {
-      console.log("[ChatLayout] Reconnecting client on mount");
+    // Only try to reconnect if we have a client but no healthy connection
+    if (client && !client.wsConnection?.isHealthy && !isConnecting) {
+      console.log("[ChatLayout] Attempting to reconnect unhealthy client");
       client.connectUser(client.user!, client.userID!);
     }
 
@@ -28,29 +28,13 @@ export default function ChatLayout() {
     };
   }, [client, isConnecting]);
 
-  useEffect(() => {
-    console.log("[ChatLayout] Client state changed:", {
-      hasClient: !!client,
-      clientState: client?.state,
-      clientWsConnection: client?.wsConnection?.isHealthy,
-      isConnecting,
-    });
-
-    // If client exists but isn't connected, try to reconnect
-    if (client && !client.wsConnection?.isHealthy && !isConnecting) {
-      console.log("[ChatLayout] Attempting to reconnect unhealthy client");
-      client.connectUser(client.user!, client.userID!);
-    }
-  }, [client, isConnecting]);
-
   if (isConnecting || !client) {
-    console.log("[ChatLayout] Showing loading state:", {
-      isConnecting,
-      hasClient: !!client,
-    });
     return (
       <View className="items-center justify-center flex-1 bg-background">
-        <Text className="text-foreground">Loading chat...</Text>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text className="mt-4 text-foreground">
+          {isConnecting ? "Connecting to chat..." : "Loading chat..."}
+        </Text>
       </View>
     );
   }
