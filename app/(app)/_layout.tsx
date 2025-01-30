@@ -27,14 +27,33 @@ export default function AppLayout() {
         }}
         initialRouteName="(map)"
         tabBar={(props: BottomTabBarProps) => {
-          return props.state.routeNames[props.state.index] !== "onboarding" &&
-            props.state.routeNames[props.state.index] !== "chat" ? (
+          const currentRoute = props.state.routes[props.state.index];
+          console.log(
+            "[TabBar] Current route:",
+            currentRoute.name,
+            currentRoute.path
+          );
+          // Show tab bar everywhere except onboarding and specific chat messages
+          const isSpecificChatRoute =
+            currentRoute.name === "(chat)" &&
+            typeof currentRoute.params === "object" &&
+            currentRoute.params !== null &&
+            "id" in currentRoute.params;
+          return currentRoute.name === "onboarding" ||
+            isSpecificChatRoute ? null : (
             <TabBar />
-          ) : null;
+          );
         }}
       >
         <Tabs.Screen name="(map)" />
-        <Tabs.Screen name="(chat)" />
+        <Tabs.Screen
+          name="(chat)"
+          options={{
+            href: {
+              pathname: "(chat)/index",
+            },
+          }}
+        />
         <Tabs.Screen name="(create)" />
         <Tabs.Screen name="(home)" />
         <Tabs.Screen name="(profile)" />

@@ -96,12 +96,6 @@ export default function Intro() {
     transform: [{ translateY: translateY.value }],
   }));
 
-  useEffect(() => {
-    if (session) {
-      router.replace("/(app)/(map)/index");
-    }
-  }, [session]);
-
   const handleAppleSignIn = async () => {
     console.log("Apple sign in pressed");
   };
