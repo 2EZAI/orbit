@@ -11,35 +11,36 @@ import { usePathname, router } from "expo-router";
 // Define the tab routes
 const TAB_ROUTES = [
   { path: "/(app)/(home)", icon: Home },
-
   { path: "/(app)/(chat)", icon: MessageCircle },
   { path: "/(app)/(create)", icon: PlusCircle },
-
   { path: "/(app)/(map)", icon: Map },
   { path: "/(app)/(profile)", icon: User },
 ];
 
 export default function TabBar() {
-  const pathname = usePathname(); // Get the current pathname using usePathname hook
+  const pathname = usePathname();
 
-  console.log("Current pathname:", pathname); // Log the pathname to debug
+  console.log("[TabBar] Current route:", pathname);
+
+  // Hide the tab bar when in a channel
+  if (pathname?.includes("/channel/")) {
+    return null;
+  }
 
   return (
     <View className="absolute bottom-0 left-0 right-0 items-center">
       <View className="flex-row items-center p-3 mx-4 mb-8 border rounded-2xl bg-background border-border">
         {TAB_ROUTES.map((tab) => {
-          // Improved route matching: check if the pathname exactly matches or starts with the tab path
           const isActive = pathname?.startsWith(
             tab.path.replace("/(app)/", "/")
           );
-
-          const Icon = tab.icon; // Get the icon based on the current tab
+          const Icon = tab.icon;
 
           return (
             <TouchableOpacity
               key={tab.path}
               onPress={() => {
-                console.log("Navigating to:", tab.path); // Log the navigation target
+                console.log("Navigating to:", tab.path);
                 router.replace(tab.path);
               }}
               className="items-center flex-1"

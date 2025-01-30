@@ -593,7 +593,7 @@ export default function ChatListScreen() {
       return;
     }
     console.log("[ChatList] Navigating to new chat screen");
-    router.push("/(app)/(chat)/new");
+    router.push("/new");
   }, [client?.userID, router]);
 
   const handleChannelSelect = useCallback(
@@ -607,7 +607,8 @@ export default function ChatListScreen() {
         channelType: channel.type,
         memberCount: channel.state.members?.length,
       });
-      router.push(`/(app)/(chat)/${channel.id}`);
+      // Use replace to prevent navigation stack buildup
+      router.push(`/channel/${channel.id}`);
     },
     [client?.userID, router]
   );
