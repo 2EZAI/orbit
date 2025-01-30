@@ -51,6 +51,7 @@ export default function ChannelScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [thread, setThread] = useState<MessageType | null>(null);
+  const [memberCount, setMemberCount] = useState<number>(0);
   const channelRef = useRef<ChannelType | null>(null);
 
   const handleInfoPress = useCallback(() => {
@@ -178,6 +179,36 @@ export default function ChannelScreen() {
     };
   }, [client, id]);
 
+  // Update member count
+  useEffect(() => {
+    if (channel) {
+      const updateMemberCount = async () => {
+        try {
+          const members = await channel.queryMembers({});
+          setMemberCount(members.members.length);
+        } catch (error) {
+          console.error("Error fetching members:", error);
+        }
+      };
+
+      updateMemberCount();
+
+      // Listen for member updates
+      const events = ["member.added", "member.removed"] as const;
+      const unsubscribePromises = events.map((event) =>
+        channel.on(event, updateMemberCount)
+      );
+
+      return () => {
+        unsubscribePromises.forEach((promise) => {
+          if (promise && typeof promise.unsubscribe === "function") {
+            promise.unsubscribe();
+          }
+        });
+      };
+    }
+  }, [channel]);
+
   const renderSuggestionHeader = useCallback(
     (props: AutoCompleteSuggestionHeaderProps) => {
       const { queryText, triggerType } = props;
@@ -294,6 +325,20 @@ export default function ChannelScreen() {
     <View style={{ flex: 1 }}>
       <Stack.Screen
         options={{
+          headerTitle: () => (
+            <View>
+              <Text
+                style={{ fontSize: 17, fontWeight: "600", textAlign: "center" }}
+              >
+                {channel?.data?.name || "Chat"}
+              </Text>
+              <Text
+                style={{ fontSize: 13, color: "#666", textAlign: "center" }}
+              >
+                {memberCount} {memberCount === 1 ? "member" : "members"}
+              </Text>
+            </View>
+          ),
           headerRight: () => (
             <TouchableOpacity
               onPress={handleInfoPress}
