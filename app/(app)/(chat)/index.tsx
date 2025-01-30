@@ -12,6 +12,7 @@ import {
   GestureResponderEvent,
   PanResponderGestureState,
   Alert,
+  Image,
 } from "react-native";
 import {
   ChannelList,
@@ -38,6 +39,9 @@ import { Plus, Search, X, Bell, BellOff, Trash2 } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { supabase } from "~/src/lib/supabase";
+import { Avatar, AvatarFallback } from "~/src/components/ui/avatar";
+import { Users } from "lucide-react-native";
+import type { StreamChat, Event as StreamEvent } from "stream-chat";
 
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl;
 console.log("[ChatList] Configured Backend URL:", BACKEND_URL);
@@ -319,6 +323,227 @@ const CustomChannelPreview = ({
   );
 };
 
+// Custom Preview Components
+const CustomPreviewTitle = ({
+  channel,
+}: {
+  channel: Channel<DefaultGenerics>;
+}) => {
+  const { theme } = useTheme();
+  const name = channel.data?.name || "Unnamed Chat";
+  const isUnread = channel.countUnread() > 0;
+
+  return (
+    <Text
+      className={`text-base ${
+        isUnread ? "font-semibold" : "font-normal"
+      } text-foreground`}
+      numberOfLines={1}
+    >
+      {name}
+    </Text>
+  );
+};
+
+const CustomPreviewMessage = ({
+  channel,
+  latestMessagePreview,
+}: {
+  channel: Channel<DefaultGenerics>;
+  latestMessagePreview:
+    | string
+    | { created_at: string; messageObject: any; previews: any; status: string };
+}) => {
+  const unreadCount = channel.countUnread();
+  const isUnread = unreadCount > 0;
+
+  // Get typing users from the channel state
+  const typingUsers = Object.entries(channel.state.typing || {})
+    .filter(([userId]) => {
+      const member = channel.state.members[userId];
+      return member?.user?.id !== channel._client.userID;
+    })
+    .map(([userId]) => {
+      const member = channel.state.members[userId];
+      return member?.user?.name || member?.user?.id || "Someone";
+    })
+    .filter(Boolean);
+
+  if (typingUsers.length > 0) {
+    return (
+      <Text className="text-sm text-primary" numberOfLines={1}>
+        {typingUsers.join(", ")} {typingUsers.length === 1 ? "is" : "are"}{" "}
+        typing...
+      </Text>
+    );
+  }
+
+  // Handle the preview text
+  const previewText =
+    typeof latestMessagePreview === "string"
+      ? latestMessagePreview
+      : latestMessagePreview?.messageObject?.text || "No message";
+
+  return (
+    <Text
+      className={`text-sm ${
+        isUnread ? "text-foreground" : "text-muted-foreground"
+      }`}
+      numberOfLines={1}
+    >
+      {previewText}
+    </Text>
+  );
+};
+
+const CustomPreviewStatus = ({
+  channel,
+}: {
+  channel: Channel<DefaultGenerics>;
+}) => {
+  const { theme } = useTheme();
+  const unreadCount = channel.countUnread();
+  const lastMessage = channel.lastMessage();
+  const lastMessageDate = lastMessage?.created_at
+    ? new Date(lastMessage.created_at)
+    : null;
+
+  const formatTime = (date: Date) => {
+    const now = new Date();
+    const diffDays = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    if (diffDays === 0) {
+      // Today: show time
+      return date.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    } else if (diffDays === 1) {
+      // Yesterday
+      return "Yesterday";
+    } else if (diffDays < 7) {
+      // Within a week: show day name
+      return date.toLocaleDateString([], { weekday: "short" });
+    } else {
+      // Older: show date
+      return date.toLocaleDateString([], { month: "short", day: "numeric" });
+    }
+  };
+
+  return (
+    <View className="items-end space-y-1">
+      {lastMessageDate && (
+        <Text className="text-xs text-muted-foreground">
+          {formatTime(lastMessageDate)}
+        </Text>
+      )}
+      {unreadCount > 0 && (
+        <View className="items-center justify-center w-6 h-6 rounded-full bg-primary">
+          <Text className="text-xs font-medium text-primary-foreground">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
+const CustomPreviewAvatar = ({
+  channel,
+}: {
+  channel: Channel<DefaultGenerics>;
+}) => {
+  const members = Object.values(channel.state.members || {});
+  const otherMembers = members.filter(
+    (member) => member?.user?.id !== channel._client.userID
+  );
+
+  if (otherMembers.length === 1) {
+    // Single user chat
+    const member = otherMembers[0];
+    const imageUrl = member?.user?.image as string | undefined;
+    const name = member?.user?.name || member?.user?.id || "";
+    const fallbackText = name.charAt(0).toUpperCase();
+
+    return (
+      <View className="w-12 h-12 overflow-hidden rounded-full bg-muted">
+        {imageUrl ? (
+          <Image
+            source={{ uri: imageUrl }}
+            className="w-full h-full"
+            accessibilityLabel={`${name}'s avatar`}
+          />
+        ) : (
+          <View className="items-center justify-center flex-1">
+            {fallbackText ? (
+              <Text className="text-lg font-medium text-muted-foreground">
+                {fallbackText}
+              </Text>
+            ) : (
+              <Users size={20} className="text-muted-foreground" />
+            )}
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  // Group chat
+  const firstMember = otherMembers[0];
+  const secondMember = otherMembers[1];
+  const firstImageUrl = firstMember?.user?.image as string | undefined;
+  const secondImageUrl = secondMember?.user?.image as string | undefined;
+  const firstName = firstMember?.user?.name || firstMember?.user?.id || "";
+  const secondName = secondMember?.user?.name || secondMember?.user?.id || "";
+  const firstFallback = firstName.charAt(0).toUpperCase();
+  const secondFallback = secondName.charAt(0).toUpperCase();
+
+  return (
+    <View className="relative w-12 h-12">
+      <View className="absolute top-0 left-0 w-8 h-8 overflow-hidden rounded-full bg-muted">
+        {firstImageUrl ? (
+          <Image
+            source={{ uri: firstImageUrl }}
+            className="w-full h-full"
+            accessibilityLabel={`${firstName}'s avatar`}
+          />
+        ) : (
+          <View className="items-center justify-center flex-1">
+            {firstFallback ? (
+              <Text className="text-sm font-medium text-muted-foreground">
+                {firstFallback}
+              </Text>
+            ) : (
+              <Users size={16} className="text-muted-foreground" />
+            )}
+          </View>
+        )}
+      </View>
+      <View className="absolute bottom-0 right-0 w-8 h-8 overflow-hidden rounded-full bg-muted">
+        {secondImageUrl ? (
+          <Image
+            source={{ uri: secondImageUrl }}
+            className="w-full h-full"
+            accessibilityLabel={`${secondName}'s avatar`}
+          />
+        ) : (
+          <View className="items-center justify-center flex-1">
+            {secondFallback ? (
+              <Text className="text-sm font-medium text-muted-foreground">
+                {secondFallback}
+              </Text>
+            ) : (
+              <Users size={16} className="text-muted-foreground" />
+            )}
+          </View>
+        )}
+      </View>
+    </View>
+  );
+};
+
 export default function ChatListScreen() {
   const { theme } = useTheme();
   const router = useRouter();
@@ -499,15 +724,19 @@ export default function ChatListScreen() {
             key={refreshKey}
             filters={filters}
             sort={CHANNEL_SORT}
-            options={CHANNEL_LIST_OPTIONS}
+            options={{
+              ...CHANNEL_LIST_OPTIONS,
+              limit: 20,
+              message_limit: 1,
+            }}
             onSelect={handleChannelSelect}
             Preview={(previewProps) => (
               <CustomChannelPreview
                 {...previewProps}
-                PreviewAvatar={ChannelAvatar}
-                PreviewTitle={ChannelPreviewTitle}
-                PreviewMessage={ChannelPreviewMessage}
-                PreviewStatus={ChannelPreviewStatus}
+                PreviewAvatar={CustomPreviewAvatar}
+                PreviewTitle={CustomPreviewTitle}
+                PreviewMessage={CustomPreviewMessage}
+                PreviewStatus={CustomPreviewStatus}
                 onSelect={handleChannelSelect}
               />
             )}
@@ -521,6 +750,9 @@ export default function ChatListScreen() {
                   colors={[theme.colors.primary]}
                 />
               ),
+              onEndReachedThreshold: 0.5,
+              maxToRenderPerBatch: 10,
+              initialNumToRender: 15,
             }}
             EmptyStateIndicator={() => (
               <View className="items-center justify-center flex-1 px-4">
