@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { SafeAreaView, View, FlatList, Alert } from "react-native";
 import { useChat } from "~/src/lib/chat";
 import { useRouter } from "expo-router";
@@ -35,11 +35,31 @@ export default function NewChatScreen() {
   const { client } = useChat();
   const [searchText, setSearchText] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
-  const [groupName, setGroupName] = useState("");
+  const [chatName, setChatName] = useState("");
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const isGroupChat = selectedUsers.length > 1;
+
+  // Generate default chat name based on selected users
+  const defaultChatName = useMemo(() => {
+    if (selectedUsers.length === 0) return "";
+    if (selectedUsers.length === 1) {
+      return `${selectedUsers[0].first_name} ${selectedUsers[0].last_name}`.trim();
+    }
+    if (selectedUsers.length <= 3) {
+      return selectedUsers
+        .map((user) => `${user.first_name}`)
+        .join(", ")
+        .trim();
+    }
+    return "Group Chat";
+  }, [selectedUsers]);
+
+  // Update chat name when users are selected/deselected
+  useEffect(() => {
+    setChatName(defaultChatName);
+  }, [defaultChatName]);
 
   // Fetch all users initially
   useEffect(() => {
@@ -129,14 +149,14 @@ export default function NewChatScreen() {
       const memberIds = [client.userID, ...selectedUsers.map((u) => u.id)];
       console.log("Member IDs:", memberIds);
 
-      // Create the channel with members list (Stream will auto-generate channel ID)
+      // Create the channel with members list and name
       console.log("[NewChat] Creating Stream channel with config:", {
         members: memberIds,
-        name: isGroupChat ? groupName : undefined,
+        name: chatName,
       });
       const channel = client.channel("messaging", undefined, {
         members: memberIds,
-        name: isGroupChat ? groupName : undefined,
+        name: chatName,
       });
 
       // This both creates the channel and subscribes to it
@@ -149,7 +169,7 @@ export default function NewChatScreen() {
         memberCount: channel.state.members?.size,
       });
 
-      // First create your own member record
+      // Create channel record in Supabase
       console.log("[NewChat] Creating chat channel in Supabase");
       const { data: chatChannel, error: channelError } = await supabase
         .from("chat_channels")
@@ -157,7 +177,7 @@ export default function NewChatScreen() {
           stream_channel_id: channel.id,
           channel_type: "messaging",
           created_by: client.userID,
-          name: isGroupChat ? groupName : null,
+          name: chatName,
         })
         .select()
         .single();
@@ -214,7 +234,7 @@ export default function NewChatScreen() {
       router.push({
         pathname: `/(app)/(chat)/${channel.id}`,
         params: {
-          name: isGroupChat ? groupName : selectedUsers[0].first_name,
+          name: chatName,
         },
       });
       console.log("Navigation triggered");
@@ -268,15 +288,13 @@ export default function NewChatScreen() {
         {selectedUsers.length > 0 && (
           <Card className="mb-4">
             <CardContent className="py-4">
-              {isGroupChat && (
-                <Input
-                  value={groupName}
-                  onChangeText={setGroupName}
-                  placeholder="Enter group name..."
-                  className="mb-4"
-                  placeholderTextColor="#666"
-                />
-              )}
+              <Input
+                value={chatName}
+                onChangeText={setChatName}
+                placeholder={`Chat name (default: ${defaultChatName})`}
+                className="mb-4"
+                placeholderTextColor="#666"
+              />
               <Text className="mb-2 text-sm font-medium text-foreground">
                 {isGroupChat ? "Group Members:" : "Selected User:"}
               </Text>
@@ -355,9 +373,7 @@ export default function NewChatScreen() {
 
         <Button
           onPress={createChat}
-          disabled={
-            selectedUsers.length === 0 || (isGroupChat && !groupName.trim())
-          }
+          disabled={selectedUsers.length === 0}
           className="mt-4"
         >
           <Text className="text-primary-foreground">

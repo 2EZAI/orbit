@@ -1,36 +1,43 @@
-import {
-  useEffect,
-  useState,
-  useRef,
-  useCallback,
-  useMemo,
-  Component,
-} from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import {
   SafeAreaView,
-  Text,
   View,
   TouchableOpacity,
   TextInput,
   Animated,
   ActivityIndicator,
+  RefreshControl,
+  ActionSheetIOS,
+  PanResponder,
+  GestureResponderEvent,
+  PanResponderGestureState,
+  Alert,
 } from "react-native";
 import {
-  Chat,
   ChannelList,
-  ChannelPreview,
+  ChannelPreviewMessenger,
+  ChannelPreviewTitle,
+  ChannelPreviewMessage,
+  ChannelPreviewStatus,
   ChannelAvatar,
-  DefaultStreamChatGenerics,
-  OverlayProvider,
+  useChannelsContext,
+  useTheme as useStreamTheme,
   Channel as StreamChannel,
 } from "stream-chat-expo";
 import { useChat } from "~/src/lib/chat";
 import { useAuth } from "~/src/lib/auth";
 import { useRouter, useFocusEffect } from "expo-router";
 import Constants from "expo-constants";
-import type { ChannelFilters, ChannelSort, Channel } from "stream-chat";
-import { Plus } from "lucide-react-native";
+import type {
+  Channel,
+  ChannelFilters,
+  ChannelSort,
+  DefaultGenerics,
+} from "stream-chat";
+import { Plus, Search, X, Bell, BellOff, Trash2 } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
+import { Text } from "~/src/components/ui/text";
+import { supabase } from "~/src/lib/supabase";
 
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl;
 console.log("[ChatList] Configured Backend URL:", BACKEND_URL);
@@ -50,9 +57,7 @@ const CHANNEL_LIST_OPTIONS = {
 };
 
 // Static sort for ChannelList
-const CHANNEL_SORT: ChannelSort<DefaultStreamChatGenerics> = [
-  { last_message_at: -1 as const },
-];
+const CHANNEL_SORT: ChannelSort = [{ last_message_at: -1 as const }];
 
 // Static FlatList props
 const FLAT_LIST_PROPS = {
@@ -63,42 +68,256 @@ const FLAT_LIST_PROPS = {
   updateCellsBatchingPeriod: 150,
 };
 
-// Error boundary component
-class ChannelListErrorBoundary extends Component<
-  { children: React.ReactNode; onError: (error: Error) => void },
-  { hasError: boolean; error: Error | null }
-> {
-  constructor(props: {
-    children: React.ReactNode;
-    onError: (error: Error) => void;
-  }) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+const SearchInput = ({
+  value,
+  onChangeText,
+  onClose,
+}: {
+  value: string;
+  onChangeText: (text: string) => void;
+  onClose: () => void;
+}) => {
+  const { theme } = useTheme();
 
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
+  return (
+    <View className="flex-row items-center px-4 py-2 space-x-2 bg-background">
+      <View className="flex-row items-center px-3 py-2 space-x-2 rounded-lg bg-muted">
+        <Search size={20} color={theme.colors.text} />
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder="Search conversations..."
+          placeholderTextColor={theme.colors.text}
+          className="flex-1 text-base text-foreground"
+        />
+      </View>
+      {value.length > 0 && (
+        <TouchableOpacity onPress={onClose}>
+          <X size={24} color={theme.colors.text} />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+};
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("[ChatList] Error boundary caught error:", error, errorInfo);
-    this.props.onError(error);
-  }
+// Add custom preview component
+const CustomChannelPreview = ({
+  channel,
+  onSelect,
+  PreviewAvatar,
+  PreviewTitle,
+  PreviewMessage,
+  PreviewStatus,
+  ...previewProps
+}: {
+  channel: Channel<DefaultGenerics>;
+  onSelect: (channel: Channel<DefaultGenerics>) => void;
+  PreviewAvatar: React.ComponentType<any>;
+  PreviewTitle: React.ComponentType<any>;
+  PreviewMessage: React.ComponentType<any>;
+  PreviewStatus: React.ComponentType<any>;
+}) => {
+  const { theme } = useTheme();
+  const translateX = useRef(new Animated.Value(0)).current;
+  const rowRef = useRef<View>(null);
+  const [isSwipeOpen, setIsSwipeOpen] = useState(false);
 
-  render() {
-    if (this.state.hasError && this.state.error) {
-      return (
-        <View className="items-center justify-center flex-1">
-          <Text className="px-4 text-center text-red-500">
-            Error loading channels: {this.state.error.message}
-          </Text>
-        </View>
-      );
+  // Ensure channel has required data
+  const hasRequiredData = useMemo(() => {
+    return channel && channel.state && channel.state.messages;
+  }, [channel]);
+
+  const resetSwipe = useCallback(() => {
+    Animated.spring(translateX, {
+      toValue: 0,
+      useNativeDriver: true,
+    }).start(() => setIsSwipeOpen(false));
+  }, [translateX]);
+
+  const handleDelete = useCallback(async () => {
+    try {
+      // First get the channel ID from chat_channels
+      const { data: channelData, error: channelQueryError } = await supabase
+        .from("chat_channels")
+        .select("id")
+        .eq("stream_channel_id", channel.id)
+        .single();
+
+      if (channelQueryError) {
+        console.error("[ChatList] Error finding channel:", channelQueryError);
+        return;
+      }
+
+      if (!channelData) {
+        console.error("[ChatList] Channel not found in database");
+        return;
+      }
+
+      // Delete from Supabase first (cascade will handle members)
+      const { error: deleteError } = await supabase
+        .from("chat_channels")
+        .delete()
+        .eq("id", channelData.id);
+
+      if (deleteError) {
+        console.error("[ChatList] Error deleting from Supabase:", deleteError);
+        return;
+      }
+
+      // Then delete from Stream
+      await channel.delete();
+
+      // Reset the swipe state
+      resetSwipe();
+    } catch (error) {
+      console.error("[ChatList] Error deleting channel:", error);
+      Alert.alert("Error", "Failed to delete chat. Please try again.");
     }
+  }, [channel, resetSwipe]);
 
-    return this.props.children;
+  const handleLongPress = useCallback(() => {
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options: ["Mute Channel", "Mark as Read", "Delete Channel", "Cancel"],
+        cancelButtonIndex: 3,
+        destructiveButtonIndex: 2,
+      },
+      async (buttonIndex) => {
+        try {
+          switch (buttonIndex) {
+            case 0:
+              await channel.mute();
+              break;
+            case 1:
+              await channel.markRead();
+              break;
+            case 2:
+              await handleDelete();
+              break;
+          }
+        } catch (error) {
+          console.error("[ChatList] Error performing channel action:", error);
+        }
+      }
+    );
+  }, [channel, handleDelete]);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, { dx, dy }) => {
+          return Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 5;
+        },
+        onPanResponderMove: (_, { dx }) => {
+          // Only allow right swipe for delete
+          const x = Math.min(Math.max(dx, 0), 75);
+          translateX.setValue(x);
+        },
+        onPanResponderRelease: (_, { dx, vx }) => {
+          if (dx > 50 || vx > 0.5) {
+            // Swipe right to delete
+            Alert.alert(
+              "Delete Chat",
+              "Are you sure you want to delete this chat?",
+              [
+                {
+                  text: "Cancel",
+                  style: "cancel",
+                  onPress: () => {
+                    Animated.spring(translateX, {
+                      toValue: 0,
+                      useNativeDriver: true,
+                    }).start(() => setIsSwipeOpen(false));
+                  },
+                },
+                {
+                  text: "Delete",
+                  style: "destructive",
+                  onPress: handleDelete,
+                },
+              ]
+            );
+          } else {
+            // Reset position
+            Animated.spring(translateX, {
+              toValue: 0,
+              useNativeDriver: true,
+            }).start(() => setIsSwipeOpen(false));
+          }
+        },
+      }),
+    [channel, translateX, handleDelete]
+  );
+
+  // Background actions view
+  const renderActions = () => (
+    <View className="absolute inset-y-0 right-0 flex-row">
+      <TouchableOpacity
+        className="items-center justify-center w-[75px] bg-red-500"
+        onPress={() => {
+          Alert.alert(
+            "Delete Chat",
+            "Are you sure you want to delete this chat?",
+            [
+              {
+                text: "Cancel",
+                style: "cancel",
+                onPress: () => resetSwipe(),
+              },
+              {
+                text: "Delete",
+                style: "destructive",
+                onPress: handleDelete,
+              },
+            ]
+          );
+        }}
+      >
+        <Trash2 size={24} color="white" />
+      </TouchableOpacity>
+    </View>
+  );
+
+  // If channel data isn't ready, show a loading state
+  if (!hasRequiredData) {
+    return (
+      <View className="flex-row items-center px-4 py-3 space-x-3 border-b border-border">
+        <View className="w-10 h-10 rounded-full bg-muted" />
+        <View className="flex-1">
+          <View className="w-24 h-4 mb-1 rounded bg-muted" />
+          <View className="w-32 h-3 rounded bg-muted" />
+        </View>
+      </View>
+    );
   }
-}
+
+  return (
+    <View className="relative">
+      {renderActions()}
+      <Animated.View
+        ref={rowRef}
+        className="bg-background"
+        style={{ transform: [{ translateX }] }}
+        {...panResponder.panHandlers}
+      >
+        <TouchableOpacity
+          onPress={() => onSelect(channel)}
+          onLongPress={handleLongPress}
+          className="flex-row items-center px-4 py-3 space-x-3 border-b border-border"
+        >
+          <PreviewAvatar channel={channel} {...previewProps} />
+          <View className="flex-1">
+            <PreviewTitle channel={channel} {...previewProps} />
+            <PreviewMessage channel={channel} {...previewProps} />
+          </View>
+          {channel.state?.messages && (
+            <PreviewStatus channel={channel} {...previewProps} />
+          )}
+        </TouchableOpacity>
+      </Animated.View>
+    </View>
+  );
+};
 
 export default function ChatListScreen() {
   const { theme } = useTheme();
@@ -110,38 +329,12 @@ export default function ChatListScreen() {
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const searchBarHeight = useRef(new Animated.Value(0)).current;
   const [isLoading, setIsLoading] = useState(true);
-  const renderCount = useRef(0);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const streamTheme = useStreamTheme();
 
-  // Log component lifecycle
-  useEffect(() => {
-    renderCount.current++;
-    console.log("[ChatList] Component mounted:", {
-      renderCount: renderCount.current,
-      hasClient: !!client,
-      clientState: client?.state,
-      wsConnection: client?.wsConnection?.isHealthy,
-      isConnecting,
-      isConnected,
-    });
-
-    return () => {
-      console.log("[ChatList] Component unmounting");
-    };
-  }, []);
-
-  // Log state changes
-  useEffect(() => {
-    console.log("[ChatList] Connection state changed:", {
-      hasClient: !!client,
-      clientState: client?.state,
-      wsConnection: client?.wsConnection?.isHealthy,
-      isConnecting,
-      isConnected,
-    });
-  }, [client, isConnecting, isConnected]);
-
-  // Memoize filters with logging
+  // Memoize filters
   const filters = useMemo<ChannelFilters>(() => {
     console.log("[ChatList] Creating filters:", {
       hasUserId: !!client?.userID,
@@ -160,83 +353,14 @@ export default function ChatListScreen() {
     };
   }, [client?.userID, searchText]);
 
-  // Add channel state tracking
-  const [manualChannels, setManualChannels] = useState<Channel[]>([]);
-
-  // Handle initial loading state with timeout and logging
+  // Handle initial loading state
   useEffect(() => {
-    let mounted = true;
-    let timeoutId: NodeJS.Timeout;
-
-    const initializeScreen = async () => {
-      console.log("[ChatList] Initializing screen:", {
-        hasUserId: !!client?.userID,
-        isConnected,
-        isLoading,
-        activeChannels: client?.activeChannels
-          ? Object.keys(client.activeChannels).length
-          : 0,
-      });
-
-      if (!client?.userID || !isConnected) {
-        console.log("[ChatList] Waiting for client/connection");
-        if (mounted) setIsLoading(true);
-        return;
-      }
-
-      try {
-        console.log("[ChatList] Starting initialization");
-        // Set a maximum timeout for initialization
-        timeoutId = setTimeout(() => {
-          if (mounted) {
-            console.log("[ChatList] Initialization timeout");
-            setError("Loading took too long. Please try again.");
-            setIsLoading(false);
-          }
-        }, 10000);
-
-        // Try to query channels directly to verify connection
-        const channels = await client.queryChannels(
-          filters,
-          CHANNEL_SORT,
-          CHANNEL_LIST_OPTIONS
-        );
-
-        console.log("[ChatList] Initial channel query result:", {
-          channelCount: channels.length,
-          channelIds: channels.map((c) => c.id),
-          channelData: channels.map((c) => ({
-            id: c.id,
-            type: c.type,
-            memberCount: Object.keys(c.state.members || {}).length,
-            members: Object.keys(c.state.members || {}),
-          })),
-          filters,
-        });
-
-        if (mounted) {
-          setManualChannels(channels);
-          console.log("[ChatList] Initialization complete");
-          setIsLoading(false);
-          clearTimeout(timeoutId);
-        }
-      } catch (err) {
-        console.error("[ChatList] Initialization error:", err);
-        if (mounted) {
-          setError(err instanceof Error ? err.message : "Failed to load chats");
-          setIsLoading(false);
-        }
-      }
-    };
-
-    initializeScreen();
-
-    return () => {
-      console.log("[ChatList] Cleaning up initialization");
-      mounted = false;
-      clearTimeout(timeoutId);
-    };
-  }, [client?.userID, isConnected, filters]);
+    if (!client?.userID || !isConnected) {
+      setIsLoading(true);
+      return;
+    }
+    setIsLoading(false);
+  }, [client?.userID, isConnected]);
 
   const handleNewChat = useCallback(() => {
     if (!client?.userID) {
@@ -248,7 +372,7 @@ export default function ChatListScreen() {
   }, [client?.userID, router]);
 
   const handleChannelSelect = useCallback(
-    (channel: Channel) => {
+    (channel: Channel<DefaultGenerics>) => {
       if (!client?.userID) {
         console.log("[ChatList] Cannot open chat: No user ID");
         return;
@@ -278,18 +402,26 @@ export default function ChatListScreen() {
     }).start(() => setIsSearchVisible(false));
   }, [searchBarHeight]);
 
-  // Memoize additional FlatList props
-  const additionalFlatListProps = useMemo(
-    () => ({
-      ...FLAT_LIST_PROPS,
-      onEndReached: showSearchBar,
-      onEndReachedThreshold: 0.1,
-      onMomentumScrollBegin: hideSearchBar,
-    }),
-    [showSearchBar, hideSearchBar]
-  );
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    setRefreshKey((prev) => prev + 1);
+    // Give visual feedback even if refresh is quick
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    setIsRefreshing(false);
+  }, []);
 
-  // Add focus effect to refresh channel list
+  const handleSearch = useCallback(() => {
+    setIsSearching(true);
+    showSearchBar();
+  }, [showSearchBar]);
+
+  const handleCloseSearch = useCallback(() => {
+    setSearchText("");
+    setIsSearching(false);
+    hideSearchBar();
+  }, [hideSearchBar]);
+
+  // Refresh on focus
   useFocusEffect(
     useCallback(() => {
       console.log("[ChatList] Screen focused, refreshing channel list");
@@ -345,141 +477,78 @@ export default function ChatListScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-1">
-        <Animated.View style={{ height: searchBarHeight, overflow: "hidden" }}>
-          <View className="px-4 py-2">
-            <TextInput
-              value={searchText}
-              onChangeText={setSearchText}
-              placeholder="Search chats..."
-              className="p-2 rounded-lg bg-muted"
-              placeholderTextColor="#666"
-            />
+        {isSearching ? (
+          <SearchInput
+            value={searchText}
+            onChangeText={setSearchText}
+            onClose={handleCloseSearch}
+          />
+        ) : (
+          <View className="flex-row items-center justify-between px-4 py-2">
+            <Text className="text-xl font-semibold text-foreground">
+              Messages
+            </Text>
+            <TouchableOpacity onPress={handleSearch}>
+              <Search size={24} color={theme.colors.text} />
+            </TouchableOpacity>
           </View>
-        </Animated.View>
+        )}
 
         <View style={{ flex: 1 }}>
-          <ChannelListErrorBoundary
-            onError={(error) => {
-              console.error("[ChatList] Channel list error boundary:", error);
-              setError(error.message);
+          <ChannelList
+            key={refreshKey}
+            filters={filters}
+            sort={CHANNEL_SORT}
+            options={CHANNEL_LIST_OPTIONS}
+            onSelect={handleChannelSelect}
+            Preview={(previewProps) => (
+              <CustomChannelPreview
+                {...previewProps}
+                PreviewAvatar={ChannelAvatar}
+                PreviewTitle={ChannelPreviewTitle}
+                PreviewMessage={ChannelPreviewMessage}
+                PreviewStatus={ChannelPreviewStatus}
+                onSelect={handleChannelSelect}
+              />
+            )}
+            additionalFlatListProps={{
+              ...FLAT_LIST_PROPS,
+              refreshControl: (
+                <RefreshControl
+                  refreshing={isRefreshing}
+                  onRefresh={handleRefresh}
+                  tintColor={theme.colors.primary}
+                  colors={[theme.colors.primary]}
+                />
+              ),
             }}
-          >
-            <ChannelList
-              key={`${refreshKey}-${client?.wsConnection?.connectionID}`}
-              filters={filters}
-              sort={CHANNEL_SORT}
-              options={{
-                ...CHANNEL_LIST_OPTIONS,
-                state: true,
-                watch: true,
-              }}
-              onSelect={handleChannelSelect}
-              Preview={ChannelPreview}
-              additionalFlatListProps={additionalFlatListProps}
-              numberOfSkeletons={3}
-              loadMoreThreshold={0.2}
-              List={({ loadingChannels, channels, error }) => {
-                // Move logging here since we can't use the event handlers
-                if (loadingChannels) {
-                  console.log(
-                    "[ChatList] Channels loading with filters:",
-                    filters,
-                    "Active channels:",
-                    client?.activeChannels
-                      ? Object.keys(client.activeChannels).length
-                      : 0,
-                    "Manual channels:",
-                    manualChannels.length
-                  );
-                } else if (channels) {
-                  console.log("[ChatList] Channels loaded in List component:", {
-                    count: channels.length,
-                    channelIds: channels.map((channel) => channel.id),
-                    channelData: channels.map((channel) => ({
-                      id: channel.id,
-                      type: channel.type,
-                      memberCount: Object.keys(channel.state.members || {})
-                        .length,
-                      members: Object.keys(channel.state.members || {}),
-                    })),
-                    filters,
-                    activeChannels: client?.activeChannels
-                      ? Object.keys(client.activeChannels).length
-                      : 0,
-                  });
-                } else if (error) {
-                  console.error("[ChatList] Channel list error:", error);
-                }
-
-                if (error) {
-                  return (
-                    <View className="items-center justify-center flex-1">
-                      <Text className="px-4 text-center text-red-500">
-                        Error loading chats: {error.message}
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => setIsLoading(true)}
-                        className="p-2 mt-4 rounded bg-primary"
-                      >
-                        <Text className="text-white">Retry</Text>
-                      </TouchableOpacity>
-                    </View>
-                  );
-                }
-
-                if (loadingChannels) {
-                  return (
-                    <View className="items-center justify-center flex-1">
-                      <ActivityIndicator
-                        size="large"
-                        color={theme.colors.primary}
-                      />
-                      <Text className="mt-4 text-foreground">
-                        Loading channels...
-                      </Text>
-                    </View>
-                  );
-                }
-
-                // If no channels from Stream but we have manual channels, show those
-                if (!channels?.length && manualChannels.length > 0) {
-                  console.log(
-                    "[ChatList] Using manual channels:",
-                    manualChannels.length
-                  );
-                  return (
-                    <View className="flex-1">
-                      {manualChannels.map((channel) => (
-                        <TouchableOpacity
-                          key={channel.id}
-                          onPress={() => handleChannelSelect(channel)}
-                          className="p-4 border-b border-gray-200"
-                        >
-                          <Text className="text-foreground">
-                            Channel: {channel.id}
-                          </Text>
-                          <Text className="text-sm text-gray-500">
-                            Members:{" "}
-                            {Object.keys(channel.state.members || {}).length}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  );
-                }
-
-                if (!channels?.length) {
-                  return (
-                    <View className="items-center justify-center flex-1">
-                      <Text className="text-foreground">No chats yet</Text>
-                    </View>
-                  );
-                }
-
-                return null;
-              }}
-            />
-          </ChannelListErrorBoundary>
+            EmptyStateIndicator={() => (
+              <View className="items-center justify-center flex-1 px-4">
+                <Text className="text-lg font-medium text-foreground">
+                  No conversations yet
+                </Text>
+                <Text className="mt-2 text-center text-muted-foreground">
+                  Start a new chat or wait for someone to message you
+                </Text>
+                <TouchableOpacity
+                  onPress={handleNewChat}
+                  className="px-6 py-3 mt-4 rounded-lg bg-primary"
+                >
+                  <Text className="font-medium text-primary-foreground">
+                    Start a new chat
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            LoadingIndicator={() => (
+              <View className="items-center justify-center flex-1">
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text className="mt-4 text-foreground">
+                  Loading conversations...
+                </Text>
+              </View>
+            )}
+          />
         </View>
 
         <TouchableOpacity
