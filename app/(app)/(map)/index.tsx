@@ -1,18 +1,25 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import {
   View,
   StyleSheet,
   Dimensions,
   Image,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import * as Location from "expo-location";
 import { useTheme } from "~/src/components/ThemeProvider";
 import MapboxGL from "@rnmapbox/maps";
 import { useUser } from "~/hooks/useUserData";
+import { useMapEvents } from "~/hooks/useMapEvents";
 import { MapControls } from "~/src/components/map/MapControls";
-import { Navigation2 } from "lucide-react-native";
+import { Navigation2, Plus, Minus, User } from "lucide-react-native";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "~/src/components/ui/avatar";
 
 // Replace with your Mapbox access token
 MapboxGL.setAccessToken(
@@ -32,25 +39,65 @@ const UserMarker = ({
   avatarUrl?: string | null;
   heading?: number;
 }) => (
-  <View className="items-center">
-    <View
-      className="p-0.5 bg-white rounded-full shadow-lg"
-      style={
-        heading !== undefined
-          ? {
-              transform: [{ rotate: `${heading}deg` }],
-            }
-          : undefined
-      }
-    >
-      <Image
-        source={
-          avatarUrl ? { uri: avatarUrl } : require("~/assets/favicon.png")
+  <View>
+    <View className="items-center">
+      <View
+        className="p-0.5 bg-white rounded-full shadow-lg"
+        style={
+          heading !== undefined
+            ? {
+                transform: [{ rotate: `${heading}deg` }],
+              }
+            : undefined
         }
-        className="w-8 h-8 rounded-full"
-      />
+      >
+        <Image
+          source={
+            avatarUrl ? { uri: avatarUrl } : require("~/assets/favicon.png")
+          }
+          style={{ width: 32, height: 32, borderRadius: 16 }}
+        />
+      </View>
+      <View className="w-2 h-2 -mt-1 bg-black rounded-full opacity-20" />
     </View>
-    <View className="w-2 h-2 -mt-1 bg-black rounded-full opacity-20" />
+  </View>
+);
+
+const EventMarker = ({ imageUrl }: { imageUrl: string }) => (
+  <View>
+    <View className="items-center">
+      <View
+        className="p-0.5 bg-white rounded-full shadow-lg"
+        style={{ width: 50, height: 50 }}
+      >
+        <Image
+          source={{ uri: imageUrl }}
+          style={{
+            width: "100%",
+            height: "100%",
+            borderRadius: 10,
+          }}
+        />
+      </View>
+      <View className="w-2 h-2 -mt-1 bg-black rounded-full opacity-20" />
+    </View>
+  </View>
+);
+
+const ZoomControls = ({
+  onZoomIn,
+  onZoomOut,
+}: {
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+}) => (
+  <View className="absolute border rounded-lg left-4 bottom-32 bg-background/80 backdrop-blur-lg border-border">
+    <TouchableOpacity onPress={onZoomIn} className="p-2 border-b border-border">
+      <Plus size={20} />
+    </TouchableOpacity>
+    <TouchableOpacity onPress={onZoomOut} className="p-2">
+      <Minus size={20} />
+    </TouchableOpacity>
   </View>
 );
 
@@ -61,11 +108,26 @@ export default function Map() {
     latitude: number;
     longitude: number;
     heading?: number | null;
-  } | null>(null);
+  }>({
+    latitude: 37.7694,
+    longitude: -122.4862,
+    heading: 0,
+  });
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [isFollowingUser, setIsFollowingUser] = useState(true);
+  const [isFollowingUser, setIsFollowingUser] = useState(false);
   const mapRef = useRef<MapboxGL.MapView>(null);
   const cameraRef = useRef<MapboxGL.Camera>(null);
+  const [zoomLevel, setZoomLevel] = useState(14);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([
+    37.7694, -122.4862,
+  ]);
+
+  const { events, selectedEvent, isLoading, error, handleEventClick } =
+    useMapEvents({
+      center: mapCenter,
+      radius: 5000,
+      timeRange: "now",
+    });
 
   useEffect(() => {
     let locationSubscription: Location.LocationSubscription;
@@ -129,6 +191,35 @@ export default function Map() {
     };
   }, [isFollowingUser]);
 
+  const handleMapIdle = useCallback(
+    (feature: { properties?: any }) => {
+      try {
+        if (!feature || !feature.properties) return;
+
+        const { properties } = feature;
+
+        // Update zoom if available
+        if (properties.zoomLevel) {
+          setZoomLevel(properties.zoomLevel);
+        }
+
+        // Update center if changed significantly
+        if (properties.center && Array.isArray(properties.center)) {
+          const [centerLng, centerLat] = properties.center;
+          if (
+            Math.abs(centerLat - mapCenter[0]) > 0.001 ||
+            Math.abs(centerLng - mapCenter[1]) > 0.001
+          ) {
+            setMapCenter([centerLat, centerLng]);
+          }
+        }
+      } catch (err) {
+        console.error("Error handling map idle:", err);
+      }
+    },
+    [mapCenter]
+  );
+
   const handleSearch = (text: string) => {
     console.log("Searching for:", text);
   };
@@ -140,6 +231,30 @@ export default function Map() {
         centerCoordinate: [location.longitude, location.latitude],
         zoomLevel: 16,
         animationDuration: 500,
+      });
+    }
+  };
+
+  const handleZoomIn = () => {
+    if (cameraRef.current) {
+      const newZoom = Math.min(zoomLevel + 1, 20); // Max zoom level is 20
+      setZoomLevel(newZoom);
+      cameraRef.current.setCamera({
+        zoomLevel: newZoom,
+        centerCoordinate: [location.longitude, location.latitude],
+        animationDuration: 300,
+      });
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (cameraRef.current) {
+      const newZoom = Math.max(zoomLevel - 1, 0); // Min zoom level is 0
+      setZoomLevel(newZoom);
+      cameraRef.current.setCamera({
+        zoomLevel: newZoom,
+        centerCoordinate: [location.longitude, location.latitude],
+        animationDuration: 300,
       });
     }
   };
@@ -170,13 +285,15 @@ export default function Map() {
         scrollEnabled
         zoomEnabled
         onTouchMove={() => setIsFollowingUser(false)}
+        onMapIdle={handleMapIdle}
       >
         <MapboxGL.Camera
           ref={cameraRef}
-          zoomLevel={16}
+          zoomLevel={zoomLevel}
           centerCoordinate={[location.longitude, location.latitude]}
         />
 
+        {/* User location marker */}
         <MapboxGL.PointAnnotation
           id="userLocation"
           coordinate={[location.longitude, location.latitude]}
@@ -186,9 +303,23 @@ export default function Map() {
             heading={location.heading || undefined}
           />
         </MapboxGL.PointAnnotation>
+
+        {/* Event markers */}
+        {events.map((event) => (
+          <MapboxGL.PointAnnotation
+            key={event.id}
+            id={`event-${event.id}`}
+            coordinate={[event.location.longitude, event.location.latitude]}
+            onSelected={() => handleEventClick(event)}
+          >
+            <EventMarker imageUrl={event.image_urls[0]} />
+          </MapboxGL.PointAnnotation>
+        ))}
       </MapboxGL.MapView>
 
       <MapControls onSearch={handleSearch} />
+
+      <ZoomControls onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} />
 
       {!isFollowingUser && (
         <TouchableOpacity
