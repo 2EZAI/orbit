@@ -250,6 +250,7 @@ export default function ChannelScreen() {
       const { itemProps, triggerType } = props;
       if (triggerType === "command") {
         const commandProps = itemProps as { name: string; args: string };
+        console.log("Rendering command:", commandProps); // Debug log
 
         // Define command-specific icons/emojis
         const getCommandIcon = (name: string) => {
@@ -258,8 +259,10 @@ export default function ChannelScreen() {
               return "🎬";
             case "location":
               return "📍";
-            case "poll":
-              return "📊";
+            case "ban":
+              return "🚫";
+            case "unban":
+              return "✅";
             case "mute":
               return "🔇";
             case "unmute":
@@ -270,8 +273,13 @@ export default function ChannelScreen() {
         };
 
         return (
-          <View
-            style={{ padding: 10, flexDirection: "row", alignItems: "center" }}
+          <TouchableOpacity
+            style={{
+              padding: 10,
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: "white",
+            }}
           >
             <Text style={{ fontSize: 20, marginRight: 8 }}>
               {getCommandIcon(commandProps.name)}
@@ -286,7 +294,7 @@ export default function ChannelScreen() {
                 </Text>
               )}
             </View>
-          </View>
+          </TouchableOpacity>
         );
       }
       return <AutoCompleteSuggestionItem {...props} />;
@@ -297,6 +305,8 @@ export default function ChannelScreen() {
   const renderSuggestionList = useCallback(
     (props: AutoCompleteSuggestionListProps<DefaultGenerics>) => {
       const { data, onSelect, queryText, triggerType } = props;
+      console.log("Suggestion list data:", data); // Debug log
+
       return (
         <View style={{ maxHeight: 250, backgroundColor: "white" }}>
           {renderSuggestionHeader({ queryText, triggerType })}
@@ -304,7 +314,12 @@ export default function ChannelScreen() {
             data={data}
             keyboardShouldPersistTaps="always"
             renderItem={({ item }) => (
-              <TouchableOpacity onPress={() => onSelect(item)}>
+              <TouchableOpacity
+                onPress={() => {
+                  console.log("Selected command:", item); // Debug log
+                  onSelect(item);
+                }}
+              >
                 {renderSuggestionItem({ itemProps: item, triggerType })}
               </TouchableOpacity>
             )}
