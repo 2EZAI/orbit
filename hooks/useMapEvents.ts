@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Image } from "react-native";
 
 interface Location {
   latitude: number;
@@ -17,7 +18,7 @@ interface EventCategory {
   icon: string;
 }
 
-interface MapEvent {
+export interface MapEvent {
   id: string;
   name: string;
   description: string;
@@ -51,118 +52,174 @@ export function useMapEvents({
   const [selectedEvent, setSelectedEvent] = useState<MapEvent | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
-  const [lastFetchedCenter, setLastFetchedCenter] =
-    useState<[number, number]>(center);
+  const lastFetchTimeRef = useRef<number>(0);
+  const lastFetchedCenterRef = useRef<[number, number]>(center);
+  const eventCacheRef = useRef<Map<string, MapEvent>>(new Map());
+  const isMountedRef = useRef(true);
 
-  // Debounced fetch function
-  const fetchEvents = useCallback(async () => {
-    const now = Date.now();
-    // Only fetch if it's been more than 2 seconds since the last fetch
-    // or if we've moved more than 20% of the radius
-    const timeSinceLastFetch = now - lastFetchTime;
-    const distanceFromLastFetch =
-      Math.sqrt(
-        Math.pow(center[0] - lastFetchedCenter[0], 2) +
-          Math.pow(center[1] - lastFetchedCenter[1], 2)
-      ) * 111000; // Convert to meters (roughly)
+  // Pre-load images for better performance
+  const preloadEventImages = useCallback(async (newEvents: MapEvent[]) => {
+    console.log("Preloading images for", newEvents.length, "events");
+    const imagePromises = newEvents.flatMap((event) =>
+      event.image_urls.map((url) =>
+        Image.prefetch(url).catch((err) => {
+          console.warn("Failed to preload image:", url, err);
+          return false;
+        })
+      )
+    );
+    await Promise.all(imagePromises);
+    console.log("Finished preloading images");
+  }, []);
 
-    if (timeSinceLastFetch < 2000 && distanceFromLastFetch < radius * 0.2) {
-      console.log("Skipping fetch, too soon or too close");
-      return;
-    }
+  // Debounced fetch function with better logging
+  const fetchEvents = useCallback(
+    async (forceFetch = false) => {
+      const now = Date.now();
+      const timeSinceLastFetch = now - lastFetchTimeRef.current;
+      const [lastLat, lastLng] = lastFetchedCenterRef.current;
+      const [newLat, newLng] = center;
 
-    setIsLoading(true);
-    setLastFetchTime(now);
-    setLastFetchedCenter(center);
+      const distanceFromLastFetch =
+        Math.sqrt(
+          Math.pow(newLat - lastLat, 2) + Math.pow(newLng - lastLng, 2)
+        ) * 111000; // Convert to meters
 
-    try {
-      const [lat, lng] = center;
-      console.log("Fetching events with params:", {
-        lat,
-        lng,
-        radius,
-        timeRange,
+      console.log("Fetch check:", {
+        timeSinceLastFetch: `${timeSinceLastFetch}ms`,
+        distanceFromLastFetch: `${distanceFromLastFetch.toFixed(2)}m`,
+        forceFetch,
+        currentEvents: events.length,
       });
 
-      // Calculate time range based on selection
-      let startTime = new Date();
-      let endTime = new Date();
-
-      switch (timeRange) {
-        case "today":
-          startTime.setHours(0, 0, 0, 0);
-          endTime.setHours(23, 59, 59, 999);
-          break;
-        case "tomorrow":
-          startTime.setDate(startTime.getDate() + 1);
-          startTime.setHours(0, 0, 0, 0);
-          endTime.setDate(endTime.getDate() + 1);
-          endTime.setHours(23, 59, 59, 999);
-          break;
-        case "now":
-          // Show events starting in the next 30 days
-          endTime.setDate(endTime.getDate() + 30);
-          break;
+      // Only fetch if:
+      // 1. Force fetch is true OR
+      // 2. It's been more than 2 seconds since last fetch OR
+      // 3. We've moved more than 20% of the radius OR
+      // 4. This is the first fetch (lastFetchTime === 0)
+      if (
+        !forceFetch &&
+        timeSinceLastFetch < 2000 &&
+        distanceFromLastFetch < radius * 0.2 &&
+        lastFetchTimeRef.current !== 0
+      ) {
+        console.log("Skipping fetch - using cached events");
+        return;
       }
 
-      const url = `${
-        process.env.BACKEND_MAP_URL
-      }/api/events/nearby?${new URLSearchParams({
-        lat: lat.toString(),
-        lng: lng.toString(),
-        radius: radius.toString(),
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-      })}`;
+      if (!isMountedRef.current) return;
+      setIsLoading(true);
+      lastFetchTimeRef.current = now;
+      lastFetchedCenterRef.current = center;
 
-      console.log("Fetching from URL:", url);
+      try {
+        const [lat, lng] = center;
+        console.log("Fetching events with params:", {
+          lat,
+          lng,
+          radius,
+          timeRange,
+        });
 
-      const response = await fetch(url);
+        // Calculate time range based on selection
+        let startTime = new Date();
+        let endTime = new Date();
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Error response:", errorText);
-        throw new Error("Failed to fetch events");
+        switch (timeRange) {
+          case "today":
+            startTime.setHours(0, 0, 0, 0);
+            endTime.setHours(23, 59, 59, 999);
+            break;
+          case "tomorrow":
+            startTime.setDate(startTime.getDate() + 1);
+            startTime.setHours(0, 0, 0, 0);
+            endTime.setDate(endTime.getDate() + 1);
+            endTime.setHours(23, 59, 59, 999);
+            break;
+          case "now":
+            // Show events starting in the next 30 days
+            endTime.setDate(endTime.getDate() + 30);
+            break;
+        }
+
+        const url = `${
+          process.env.BACKEND_MAP_URL
+        }/api/events/nearby?${new URLSearchParams({
+          lat: lat.toString(),
+          lng: lng.toString(),
+          radius: (radius * 1.5).toString(), // Increase fetch radius by 50% to have buffer
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+        })}`;
+
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        const data = await response.json();
+        console.log("Fetched", data.length, "events");
+
+        // Update cache with new events
+        const newCache = new Map(eventCacheRef.current);
+        data.forEach((event: MapEvent) => {
+          newCache.set(event.id, event);
+        });
+        eventCacheRef.current = newCache;
+
+        // Combine cached events with new events
+        const allEvents = Array.from(newCache.values());
+
+        // Filter events by actual radius and remove duplicates
+        const filteredEvents = allEvents.filter((event) => {
+          const distance =
+            Math.sqrt(
+              Math.pow(event.location.latitude - center[0], 2) +
+                Math.pow(event.location.longitude - center[1], 2)
+            ) * 111000; // Convert to meters
+          return distance <= radius * 1.2; // Keep events within 120% of requested radius
+        });
+
+        // Preload images before updating state
+        await preloadEventImages(filteredEvents);
+
+        if (!isMountedRef.current) return;
+        setEvents(filteredEvents);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching events:", err);
+        if (!isMountedRef.current) return;
+        setError(err instanceof Error ? err.message : "An error occurred");
+      } finally {
+        if (!isMountedRef.current) return;
+        setIsLoading(false);
       }
+    },
+    [center, radius, timeRange, preloadEventImages]
+  );
 
-      const data = await response.json();
-      console.log("Received events:", data);
-
-      // Merge new events with existing ones, keeping existing events that are still in range
-      const newEventIds = new Set(data.map((e: MapEvent) => e.id));
-      const existingEventsInRange = events.filter((e) => {
-        const distance =
-          Math.sqrt(
-            Math.pow(e.location.latitude - center[0], 2) +
-              Math.pow(e.location.longitude - center[1], 2)
-          ) * 111000; // Convert to meters (roughly)
-        return distance <= radius * 1.2; // Keep events within 120% of radius
-      });
-      const existingEventsToKeep = existingEventsInRange.filter(
-        (e) => !newEventIds.has(e.id)
-      );
-
-      setEvents([...existingEventsToKeep, ...data]);
-    } catch (err) {
-      console.error("Error fetching events:", err);
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [center, radius, timeRange, lastFetchTime, lastFetchedCenter, events]);
-
+  // Initial fetch
   useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
+    isMountedRef.current = true;
+    fetchEvents(true); // Force fetch on mount
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
-  const handleEventClick = (event: MapEvent) => {
+  // Fetch when parameters change
+  useEffect(() => {
+    fetchEvents(false);
+  }, [center, radius, timeRange]);
+
+  const handleEventClick = useCallback((event: MapEvent) => {
     setSelectedEvent(event);
-  };
+  }, []);
 
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     setSelectedEvent(null);
-  };
+  }, []);
 
   return {
     events,

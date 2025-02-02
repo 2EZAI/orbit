@@ -6,20 +6,35 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
+  Button,
+  ScrollView,
+  Platform,
+  Linking,
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import * as Location from "expo-location";
 import { useTheme } from "~/src/components/ThemeProvider";
 import MapboxGL from "@rnmapbox/maps";
 import { useUser } from "~/hooks/useUserData";
-import { useMapEvents } from "~/hooks/useMapEvents";
+import { useMapEvents, type MapEvent } from "~/hooks/useMapEvents";
 import { MapControls } from "~/src/components/map/MapControls";
-import { Navigation2, Plus, Minus, User } from "lucide-react-native";
+import {
+  Navigation2,
+  Plus,
+  Minus,
+  User,
+  X,
+  Info,
+  MapPin,
+} from "lucide-react-native";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "~/src/components/ui/avatar";
+import { formatDistanceToNow, format } from "date-fns";
+import { BlurView } from "expo-blur";
+import { Sheet } from "~/src/components/ui/sheet";
 
 // Replace with your Mapbox access token
 MapboxGL.setAccessToken(
@@ -39,27 +54,25 @@ const UserMarker = ({
   avatarUrl?: string | null;
   heading?: number;
 }) => (
-  <View>
-    <View className="items-center">
-      <View
-        className="p-0.5 bg-white rounded-full shadow-lg"
-        style={
-          heading !== undefined
-            ? {
-                transform: [{ rotate: `${heading}deg` }],
-              }
-            : undefined
+  <View className="items-center">
+    <View
+      className="p-0.5 bg-white rounded-full shadow-lg"
+      style={
+        heading !== undefined
+          ? {
+              transform: [{ rotate: `${heading}deg` }],
+            }
+          : undefined
+      }
+    >
+      <Image
+        source={
+          avatarUrl ? { uri: avatarUrl } : require("~/assets/favicon.png")
         }
-      >
-        <Image
-          source={
-            avatarUrl ? { uri: avatarUrl } : require("~/assets/favicon.png")
-          }
-          style={{ width: 32, height: 32, borderRadius: 16 }}
-        />
-      </View>
-      <View className="w-2 h-2 -mt-1 bg-black rounded-full opacity-20" />
+        className="w-8 h-8 rounded-full"
+      />
     </View>
+    <View className="w-2 h-2 -mt-1 bg-black rounded-full opacity-20" />
   </View>
 );
 
@@ -67,7 +80,7 @@ const EventMarker = ({ imageUrl }: { imageUrl: string }) => (
   <View>
     <View className="items-center">
       <View
-        className="p-0.5 bg-white rounded-full shadow-lg"
+        className="p-0.5 bg-none rounded-sm shadow-lg"
         style={{ width: 50, height: 50 }}
       >
         <Image
@@ -101,6 +114,285 @@ const ZoomControls = ({
   </View>
 );
 
+const EventDetailsSheet = ({
+  event,
+  nearbyEvents,
+  isOpen,
+  onClose,
+  onEventSelect,
+}: {
+  event: MapEvent;
+  nearbyEvents: MapEvent[];
+  isOpen: boolean;
+  onClose: () => void;
+  onEventSelect: (event: MapEvent) => void;
+}) => {
+  useEffect(() => {
+    if (isOpen) {
+      console.log("=== Event Details ===");
+      console.log("Event:", {
+        id: event.id,
+        name: event.name,
+        description: event.description,
+        venue_name: event.venue_name,
+        start_datetime: event.start_datetime,
+        end_datetime: event.end_datetime,
+        location: event.location,
+        image_urls: event.image_urls,
+        distance: event.distance,
+        attendees: {
+          count: event.attendees.count,
+          profiles: event.attendees.profiles.map((p) => ({
+            id: p.id,
+            name: p.name,
+            avatar_url: p.avatar_url,
+          })),
+        },
+        categories: event.categories.map((c) => ({
+          id: c.id,
+          name: c.name,
+          icon: c.icon,
+        })),
+      });
+      console.log("Nearby Events Count:", nearbyEvents.length);
+    }
+  }, [isOpen, event]);
+
+  const handleOpenDirections = () => {
+    const { latitude, longitude } = event.location;
+    const url = Platform.select({
+      ios: `maps:${latitude},${longitude}?q=${event.venue_name}`,
+      android: `geo:${latitude},${longitude}?q=${event.venue_name}`,
+    });
+
+    if (url) {
+      Linking.openURL(url).catch((err) => {
+        console.error("Error opening maps:", err);
+      });
+    }
+  };
+
+  return (
+    <Sheet isOpen={isOpen} onClose={onClose}>
+      <View className="flex-1">
+        <View className="flex-row items-center justify-between p-4 pb-2">
+          <Text className="text-2xl font-bold">{event.name}</Text>
+          <TouchableOpacity onPress={onClose}>
+            <X size={24} />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+          <View className="p-4">
+            <Image
+              source={{ uri: event.image_urls[0] }}
+              className="w-full h-48 mb-4 rounded-lg"
+            />
+
+            <View className="flex-row items-center mb-2">
+              <MapPin size={20} className="mr-2 text-muted-foreground" />
+              <Text className="text-muted-foreground">{event.venue_name}</Text>
+            </View>
+
+            <Text className="mb-4">{event.description}</Text>
+
+            {/* Categories */}
+            <View className="flex-row flex-wrap gap-2 mb-4">
+              {event.categories.map((category) => (
+                <View
+                  key={category.id}
+                  className="px-3 py-1 rounded-full bg-secondary/20"
+                >
+                  <Text className="text-sm font-medium text-secondary">
+                    {category.name}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Action Buttons */}
+            <View className="flex-row gap-3 mb-6">
+              <TouchableOpacity className="items-center flex-1 py-3 rounded-full bg-primary">
+                <Text className="font-medium text-white">Mark Attending</Text>
+              </TouchableOpacity>
+              <TouchableOpacity className="items-center flex-1 py-3 rounded-full bg-secondary">
+                <Text className="font-medium">Create Orbit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="items-center flex-1 py-3 rounded-full bg-muted"
+                onPress={handleOpenDirections}
+              >
+                <Text className="font-medium">Directions</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Attendees Section */}
+            <View className="mb-6">
+              <Text className="mb-2 text-lg font-semibold">Attendees</Text>
+              <View className="flex-row flex-wrap gap-2">
+                {event.attendees.profiles.map((attendee) => (
+                  <View key={attendee.id} className="items-center">
+                    <Image
+                      source={{ uri: attendee.avatar_url }}
+                      className="w-12 h-12 mb-1 border-2 border-white rounded-full"
+                    />
+                    <Text className="text-xs text-muted-foreground">
+                      {attendee.name}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Nearby Events Section */}
+            <View>
+              <Text className="mb-2 text-lg font-semibold">Nearby Events</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {nearbyEvents.map((nearbyEvent) => (
+                  <TouchableOpacity
+                    key={nearbyEvent.id}
+                    className="w-48 mr-4"
+                    onPress={() => {
+                      onClose();
+                      onEventSelect(nearbyEvent);
+                    }}
+                  >
+                    <Image
+                      source={{ uri: nearbyEvent.image_urls[0] }}
+                      className="w-full h-24 mb-2 rounded-lg"
+                    />
+                    <Text className="font-medium" numberOfLines={1}>
+                      {nearbyEvent.name}
+                    </Text>
+                    <Text
+                      className="text-sm text-muted-foreground"
+                      numberOfLines={1}
+                    >
+                      {nearbyEvent.venue_name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    </Sheet>
+  );
+};
+
+const EventCard = ({
+  event,
+  nearbyEvents,
+  onClose,
+  onEventSelect,
+}: {
+  event: MapEvent;
+  nearbyEvents: MapEvent[];
+  onClose: () => void;
+  onEventSelect: (event: MapEvent) => void;
+}) => {
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const startTime = new Date(event.start_datetime);
+  const endTime = new Date(event.end_datetime);
+  const startsIn = formatDistanceToNow(startTime);
+
+  return (
+    <>
+      <View className="absolute left-0 right-0 mx-4 bottom-10 mb-14">
+        <TouchableOpacity
+          className="absolute z-10 items-center justify-center w-8 h-8 rounded-full right-2 top-2 bg-black/20"
+          onPress={onClose}
+        >
+          <X size={20} color="white" />
+        </TouchableOpacity>
+
+        <View className="overflow-hidden rounded-2xl">
+          <Image
+            source={{ uri: event.image_urls[0] }}
+            className="absolute w-full h-full"
+            blurRadius={3}
+          />
+          <BlurView intensity={20} className="p-4">
+            <View>
+              {/* Event Title */}
+              <Text className="mb-2 text-2xl font-semibold text-white">
+                {event.name}
+              </Text>
+
+              {/* Location and Time */}
+              <View className="flex-row items-center mb-4">
+                <Text className="text-white/90">
+                  {event.venue_name} • {format(startTime, "h:mm a")} -{" "}
+                  {format(endTime, "h:mm a")}
+                </Text>
+              </View>
+
+              {/* Action Buttons */}
+              <View className="flex-row gap-3 mb-8">
+                <TouchableOpacity className="px-6 py-2 rounded-full bg-primary">
+                  <Text className="font-medium text-white">Join Event</Text>
+                </TouchableOpacity>
+                <TouchableOpacity className="px-6 py-2 rounded-full bg-white/20">
+                  <Text className="font-medium text-white">Directions</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  className="items-center justify-center w-10 h-10 rounded-full bg-white/20"
+                  onPress={() => setIsDetailsOpen(true)}
+                >
+                  <Info size={20} color="white" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Attendees */}
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center">
+                  {event.attendees.profiles
+                    .slice(0, 4)
+                    .map((attendee, index) => (
+                      <View
+                        key={attendee.id}
+                        style={{
+                          marginLeft: index > 0 ? -12 : 0,
+                          zIndex: 4 - index,
+                        }}
+                      >
+                        <Image
+                          source={{ uri: attendee.avatar_url }}
+                          className="w-8 h-8 border-2 border-white rounded-full"
+                        />
+                      </View>
+                    ))}
+                  {event.attendees.count > 4 && (
+                    <View className="px-2 py-1 ml-1 rounded-full bg-white/20">
+                      <Text className="text-white">
+                        +{event.attendees.count - 4}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Starts In */}
+                <View className="px-3 py-1 bg-red-500 rounded-full">
+                  <Text className="text-sm text-white">Starts: {startsIn}</Text>
+                </View>
+              </View>
+            </View>
+          </BlurView>
+        </View>
+      </View>
+
+      <EventDetailsSheet
+        event={event}
+        nearbyEvents={nearbyEvents}
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        onEventSelect={onEventSelect}
+      />
+    </>
+  );
+};
+
 export default function Map() {
   const { theme, isDarkMode } = useTheme();
   const { user } = useUser();
@@ -122,12 +414,34 @@ export default function Map() {
     37.7694, -122.4862,
   ]);
 
-  const { events, selectedEvent, isLoading, error, handleEventClick } =
-    useMapEvents({
-      center: mapCenter,
-      radius: 5000,
-      timeRange: "now",
-    });
+  const {
+    events,
+    selectedEvent: mapSelectedEvent,
+    isLoading,
+    error,
+    handleEventClick,
+    handleCloseModal,
+  } = useMapEvents({
+    center: mapCenter,
+    radius: 5000,
+    timeRange: "now",
+  });
+
+  useEffect(() => {
+    console.log("=== All Events ===");
+    console.log("Total Events:", events.length);
+    console.log(
+      "Events:",
+      events.map((event) => ({
+        id: event.id,
+        name: event.name,
+        venue_name: event.venue_name,
+        start_datetime: event.start_datetime,
+        categories: event.categories.map((c) => c.name),
+        attendees_count: event.attendees.count,
+      }))
+    );
+  }, [events]);
 
   useEffect(() => {
     let locationSubscription: Location.LocationSubscription;
@@ -259,6 +573,13 @@ export default function Map() {
     }
   };
 
+  // Handle map tap to close event preview
+  const handleMapTap = useCallback(() => {
+    if (mapSelectedEvent) {
+      handleCloseModal();
+    }
+  }, [mapSelectedEvent, handleCloseModal]);
+
   if (errorMsg) {
     return (
       <View className="items-center justify-center flex-1">
@@ -286,6 +607,7 @@ export default function Map() {
         zoomEnabled
         onTouchMove={() => setIsFollowingUser(false)}
         onMapIdle={handleMapIdle}
+        onPress={handleMapTap}
       >
         <MapboxGL.Camera
           ref={cameraRef}
@@ -328,6 +650,15 @@ export default function Map() {
         >
           <Navigation2 size={20} />
         </TouchableOpacity>
+      )}
+
+      {mapSelectedEvent && (
+        <EventCard
+          event={mapSelectedEvent}
+          nearbyEvents={events}
+          onClose={handleCloseModal}
+          onEventSelect={handleEventClick}
+        />
       )}
     </View>
   );
