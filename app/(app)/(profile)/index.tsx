@@ -15,13 +15,13 @@ import { Settings, ArrowLeft } from "lucide-react-native";
 import { router } from "expo-router";
 import { Button } from "~/src/components/ui/button";
 
-type Tab = "Posts" | "Events" | "Info";
+type Tab = "Events" | "Posts" | "Info";
 
 export default function Profile() {
   const { session } = useAuth();
   const { user } = useUser();
   const { getFollowCounts } = useFollow();
-  const [activeTab, setActiveTab] = useState<Tab>("Posts");
+  const [activeTab, setActiveTab] = useState<Tab>("Events");
   const [counts, setCounts] = useState({
     followerCount: 0,
     followingCount: 0,
