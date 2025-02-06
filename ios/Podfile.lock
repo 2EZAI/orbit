@@ -1,6 +1,9 @@
 PODS:
   - boost (1.84.0)
   - DoubleConversion (1.1.6)
+  - EXAV (15.0.2):
+    - ExpoModulesCore
+    - ReactCommon/turbomodule/core
   - EXConstants (17.0.4):
     - ExpoModulesCore
   - EXImageLoader (5.0.0):
@@ -222,9 +225,15 @@ PODS:
     - ExpoModulesCore
   - ExpoBlur (14.0.2):
     - ExpoModulesCore
+  - ExpoClipboard (7.0.1):
+    - ExpoModulesCore
+  - ExpoDocumentPicker (13.0.2):
+    - ExpoModulesCore
   - ExpoFileSystem (18.0.7):
     - ExpoModulesCore
   - ExpoFont (13.0.3):
+    - ExpoModulesCore
+  - ExpoHaptics (14.0.1):
     - ExpoModulesCore
   - ExpoHead (4.0.17):
     - ExpoModulesCore
@@ -242,6 +251,9 @@ PODS:
     - ExpoModulesCore
   - ExpoLocation (18.0.5):
     - ExpoModulesCore
+  - ExpoMediaLibrary (17.0.5):
+    - ExpoModulesCore
+    - React-Core
   - ExpoModulesCore (2.1.4):
     - DoubleConversion
     - glog
@@ -265,6 +277,8 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - ExpoSharing (13.0.1):
+    - ExpoModulesCore
   - ExpoSystemUI (4.0.7):
     - ExpoModulesCore
   - EXUpdatesInterface (1.0.0):
@@ -296,6 +310,10 @@ PODS:
     - MapboxMobileEvents (= 2.0.0)
     - Turf (= 2.8.0)
   - MapboxMobileEvents (2.0.0)
+  - op-sqlite (11.4.2):
+    - React
+    - React-callinvoker
+    - React-Core
   - RCT-Folly (2024.01.01.00):
     - boost
     - DoubleConversion
@@ -1960,6 +1978,7 @@ PODS:
 DEPENDENCIES:
   - boost (from `../node_modules/react-native/third-party-podspecs/boost.podspec`)
   - DoubleConversion (from `../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec`)
+  - EXAV (from `../node_modules/expo-av/ios`)
   - EXConstants (from `../node_modules/expo-constants/ios`)
   - EXImageLoader (from `../node_modules/expo-image-loader/ios`)
   - EXJSONUtils (from `../node_modules/expo-json-utils/ios`)
@@ -1971,8 +1990,11 @@ DEPENDENCIES:
   - expo-dev-menu-interface (from `../node_modules/expo-dev-menu-interface/ios`)
   - ExpoAsset (from `../node_modules/expo-asset/ios`)
   - ExpoBlur (from `../node_modules/expo-blur/ios`)
+  - ExpoClipboard (from `../node_modules/expo-clipboard/ios`)
+  - ExpoDocumentPicker (from `../node_modules/expo-document-picker/ios`)
   - ExpoFileSystem (from `../node_modules/expo-file-system/ios`)
   - ExpoFont (from `../node_modules/expo-font/ios`)
+  - ExpoHaptics (from `../node_modules/expo-haptics/ios`)
   - ExpoHead (from `../node_modules/expo-router/ios`)
   - ExpoImageManipulator (from `../node_modules/expo-image-manipulator/ios`)
   - ExpoImagePicker (from `../node_modules/expo-image-picker/ios`)
@@ -1980,13 +2002,16 @@ DEPENDENCIES:
   - ExpoLinearGradient (from `../node_modules/expo-linear-gradient/ios`)
   - ExpoLinking (from `../node_modules/expo-linking/ios`)
   - ExpoLocation (from `../node_modules/expo-location/ios`)
+  - ExpoMediaLibrary (from `../node_modules/expo-media-library/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
+  - ExpoSharing (from `../node_modules/expo-sharing/ios`)
   - ExpoSystemUI (from `../node_modules/expo-system-ui/ios`)
   - EXUpdatesInterface (from `../node_modules/expo-updates-interface/ios`)
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - fmt (from `../node_modules/react-native/third-party-podspecs/fmt.podspec`)
   - glog (from `../node_modules/react-native/third-party-podspecs/glog.podspec`)
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
+  - "op-sqlite (from `../node_modules/@op-engineering/op-sqlite`)"
   - RCT-Folly (from `../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)
   - RCT-Folly/Fabric (from `../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)
   - RCTDeprecation (from `../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
@@ -2073,6 +2098,8 @@ EXTERNAL SOURCES:
     :podspec: "../node_modules/react-native/third-party-podspecs/boost.podspec"
   DoubleConversion:
     :podspec: "../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec"
+  EXAV:
+    :path: "../node_modules/expo-av/ios"
   EXConstants:
     :path: "../node_modules/expo-constants/ios"
   EXImageLoader:
@@ -2095,10 +2122,16 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-asset/ios"
   ExpoBlur:
     :path: "../node_modules/expo-blur/ios"
+  ExpoClipboard:
+    :path: "../node_modules/expo-clipboard/ios"
+  ExpoDocumentPicker:
+    :path: "../node_modules/expo-document-picker/ios"
   ExpoFileSystem:
     :path: "../node_modules/expo-file-system/ios"
   ExpoFont:
     :path: "../node_modules/expo-font/ios"
+  ExpoHaptics:
+    :path: "../node_modules/expo-haptics/ios"
   ExpoHead:
     :path: "../node_modules/expo-router/ios"
   ExpoImageManipulator:
@@ -2113,8 +2146,12 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-linking/ios"
   ExpoLocation:
     :path: "../node_modules/expo-location/ios"
+  ExpoMediaLibrary:
+    :path: "../node_modules/expo-media-library/ios"
   ExpoModulesCore:
     :path: "../node_modules/expo-modules-core"
+  ExpoSharing:
+    :path: "../node_modules/expo-sharing/ios"
   ExpoSystemUI:
     :path: "../node_modules/expo-system-ui/ios"
   EXUpdatesInterface:
@@ -2128,6 +2165,8 @@ EXTERNAL SOURCES:
   hermes-engine:
     :podspec: "../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec"
     :tag: hermes-2024-11-12-RNv0.76.2-5b4aa20c719830dcf5684832b89a6edb95ac3d64
+  op-sqlite:
+    :path: "../node_modules/@op-engineering/op-sqlite"
   RCT-Folly:
     :podspec: "../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec"
   RCTDeprecation:
@@ -2264,6 +2303,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   boost: 1dca942403ed9342f98334bf4c3621f011aa7946
   DoubleConversion: f16ae600a246532c4020132d54af21d0ddb2a385
+  EXAV: 4c41f0a6ae54a0b96597abc90e37962ab2ee0d85
   EXConstants: 6b8c5653492349b3c3fe6b905c556bc45b360405
   EXImageLoader: e5da974e25b13585c196b658a440720c075482d5
   EXJSONUtils: 01fc7492b66c234e395dcffdd5f53439c5c29c93
@@ -2275,8 +2315,11 @@ SPEC CHECKSUMS:
   expo-dev-menu-interface: 00dc42302a72722fdecec3fa048de84a9133bcc4
   ExpoAsset: d2d2cbc6a4efadf51a3da27d85d589935abd0b98
   ExpoBlur: cb75554318a537db7a65ad589a0a5f32173ca39b
+  ExpoClipboard: 44fd1c8959ee8f6175d059dc011b154c9709a969
+  ExpoDocumentPicker: 1b799812735778618aa7f92b848ff66c5d23ef58
   ExpoFileSystem: 818e82dbb71175414d1ca310e926c48ff0d07348
   ExpoFont: 38656978c2a4022fb7e0c43e4968d66340f5e2f3
+  ExpoHaptics: 8d199b2f33245ea85289ff6c954c7ee7c00a5b5d
   ExpoHead: 5d1c5c20e3933db5d9ca349424cb3b9a4a84b706
   ExpoImageManipulator: 4aca9cc1d84e31f62a7e8075c19026d3ad62f852
   ExpoImagePicker: 0213e20a6635ffd56c5012d2b1cb3af4d3b71bed
@@ -2284,7 +2327,9 @@ SPEC CHECKSUMS:
   ExpoLinearGradient: 35ebd83b16f80b3add053a2fd68cc328ed927f60
   ExpoLinking: 4a09f2f0dc1132607c20f5628ba30d94795ea73d
   ExpoLocation: 5437fb925d0b0dbe728c20536335a964e9202f5a
+  ExpoMediaLibrary: 2ee639eb9b43a2e3cbd27bc9a575e7fc8061363b
   ExpoModulesCore: c58544ab4a2e873f646a6308e1e08819380edb9f
+  ExpoSharing: 849a5ce9985c22598c16ec027e32969be8062e8e
   ExpoSystemUI: 36f50ee42da3e814bffd01ee38edcf3c7cc0015d
   EXUpdatesInterface: 7c977640bdd8b85833c19e3959ba46145c5719db
   FBLazyVector: 1bf99bb46c6af9a2712592e707347315f23947aa
@@ -2296,6 +2341,7 @@ SPEC CHECKSUMS:
   MapboxCoreMaps: 35685edba03e44468aed57c3dfd7f8795edafda8
   MapboxMaps: 6d98b43134fe3bad2c810a4d4d9f1c5a5d181b50
   MapboxMobileEvents: d044b9edbe0ec7df60f6c2c9634fe9a7f449266b
+  op-sqlite: f800d2eeb9ca5c8931c612d4673f559fa23a5889
   RCT-Folly: 84578c8756030547307e4572ab1947de1685c599
   RCTDeprecation: fb7d408617e25d7f537940000d766d60149c5fea
   RCTRequired: 9aaf0ffcc1f41f0c671af863970ef25c422a9920

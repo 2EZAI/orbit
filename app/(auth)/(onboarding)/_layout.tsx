@@ -1,24 +1,19 @@
 import { Stack } from "expo-router";
-import { useEffect } from "react";
-import { BackHandler } from "react-native";
+import { Platform } from "react-native";
 
 export default function OnboardingLayout() {
-  useEffect(() => {
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      () => true
-    );
-    return () => backHandler.remove();
-  }, []);
-
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        animation: "none",
+        gestureEnabled: false,
+        animation: Platform.OS === "ios" ? "slide_from_right" : "none",
       }}
     >
-      <Stack.Screen name="index" />
+      <Stack.Screen name="onboarding" />
+      <Stack.Screen name="username" />
+      <Stack.Screen name="permissions" />
+      <Stack.Screen name="topics" />
     </Stack>
   );
 }

@@ -43,12 +43,19 @@ interface UseMapEventsProps {
   timeRange?: TimeRange;
 }
 
+interface EventCluster {
+  events: MapEvent[];
+  location: Location;
+  mainEvent: MapEvent; // The event whose image we'll show
+}
+
 export function useMapEvents({
   center,
   radius = 5000,
   timeRange = "now",
 }: UseMapEventsProps) {
   const [events, setEvents] = useState<MapEvent[]>([]);
+  const [clusters, setClusters] = useState<EventCluster[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<MapEvent | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +63,30 @@ export function useMapEvents({
   const lastFetchedCenterRef = useRef<[number, number]>(center);
   const eventCacheRef = useRef<Map<string, MapEvent>>(new Map());
   const isMountedRef = useRef(true);
+
+  // Function to group events by location
+  const clusterEvents = useCallback((events: MapEvent[]) => {
+    const locationMap = new Map<string, EventCluster>();
+
+    events.forEach((event) => {
+      const key = `${event.location.latitude.toFixed(
+        5
+      )},${event.location.longitude.toFixed(5)}`;
+
+      if (locationMap.has(key)) {
+        const cluster = locationMap.get(key)!;
+        cluster.events.push(event);
+      } else {
+        locationMap.set(key, {
+          events: [event],
+          location: event.location,
+          mainEvent: event,
+        });
+      }
+    });
+
+    return Array.from(locationMap.values());
+  }, []);
 
   // Pre-load images for better performance
   const preloadEventImages = useCallback(async (newEvents: MapEvent[]) => {
@@ -148,9 +179,12 @@ export function useMapEvents({
           lat: lat.toString(),
           lng: lng.toString(),
           radius: (radius * 1.5).toString(), // Increase fetch radius by 50% to have buffer
-          startTime: startTime.toISOString(),
-          endTime: endTime.toISOString(),
+          start_date: startTime.toISOString(),
+          end_date: endTime.toISOString(),
+          limit_count: "50",
         })}`;
+
+        console.log("Fetching events from:", url);
 
         const response = await fetch(url);
 
@@ -186,6 +220,7 @@ export function useMapEvents({
 
         if (!isMountedRef.current) return;
         setEvents(filteredEvents);
+        setClusters(clusterEvents(filteredEvents));
         setError(null);
       } catch (err) {
         console.error("Error fetching events:", err);
@@ -196,7 +231,7 @@ export function useMapEvents({
         setIsLoading(false);
       }
     },
-    [center, radius, timeRange, preloadEventImages]
+    [center, radius, timeRange, preloadEventImages, clusterEvents]
   );
 
   // Initial fetch
@@ -223,6 +258,7 @@ export function useMapEvents({
 
   return {
     events,
+    clusters,
     selectedEvent,
     isLoading,
     error,

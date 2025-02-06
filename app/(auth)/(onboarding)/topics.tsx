@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, ScrollView, ActivityIndicator } from "react-native";
+import { View, ScrollView } from "react-native";
 import { router } from "expo-router";
 import { supabase } from "~/src/lib/supabase";
 import { Text } from "~/src/components/ui/text";
@@ -7,16 +7,15 @@ import { Button } from "~/src/components/ui/button";
 import { useUser } from "~/hooks/useUserData";
 import { TopicList } from "~/src/components/topics/TopicList";
 
-export default function Onboarding() {
-  const { user, loading } = useUser();
+export default function TopicsScreen() {
+  const { user } = useUser();
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
 
   useEffect(() => {
-    // Only redirect if we're sure there's no user and we're not loading
-    if (!user && !loading) {
+    if (!user) {
       router.replace("/(auth)/sign-in");
     }
-  }, [user, loading]);
+  }, [user]);
 
   const handleContinue = async () => {
     if (!user) return;
@@ -31,21 +30,12 @@ export default function Onboarding() {
 
       if (error) throw error;
 
-      // Route to app after completing onboarding
-      router.replace("/(app)/(map)");
+      // After completing all onboarding steps, go to the app
+      router.replace("/(app)/");
     } catch (error) {
       console.error("Error saving topics:", error);
     }
   };
-
-  // Show loading state while checking user status
-  if (loading) {
-    return (
-      <View className="items-center justify-center flex-1 bg-background">
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
 
   if (!user) return null;
 

@@ -228,15 +228,18 @@ export default function NewChatScreen() {
       console.log("All member records created successfully");
 
       console.log("Navigating to chat screen");
-      // First close the new chat modal
+      // First dismiss the modal
       router.back();
-      // Then navigate to the chat screen
-      router.push({
-        pathname: `/(app)/(chat)/${channel.id}`,
-        params: {
-          name: chatName,
-        },
-      });
+      // Wait a brief moment for the modal to close
+      setTimeout(() => {
+        router.push({
+          pathname: "/(app)/(chat)/channel/[id]",
+          params: {
+            id: channel.id,
+            name: chatName,
+          },
+        });
+      }, 300);
       console.log("Navigation triggered");
     } catch (error: any) {
       console.error("Final error in chat creation:", {

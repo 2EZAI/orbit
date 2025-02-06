@@ -17,24 +17,14 @@ import { useTheme } from "~/src/components/ThemeProvider";
 import MapboxGL from "@rnmapbox/maps";
 import { useUser } from "~/hooks/useUserData";
 import { useMapEvents, type MapEvent } from "~/hooks/useMapEvents";
+import { useMapCamera } from "~/src/hooks/useMapCamera";
 import { MapControls } from "~/src/components/map/MapControls";
-import {
-  Navigation2,
-  Plus,
-  Minus,
-  User,
-  X,
-  Info,
-  MapPin,
-} from "lucide-react-native";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "~/src/components/ui/avatar";
-import { formatDistanceToNow, format } from "date-fns";
-import { BlurView } from "expo-blur";
+import { X, MapPin } from "lucide-react-native";
+
 import { Sheet } from "~/src/components/ui/sheet";
+import { UserMarker } from "~/src/components/map/UserMarker";
+import { EventMarker } from "~/src/components/map/EventMarker";
+import { EventCard } from "~/src/components/map/EventCard";
 
 // Replace with your Mapbox access token
 MapboxGL.setAccessToken(
@@ -47,414 +37,71 @@ const CUSTOM_LIGHT_STYLE =
 const CUSTOM_DARK_STYLE =
   "mapbox://styles/tangentdigitalagency/clzwv4xtp002y01psdttf9jhr";
 
-const UserMarker = ({
-  avatarUrl,
-  heading,
-}: {
-  avatarUrl?: string | null;
-  heading?: number;
-}) => (
-  <View className="items-center">
-    <View
-      className="p-0.5 bg-white rounded-full shadow-lg"
-      style={
-        heading !== undefined
-          ? {
-              transform: [{ rotate: `${heading}deg` }],
-            }
-          : undefined
-      }
-    >
-      <Image
-        source={
-          avatarUrl ? { uri: avatarUrl } : require("~/assets/favicon.png")
-        }
-        className="w-8 h-8 rounded-full"
-      />
-    </View>
-    <View className="w-2 h-2 -mt-1 bg-black rounded-full opacity-20" />
-  </View>
-);
-
-const EventMarker = ({ imageUrl }: { imageUrl: string }) => (
-  <View>
-    <View className="items-center">
-      <View
-        className="p-0.5 bg-none rounded-sm shadow-lg"
-        style={{ width: 50, height: 50 }}
-      >
-        <Image
-          source={{ uri: imageUrl }}
-          style={{
-            width: "100%",
-            height: "100%",
-            borderRadius: 10,
-          }}
-        />
-      </View>
-      <View className="w-2 h-2 -mt-1 bg-black rounded-full opacity-20" />
-    </View>
-  </View>
-);
-
-const ZoomControls = ({
-  onZoomIn,
-  onZoomOut,
-}: {
-  onZoomIn: () => void;
-  onZoomOut: () => void;
-}) => (
-  <View className="absolute border rounded-lg left-4 bottom-32 bg-background/80 backdrop-blur-lg border-border">
-    <TouchableOpacity onPress={onZoomIn} className="p-2 border-b border-border">
-      <Plus size={20} />
-    </TouchableOpacity>
-    <TouchableOpacity onPress={onZoomOut} className="p-2">
-      <Minus size={20} />
-    </TouchableOpacity>
-  </View>
-);
-
-const EventDetailsSheet = ({
-  event,
-  nearbyEvents,
-  isOpen,
-  onClose,
-  onEventSelect,
-}: {
-  event: MapEvent;
-  nearbyEvents: MapEvent[];
-  isOpen: boolean;
-  onClose: () => void;
-  onEventSelect: (event: MapEvent) => void;
-}) => {
-  useEffect(() => {
-    if (isOpen) {
-      console.log("=== Event Details ===");
-      console.log("Event:", {
-        id: event.id,
-        name: event.name,
-        description: event.description,
-        venue_name: event.venue_name,
-        start_datetime: event.start_datetime,
-        end_datetime: event.end_datetime,
-        location: event.location,
-        image_urls: event.image_urls,
-        distance: event.distance,
-        attendees: {
-          count: event.attendees.count,
-          profiles: event.attendees.profiles.map((p) => ({
-            id: p.id,
-            name: p.name,
-            avatar_url: p.avatar_url,
-          })),
-        },
-        categories: event.categories.map((c) => ({
-          id: c.id,
-          name: c.name,
-          icon: c.icon,
-        })),
-      });
-      console.log("Nearby Events Count:", nearbyEvents.length);
-    }
-  }, [isOpen, event]);
-
-  const handleOpenDirections = () => {
-    const { latitude, longitude } = event.location;
-    const url = Platform.select({
-      ios: `maps:${latitude},${longitude}?q=${event.venue_name}`,
-      android: `geo:${latitude},${longitude}?q=${event.venue_name}`,
-    });
-
-    if (url) {
-      Linking.openURL(url).catch((err) => {
-        console.error("Error opening maps:", err);
-      });
-    }
-  };
-
-  return (
-    <Sheet isOpen={isOpen} onClose={onClose}>
-      <View className="flex-1">
-        <View className="flex-row items-center justify-between p-4 pb-2">
-          <Text className="text-2xl font-bold">{event.name}</Text>
-          <TouchableOpacity onPress={onClose}>
-            <X size={24} />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-          <View className="p-4">
-            <Image
-              source={{ uri: event.image_urls[0] }}
-              className="w-full h-48 mb-4 rounded-lg"
-            />
-
-            <View className="flex-row items-center mb-2">
-              <MapPin size={20} className="mr-2 text-muted-foreground" />
-              <Text className="text-muted-foreground">{event.venue_name}</Text>
-            </View>
-
-            <Text className="mb-4">{event.description}</Text>
-
-            {/* Categories */}
-            <View className="flex-row flex-wrap gap-2 mb-4">
-              {event.categories.map((category) => (
-                <View
-                  key={category.id}
-                  className="px-3 py-1 rounded-full bg-secondary/20"
-                >
-                  <Text className="text-sm font-medium text-secondary">
-                    {category.name}
-                  </Text>
-                </View>
-              ))}
-            </View>
-
-            {/* Action Buttons */}
-            <View className="flex-row gap-3 mb-6">
-              <TouchableOpacity className="items-center flex-1 py-3 rounded-full bg-primary">
-                <Text className="font-medium text-white">Mark Attending</Text>
-              </TouchableOpacity>
-              <TouchableOpacity className="items-center flex-1 py-3 rounded-full bg-secondary">
-                <Text className="font-medium">Create Orbit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="items-center flex-1 py-3 rounded-full bg-muted"
-                onPress={handleOpenDirections}
-              >
-                <Text className="font-medium">Directions</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Attendees Section */}
-            <View className="mb-6">
-              <Text className="mb-2 text-lg font-semibold">Attendees</Text>
-              <View className="flex-row flex-wrap gap-2">
-                {event.attendees.profiles.map((attendee) => (
-                  <View key={attendee.id} className="items-center">
-                    <Image
-                      source={{ uri: attendee.avatar_url }}
-                      className="w-12 h-12 mb-1 border-2 border-white rounded-full"
-                    />
-                    <Text className="text-xs text-muted-foreground">
-                      {attendee.name}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            {/* Nearby Events Section */}
-            <View>
-              <Text className="mb-2 text-lg font-semibold">Nearby Events</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {nearbyEvents.map((nearbyEvent) => (
-                  <TouchableOpacity
-                    key={nearbyEvent.id}
-                    className="w-48 mr-4"
-                    onPress={() => {
-                      onClose();
-                      onEventSelect(nearbyEvent);
-                    }}
-                  >
-                    <Image
-                      source={{ uri: nearbyEvent.image_urls[0] }}
-                      className="w-full h-24 mb-2 rounded-lg"
-                    />
-                    <Text className="font-medium" numberOfLines={1}>
-                      {nearbyEvent.name}
-                    </Text>
-                    <Text
-                      className="text-sm text-muted-foreground"
-                      numberOfLines={1}
-                    >
-                      {nearbyEvent.venue_name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          </View>
-        </ScrollView>
-      </View>
-    </Sheet>
-  );
-};
-
-const EventCard = ({
-  event,
-  nearbyEvents,
-  onClose,
-  onEventSelect,
-}: {
-  event: MapEvent;
-  nearbyEvents: MapEvent[];
-  onClose: () => void;
-  onEventSelect: (event: MapEvent) => void;
-}) => {
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const startTime = new Date(event.start_datetime);
-  const endTime = new Date(event.end_datetime);
-  const startsIn = formatDistanceToNow(startTime);
-
-  return (
-    <>
-      <View className="absolute left-0 right-0 mx-4 bottom-10 mb-14">
-        <TouchableOpacity
-          className="absolute z-10 items-center justify-center w-8 h-8 rounded-full right-2 top-2 bg-black/20"
-          onPress={onClose}
-        >
-          <X size={20} color="white" />
-        </TouchableOpacity>
-
-        <View className="overflow-hidden rounded-2xl">
-          <Image
-            source={{ uri: event.image_urls[0] }}
-            className="absolute w-full h-full"
-            blurRadius={3}
-          />
-          <BlurView intensity={20} className="p-4">
-            <View>
-              {/* Event Title */}
-              <Text className="mb-2 text-2xl font-semibold text-white">
-                {event.name}
-              </Text>
-
-              {/* Location and Time */}
-              <View className="flex-row items-center mb-4">
-                <Text className="text-white/90">
-                  {event.venue_name} • {format(startTime, "h:mm a")} -{" "}
-                  {format(endTime, "h:mm a")}
-                </Text>
-              </View>
-
-              {/* Action Buttons */}
-              <View className="flex-row gap-3 mb-8">
-                <TouchableOpacity className="px-6 py-2 rounded-full bg-primary">
-                  <Text className="font-medium text-white">Join Event</Text>
-                </TouchableOpacity>
-                <TouchableOpacity className="px-6 py-2 rounded-full bg-white/20">
-                  <Text className="font-medium text-white">Directions</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  className="items-center justify-center w-10 h-10 rounded-full bg-white/20"
-                  onPress={() => setIsDetailsOpen(true)}
-                >
-                  <Info size={20} color="white" />
-                </TouchableOpacity>
-              </View>
-
-              {/* Attendees */}
-              <View className="flex-row items-center justify-between">
-                <View className="flex-row items-center">
-                  {event.attendees.profiles
-                    .slice(0, 4)
-                    .map((attendee, index) => (
-                      <View
-                        key={attendee.id}
-                        style={{
-                          marginLeft: index > 0 ? -12 : 0,
-                          zIndex: 4 - index,
-                        }}
-                      >
-                        <Image
-                          source={{ uri: attendee.avatar_url }}
-                          className="w-8 h-8 border-2 border-white rounded-full"
-                        />
-                      </View>
-                    ))}
-                  {event.attendees.count > 4 && (
-                    <View className="px-2 py-1 ml-1 rounded-full bg-white/20">
-                      <Text className="text-white">
-                        +{event.attendees.count - 4}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Starts In */}
-                <View className="px-3 py-1 bg-red-500 rounded-full">
-                  <Text className="text-sm text-white">Starts: {startsIn}</Text>
-                </View>
-              </View>
-            </View>
-          </BlurView>
-        </View>
-      </View>
-
-      <EventDetailsSheet
-        event={event}
-        nearbyEvents={nearbyEvents}
-        isOpen={isDetailsOpen}
-        onClose={() => setIsDetailsOpen(false)}
-        onEventSelect={onEventSelect}
-      />
-    </>
-  );
-};
-
 export default function Map() {
   const { theme, isDarkMode } = useTheme();
   const { user } = useUser();
+  const mapRef = useRef<MapboxGL.MapView>(null);
   const [location, setLocation] = useState<{
     latitude: number;
     longitude: number;
     heading?: number | null;
-  }>({
-    latitude: 37.7694,
-    longitude: -122.4862,
-    heading: 0,
-  });
+  } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [isFollowingUser, setIsFollowingUser] = useState(false);
-  const mapRef = useRef<MapboxGL.MapView>(null);
-  const cameraRef = useRef<MapboxGL.Camera>(null);
-  const [zoomLevel, setZoomLevel] = useState(14);
-  const [mapCenter, setMapCenter] = useState<[number, number]>([
-    37.7694, -122.4862,
-  ]);
+
+  const {
+    cameraRef,
+    isFollowingUser,
+    setIsFollowingUser,
+    handleZoomIn,
+    handleZoomOut,
+    handleRecenter,
+    fitToEvents,
+  } = useMapCamera();
 
   const {
     events,
-    selectedEvent: mapSelectedEvent,
+    clusters,
+    selectedEvent,
     isLoading,
     error,
     handleEventClick,
     handleCloseModal,
   } = useMapEvents({
-    center: mapCenter,
-    radius: 5000,
+    center: location
+      ? [location.latitude, location.longitude]
+      : [37.7749, -122.4194],
+    radius: 50000,
     timeRange: "now",
   });
 
+  // Add logging for event selection
   useEffect(() => {
-    console.log("=== All Events ===");
-    console.log("Total Events:", events.length);
-    console.log(
-      "Events:",
-      events.map((event) => ({
-        id: event.id,
-        name: event.name,
-        venue_name: event.venue_name,
-        start_datetime: event.start_datetime,
-        categories: event.categories.map((c) => c.name),
-        attendees_count: event.attendees.count,
-      }))
-    );
+    if (selectedEvent) {
+      console.log("Selected event:", {
+        id: selectedEvent.id,
+        name: selectedEvent.name,
+        venue: selectedEvent.venue_name,
+      });
+    }
+  }, [selectedEvent]);
+
+  // Add logging for events
+  useEffect(() => {
+    console.log("Total events available:", events.length);
   }, [events]);
 
+  // Initialize and watch location
   useEffect(() => {
     let locationSubscription: Location.LocationSubscription;
 
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         setErrorMsg("Permission to access location was denied");
         return;
       }
 
       try {
-        // Get initial location immediately
         const initialLocation = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.BestForNavigation,
         });
@@ -465,7 +112,6 @@ export default function Map() {
           heading: initialLocation.coords.heading || undefined,
         });
 
-        // Start watching position with heading
         locationSubscription = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.BestForNavigation,
@@ -478,107 +124,40 @@ export default function Map() {
               longitude: newLocation.coords.longitude,
               heading: newLocation.coords.heading || undefined,
             });
-
-            if (isFollowingUser && cameraRef.current) {
-              cameraRef.current.setCamera({
-                centerCoordinate: [
-                  newLocation.coords.longitude,
-                  newLocation.coords.latitude,
-                ],
-                animationDuration: 500,
-              });
-            }
           }
         );
       } catch (error) {
         console.error("Location error:", error);
         setErrorMsg(
-          "Error getting location. Please check your location settings and try again."
+          "Error getting location. Please check your location settings."
         );
       }
     })();
 
-    return () => {
-      if (locationSubscription) {
-        locationSubscription.remove();
-      }
-    };
-  }, [isFollowingUser]);
+    return () => locationSubscription?.remove();
+  }, []);
 
-  const handleMapIdle = useCallback(
-    (feature: { properties?: any }) => {
-      try {
-        if (!feature || !feature.properties) return;
-
-        const { properties } = feature;
-
-        // Update zoom if available
-        if (properties.zoomLevel) {
-          setZoomLevel(properties.zoomLevel);
-        }
-
-        // Update center if changed significantly
-        if (properties.center && Array.isArray(properties.center)) {
-          const [centerLng, centerLat] = properties.center;
-          if (
-            Math.abs(centerLat - mapCenter[0]) > 0.001 ||
-            Math.abs(centerLng - mapCenter[1]) > 0.001
-          ) {
-            setMapCenter([centerLat, centerLng]);
-          }
-        }
-      } catch (err) {
-        console.error("Error handling map idle:", err);
-      }
-    },
-    [mapCenter]
-  );
-
-  const handleSearch = (text: string) => {
-    console.log("Searching for:", text);
-  };
-
-  const handleRecenter = () => {
-    if (location && cameraRef.current) {
-      setIsFollowingUser(true);
-      cameraRef.current.setCamera({
-        centerCoordinate: [location.longitude, location.latitude],
-        zoomLevel: 16,
-        animationDuration: 500,
-      });
-    }
-  };
-
-  const handleZoomIn = () => {
-    if (cameraRef.current) {
-      const newZoom = Math.min(zoomLevel + 1, 20); // Max zoom level is 20
-      setZoomLevel(newZoom);
-      cameraRef.current.setCamera({
-        zoomLevel: newZoom,
-        centerCoordinate: [location.longitude, location.latitude],
-        animationDuration: 300,
-      });
-    }
-  };
-
-  const handleZoomOut = () => {
-    if (cameraRef.current) {
-      const newZoom = Math.max(zoomLevel - 1, 0); // Min zoom level is 0
-      setZoomLevel(newZoom);
-      cameraRef.current.setCamera({
-        zoomLevel: newZoom,
-        centerCoordinate: [location.longitude, location.latitude],
-        animationDuration: 300,
-      });
-    }
-  };
-
-  // Handle map tap to close event preview
   const handleMapTap = useCallback(() => {
-    if (mapSelectedEvent) {
+    if (selectedEvent) {
       handleCloseModal();
     }
-  }, [mapSelectedEvent, handleCloseModal]);
+  }, [selectedEvent, handleCloseModal]);
+
+  const handleEventSelect = useCallback(
+    (event: MapEvent) => {
+      // Center map on selected event
+      if (cameraRef.current) {
+        cameraRef.current.setCamera({
+          centerCoordinate: [event.location.longitude, event.location.latitude],
+          zoomLevel: 14,
+          animationDuration: 500,
+          animationMode: "flyTo",
+        });
+      }
+      handleEventClick(event);
+    },
+    [handleEventClick]
+  );
 
   if (errorMsg) {
     return (
@@ -591,7 +170,8 @@ export default function Map() {
   if (!location) {
     return (
       <View className="items-center justify-center flex-1">
-        <Text>Loading location...</Text>
+        <ActivityIndicator size="large" />
+        <Text className="mt-4">Getting your location...</Text>
       </View>
     );
   }
@@ -606,58 +186,86 @@ export default function Map() {
         scrollEnabled
         zoomEnabled
         onTouchMove={() => setIsFollowingUser(false)}
-        onMapIdle={handleMapIdle}
         onPress={handleMapTap}
+        logoEnabled={false}
       >
         <MapboxGL.Camera
           ref={cameraRef}
-          zoomLevel={zoomLevel}
+          zoomLevel={11}
           centerCoordinate={[location.longitude, location.latitude]}
+          animationMode="none"
+          animationDuration={300}
+          minZoomLevel={9}
+          maxZoomLevel={16}
+          followUserLocation={false}
         />
 
+        {/* Event markers */}
+        {clusters.map((cluster) => (
+          <MapboxGL.MarkerView
+            key={`cluster-${cluster.mainEvent.id}`}
+            id={`cluster-${cluster.mainEvent.id}`}
+            coordinate={[cluster.location.longitude, cluster.location.latitude]}
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
+            <View
+              style={{
+                zIndex: cluster.events.some((e) => e.id === selectedEvent?.id)
+                  ? 1000
+                  : 100,
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => {
+                  // If there's only one event in the cluster, select it directly
+                  if (cluster.events.length === 1) {
+                    handleEventSelect(cluster.events[0]);
+                  } else {
+                    // If there are multiple events, show the first one but indicate there are more
+                    handleEventSelect(cluster.mainEvent);
+                  }
+                }}
+                style={{ padding: 5 }}
+              >
+                <EventMarker
+                  imageUrl={cluster.mainEvent.image_urls[0]}
+                  count={cluster.events.length}
+                  isSelected={cluster.events.some(
+                    (e) => e.id === selectedEvent?.id
+                  )}
+                />
+              </TouchableOpacity>
+            </View>
+          </MapboxGL.MarkerView>
+        ))}
+
         {/* User location marker */}
-        <MapboxGL.PointAnnotation
+        <MapboxGL.MarkerView
           id="userLocation"
           coordinate={[location.longitude, location.latitude]}
+          anchor={{ x: 0.5, y: 0.5 }}
         >
           <UserMarker
             avatarUrl={user?.avatar_url}
             heading={location.heading || undefined}
           />
-        </MapboxGL.PointAnnotation>
-
-        {/* Event markers */}
-        {events.map((event) => (
-          <MapboxGL.PointAnnotation
-            key={event.id}
-            id={`event-${event.id}`}
-            coordinate={[event.location.longitude, event.location.latitude]}
-            onSelected={() => handleEventClick(event)}
-          >
-            <EventMarker imageUrl={event.image_urls[0]} />
-          </MapboxGL.PointAnnotation>
-        ))}
+        </MapboxGL.MarkerView>
       </MapboxGL.MapView>
 
-      <MapControls onSearch={handleSearch} />
+      <MapControls
+        onSearch={() => {}}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onRecenter={() => handleRecenter(location)}
+        isFollowingUser={isFollowingUser}
+      />
 
-      <ZoomControls onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} />
-
-      {!isFollowingUser && (
-        <TouchableOpacity
-          onPress={handleRecenter}
-          className="absolute items-center justify-center border rounded-full bottom-32 right-4 w-11 h-11 bg-background/80 backdrop-blur-lg border-border"
-        >
-          <Navigation2 size={20} />
-        </TouchableOpacity>
-      )}
-
-      {mapSelectedEvent && (
+      {selectedEvent && (
         <EventCard
-          event={mapSelectedEvent}
+          event={selectedEvent}
           nearbyEvents={events}
           onClose={handleCloseModal}
-          onEventSelect={handleEventClick}
+          onEventSelect={handleEventSelect}
         />
       )}
     </View>

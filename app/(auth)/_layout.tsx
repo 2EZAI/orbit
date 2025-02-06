@@ -7,8 +7,9 @@ export default function AuthLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        gestureEnabled: true,
+        gestureEnabled: false,
         animation: Platform.OS === "ios" ? "default" : "slide_from_right",
+        presentation: "card",
       }}
     >
       <Stack.Screen
@@ -27,6 +28,14 @@ export default function AuthLayout() {
         name="reset-password"
         options={{
           title: "Reset Password",
+        }}
+      />
+      <Stack.Screen
+        name="(onboarding)"
+        options={{
+          title: "Onboarding",
+          gestureEnabled: false,
+          presentation: "fullScreenModal",
         }}
       />
     </Stack>

@@ -7,7 +7,7 @@ import {
   SafeAreaView,
   BackHandler,
 } from "react-native";
-import { supabase } from "../../src/lib/supabase";
+import { supabase } from "../../../src/lib/supabase";
 import { router } from "expo-router";
 import { Button } from "~/src/components/ui/button";
 import { Text } from "~/src/components/ui/text";
@@ -118,7 +118,7 @@ export default function Onboarding() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-background">
+      <View className="items-center justify-center flex-1 bg-background">
         <ActivityIndicator size="large" className="text-primary" />
       </View>
     );

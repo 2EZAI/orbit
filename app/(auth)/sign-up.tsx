@@ -18,12 +18,23 @@ import * as ImagePicker from "expo-image-picker";
 import { MotiView } from "moti";
 import { BlurView } from "expo-blur";
 import Constants from "expo-constants";
+import * as FileSystem from "expo-file-system";
 
 console.log("Supabase URL:", Constants.expoConfig?.extra?.supabaseUrl);
 console.log(
   "Supabase Key:",
   Constants.expoConfig?.extra?.supabaseAnonKey?.slice(0, 5) + "..."
 );
+
+// Function to convert base64 to Uint8Array for Supabase storage
+function decode(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
 
 export default function SignUp() {
   const [loading, setLoading] = useState(false);
@@ -34,13 +45,57 @@ export default function SignUp() {
   const [phone, setPhone] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
 
+  async function uploadProfilePicture(userId: string, uri: string) {
+    try {
+      // Get the file extension
+      const fileExt = uri.split(".").pop();
+      const fileName = `${userId}/profile.${fileExt}`;
+      const filePath = `${FileSystem.documentDirectory}profile.${fileExt}`;
+
+      // Download the image first (needed for expo-file-system)
+      await FileSystem.downloadAsync(uri, filePath);
+
+      // Read the file as base64
+      const base64 = await FileSystem.readAsStringAsync(filePath, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from("profile-pictures")
+        .upload(fileName, decode(base64), {
+          contentType: `image/${fileExt}`,
+          upsert: true,
+        });
+
+      if (error) throw error;
+
+      // Get the public URL
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("profile-pictures").getPublicUrl(fileName);
+
+      return publicUrl;
+    } catch (error) {
+      console.error("Error uploading profile picture:", error);
+      throw error;
+    }
+  }
+
   async function signUp() {
     setLoading(true);
+    console.log("Starting sign up process...");
     try {
       if (!email || !password) {
         throw new Error("Email and password are required");
       }
 
+      if (!profileImage) {
+        throw new Error("Please select a profile picture");
+      }
+
+      console.log("Creating user account...");
+      // 1. Create the user account
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -50,26 +105,62 @@ export default function SignUp() {
             last_name: lastName || null,
             phone: phone || null,
           },
+          emailRedirectTo: "orbit://onboarding",
         },
       });
 
       if (error) throw error;
+      console.log("User account created:", data.user?.id);
 
       if (!data?.user) {
         throw new Error("Failed to create account");
       }
 
-      // Since email verification is disabled, we can proceed directly
+      console.log("Uploading profile picture...");
+      // 2. Upload the profile picture
+      const publicUrl = await uploadProfilePicture(data.user.id, profileImage);
+      console.log("Profile picture uploaded:", publicUrl);
+
+      console.log("Updating user avatar...");
+      // 3. Update the user's avatar_url
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({ avatar_url: publicUrl })
+        .eq("id", data.user.id);
+
+      if (updateError) throw updateError;
+      console.log("Avatar updated successfully");
+
       Toast.show({
         type: "success",
         text1: "Welcome!",
         text2: "Your account has been created successfully",
       });
 
-      // Navigate to onboarding with correct path
-      router.replace("/(auth)/(onboarding)");
+      // 4. Get the current session to ensure we're logged in
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        throw new Error("Failed to get session after sign up");
+      }
+
+      // 5. Create initial user record with empty username
+      const { error: userError } = await supabase.from("users").upsert({
+        id: session.user.id,
+        username: null,
+        permissions_granted: false,
+      });
+
+      if (userError) throw userError;
+
+      // 6. Navigate to username screen
+      console.log("Navigating to username screen...");
+
+      router.replace("/(auth)/(onboarding)/username");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Sign up error:", error);
       Toast.show({
         type: "error",
         text1: "Error",
@@ -78,6 +169,7 @@ export default function SignUp() {
       });
     } finally {
       setLoading(false);
+      console.log("Sign up process completed");
     }
   }
 
