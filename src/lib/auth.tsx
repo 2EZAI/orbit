@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
 
       if (session) {
-        router.replace("/(app)/home");
+        router.replace("/(app)/(map)");
       } else {
         router.replace("/");
       }

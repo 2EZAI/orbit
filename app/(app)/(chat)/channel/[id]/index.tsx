@@ -65,10 +65,11 @@ export default function ChannelScreen() {
           "Add Members",
           "View Media",
           "Clear Chat History",
+          "Delete Chat",
           "Cancel",
         ],
-        cancelButtonIndex: 5,
-        destructiveButtonIndex: 4,
+        cancelButtonIndex: 6,
+        destructiveButtonIndex: 5,
       },
       async (buttonIndex) => {
         try {
@@ -129,6 +130,50 @@ export default function ChannelScreen() {
                 ]
               );
               break;
+
+            case 5: // Delete chat
+              Alert.alert(
+                "Delete Chat",
+                "Are you sure you want to delete this chat? This cannot be undone.",
+                [
+                  {
+                    text: "Cancel",
+                    style: "cancel",
+                  },
+                  {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                      try {
+                        // Call backend to delete channel
+                        const response = await fetch(
+                          `${process.env.BACKEND_CHAT_URL}/api/channels/${id}`,
+                          {
+                            method: "DELETE",
+                            headers: {
+                              Authorization: `Bearer ${client?.tokenManager.token}`,
+                            },
+                          }
+                        );
+
+                        if (!response.ok) {
+                          throw new Error("Failed to delete channel");
+                        }
+
+                        // Navigate back after successful deletion
+                        router.back();
+                      } catch (error) {
+                        console.error("Error deleting channel:", error);
+                        Alert.alert(
+                          "Error",
+                          "Failed to delete chat. Please try again."
+                        );
+                      }
+                    },
+                  },
+                ]
+              );
+              break;
           }
         } catch (error) {
           console.error("Channel action error:", error);
@@ -136,7 +181,7 @@ export default function ChannelScreen() {
         }
       }
     );
-  }, [channel, router, id]);
+  }, [channel, router, id, client?.tokenManager.token]);
 
   useEffect(() => {
     if (!client || !id || channelRef.current) {

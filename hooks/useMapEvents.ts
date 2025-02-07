@@ -178,10 +178,10 @@ export function useMapEvents({
         }/api/events/nearby?${new URLSearchParams({
           lat: lat.toString(),
           lng: lng.toString(),
-          radius: (radius * 1.5).toString(), // Increase fetch radius by 50% to have buffer
+          radius: "50000", // Set a large fixed radius to get all events in the area
           start_date: startTime.toISOString(),
           end_date: endTime.toISOString(),
-          limit_count: "50",
+          limit_count: "100", // Increase limit to show more events
         })}`;
 
         console.log("Fetching events from:", url);
@@ -202,25 +202,15 @@ export function useMapEvents({
         });
         eventCacheRef.current = newCache;
 
-        // Combine cached events with new events
+        // Use all events without filtering by radius
         const allEvents = Array.from(newCache.values());
 
-        // Filter events by actual radius and remove duplicates
-        const filteredEvents = allEvents.filter((event) => {
-          const distance =
-            Math.sqrt(
-              Math.pow(event.location.latitude - center[0], 2) +
-                Math.pow(event.location.longitude - center[1], 2)
-            ) * 111000; // Convert to meters
-          return distance <= radius * 1.2; // Keep events within 120% of requested radius
-        });
-
         // Preload images before updating state
-        await preloadEventImages(filteredEvents);
+        await preloadEventImages(allEvents);
 
         if (!isMountedRef.current) return;
-        setEvents(filteredEvents);
-        setClusters(clusterEvents(filteredEvents));
+        setEvents(allEvents);
+        setClusters(clusterEvents(allEvents));
         setError(null);
       } catch (err) {
         console.error("Error fetching events:", err);
