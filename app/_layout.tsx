@@ -6,6 +6,7 @@ import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Toast from "react-native-toast-message";
 import "react-native-reanimated";
+import { ActionSheetProvider } from "@expo/react-native-action-sheet";
 
 import { Text } from "~/src/components/ui/text";
 import { ThemeProvider, useTheme } from "~/src/components/ThemeProvider";
@@ -86,7 +87,9 @@ export default function RootLayout() {
       <ThemeProvider>
         <AuthProvider>
           <ChatProvider>
-            <RootLayoutContent />
+            <ActionSheetProvider>
+              <RootLayoutContent />
+            </ActionSheetProvider>
           </ChatProvider>
         </AuthProvider>
       </ThemeProvider>

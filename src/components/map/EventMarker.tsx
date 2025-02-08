@@ -1,82 +1,96 @@
-import { View, Image } from "react-native";
-import { Text } from "~/src/components/ui/text";
+import React, { useEffect } from "react";
+import { View, Image, StyleSheet } from "react-native";
+import { Text } from "../ui/text";
 
 interface EventMarkerProps {
-  imageUrl: string;
+  imageUrl?: string;
   count?: number;
   isSelected?: boolean;
 }
 
-export const EventMarker = ({
+export function EventMarker({
   imageUrl,
   count = 1,
   isSelected = false,
-}: EventMarkerProps) => (
-  <View style={{ position: "relative", zIndex: isSelected ? 1000 : 100 }}>
-    <View style={{ alignItems: "center" }}>
-      <View
-        style={{
-          padding: 2,
-          backgroundColor: "white",
-          borderRadius: 10,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.25,
-          shadowRadius: 3.84,
-          elevation: 5,
-          width: 50,
-          height: 50,
-          borderWidth: isSelected ? 2 : 0,
-          borderColor: "#0091ff",
-        }}
-      >
+}: EventMarkerProps) {
+  useEffect(() => {
+    console.log("[EventMarker] Rendering marker:", {
+      imageUrl,
+      count,
+      isSelected,
+    });
+  }, [imageUrl, count, isSelected]);
+
+  return (
+    <View style={[styles.container, isSelected && styles.selected]}>
+      {imageUrl ? (
         <Image
           source={{ uri: imageUrl }}
-          style={{
-            width: "100%",
-            height: "100%",
-            borderRadius: 8,
-          }}
+          style={styles.image}
+          onError={(e) =>
+            console.error(
+              "[EventMarker] Image load error:",
+              e.nativeEvent.error
+            )
+          }
         />
-        {count > 1 && (
-          <View
-            style={{
-              position: "absolute",
-              top: -8,
-              right: -8,
-              backgroundColor: "#0091ff",
-              borderRadius: 12,
-              minWidth: 24,
-              height: 24,
-              alignItems: "center",
-              justifyContent: "center",
-              borderWidth: 2,
-              borderColor: "white",
-            }}
-          >
-            <Text
-              style={{
-                color: "white",
-                fontSize: 12,
-                fontWeight: "bold",
-                paddingHorizontal: 4,
-              }}
-            >
-              {count}
-            </Text>
-          </View>
-        )}
-      </View>
-      <View
-        style={{
-          width: 8,
-          height: 8,
-          marginTop: -4,
-          borderRadius: 4,
-          backgroundColor: "black",
-          opacity: 0.2,
-        }}
-      />
+      ) : (
+        <View style={styles.placeholder} />
+      )}
+      {count > 1 && (
+        <View style={styles.countBadge}>
+          <Text style={styles.countText}>{count}</Text>
+        </View>
+      )}
     </View>
-  </View>
-);
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#ffffff",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    borderWidth: 2,
+    borderColor: "#ffffff",
+  },
+  selected: {
+    borderColor: "#007AFF",
+    transform: [{ scale: 1.1 }],
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 18,
+  },
+  placeholder: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 18,
+    backgroundColor: "#E1E1E1",
+  },
+  countBadge: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    backgroundColor: "#007AFF",
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ffffff",
+  },
+  countText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+});

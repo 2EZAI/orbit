@@ -14,7 +14,7 @@ import {
 import { Text } from "~/src/components/ui/text";
 import * as Location from "expo-location";
 import { useTheme } from "~/src/components/ThemeProvider";
-import MapboxGL from "@rnmapbox/maps";
+import MapboxGL, { UserTrackingMode } from "@rnmapbox/maps";
 import { useUser } from "~/hooks/useUserData";
 import { useMapEvents, type MapEvent } from "~/hooks/useMapEvents";
 import { useMapCamera } from "~/src/hooks/useMapCamera";
@@ -25,6 +25,7 @@ import { Sheet } from "~/src/components/ui/sheet";
 import { UserMarker } from "~/src/components/map/UserMarker";
 import { EventMarker } from "~/src/components/map/EventMarker";
 import { EventCard } from "~/src/components/map/EventCard";
+import { ClusterSheet } from "~/src/components/map/ClusterSheet";
 
 // Replace with your Mapbox access token
 MapboxGL.setAccessToken(
@@ -47,6 +48,9 @@ export default function Map() {
     heading?: number | null;
   } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [selectedCluster, setSelectedCluster] = useState<MapEvent[] | null>(
+    null
+  );
 
   const {
     cameraRef,
@@ -87,8 +91,53 @@ export default function Map() {
 
   // Add logging for events
   useEffect(() => {
-    console.log("Total events available:", events.length);
-  }, [events]);
+    console.log("[Map] Total events available:", events.length);
+    console.log("[Map] First event location:", events[0]?.location);
+
+    // Fit map to events if we have any
+    if (events.length > 0 && mapRef.current && cameraRef.current) {
+      const bounds = events.reduce(
+        (acc, event) => {
+          acc.north = Math.max(acc.north, event.location.latitude);
+          acc.south = Math.min(acc.south, event.location.latitude);
+          acc.east = Math.max(acc.east, event.location.longitude);
+          acc.west = Math.min(acc.west, event.location.longitude);
+          return acc;
+        },
+        {
+          north: -90,
+          south: 90,
+          east: -180,
+          west: 180,
+        }
+      );
+
+      console.log("[Map] Calculated bounds:", bounds);
+
+      // Add padding to bounds
+      const padding = 0.1; // degrees
+
+      // Only fit to bounds if they're valid (not the initial values)
+      if (bounds.north !== -90 && bounds.south !== 90) {
+        // Calculate center point of events
+        const centerLat = (bounds.north + bounds.south) / 2;
+        const centerLng = (bounds.east + bounds.west) / 2;
+
+        // Calculate appropriate zoom level based on bounds
+        const latDiff = Math.abs(bounds.north - bounds.south);
+        const lngDiff = Math.abs(bounds.east - bounds.west);
+        const maxDiff = Math.max(latDiff, lngDiff);
+        const zoomLevel = Math.floor(14 - Math.log2(maxDiff)); // Adjust 14 to change base zoom
+
+        cameraRef.current.setCamera({
+          centerCoordinate: [centerLng, centerLat],
+          zoomLevel: Math.min(Math.max(zoomLevel, 9), 16), // Clamp between min and max zoom
+          animationDuration: 1000,
+          animationMode: "flyTo",
+        });
+      }
+    }
+  }, [events, mapRef, cameraRef]);
 
   // Initialize and watch location
   useEffect(() => {
@@ -112,11 +161,24 @@ export default function Map() {
           heading: initialLocation.coords.heading || undefined,
         });
 
+        // Set initial camera position smoothly
+        if (cameraRef.current) {
+          cameraRef.current.setCamera({
+            centerCoordinate: [
+              initialLocation.coords.longitude,
+              initialLocation.coords.latitude,
+            ],
+            zoomLevel: 11,
+            animationDuration: 1000,
+            animationMode: "flyTo",
+          });
+        }
+
         locationSubscription = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.BestForNavigation,
-            distanceInterval: 0,
-            timeInterval: 1000,
+            distanceInterval: 10, // Only update if moved 10 meters
+            timeInterval: 5000, // Or every 5 seconds
           },
           (newLocation) => {
             setLocation({
@@ -159,6 +221,38 @@ export default function Map() {
     [handleEventClick]
   );
 
+  const handleClusterPress = useCallback(
+    (cluster: { events: MapEvent[] }) => {
+      console.log("[Map] Cluster pressed:", {
+        eventCount: cluster.events.length,
+        firstEventId: cluster.events[0]?.id,
+      });
+
+      if (cluster.events.length === 1) {
+        // Center map on selected event
+        if (cameraRef.current) {
+          cameraRef.current.setCamera({
+            centerCoordinate: [
+              cluster.events[0].location.longitude,
+              cluster.events[0].location.latitude,
+            ],
+            zoomLevel: 14,
+            animationDuration: 500,
+            animationMode: "flyTo",
+          });
+        }
+        handleEventClick(cluster.events[0]);
+      } else {
+        setSelectedCluster(cluster.events);
+      }
+    },
+    [handleEventClick, cameraRef]
+  );
+
+  const handleClusterClose = useCallback(() => {
+    setSelectedCluster(null);
+  }, []);
+
   if (errorMsg) {
     return (
       <View className="items-center justify-center flex-1">
@@ -188,16 +282,29 @@ export default function Map() {
         onTouchMove={() => setIsFollowingUser(false)}
         onPress={handleMapTap}
         logoEnabled={false}
+        onDidFinishLoadingMap={() => {
+          console.log("[Map] Map finished loading");
+        }}
+        onRegionDidChange={(region) => {
+          console.log("[Map] Region changed:", region);
+        }}
       >
         <MapboxGL.Camera
           ref={cameraRef}
-          zoomLevel={11}
-          centerCoordinate={[location.longitude, location.latitude]}
-          animationMode="none"
-          animationDuration={300}
-          minZoomLevel={9}
+          defaultSettings={{
+            centerCoordinate: [
+              location?.longitude || -122.4194,
+              location?.latitude || 37.7749,
+            ],
+            zoomLevel: 11,
+          }}
           maxZoomLevel={16}
-          followUserLocation={false}
+          minZoomLevel={9}
+          animationMode="flyTo"
+          animationDuration={1000}
+          followUserLocation={isFollowingUser}
+          followUserMode={UserTrackingMode.FollowWithCourse}
+          followZoomLevel={14}
         />
 
         {/* Event markers */}
@@ -216,15 +323,7 @@ export default function Map() {
               }}
             >
               <TouchableOpacity
-                onPress={() => {
-                  // If there's only one event in the cluster, select it directly
-                  if (cluster.events.length === 1) {
-                    handleEventSelect(cluster.events[0]);
-                  } else {
-                    // If there are multiple events, show the first one but indicate there are more
-                    handleEventSelect(cluster.mainEvent);
-                  }
-                }}
+                onPress={() => handleClusterPress(cluster)}
                 style={{ padding: 5 }}
               >
                 <EventMarker
@@ -266,6 +365,14 @@ export default function Map() {
           nearbyEvents={events}
           onClose={handleCloseModal}
           onEventSelect={handleEventSelect}
+        />
+      )}
+
+      {selectedCluster && (
+        <ClusterSheet
+          events={selectedCluster}
+          onEventSelect={handleEventClick}
+          onClose={handleClusterClose}
         />
       )}
     </View>

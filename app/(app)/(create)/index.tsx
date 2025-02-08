@@ -15,22 +15,20 @@ import {
   Calendar,
   Clock,
   MapPin,
-  Link,
   Image as ImageIcon,
   Plus,
   X,
-  Info,
   Globe,
   Lock,
-  Search,
-  ChevronDown,
 } from "lucide-react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { useActionSheet } from "@expo/react-native-action-sheet";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 import { useUser } from "~/hooks/useUserData";
 import { supabase } from "~/src/lib/supabase";
 import { router } from "expo-router";
 import { debounce } from "lodash";
+import Toast from "react-native-toast-message";
 
 interface EventImage {
   uri: string;
@@ -64,7 +62,18 @@ interface LocationDetails {
   coordinates: [number, number];
 }
 
+// Function to convert base64 to Uint8Array for Supabase storage
+function decode(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
 export default function CreateEvent() {
+  const { showActionSheetWithOptions } = useActionSheet();
   const { user } = useUser();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -85,76 +94,158 @@ export default function CreateEvent() {
   const [endDate, setEndDate] = useState(new Date());
   const [externalUrl, setExternalUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
-  const [pickerType, setPickerType] = useState<DateTimePickerType>("date");
   const [isPrivate, setIsPrivate] = useState(false);
 
-  const showPicker = (type: DateTimePickerType, isStart: boolean) => {
-    setPickerType(type);
-    if (isStart) {
-      setShowStartPicker(true);
-    } else {
-      setShowEndPicker(true);
-    }
+  const showDatePicker = (isStart: boolean) => {
+    const currentDate = isStart ? startDate : endDate;
+    const options = [
+      "Today",
+      "Tomorrow",
+      "In 2 days",
+      "In 3 days",
+      "Pick a specific date",
+      "Cancel",
+    ];
+
+    showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex: 5,
+        title: `Select ${isStart ? "Start" : "End"} Date`,
+      },
+      (selectedIndex) => {
+        if (selectedIndex === undefined || selectedIndex === 5) return;
+
+        const newDate = new Date();
+        if (selectedIndex === 0) {
+          // Today - keep current date
+        } else if (selectedIndex === 1) {
+          // Tomorrow
+          newDate.setDate(newDate.getDate() + 1);
+        } else if (selectedIndex === 2) {
+          // In 2 days
+          newDate.setDate(newDate.getDate() + 2);
+        } else if (selectedIndex === 3) {
+          // In 3 days
+          newDate.setDate(newDate.getDate() + 3);
+        } else if (selectedIndex === 4) {
+          // Show date input alert
+          Alert.prompt("Enter Date", "Format: MM/DD/YYYY", (text) => {
+            const date = new Date(text);
+            if (isNaN(date.getTime())) {
+              Alert.alert(
+                "Invalid Date",
+                "Please enter a valid date in MM/DD/YYYY format"
+              );
+              return;
+            }
+            if (isStart) {
+              setStartDate(date);
+            } else {
+              setEndDate(date);
+            }
+          });
+          return;
+        }
+
+        // Keep the current time
+        newDate.setHours(currentDate.getHours());
+        newDate.setMinutes(currentDate.getMinutes());
+
+        if (isStart) {
+          setStartDate(newDate);
+        } else {
+          setEndDate(newDate);
+        }
+      }
+    );
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === "android") {
-      setShowStartPicker(false);
-      setShowEndPicker(false);
-    }
+  const showTimePicker = (isStart: boolean) => {
+    const currentDate = isStart ? startDate : endDate;
+    const hours = Array.from({ length: 24 }, (_, i) => {
+      const hour = i % 12 || 12;
+      const ampm = i < 12 ? "AM" : "PM";
+      return `${hour}:00 ${ampm}`;
+    });
 
-    if (event.type === "set" && selectedDate) {
-      const currentDate = showStartPicker ? startDate : endDate;
-      const newDate = new Date(currentDate);
+    const options = [...hours, "Cancel"];
 
-      if (pickerType === "date") {
-        newDate.setFullYear(selectedDate.getFullYear());
-        newDate.setMonth(selectedDate.getMonth());
-        newDate.setDate(selectedDate.getDate());
-      } else {
-        newDate.setHours(selectedDate.getHours());
-        newDate.setMinutes(selectedDate.getMinutes());
+    showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex: 24,
+        title: `Select ${isStart ? "Start" : "End"} Time`,
+      },
+      (selectedIndex) => {
+        if (selectedIndex === undefined || selectedIndex === 24) return;
+
+        const newDate = new Date(currentDate);
+        newDate.setHours(selectedIndex);
+        newDate.setMinutes(0);
+
+        if (isStart) {
+          setStartDate(newDate);
+        } else {
+          setEndDate(newDate);
+        }
       }
-
-      if (showStartPicker) {
-        setStartDate(newDate);
-      } else {
-        setEndDate(newDate);
-      }
-    }
-
-    if (Platform.OS === "ios") {
-      setShowStartPicker(false);
-      setShowEndPicker(false);
-    }
+    );
   };
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      selectionLimit: 5,
-      allowsEditing: false,
-      aspect: [16, 9],
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      const newImages = result.assets.map((asset) => ({
-        uri: asset.uri,
-        type: "image/jpeg",
-        name: `event-image-${Date.now()}-${Math.random()
-          .toString(36)
-          .substring(7)}.jpg`,
-      }));
-
-      setImages((prev) => {
-        const combined = [...prev, ...newImages];
-        // Limit to 5 images total
-        return combined.slice(0, 5);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        allowsEditing: false,
       });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        // Filter out invalid assets
+        const validAssets = result.assets.filter((asset) => {
+          const isValidUri = asset.uri && asset.uri.startsWith("file://");
+          // For ImagePicker, we just need to check if it's an image type
+          const isValidType = asset.type === "image";
+          return isValidUri && isValidType;
+        });
+
+        if (validAssets.length === 0) {
+          throw new Error(
+            "No valid images selected. Please select JPEG or PNG images."
+          );
+        }
+
+        // Map assets to include file extension and proper MIME type
+        const processedAssets = validAssets.map((asset) => {
+          const extension = asset.uri.split(".").pop()?.toLowerCase();
+
+          // Determine MIME type based on file extension
+          let mimeType = "image/jpeg"; // default
+          if (extension === "png") {
+            mimeType = "image/png";
+          } else if (extension === "heic") {
+            mimeType = "image/heic";
+          }
+
+          return {
+            uri: asset.uri,
+            type: mimeType,
+            name: `image-${Date.now()}.${extension || "jpg"}`,
+          };
+        });
+
+        setImages((prevImages) => [...prevImages, ...processedAssets]);
+      }
+    } catch (error: any) {
+      console.error("Image picker error:", error);
+      Alert.alert(
+        "Error",
+        error instanceof Error
+          ? error.message
+          : "Failed to select images. Please try again."
+      );
     }
   };
 
@@ -236,69 +327,128 @@ export default function CreateEvent() {
     try {
       // 1. Upload images to storage
       const imageUrls = await Promise.all(
-        images.map(async (image) => {
-          const fileName = `events/${user.id}/${Date.now()}-${image.name}`;
-          const response = await fetch(image.uri);
-          const blob = await response.blob();
+        images.map(async (image, index) => {
+          try {
+            if (!image?.uri || !image?.type) {
+              throw new Error(`Invalid image data for image ${index + 1}`);
+            }
 
-          const { error: uploadError, data } = await supabase.storage
-            .from("event-images")
-            .upload(fileName, blob);
+            // Get the file extension
+            const fileExt = image.uri.split(".").pop()?.toLowerCase() || "jpg";
+            const fileName = `${user.id}/${Date.now()}-${index}.${fileExt}`;
+            const filePath = `${
+              FileSystem.documentDirectory
+            }temp_${Date.now()}-${index}.${fileExt}`;
 
-          if (uploadError) throw uploadError;
+            // Download the image first (needed for expo-file-system)
+            await FileSystem.downloadAsync(image.uri, filePath);
 
-          const {
-            data: { publicUrl },
-          } = supabase.storage.from("event-images").getPublicUrl(fileName);
+            // Read the file as base64
+            const base64 = await FileSystem.readAsStringAsync(filePath, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
 
-          return publicUrl;
+            // Upload to Supabase Storage
+            const { error: uploadError } = await supabase.storage
+              .from("event-images")
+              .upload(fileName, decode(base64), {
+                contentType: image.type || `image/${fileExt}`,
+                upsert: true,
+              });
+
+            // Clean up the temporary file
+            try {
+              await FileSystem.deleteAsync(filePath);
+            } catch (cleanupError) {
+              console.warn("Error cleaning up temp file:", cleanupError);
+            }
+
+            if (uploadError) {
+              console.error("Upload error:", uploadError);
+              throw uploadError;
+            }
+
+            // Get the public URL
+            const {
+              data: { publicUrl },
+            } = supabase.storage.from("event-images").getPublicUrl(fileName);
+
+            if (!publicUrl) {
+              throw new Error("Failed to get public URL for uploaded image");
+            }
+
+            return publicUrl;
+          } catch (error: any) {
+            console.error("Image processing error:", error);
+            throw new Error(
+              `Error processing image ${index + 1}: ${
+                error?.message || "Unknown error"
+              }`
+            );
+          }
         })
       );
 
+      // Get auth session
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("No valid auth session");
+      }
+
       // 2. Create event using our API
+      const eventData = {
+        name,
+        description,
+        address: locationDetails.address1,
+        address_line2: locationDetails.address2,
+        city: locationDetails.city,
+        state: locationDetails.state,
+        zip: locationDetails.zip,
+        start_datetime: startDate.toISOString(),
+        end_datetime: endDate.toISOString(),
+        external_url: externalUrl || null,
+        image_urls: imageUrls,
+        is_private: isPrivate,
+      };
+
       const response = await fetch(
         `${process.env.BACKEND_MAP_URL}/api/events`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${
-              (
-                await supabase.auth.getSession()
-              ).data.session?.access_token
-            }`,
+            Authorization: `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({
-            name,
-            description,
-            address: locationDetails.address1,
-            address_line2: locationDetails.address2,
-            city: locationDetails.city,
-            state: locationDetails.state,
-            zip: locationDetails.zip,
-            start_datetime: startDate.toISOString(),
-            end_datetime: endDate.toISOString(),
-            external_url: externalUrl || null,
-            image_urls: imageUrls,
-            is_private: isPrivate,
-          }),
+          body: JSON.stringify(eventData),
         }
       );
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to create event");
+        const responseData = await response.json();
+        throw new Error(responseData.error || "Failed to create event");
       }
 
       const event = await response.json();
 
-      Alert.alert(
-        "Success",
-        "Your event has been submitted for review. We'll notify you once it's approved.",
-        [{ text: "OK", onPress: () => router.back() }]
-      );
-    } catch (error) {
-      console.error("Error creating event:", error);
+      Toast.show({
+        type: "success",
+        text1: "Event Created!",
+        text2: "Your event has been created successfully",
+      });
+
+      // Navigate to the map view centered on the event location
+      router.push({
+        pathname: "/(app)/(map)",
+        params: {
+          lat: event.location.latitude,
+          lng: event.location.longitude,
+          zoom: 15, // Close enough to see the event clearly
+        },
+      });
+    } catch (error: any) {
+      console.error("Event creation error:", error);
       Alert.alert(
         "Error",
         error instanceof Error
@@ -545,7 +695,7 @@ export default function CreateEvent() {
 
                 <View className="space-y-3">
                   <TouchableOpacity
-                    onPress={() => showPicker("date", true)}
+                    onPress={() => showDatePicker(true)}
                     className="flex-row items-center justify-between p-3 border rounded-lg bg-background border-border"
                   >
                     <View className="flex-row items-center">
@@ -561,7 +711,7 @@ export default function CreateEvent() {
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    onPress={() => showPicker("time", true)}
+                    onPress={() => showTimePicker(true)}
                     className="flex-row items-center justify-between p-3 border rounded-lg bg-background border-border"
                   >
                     <View className="flex-row items-center">
@@ -594,7 +744,7 @@ export default function CreateEvent() {
 
                 <View className="space-y-3">
                   <TouchableOpacity
-                    onPress={() => showPicker("date", false)}
+                    onPress={() => showDatePicker(false)}
                     className="flex-row items-center justify-between p-3 border rounded-lg bg-background border-border"
                   >
                     <View className="flex-row items-center">
@@ -610,7 +760,7 @@ export default function CreateEvent() {
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    onPress={() => showPicker("time", false)}
+                    onPress={() => showTimePicker(false)}
                     className="flex-row items-center justify-between p-3 border rounded-lg bg-background border-border"
                   >
                     <View className="flex-row items-center">
@@ -665,17 +815,6 @@ export default function CreateEvent() {
           </View>
         </View>
       </ScrollView>
-
-      {/* Date Picker */}
-      {(showStartPicker || showEndPicker) && (
-        <DateTimePicker
-          value={showStartPicker ? startDate : endDate}
-          mode={pickerType}
-          is24Hour={false}
-          onChange={handleDateChange}
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-        />
-      )}
     </SafeAreaView>
   );
 }
