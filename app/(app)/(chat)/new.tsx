@@ -149,12 +149,17 @@ export default function NewChatScreen() {
       const memberIds = [client.userID, ...selectedUsers.map((u) => u.id)];
       console.log("Member IDs:", memberIds);
 
+      // Generate a unique channel ID using timestamp and random string
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(7);
+      const uniqueChannelId = `${timestamp}-${randomStr}`;
+
       // Create the channel with members list and name
       console.log("[NewChat] Creating Stream channel with config:", {
         members: memberIds,
         name: chatName,
       });
-      const channel = client.channel("messaging", undefined, {
+      const channel = client.channel("messaging", uniqueChannelId, {
         members: memberIds,
         name: chatName,
       });

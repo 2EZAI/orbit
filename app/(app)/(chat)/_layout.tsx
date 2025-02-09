@@ -1,4 +1,4 @@
-import { Stack } from "expo-router";
+import { Stack, usePathname } from "expo-router";
 import { Chat, OverlayProvider } from "stream-chat-expo";
 import { ChatThemeProvider } from "~/src/components/chat/ChatThemeProvider";
 import { useChat } from "~/src/lib/chat";
@@ -8,6 +8,11 @@ import { LiveLocationContextProvider } from "~/src/lib/LiveLocationContext";
 
 export default function ChatLayout() {
   const { client, isConnecting } = useChat();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    console.log("[ChatLayout] Route changed:", { pathname });
+  }, [pathname]);
 
   useEffect(() => {
     console.log("[ChatLayout] Mounting with state:", {

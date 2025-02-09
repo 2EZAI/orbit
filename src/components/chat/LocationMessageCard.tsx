@@ -37,7 +37,7 @@ export const LocationMessageCard = ({
   }, [aspect_ratio, latitude, longitude]);
 
   return (
-    <View className="rounded-lg overflow-hidden">
+    <View className="overflow-hidden rounded-lg">
       <MapView
         region={region}
         pitchEnabled={false}

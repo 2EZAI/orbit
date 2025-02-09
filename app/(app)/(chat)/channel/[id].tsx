@@ -3,9 +3,18 @@ import {
   MessageInput,
   MessageList,
   Thread,
-  AutoCompleteSuggestionHeader,
-  AutoCompleteSuggestionItem,
-  EmojiSearchIndex,
+  MessageType as StreamMessageType,
+  useMessageContext,
+  MessageAvatar,
+  MessageContent,
+  MessageFooter,
+  MessageSimple,
+  useMessagesContext,
+  MessageStatus,
+  MessageContextValue,
+  MessageActionType,
+  MessageActionsParams,
+  Message as DefaultMessage,
 } from "stream-chat-expo";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { useChat } from "~/src/lib/chat";
@@ -14,34 +23,62 @@ import {
   ActivityIndicator,
   View,
   TouchableOpacity,
-  FlatList,
   Alert,
   ActionSheetIOS,
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import {
-  MapPin,
-  Navigation,
-  Command,
-  AtSign,
-  Smile,
   Info,
   Users,
-  Image as ImageIcon,
-  Trash2,
   Edit2,
-  UserPlus,
+  Trash2,
+  MoreHorizontal,
+  Image as ImageIcon,
 } from "lucide-react-native";
-import * as Location from "expo-location";
 import type { Channel as ChannelType, DefaultGenerics } from "stream-chat";
-import type {
-  MessageType,
-  MessageActionType,
-  MessageActionsParams,
-  AutoCompleteSuggestionHeaderProps,
-  AutoCompleteSuggestionItemProps,
-  AutoCompleteSuggestionListProps,
-} from "stream-chat-expo";
+import type { MessageType } from "stream-chat-expo";
+import { useTheme } from "~/src/components/ThemeProvider";
+
+// Enhanced message component with proper typing
+const EnhancedMessage = (props: any) => {
+  const messageContext = useMessageContext();
+  console.log("[ChatMessage] Message context:", {
+    hasContext: !!messageContext,
+    hasMessage: !!messageContext?.message,
+    messageId: messageContext?.message?.id,
+    text: messageContext?.message?.text,
+  });
+
+  // Return null if message context is not available
+  if (!messageContext || !messageContext.message) {
+    return null;
+  }
+
+  const { message } = messageContext;
+
+  return (
+    <MessageSimple
+      {...props}
+      message={message}
+      MessageAvatar={MessageAvatar}
+      MessageContent={MessageContent}
+      MessageFooter={(messageFooterProps) => (
+        <MessageFooter
+          {...messageFooterProps}
+          formattedDate={
+            message.created_at
+              ? new Date(message.created_at).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : ""
+          }
+        />
+      )}
+      MessageStatus={MessageStatus}
+    />
+  );
+};
 
 export default function ChannelScreen() {
   const { id } = useLocalSearchParams();
@@ -53,6 +90,7 @@ export default function ChannelScreen() {
   const [thread, setThread] = useState<MessageType | null>(null);
   const [memberCount, setMemberCount] = useState<number>(0);
   const channelRef = useRef<ChannelType | null>(null);
+  const { theme } = useTheme();
 
   const handleInfoPress = useCallback(() => {
     if (!channel) return;
@@ -195,14 +233,36 @@ export default function ChannelScreen() {
     let mounted = true;
     const loadChannel = async () => {
       try {
+        console.log("[ChatChannel] Loading channel:", id);
         const newChannel = client.channel("messaging", id as string);
+        console.log("[ChatChannel] Created channel instance");
+
         await newChannel.watch();
+        console.log("[ChatChannel] Channel watched");
+
+        const messages = await newChannel.query({
+          messages: { limit: 30 },
+          watch: true,
+        });
+
+        console.log("[ChatChannel] Channel loaded with query:", {
+          id: newChannel.id,
+          type: newChannel.type,
+          memberCount: Object.keys(newChannel.state.members || {}).length,
+          messageCount: messages.messages?.length || 0,
+          messages: messages.messages?.map((m) => ({
+            id: m.id,
+            text: m.text,
+            user: m.user?.id,
+          })),
+        });
+
         if (mounted) {
           channelRef.current = newChannel;
           setChannel(newChannel);
         }
       } catch (err) {
-        console.error("Error loading channel:", err);
+        console.error("[ChatChannel] Error loading channel:", err);
         if (mounted) {
           setError("Failed to load chat");
         }
@@ -254,133 +314,6 @@ export default function ChannelScreen() {
     }
   }, [channel]);
 
-  const renderSuggestionHeader = useCallback(
-    (props: AutoCompleteSuggestionHeaderProps) => {
-      const { queryText, triggerType } = props;
-      if (triggerType === "command") {
-        return (
-          <View
-            style={{ padding: 10, flexDirection: "row", alignItems: "center" }}
-          >
-            <Command size={20} style={{ marginRight: 8 }} />
-            <Text>Commands matching "{queryText}"</Text>
-          </View>
-        );
-      } else if (triggerType === "mention") {
-        return (
-          <View
-            style={{ padding: 10, flexDirection: "row", alignItems: "center" }}
-          >
-            <AtSign size={20} style={{ marginRight: 8 }} />
-            <Text>Mention users matching "{queryText}"</Text>
-          </View>
-        );
-      } else if (triggerType === "emoji") {
-        return (
-          <View
-            style={{ padding: 10, flexDirection: "row", alignItems: "center" }}
-          >
-            <Smile size={20} style={{ marginRight: 8 }} />
-            <Text>Emojis matching "{queryText}"</Text>
-          </View>
-        );
-      }
-      return <AutoCompleteSuggestionHeader {...props} />;
-    },
-    []
-  );
-
-  const renderSuggestionItem = useCallback(
-    (props: AutoCompleteSuggestionItemProps<DefaultGenerics>) => {
-      const { itemProps, triggerType } = props;
-      if (triggerType === "command") {
-        const commandProps = itemProps as { name: string; args: string };
-        console.log("Rendering command:", commandProps); // Debug log
-
-        // Define command-specific icons/emojis
-        const getCommandIcon = (name: string) => {
-          switch (name) {
-            case "giphy":
-              return "🎬";
-            case "location":
-              return "📍";
-            case "ban":
-              return "🚫";
-            case "unban":
-              return "✅";
-            case "mute":
-              return "🔇";
-            case "unmute":
-              return "🔊";
-            default:
-              return "/";
-          }
-        };
-
-        return (
-          <TouchableOpacity
-            style={{
-              padding: 10,
-              flexDirection: "row",
-              alignItems: "center",
-              backgroundColor: "white",
-            }}
-          >
-            <Text style={{ fontSize: 20, marginRight: 8 }}>
-              {getCommandIcon(commandProps.name)}
-            </Text>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: "bold", color: "#000" }}>
-                /{commandProps.name}
-              </Text>
-              {commandProps.args && (
-                <Text style={{ fontSize: 12, color: "#666" }}>
-                  {commandProps.args}
-                </Text>
-              )}
-            </View>
-          </TouchableOpacity>
-        );
-      }
-      return <AutoCompleteSuggestionItem {...props} />;
-    },
-    []
-  );
-
-  const renderSuggestionList = useCallback(
-    (props: AutoCompleteSuggestionListProps<DefaultGenerics>) => {
-      const { data, onSelect, queryText, triggerType } = props;
-      console.log("Suggestion list data:", data); // Debug log
-
-      return (
-        <View style={{ maxHeight: 250, backgroundColor: "white" }}>
-          {renderSuggestionHeader({ queryText, triggerType })}
-          <FlatList
-            data={data}
-            keyboardShouldPersistTaps="always"
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                onPress={() => {
-                  console.log("Selected command:", item); // Debug log
-                  onSelect(item);
-                }}
-              >
-                {renderSuggestionItem({ itemProps: item, triggerType })}
-              </TouchableOpacity>
-            )}
-            keyExtractor={(item, index) => {
-              if ("name" in item && typeof item.name === "string")
-                return item.name;
-              if ("id" in item && typeof item.id === "string") return item.id;
-              return `suggestion-${index}`;
-            }}
-          />
-        </View>
-      );
-    },
-    [renderSuggestionHeader, renderSuggestionItem]
-  );
-
   return (
     <View style={{ flex: 1 }}>
       <Stack.Screen
@@ -389,11 +322,13 @@ export default function ChannelScreen() {
             <View>
               <Text
                 style={{ fontSize: 17, fontWeight: "600", textAlign: "center" }}
+                className="text-foreground"
               >
                 {channel?.data?.name || "Chat"}
               </Text>
               <Text
-                style={{ fontSize: 13, color: "#666", textAlign: "center" }}
+                style={{ fontSize: 13, textAlign: "center" }}
+                className="text-muted-foreground"
               >
                 {memberCount} {memberCount === 1 ? "member" : "members"}
               </Text>
@@ -404,29 +339,20 @@ export default function ChannelScreen() {
               onPress={handleInfoPress}
               style={{ marginRight: 8 }}
             >
-              <Info size={24} color="#007AFF" />
+              <Info size={24} className="text-primary" />
             </TouchableOpacity>
           ),
         }}
       />
       {loading ? (
-        <View
-          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-        >
-          <ActivityIndicator size="large" />
-          <Text style={{ marginTop: 8 }}>Loading chat...</Text>
+        <View className="items-center justify-center flex-1">
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text className="mt-4 text-foreground">Loading chat...</Text>
         </View>
       ) : error ? (
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            padding: 16,
-          }}
-        >
-          <Text style={{ marginBottom: 16, color: "red" }}>{error}</Text>
-          <Text style={{ color: "#007AFF" }} onPress={() => router.back()}>
+        <View className="items-center justify-center flex-1 px-4">
+          <Text className="mb-4 text-center text-red-500">{error}</Text>
+          <Text className="text-primary" onPress={() => router.back()}>
             Go back
           </Text>
         </View>
@@ -436,16 +362,32 @@ export default function ChannelScreen() {
           keyboardVerticalOffset={90}
           thread={thread}
           threadList={!!thread}
-          AutoCompleteSuggestionHeader={renderSuggestionHeader}
-          AutoCompleteSuggestionItem={renderSuggestionItem}
-          AutoCompleteSuggestionList={renderSuggestionList}
+          Message={DefaultMessage}
         >
           {thread ? (
             <Thread />
           ) : (
             <>
-              <MessageList onThreadSelect={setThread} />
-              <MessageInput />
+              <MessageList
+                onThreadSelect={setThread}
+                additionalFlatListProps={{
+                  initialNumToRender: 30,
+                  maxToRenderPerBatch: 10,
+                  windowSize: 10,
+                  removeClippedSubviews: false,
+                  inverted: true,
+                }}
+                loadMore={() => {
+                  console.log("[ChatChannel] Loading more messages...");
+                  return Promise.resolve();
+                }}
+              />
+              <MessageInput
+                additionalTextInputProps={{
+                  placeholder: "Type a message...",
+                  placeholderTextColor: theme.colors.text,
+                }}
+              />
             </>
           )}
         </Channel>
