@@ -15,6 +15,11 @@ import {
   MessageActionType,
   MessageActionsParams,
   Message as DefaultMessage,
+  useChannelContext,
+  AutoCompleteSuggestionHeader,
+  AutoCompleteSuggestionItem,
+  AutoCompleteSuggestionList,
+  Card,
 } from "stream-chat-expo";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { useChat } from "~/src/lib/chat";
@@ -25,6 +30,8 @@ import {
   TouchableOpacity,
   Alert,
   ActionSheetIOS,
+  TextInput,
+  FlatList,
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import {
@@ -34,10 +41,192 @@ import {
   Trash2,
   MoreHorizontal,
   Image as ImageIcon,
+  Calendar,
+  Search,
 } from "lucide-react-native";
-import type { Channel as ChannelType, DefaultGenerics } from "stream-chat";
+import type {
+  Channel as ChannelType,
+  DefaultGenerics,
+  Attachment as StreamAttachment,
+} from "stream-chat";
 import type { MessageType } from "stream-chat-expo";
 import { useTheme } from "~/src/components/ThemeProvider";
+
+interface Event {
+  id: string;
+  name: string;
+  startDate: string;
+  location?: string;
+}
+
+interface EventAttachment extends StreamAttachment<DefaultGenerics> {
+  type: string;
+  title: string;
+  text: string;
+  event_data: Event;
+}
+
+interface EventMessage {
+  text: string;
+  attachments: EventAttachment[];
+}
+
+// Event search component
+const EventSearchHeader = ({ queryText }: { queryText: string }) => (
+  <View className="flex-row items-center p-3 space-x-2 border-b border-border">
+    <Calendar size={20} className="text-foreground" />
+    <Text className="text-foreground">Events matching "{queryText}"</Text>
+  </View>
+);
+
+// Event search result item
+const EventSearchItem = ({
+  event,
+  onSelect,
+}: {
+  event: any;
+  onSelect: (event: any) => void;
+}) => (
+  <TouchableOpacity
+    onPress={() => onSelect(event)}
+    className="flex-row items-center p-3 space-x-3 border-b border-border"
+  >
+    <Calendar size={20} className="text-foreground" />
+    <View className="flex-1">
+      <Text className="font-medium text-foreground">{event.name}</Text>
+      <Text className="text-sm text-muted-foreground">
+        {new Date(event.startDate).toLocaleDateString()}
+      </Text>
+    </View>
+  </TouchableOpacity>
+);
+
+// Event message component
+const EventMessage = (props: any) => {
+  const { message } = useMessageContext();
+  const router = useRouter();
+  const { channel } = useChannelContext();
+
+  // Type guard for event search results
+  const isEventSearchMessage = (
+    msg: any
+  ): msg is { attachments: EventAttachment[] } => {
+    return msg?.attachments?.some((att: any) => att.type === "event_card");
+  };
+
+  // Type guard for event messages
+  const isEventMessage = (msg: any): msg is EventMessage => {
+    const hasEventAttachment = msg?.attachments?.some(
+      (att: any) => att.type === "event"
+    );
+    const hasValidAttachments =
+      Array.isArray(msg?.attachments) && msg.attachments.length > 0;
+    return hasEventAttachment && hasValidAttachments;
+  };
+
+  // Handle event selection
+  const handleEventSelect = async (eventData: Event) => {
+    try {
+      console.log("[EventMessage] Sending event message:", eventData);
+      const message = {
+        text: `Shared event: ${eventData.name}`,
+        attachments: [
+          {
+            type: "event",
+            title: eventData.name,
+            text: `${new Date(eventData.startDate).toLocaleString()}${
+              eventData.location ? `\nLocation: ${eventData.location}` : ""
+            }`,
+            event_data: eventData,
+          },
+        ],
+      };
+      console.log("[EventMessage] Sending message:", message);
+      const response = await channel?.sendMessage(message);
+      console.log("[EventMessage] Message sent:", response);
+    } catch (error) {
+      console.error("[EventMessage] Error sharing event:", error);
+      Alert.alert("Error", "Failed to share event");
+    }
+  };
+
+  // Check if this is an event search result message
+  if (isEventSearchMessage(message)) {
+    return (
+      <MessageSimple
+        {...props}
+        MessageContent={() => (
+          <View>
+            {message.attachments.map((attachment, index) => (
+              <View key={index} className="p-3 mb-2 rounded-lg bg-muted">
+                <View className="flex-row items-center mb-2 space-x-2">
+                  <Calendar size={20} className="text-primary" />
+                  <Text className="font-medium text-foreground">
+                    {attachment.title}
+                  </Text>
+                </View>
+                <Text className="text-muted-foreground">{attachment.text}</Text>
+                <TouchableOpacity
+                  onPress={() =>
+                    handleEventSelect(attachment.event_data as Event)
+                  }
+                  className="p-2 mt-2 rounded bg-primary"
+                >
+                  <Text className="text-center text-primary-foreground">
+                    Select this event
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+      />
+    );
+  }
+
+  // Handle display of shared event message
+  if (isEventMessage(message)) {
+    const eventAttachment = message.attachments.find(
+      (att) => att.type === "event"
+    ) as EventAttachment | undefined;
+
+    if (!eventAttachment) {
+      return <DefaultMessage {...props} />;
+    }
+
+    const eventData = eventAttachment.event_data;
+    return (
+      <MessageSimple
+        {...props}
+        MessageContent={() => (
+          <TouchableOpacity
+            onPress={() => {
+              console.log("[EventMessage] Navigating to event:", eventData);
+              router.push({
+                pathname: "/(app)/(map)",
+                params: { eventId: eventData.id },
+              });
+            }}
+            className="p-3 rounded-lg bg-muted"
+          >
+            <View className="flex-row items-center mb-2 space-x-2">
+              <Calendar size={20} className="text-primary" />
+              <Text className="font-medium text-foreground">
+                {eventData.name}
+              </Text>
+            </View>
+            <Text className="text-muted-foreground">
+              {new Date(eventData.startDate).toLocaleString()}
+              {eventData.location ? `\nLocation: ${eventData.location}` : ""}
+            </Text>
+          </TouchableOpacity>
+        )}
+      />
+    );
+  }
+
+  return <DefaultMessage {...props} />;
+};
 
 // Enhanced message component with proper typing
 const EnhancedMessage = (props: any) => {
@@ -91,6 +280,9 @@ export default function ChannelScreen() {
   const [memberCount, setMemberCount] = useState<number>(0);
   const channelRef = useRef<ChannelType | null>(null);
   const { theme } = useTheme();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Event[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   const handleInfoPress = useCallback(() => {
     if (!channel) return;
@@ -314,6 +506,82 @@ export default function ChannelScreen() {
     }
   }, [channel]);
 
+  // Handle command selection
+  const handleCommand = useCallback(
+    async (name: string, value?: string) => {
+      if (name === "event" && value) {
+        setIsSearching(true);
+        try {
+          console.log("[EventSearch] Searching with query:", value);
+          console.log(
+            "[EventSearch] Backend URL:",
+            process.env.BACKEND_CHAT_URL
+          );
+          const response = await fetch(
+            `${process.env.BACKEND_CHAT_URL}/commands`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${client?.tokenManager.token}`,
+              },
+              body: JSON.stringify({
+                message: {
+                  command: "event",
+                  args: value,
+                  text: `/event ${value}`,
+                  cid: channel?.cid,
+                },
+                user: {
+                  id: client?.userID,
+                },
+              }),
+            }
+          );
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("[EventSearch] Error response:", {
+              status: response.status,
+              text: errorText,
+            });
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          console.log("[EventSearch] Response:", data);
+
+          if (data.message?.attachments) {
+            const eventMessage = {
+              text: data.message.text,
+              attachments: data.message.attachments,
+            };
+            await channel?.sendMessage(eventMessage);
+          } else {
+            Alert.alert("Error", data.message?.text || "No events found");
+          }
+        } catch (error) {
+          console.error("[EventSearch] Error searching events:", error);
+          Alert.alert("Error", "Failed to search events. Please try again.");
+        } finally {
+          setIsSearching(false);
+        }
+      }
+    },
+    [channel, client]
+  );
+
+  useEffect(() => {
+    if (channel) {
+      // Register event command
+      channel.on("message.new", (event) => {
+        if (event.message?.command === "event") {
+          handleCommand("event", event.message.args);
+        }
+      });
+    }
+  }, [channel, handleCommand]);
+
   return (
     <View style={{ flex: 1 }}>
       <Stack.Screen
@@ -362,7 +630,91 @@ export default function ChannelScreen() {
           keyboardVerticalOffset={90}
           thread={thread}
           threadList={!!thread}
-          Message={DefaultMessage}
+          Message={EventMessage}
+          onPressMessage={({
+            additionalInfo,
+            defaultHandler,
+            emitter,
+            message,
+          }) => {
+            const handleEventSelect = async (eventData: Event) => {
+              try {
+                console.log("[EventMessage] Sending event message:", eventData);
+                const message = {
+                  text: `Shared event: ${eventData.name}`,
+                  attachments: [
+                    {
+                      type: "event",
+                      title: eventData.name,
+                      text: `${new Date(eventData.startDate).toLocaleString()}${
+                        eventData.location
+                          ? `\nLocation: ${eventData.location}`
+                          : ""
+                      }`,
+                      event_data: eventData,
+                    },
+                  ],
+                };
+                console.log("[EventMessage] Sending message:", message);
+                const response = await channel?.sendMessage(message);
+                console.log("[EventMessage] Message sent:", response);
+              } catch (error) {
+                console.error("[EventMessage] Error sharing event:", error);
+                Alert.alert("Error", "Failed to share event");
+              }
+            };
+
+            console.log("[Channel] Message pressed:", {
+              additionalInfo,
+              emitter,
+              messageType: message?.type,
+              attachments: message?.attachments,
+            });
+
+            // Check if this is an event message
+            const eventAttachment = message?.attachments?.find(
+              (att: any) => att.type === "event"
+            ) as EventAttachment | undefined;
+
+            if (eventAttachment?.event_data) {
+              console.log(
+                "[Channel] Found event data:",
+                eventAttachment.event_data
+              );
+              router.push({
+                pathname: "/(app)/(map)",
+                params: { eventId: eventAttachment.event_data.id },
+              });
+              return;
+            }
+
+            // Handle event card selection
+            const attachment = additionalInfo?.attachment as
+              | EventAttachment
+              | undefined;
+            if (attachment?.type === "event_card") {
+              handleEventSelect(attachment.event_data as Event);
+              return;
+            }
+
+            defaultHandler?.();
+          }}
+          doSendMessageRequest={async (channelId, message) => {
+            if (message.text?.startsWith("/event")) {
+              const searchTerm = message.text.replace("/event", "").trim();
+              if (searchTerm) {
+                await handleCommand("event", searchTerm);
+                return new Promise(() => {}); // Prevent default message sending
+              } else {
+                Alert.alert(
+                  "Error",
+                  "Please provide a search term after /event"
+                );
+                return new Promise(() => {});
+              }
+            }
+            return channel?.sendMessage(message);
+          }}
         >
           {thread ? (
             <Thread />
@@ -384,7 +736,7 @@ export default function ChannelScreen() {
               />
               <MessageInput
                 additionalTextInputProps={{
-                  placeholder: "Type a message...",
+                  placeholder: "Type /event to share an event...",
                   placeholderTextColor: theme.colors.text,
                 }}
               />

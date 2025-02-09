@@ -11,9 +11,10 @@ import { Text } from "~/src/components/ui/text";
 import { useAuth } from "~/src/lib/auth";
 import { useUser } from "~/hooks/useUserData";
 import { useFollow } from "~/hooks/useFollow";
-import { Settings, ArrowLeft } from "lucide-react-native";
+import { Settings } from "lucide-react-native";
 import { router } from "expo-router";
 import { Button } from "~/src/components/ui/button";
+import PostsTab from "~/src/components/profile/PostsTab";
 
 type Tab = "Events" | "Posts" | "Info";
 
@@ -43,16 +44,7 @@ export default function Profile() {
   const renderTabContent = () => {
     switch (activeTab) {
       case "Posts":
-        return (
-          <View className="flex-row flex-wrap">
-            {/* Placeholder for posts grid */}
-            {[1, 2, 3, 4, 5, 6].map((item) => (
-              <View key={item} className="w-1/2 aspect-square p-0.5">
-                <View className="w-full h-full bg-gray-800 rounded-lg" />
-              </View>
-            ))}
-          </View>
-        );
+        return user?.id ? <PostsTab userId={user.id} /> : null;
       case "Events":
         return (
           <View className="p-4">
@@ -173,7 +165,7 @@ export default function Profile() {
         </View>
 
         {/* Tab Content */}
-        <View className="mt-4">{renderTabContent()}</View>
+        <View className="flex-1 mt-4">{renderTabContent()}</View>
       </ScrollView>
     </SafeAreaView>
   );
