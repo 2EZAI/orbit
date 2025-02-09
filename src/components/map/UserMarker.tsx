@@ -1,54 +1,50 @@
 import { View, Image } from "react-native";
+import { useEffect, useState } from "react";
 
 interface UserMarkerProps {
   avatarUrl?: string | null;
   heading?: number;
 }
 
-export const UserMarker = ({ avatarUrl, heading }: UserMarkerProps) => (
-  <View
-    className="items-center"
-    style={{
-      position: "absolute",
-      zIndex: 1000,
-      elevation: 1000,
-      backgroundColor: "transparent",
-    }}
-  >
-    <View
-      style={{
-        padding: 2,
-        borderRadius: 9999,
-        backgroundColor: "white",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 1000,
-        transform:
-          heading !== undefined ? [{ rotate: `${heading}deg` }] : undefined,
-      }}
-    >
-      <Image
-        source={
-          avatarUrl ? { uri: avatarUrl } : require("~/assets/favicon.png")
-        }
+export const UserMarker = ({ avatarUrl, heading }: UserMarkerProps) => {
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    console.log("[UserMarker] Rendering with avatar URL:", avatarUrl);
+    setImageError(false); // Reset error state when URL changes
+  }, [avatarUrl]);
+
+  return (
+    <View className="items-center justify-center">
+      <View
+        className="p-0.5 rounded-full bg-white shadow-lg"
         style={{
-          width: 32,
-          height: 32,
-          borderRadius: 9999,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.25,
+          shadowRadius: 3.84,
+          elevation: 5,
+          transform:
+            heading !== undefined ? [{ rotate: `${heading}deg` }] : undefined,
         }}
-      />
+      >
+        <Image
+          source={
+            !imageError && avatarUrl
+              ? { uri: avatarUrl }
+              : require("~/assets/favicon.png")
+          }
+          className="w-8 h-8 rounded-full bg-muted"
+          onError={(e) => {
+            console.error(
+              "[UserMarker] Failed to load avatar:",
+              e.nativeEvent.error
+            );
+            setImageError(true);
+          }}
+        />
+      </View>
+      <View className="w-2 h-2 -mt-1 rounded-full bg-black/20" />
     </View>
-    <View
-      style={{
-        width: 8,
-        height: 8,
-        marginTop: -4,
-        borderRadius: 9999,
-        backgroundColor: "black",
-        opacity: 0.2,
-      }}
-    />
-  </View>
-);
+  );
+};

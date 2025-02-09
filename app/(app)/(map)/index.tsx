@@ -24,8 +24,8 @@ import { X, MapPin } from "lucide-react-native";
 import { Sheet } from "~/src/components/ui/sheet";
 import { UserMarker } from "~/src/components/map/UserMarker";
 import { EventMarker } from "~/src/components/map/EventMarker";
-import { EventCard } from "~/src/components/map/EventCard";
 import { ClusterSheet } from "~/src/components/map/ClusterSheet";
+import { MapEventCard } from "~/src/components/map/EventCard";
 
 // Replace with your Mapbox access token
 MapboxGL.setAccessToken(
@@ -139,6 +139,16 @@ export default function Map() {
     }
   }, [events, mapRef, cameraRef]);
 
+  // Add logging for user data
+  useEffect(() => {
+    if (user) {
+      console.log("[Map] User data:", {
+        id: user.id,
+        avatar_url: user?.avatar_url,
+      });
+    }
+  }, [user]);
+
   // Initialize and watch location
   useEffect(() => {
     let locationSubscription: Location.LocationSubscription;
@@ -153,6 +163,12 @@ export default function Map() {
       try {
         const initialLocation = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.BestForNavigation,
+        });
+
+        console.log("[Map] Initial user location:", {
+          latitude: initialLocation.coords.latitude,
+          longitude: initialLocation.coords.longitude,
+          heading: initialLocation.coords.heading,
         });
 
         setLocation({
@@ -181,6 +197,12 @@ export default function Map() {
             timeInterval: 5000, // Or every 5 seconds
           },
           (newLocation) => {
+            console.log("[Map] User location updated:", {
+              latitude: newLocation.coords.latitude,
+              longitude: newLocation.coords.longitude,
+              heading: newLocation.coords.heading,
+            });
+
             setLocation({
               latitude: newLocation.coords.latitude,
               longitude: newLocation.coords.longitude,
@@ -339,16 +361,24 @@ export default function Map() {
         ))}
 
         {/* User location marker */}
-        <MapboxGL.MarkerView
-          id="userLocation"
-          coordinate={[location.longitude, location.latitude]}
-          anchor={{ x: 0.5, y: 0.5 }}
-        >
-          <UserMarker
-            avatarUrl={user?.avatar_url}
-            heading={location.heading || undefined}
-          />
-        </MapboxGL.MarkerView>
+        {location && (
+          <MapboxGL.MarkerView
+            id="userLocation"
+            coordinate={[location.longitude, location.latitude]}
+            anchor={{ x: 0.5, y: 0.5 }}
+            allowOverlap={true}
+          >
+            <View
+              className="items-center justify-center"
+              style={{ zIndex: 2000 }}
+            >
+              <UserMarker
+                avatarUrl={user?.avatar_url}
+                heading={location.heading || undefined}
+              />
+            </View>
+          </MapboxGL.MarkerView>
+        )}
       </MapboxGL.MapView>
 
       <MapControls
@@ -360,7 +390,7 @@ export default function Map() {
       />
 
       {selectedEvent && (
-        <EventCard
+        <MapEventCard
           event={selectedEvent}
           nearbyEvents={events}
           onClose={handleCloseModal}
