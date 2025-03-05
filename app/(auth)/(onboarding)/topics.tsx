@@ -8,14 +8,23 @@ import { useUser } from "~/hooks/useUserData";
 import { TopicList } from "~/src/components/topics/TopicList";
 
 export default function TopicsScreen() {
-  const { user } = useUser();
+  const { user,fetchUserNew } = useUser();
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!user) {
-      router.replace("/(auth)/sign-in");
-    }
+    checkUse();
+    // if (!user) {
+    //   router.replace("/(auth)/sign-in");
+    // }
   }, [user]);
+
+  const checkUse =async()=>{
+const userData= await fetchUserNew();
+    console.log('data>',userData);
+    if (!userData) {
+          router.replace("/(auth)/sign-in");
+    }
+  };
 
   const handleContinue = async () => {
     if (!user) return;
@@ -31,7 +40,8 @@ export default function TopicsScreen() {
       if (error) throw error;
 
       // After completing all onboarding steps, go to the app
-      router.replace("/(app)/");
+      // router.replace("/(app)/");
+      router.replace("/(auth)/(onboarding)/permissions");
     } catch (error) {
       console.error("Error saving topics:", error);
     }

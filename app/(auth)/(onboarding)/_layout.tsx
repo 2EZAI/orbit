@@ -12,8 +12,9 @@ export default function OnboardingLayout() {
     >
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="username" />
-      <Stack.Screen name="permissions" />
       <Stack.Screen name="topics" />
+      <Stack.Screen name="permissions" />
+      
     </Stack>
   );
 }

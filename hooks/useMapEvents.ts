@@ -141,6 +141,8 @@ export function useMapEvents({
           },
         }
       );
+      console.log("session.access_token>>",
+      session.access_token);
 
       if (!response.ok) {
         throw new Error(await response.text());
@@ -202,6 +204,7 @@ export function useMapEvents({
       isMountedRef.current = false;
     };
   }, [fetchAllEvents]);
+
 
   // Memoize the center value to prevent unnecessary updates
   const memoizedCenter = useMemo(() => center, [center[0], center[1]]);

@@ -110,7 +110,9 @@ export default function PermissionsScreen() {
       if (error) throw error;
 
       console.log("Permissions saved, navigating to topics");
-      router.replace("/(auth)/(onboarding)/topics");
+      // router.replace("/(auth)/(onboarding)/topics");
+      // After completing all onboarding steps, go to the app
+      router.replace("/(app)/");
     } catch (error) {
       console.error("Error saving permissions state:", error);
       Toast.show({

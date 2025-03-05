@@ -52,6 +52,7 @@ export default function SignUp() {
       const fileName = `${userId}/profile.${fileExt}`;
       const filePath = `${FileSystem.documentDirectory}profile.${fileExt}`;
 
+console.log("uri>",uri);
       // Download the image first (needed for expo-file-system)
       await FileSystem.downloadAsync(uri, filePath);
 
@@ -156,9 +157,12 @@ export default function SignUp() {
       if (userError) throw userError;
 
       // 6. Navigate to username screen
-      console.log("Navigating to username screen...");
+      setTimeout(() => {
+   router.replace("/(auth)/(onboarding)/username");
+}, 2000);
+     
 
-      router.replace("/(auth)/(onboarding)/username");
+      
     } catch (error) {
       console.error("Sign up error:", error);
       Toast.show({

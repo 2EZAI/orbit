@@ -94,7 +94,8 @@ packagingOptions {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.dovydmcnugget.orbit'
+//    namespace "com.orbit"
+    namespace "com.dovydmcnugget.orbit"
     defaultConfig {
         applicationId 'com.dovydmcnugget.orbit'
         minSdkVersion rootProject.ext.minSdkVersion

@@ -43,7 +43,7 @@ export default function Map() {
   const { user } = useUser();
   const mapRef = useRef<MapboxGL.MapView>(null);
   const [location, setLocation] = useState<{
-    latitude: number;
+    latitude: numbrer;
     longitude: number;
     heading?: number | null;
   } | null>(null);
@@ -148,6 +148,13 @@ export default function Map() {
       });
     }
   }, [user]);
+
+    useEffect(() => {
+    console.log('useEffect','?');
+    console.log("events>",events.length);
+    console.log("clusters>",clusters[0]);
+    // return;
+  }, );
 
   // Initialize and watch location
   useEffect(() => {
@@ -330,10 +337,13 @@ export default function Map() {
         />
 
         {/* Event markers */}
+        
         {clusters.map((cluster) => (
           <MapboxGL.MarkerView
-            key={`cluster-${cluster.mainEvent.id}`}
-            id={`cluster-${cluster.mainEvent.id}`}
+            // key={`cluster-${cluster.mainEvent.id}`}
+            // id={`cluster-${cluster.mainEvent.id}`}
+               key={`cluster-${cluster.id}`}
+            id={`cluster-${cluster.id}`}
             coordinate={[cluster.location.longitude, cluster.location.latitude]}
             anchor={{ x: 0.5, y: 0.5 }}
           >
@@ -350,6 +360,7 @@ export default function Map() {
               >
                 <EventMarker
                   imageUrl={cluster.mainEvent.image_urls[0]}
+                 
                   count={cluster.events.length}
                   isSelected={cluster.events.some(
                     (e) => e.id === selectedEvent?.id

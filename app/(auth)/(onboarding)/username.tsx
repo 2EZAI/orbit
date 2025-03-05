@@ -11,7 +11,7 @@ import { useDebouncedCallback } from "~/src/hooks/useDebounce";
 import Toast from "react-native-toast-message";
 
 export default function UsernameScreen() {
-  const { user, updateUser } = useUser();
+  const { user, updateUser,fetchUserNew } = useUser();
   const [username, setUsername] = useState("");
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
   const [isChecking, setIsChecking] = useState(false);
@@ -20,10 +20,21 @@ export default function UsernameScreen() {
 
   // Prevent navigation away from this screen until username is set
   useEffect(() => {
-    if (!user) {
+    console.log('user>',user);
+   checkUse();
+  }, [user]);
+ 
+  const checkUse =async()=>{
+const data= await fetchUserNew();
+    console.log('data>',data);
+    // if (!user) {
+    //   console.log('user>>','not found>>???');
+    // }
+    if (user?.username == null) {
+      console.log('user>>','not found>>???');
       router.replace("/(auth)/sign-in");
     }
-  }, [user]);
+  };
 
   const checkUsername = useDebouncedCallback(async (value: string) => {
     if (!value) {
@@ -73,7 +84,9 @@ export default function UsernameScreen() {
     setIsSubmitting(true);
     try {
       await updateUser({ username });
-      router.replace("/(auth)/(onboarding)/permissions");
+      // router.replace("/(auth)/(onboarding)/permissions");
+      console.log("click>>",">>");
+      router.replace("/(auth)/(onboarding)/topics");
     } catch (error) {
       console.error("Error updating username:", error);
       Toast.show({

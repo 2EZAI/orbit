@@ -53,6 +53,29 @@ export function useUser(): UseUserReturn {
     }
   };
 
+  const fetchUserNew = async () => {
+    try {
+      if (!session?.user?.id) {
+        setUser(null);
+        return;
+      }
+
+      const { data, error: supabaseError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", session.user.id)
+        .single();
+
+      if (supabaseError) throw supabaseError;
+      return data;
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error("An error occurred"));
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+
   // Refresh user data
   const refreshUser = async () => {
     setLoading(true);
