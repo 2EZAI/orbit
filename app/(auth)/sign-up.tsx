@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   SafeAreaView,
   ScrollView,
+  Platform,
 } from "react-native";
 import { supabase } from "../../src/lib/supabase";
 import { router } from "expo-router";
@@ -52,14 +53,27 @@ export default function SignUp() {
       const fileName = `${userId}/profile.${fileExt}`;
       const filePath = `${FileSystem.documentDirectory}profile.${fileExt}`;
 
-console.log("uri>",uri);
+      console.log("uri>",uri);
+      var base64='';
+            // Download the image first (needed for expo-file-system)
+      if (Platform.OS === 'ios') {
       // Download the image first (needed for expo-file-system)
       await FileSystem.downloadAsync(uri, filePath);
 
       // Read the file as base64
-      const base64 = await FileSystem.readAsStringAsync(filePath, {
+       base64 = await FileSystem.readAsStringAsync(filePath, {
         encoding: FileSystem.EncodingType.Base64,
       });
+      }
+      else{
+         const urii = uri; // Assuming this is a local file URI like 'file:///path/to/file'
+         const fileUri = `${FileSystem.documentDirectory}profile.${fileExt}`;
+         await FileSystem.copyAsync({ from: urii, to: fileUri });
+            // Read the file as base64
+         base64 = await FileSystem.readAsStringAsync(fileUri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+          }
 
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage

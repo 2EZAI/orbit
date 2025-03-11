@@ -32,6 +32,7 @@ import {
   ActionSheetIOS,
   TextInput,
   FlatList,
+  Platform,
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import {
@@ -162,7 +163,7 @@ const EventMessage = (props: any) => {
                 <View className="flex-row items-center mb-2 space-x-2">
                   <Calendar size={20} className="text-primary" />
                   <Text className="font-medium text-foreground">
-                    {attachment.title}
+                    {attachment.title} 
                   </Text>
                 </View>
                 <Text className="text-muted-foreground">{attachment.text}</Text>
@@ -727,7 +728,8 @@ export default function ChannelScreen() {
                   maxToRenderPerBatch: 10,
                   windowSize: 10,
                   removeClippedSubviews: false,
-                  inverted: true,
+                  inverted: Platform.OS === 'ios' ? true
+                  : false,
                 }}
                 loadMore={() => {
                   console.log("[ChatChannel] Loading more messages...");

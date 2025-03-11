@@ -8,6 +8,8 @@ import { FeedEventCard } from "~/src/components/feed/FeedEventCard";
 import { EventDetailsSheet } from "~/src/components/map/EventDetailsSheet";
 import { SearchSheet } from "~/src/components/search/SearchSheet";
 
+
+
 const SearchBar = ({ onPress }: { onPress: () => void }) => (
   <View className="flex-row items-center p-4 space-x-2">
     <TouchableOpacity
@@ -27,11 +29,12 @@ export default function Home() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
 
-  const { events, isLoading, error } = useMapEvents({
+  const { events,isLoading, error } = useMapEvents({
     center: [37.7749, -122.4194],
     radius: 10000,
     timeRange: "now",
   });
+
 
   if (isLoading) {
     return (

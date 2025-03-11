@@ -180,7 +180,7 @@ export function useMapEvents({
       cachedEventsRef.current = validEvents;
       lastFetchTimeRef.current = Date.now();
       setEvents(validEvents);
-
+      setClusters([]);
       // Create initial clusters
       const newClusters = clusterEvents(validEvents);
       console.log("[Events] Setting", newClusters.length, "clusters");

@@ -1,4 +1,6 @@
-import { View, TouchableOpacity } from "react-native";
+import { View, TouchableOpacity ,DeviceEventEmitter
+,Platform} from "react-native";
+import { useEffect,useState } from "react";
 import {
   Home,
   MessageCircle,
@@ -7,25 +9,36 @@ import {
   User,
 } from "lucide-react-native";
 import { usePathname, router } from "expo-router";
+import { Icon } from 'react-native-elements';
+
 
 // Define the tab routes
 const TAB_ROUTES = [
-  { path: "/(app)/(home)", icon: Home },
-  { path: "/(app)/(chat)", icon: MessageCircle },
-  { path: "/(app)/(create)", icon: PlusCircle },
-  { path: "/(app)/(map)", icon: Map },
-  { path: "/(app)/(profile)", icon: User },
+  { path: "/(app)/(home)", icon: Home , iconAndroid: "home-outline"   },
+  { path: "/(app)/(chat)", icon: MessageCircle  , iconAndroid: "chat-outline" },
+  { path: "/(app)/(create)", icon: PlusCircle ,iconAndroid: "plus-circle-outline"},
+  { path: "/(app)/(map)", icon: Map , iconAndroid: "map-outline" },
+  { path: "/(app)/(profile)", icon: User ,iconAndroid: "account-outline"},
 ];
+
 
 export default function TabBar() {
   const pathname = usePathname();
 
   console.log("[TabBar] Current route:", pathname);
 
+useEffect(() => {
+    DeviceEventEmitter.addListener('mapReload', value => {
+      console.log('event----mapReload', value);
+     router.replace("/(app)/(map)");
+    });
+  }, []);
+
   // Hide the tab bar when in a channel
   if (pathname?.includes("/channel/")) {
     return null;
   }
+  
 
   return (
     <View className="absolute bottom-0 left-0 right-0 items-center">
@@ -34,25 +47,41 @@ export default function TabBar() {
           const isActive = pathname?.startsWith(
             tab.path.replace("/(app)/", "/")
           );
-          const Icon = tab.icon;
+          const Iconn = tab.icon;
+          const IconA = tab.iconAndroid;
 
           return (
             <TouchableOpacity
               key={tab.path}
+              style={{ justifyContent: 'center', 
+              alignItems: 'center', }}
               onPress={() => {
                 console.log("Navigating to:", tab.path);
                 router.replace(tab.path);
               }}
-              className="items-center flex-1"
+              className="items- center flex-1"
             >
-              <Icon
+            
+          {Platform.OS === 'ios' ?
+            <Iconn
                 size={24}
                 className={isActive ? "text-primary" : "text-muted-foreground"}
               />
+              :
+              <Icon 
+              name={IconA}
+               type="material-community" 
+              size={24} 
+              color="#239ED0"
+              />
+            }
+           
             </TouchableOpacity>
           );
         })}
       </View>
     </View>
   );
+
+  
 }

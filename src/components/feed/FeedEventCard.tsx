@@ -21,7 +21,7 @@ export function FeedEventCard({
   const startTime = new Date(event.start_datetime);
   const endTime = new Date(event.end_datetime);
 
-  console.log("event>",event)
+  // console.log("event>",event)
   
   return (
   

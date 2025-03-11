@@ -11,6 +11,7 @@ import {
   Platform,
   Linking,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import * as Location from "expo-location";
 import { useTheme } from "~/src/components/ThemeProvider";
@@ -151,8 +152,8 @@ export default function Map() {
 
     useEffect(() => {
     console.log('useEffect','?');
-    console.log("events>",events.length);
-    console.log("clusters>",clusters[0]);
+    // console.log("events>",events.length);
+    console.log("clusters>",clusters);
     // return;
   }, );
 
@@ -281,6 +282,9 @@ export default function Map() {
   const handleClusterClose = useCallback(() => {
     setSelectedCluster(null);
   }, []);
+
+ 
+ 
 
   if (errorMsg) {
     return (

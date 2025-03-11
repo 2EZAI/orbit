@@ -20,6 +20,7 @@ import {
 } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
+import { Icon } from 'react-native-elements';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === "android") {
@@ -104,7 +105,16 @@ export function MapControls({
             {isSearchExpanded ? (
               <View className="flex-row items-center border rounded-full bg-background/80 backdrop-blur-lg border-border h-11">
                 <View className="flex-row items-center flex-1 px-4">
+                {Platform.OS === 'ios' ?
                   <Search size={20} className="text-muted-foreground" />
+                :
+                <Icon 
+              name="magnify"
+               type="material-community" 
+              size={20}
+              color="#239ED0"
+              />
+                }
                   <TextInput
                     placeholder="Search For Events..."
                     placeholderTextColor={theme.colors.text}
@@ -121,6 +131,7 @@ export function MapControls({
                   onPress={toggleSearch}
                   className="justify-center h-full px-4"
                 >
+                
                   <X size={20} className="text-foreground" />
                 </TouchableOpacity>
               </View>
@@ -129,7 +140,16 @@ export function MapControls({
                 onPress={toggleSearch}
                 className="items-center justify-center border rounded-full w-11 h-11 bg-background/80 backdrop-blur-lg border-border"
               >
+              { Platform.OS === 'ios' ?
                 <Search size={20} className="text-foreground" />
+             :
+              <Icon 
+              name="magnify"
+               type="material-community" 
+              size={20}
+              color="#239ED0"
+              />
+              }
               </TouchableOpacity>
             )}
           </View>
@@ -144,10 +164,27 @@ export function MapControls({
             onPress={onZoomIn}
             className="p-2 border-b border-border"
           >
+          {Platform.OS === 'ios'?
             <Plus size={20} />
+          :
+            <Icon 
+              name="plus"
+               type="material-community" 
+              size={20}
+              color="#239ED0"
+              />
+          }
           </TouchableOpacity>
           <TouchableOpacity onPress={onZoomOut} className="p-2">
-            <Minus size={20} />
+            {Platform.OS === 'ios' ?
+            <Minus size={20} /> :
+            <Icon 
+              name="minus"
+               type="material-community" 
+              size={20}
+              color="#239ED0"
+              />
+            }
           </TouchableOpacity>
         </View>
 
@@ -157,7 +194,16 @@ export function MapControls({
             onPress={onRecenter}
             className="absolute items-center justify-center border rounded-full right-4 w-11 h-11 bg-background/80 backdrop-blur-lg border-border"
           >
+          { Platform.OS === 'ios' ?
             <Navigation2 size={20} />
+            :
+              <Icon 
+              name="navigation-outline"
+               type="material-community" 
+              size={20}
+              color="#239ED0"
+              />
+          }
           </TouchableOpacity>
         )}
       </View>

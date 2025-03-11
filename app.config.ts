@@ -2,8 +2,10 @@ import "dotenv/config";
 import { ExpoConfig, ConfigContext } from "expo/config";
 
 // Use Heroku URL in production, localhost for development
+// const DEFAULT_BACKEND_URL =
+//   "https://orbit-chat-backend-7c26e572956b.herokuapp.com";
 const DEFAULT_BACKEND_URL =
-  "https://orbit-chat-backend-7c26e572956b.herokuapp.com";
+  "https://orbit-chat-backend-old-9d2b903ab237.herokuapp.com";
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   const backendUrl = process.env.BACKEND_CHAT_URL || DEFAULT_BACKEND_URL;

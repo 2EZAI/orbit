@@ -7,6 +7,7 @@ import {
   Image,
   SafeAreaView,
   Platform,
+  DeviceEventEmitter,
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
@@ -339,14 +340,26 @@ export default function CreateEvent() {
             const filePath = `${
               FileSystem.documentDirectory
             }temp_${Date.now()}-${index}.${fileExt}`;
-
+            
+          var base64='';
             // Download the image first (needed for expo-file-system)
+          if (Platform.OS === 'ios') {
             await FileSystem.downloadAsync(image.uri, filePath);
-
-            // Read the file as base64
-            const base64 = await FileSystem.readAsStringAsync(filePath, {
+            base64 = await FileSystem.readAsStringAsync(filePath, {
               encoding: FileSystem.EncodingType.Base64,
             });
+          }
+          else{
+           const uri = image.uri; // Assuming this is a local file URI like 'file:///path/to/file'
+           const fileUri = `${
+              FileSystem.documentDirectory
+            }temp_${Date.now()}-${index}.${fileExt}`;
+           await FileSystem.copyAsync({ from: uri, to: fileUri });
+            // Read the file as base64
+           base64 = await FileSystem.readAsStringAsync(fileUri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+          }
 
             // Upload to Supabase Storage
             const { error: uploadError } = await supabase.storage
@@ -447,6 +460,9 @@ export default function CreateEvent() {
           zoom: 15, // Close enough to see the event clearly
         },
       });
+      DeviceEventEmitter.emit('mapReload', true);
+
+
     } catch (error: any) {
       console.error("Event creation error:", error);
       Alert.alert(
