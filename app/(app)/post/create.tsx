@@ -233,6 +233,7 @@ function decode(base64: string): Uint8Array {
               </View>
             )}
 
+
             {/* Action Buttons - Moved inside scroll view */}
             <View className="flex-row items-center pt-4 mt-4 border-t border-border">
               <TouchableOpacity
