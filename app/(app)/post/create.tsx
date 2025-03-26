@@ -7,7 +7,7 @@ import {
   Image,
   ActivityIndicator,
   Alert,
-  SafeAreaView,
+  // SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   useWindowDimensions,
@@ -21,7 +21,9 @@ import { supabase } from "~/src/lib/supabase";
 import { useAuth } from "~/src/lib/auth";
 import { Stack } from "expo-router";
 import { useUser } from "~/hooks/useUserData";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets ,SafeAreaView} from "react-native-safe-area-context";
+import * as FileSystem from "expo-file-system";
+import { Icon } from 'react-native-elements';
 
 export default function CreatePost() {
   const { session } = useAuth();
@@ -31,7 +33,6 @@ export default function CreatePost() {
   const [content, setContent] = useState("");
   const [mediaFiles, setMediaFiles] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
@@ -47,29 +48,66 @@ export default function CreatePost() {
       ]);
     }
   };
+  // Function to convert base64 to Uint8Array for Supabase storage
+function decode(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
 
   const removeMedia = (index: number) => {
     setMediaFiles(mediaFiles.filter((_, i) => i !== index));
   };
 
   const uploadMedia = async (uri: string): Promise<string> => {
+    
     try {
-      const response = await fetch(uri);
-      const blob = await response.blob();
+      
+      var response = await fetch(uri);
+      // console.log('response>',response);
+      var blob = await response.blob();
+      // console.log('blob>',blob);
       const fileExt = uri.split(".").pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${session?.user.id}/${fileName}`;
+      const tempFileName= uri.split("/").pop().split(".")[0];
+      const  fileName = `${user.id}/${Date.now()}_${Math.random().toString(36).substring(2)}_${tempFileName}.${fileExt}`;
+      const filePath = `${FileSystem.documentDirectory}${Date.now()}_${Math.random().toString(36).substring(2)}_post.${fileExt}`;
 
+      let base64='';
+      if (Platform.OS === 'ios') {
+      await FileSystem.downloadAsync(uri, filePath);
+       base64 = await FileSystem.readAsStringAsync(filePath, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      }
+      else{
+         const urii = uri; // Assuming this is a local file URI like 'file:///path/to/file'
+         const fileUri = `${FileSystem.documentDirectory}${Date.now()}_${Math.random().toString(36).substring(2)}_post.${fileExt}`;
+         await FileSystem.copyAsync({ from: urii, to: fileUri });
+         base64 = await FileSystem.readAsStringAsync(fileUri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+          }
+      // console.log("fileName>", fileName);
+      // console.log("filePath>", filePath);
+      // console.log("Base64 String>", base64.substring(0, 50)); // Log first 50 characters to ensure it's correct
+
+      // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from("post_media")
-        .upload(filePath, blob);
+        .upload(fileName, decode(base64), {
+          contentType: `image/${fileExt}`,
+          upsert: true,
+        });
 
       if (uploadError) throw uploadError;
-
       const {
         data: { publicUrl },
-      } = supabase.storage.from("post_media").getPublicUrl(filePath);
+      } = supabase.storage.from("post_media").getPublicUrl(fileName);
 
+      // console.log('getPublicUrl>',publicUrl);
       return publicUrl;
     } catch (error) {
       console.error("Error uploading media:", error);
@@ -85,8 +123,8 @@ export default function CreatePost() {
 
     setLoading(true);
     try {
-      const mediaUrls = await Promise.all(mediaFiles.map(uploadMedia));
-
+      const mediaUrls = await Promise.all(mediaFiles.map(uploadMedia)); 
+      // console.error("mediaUrls>", mediaUrls);
       const { error } = await supabase.from("posts").insert([
         {
           user_id: session?.user.id,
@@ -106,6 +144,7 @@ export default function CreatePost() {
   };
 
   return (
+     <SafeAreaView className="flex-1 bg-background">
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
@@ -118,10 +157,15 @@ export default function CreatePost() {
       />
 
       {/* Custom Header */}
-      <SafeAreaView className="bg-background">
         <View className="flex-row items-center justify-between p-4 border-b border-border">
           <TouchableOpacity onPress={() => router.back()}>
+          { Platform.OS === 'ios' ?
             <ArrowLeft size={24} className="text-foreground" />
+           :
+            <Icon name="arrow-left" type="material-community"
+                      size={24}
+                      color="#239ED0"/>
+          }
           </TouchableOpacity>
           <Button
             variant="default"
@@ -134,7 +178,6 @@ export default function CreatePost() {
             </Text>
           </Button>
         </View>
-      </SafeAreaView>
 
       <ScrollView
         className="flex-1"
@@ -177,7 +220,13 @@ export default function CreatePost() {
                       className="absolute p-1.5 rounded-full top-3 right-3 bg-black/50"
                       onPress={() => removeMedia(index)}
                     >
+                    { Platform.OS == 'ios' ?
                       <X size={16} color="white" />
+                      :
+                      <Icon name="close" type="material-community"
+                      size={16}
+                      color="#000000"/>
+                    }
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -191,6 +240,8 @@ export default function CreatePost() {
                 onPress={pickImage}
                 disabled={mediaFiles.length >= 4}
               >
+              {
+                Platform.OS === 'ios' ?
                 <ImageIcon
                   size={24}
                   className={
@@ -199,6 +250,11 @@ export default function CreatePost() {
                       : "text-primary"
                   }
                 />
+                :
+                 <Icon name="image-outline" type="material-community"
+                      size={24}
+                      color="#239ED0"/>
+              }
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -207,7 +263,16 @@ export default function CreatePost() {
                   // Handle location selection
                 }}
               >
+              { Platform.OS === 'ios' ?
                 <MapPin size={24} className="text-primary" />
+                :
+                 <Icon 
+              name="map-marker-outline"
+               type="material-community" 
+              size={24} 
+              color="#239ED0"
+              />
+              }
               </TouchableOpacity>
 
               {loading && (
@@ -221,5 +286,6 @@ export default function CreatePost() {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

@@ -7,6 +7,7 @@ import {
   Animated,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from "react-native";
 import {
   ChannelList,
@@ -39,6 +40,7 @@ import { Text } from "~/src/components/ui/text";
 
 import type { ChannelPreviewMessengerProps } from "stream-chat-expo";
 import type { ChannelMemberResponse } from "stream-chat";
+import { Icon } from 'react-native-elements';
 
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl;
 console.log("[ChatList] Configured Backend URL:", BACKEND_URL);
@@ -83,7 +85,13 @@ const SearchInput = ({
   return (
     <View className="flex-row items-center px-4 py-2 space-x-2 bg-background">
       <View className="flex-row items-center px-3 py-2 space-x-2 rounded-lg bg-muted">
+        {Platform.OS === 'ios'?
         <Search size={20} color={theme.colors.text} />
+        :
+          <Icon name="magnify" type="material-community"
+                      size={20}
+                      color="#239ED0"/>
+        }
         <TextInput
           value={value}
           onChangeText={onChangeText}
@@ -235,7 +243,12 @@ const EnhancedSearch = ({
   return (
     <View className="px-4 py-3 border-b bg-background border-border">
       <View className="flex-row items-center px-4 py-2 space-x-3 rounded-lg bg-muted">
+        {Platform.OS === 'ios'?
         <Search size={20} className="text-muted-foreground" />
+        : <Icon name="magnify" type="material-community"
+                      size={20}
+                      color="#239ED0"/>
+        }
         <TextInput
           value={value}
           onChangeText={onChangeText}
@@ -435,10 +448,22 @@ export default function ChatListScreen() {
           </Text>
           <View className="flex-row space-x-4">
             <TouchableOpacity onPress={handleSearch}>
+            {Platform.OS === 'ios'?
               <Search size={24} className="text-foreground" />
+            :
+             <Icon name="magnify" type="material-community"
+                      size={24}
+                      color="#239ED0"/>
+            }
             </TouchableOpacity>
             <TouchableOpacity onPress={handleNewChat}>
+            { Platform.OS === 'ios' ?
               <Plus size={24} className="text-foreground" />
+            :
+            <Icon name="plus" type="material-community"
+                      size={24}
+                      color="#239ED0"/>
+            }
             </TouchableOpacity>
           </View>
         </View>

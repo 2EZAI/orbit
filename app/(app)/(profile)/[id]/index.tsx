@@ -1,12 +1,13 @@
 import { useState } from "react";
 import {
   View,
-  SafeAreaView,
   TouchableOpacity,
   Image,
   ScrollView,
   ActivityIndicator,
+  Platform,
 } from "react-native";
+import {SafeAreaView} from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
 import { useUser } from "~/hooks/useUserData";
@@ -14,7 +15,7 @@ import { supabase } from "~/src/lib/supabase";
 import { ArrowLeft, Pencil } from "lucide-react-native";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-
+import * as FileSystem from "expo-file-system";
 import Toast from "react-native-toast-message";
 
 export default function EditProfile() {
@@ -69,15 +70,42 @@ export default function EditProfile() {
       if (!result.canceled && result.assets?.[0]) {
         setUploadingImage(true);
         try {
-          const file = result.assets[0];
-          const response = await fetch(file.uri);
+          const file = result.assets[0].uri;
+          const response = await fetch(file);
           const blob = await response.blob();
-          const fileExt = file.uri.split(".").pop();
-          const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
+          console.log("blob>>",blob);
+          // const fileExt = file.uri.split(".").pop();
+          const fileExt = file.split(".").pop();
 
+          const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
+       const filePath = `${FileSystem.documentDirectory}profile.${fileExt}`;
+
+
+           var base64='';
+            // Download the image first (needed for expo-file-system)
+      if (Platform.OS === 'ios') {
+      // Download the image first (needed for expo-file-system)
+      await FileSystem.downloadAsync(file, filePath);
+
+      // Read the file as base64
+       base64 = await FileSystem.readAsStringAsync(filePath, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      }
+      else{
+         const urii = file; // Assuming this is a local file URI like 'file:///path/to/file'
+         const fileUri = `${FileSystem.documentDirectory}profile.${fileExt}`;
+         await FileSystem.copyAsync({ from: urii, to: fileUri });
+            // Read the file as base64
+         base64 = await FileSystem.readAsStringAsync(fileUri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+          }
+          
           const { error: uploadError } = await supabase.storage
-            .from("avatars")
-            .upload(fileName, blob, {
+            .from("profile-pictures")
+            // .from("avatars")
+            .upload(fileName, decode(base64), {
               contentType: `image/${fileExt}`,
               upsert: true,
             });
@@ -86,7 +114,8 @@ export default function EditProfile() {
 
           const {
             data: { publicUrl },
-          } = supabase.storage.from("avatars").getPublicUrl(fileName);
+            } = supabase.storage.from("profile-pictures").getPublicUrl(fileName);
+          // } = supabase.storage.from("avatars").getPublicUrl(fileName);
 
           await updateUser({
             avatar_url: publicUrl,
@@ -114,7 +143,15 @@ export default function EditProfile() {
       setUploadingImage(false);
     }
   };
-
+// Function to convert base64 to Uint8Array for Supabase storage
+function decode(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
   if (!user) return null;
 
   return (

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { SafeAreaView, View, FlatList, Alert } from "react-native";
+import { SafeAreaView, View, FlatList, Alert,Platform } from "react-native";
 import { useChat } from "~/src/lib/chat";
 import { useRouter } from "expo-router";
 import { supabase } from "~/src/lib/supabase";
@@ -14,6 +14,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "~/src/components/ui/avatar";
+import { Icon } from 'react-native-elements';
 
 interface User extends AuthUser {
   first_name: string | null;
@@ -284,10 +285,22 @@ export default function NewChatScreen() {
                   size="icon"
                   onPress={() => setSearchText("")}
                 >
+                {Platform.OS === 'ios' ?
                   <X size={20} className="text-muted-foreground" />
+                :
+                <Icon name="close" type="material-community"
+                      size={20}
+                      color="#239ED0"/>
+                }
                 </Button>
               ) : (
+                Platform.OS === 'ios' ?
                 <Search size={20} className="text-muted-foreground" />
+              :
+               <Icon name="magnify" type="material-community"
+                      size={20}
+                      color="#239ED0"/>
+              
               )}
             </View>
           </CardContent>
@@ -319,7 +332,13 @@ export default function NewChatScreen() {
                       alt={`${user.email}'s avatar`}
                     >
                       <AvatarFallback>
+                      {Platform.OS === 'ios'?
                         <Users size={16} className="text-muted-foreground" />
+                     :
+                     <Icon name="user" type="material-community"
+                      size={20}
+                      color="#239ED0"/>
+                      }
                       </AvatarFallback>
                     </Avatar>
                     <Text className="text-secondary-foreground">

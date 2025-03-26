@@ -23,6 +23,7 @@ import {
 } from "lucide-react-native";
 import { format } from "date-fns";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Icon } from 'react-native-elements';
 
 interface Post {
   id: string;
@@ -49,6 +50,7 @@ interface Comment {
 }
 
 export default function PostView() {
+    const marginBottom_ = Platform.OS === 'android' ? '2%' : '8%'; 
   const params = useLocalSearchParams();
   const id = typeof params.id === "string" ? params.id : null;
   const { session } = useAuth();
@@ -122,7 +124,7 @@ export default function PostView() {
           avatar_url: userData?.avatar_url || null,
         },
       };
-
+console.log("transformedPost>",transformedPost);
       setPost(transformedPost);
       setError(null);
     } catch (error) {
@@ -241,8 +243,9 @@ export default function PostView() {
 
   return (
     <View
-      className="flex-1 bg-background"
-      style={{ paddingBottom: insets.bottom }}
+      className="flex-1 bg-background "
+      style={{ paddingBottom: insets.bottom ,
+       marginBottom: marginBottom_}}
     >
       <Stack.Screen
         options={{
@@ -275,11 +278,13 @@ export default function PostView() {
           keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
           style={{ paddingBottom: insets.bottom + 60 }}
         >
-          <ScrollView className="flex-1">
+          <ScrollView className="flex-1 ">
             {/* Post Header */}
             <View className="flex-row items-center p-4">
               <TouchableOpacity
-                onPress={() => router.push(`/profile/${post.user.id}`)}
+                onPress={() => {
+                  router.push(`/profile/${post.user.id}`)
+                }}
                 className="flex-row items-center flex-1"
               >
                 <Image
@@ -335,22 +340,35 @@ export default function PostView() {
                 onPress={toggleLike}
                 className="flex-row items-center mr-6"
               >
+              {Platform.OS === 'ios' ?
                 <Heart
                   size={24}
                   className={liked ? "text-red-500" : "text-foreground"}
                   fill={liked ? "#ef4444" : "none"}
                 />
+                : 
+                 <Icon name={liked ?"heart":"heart-outline"}
+                  type="material-community"
+                      size={24}
+                      color={liked ?"#ef4444":"#239ED0"}/>
+              }
                 <Text className="ml-2">{post.like_count}</Text>
               </TouchableOpacity>
 
               <View className="flex-row items-center">
+              {Platform.OS === 'ios'?
                 <MessageCircle size={24} className="text-foreground" />
+              :
+               <Icon name="chat-outline" type="material-community"
+                      size={24}
+                      color="#239ED0"/>
+              }
                 <Text className="ml-2">{post.comment_count}</Text>
               </View>
             </View>
 
             {/* Comments */}
-            <View className="p-4 border-t border-border">
+            <View className="p-4 border-t border-border ">
               <Text className="mb-4 font-medium">Comments</Text>
               {comments.map((comment) => (
                 <View key={comment.id} className="flex-row mb-4">

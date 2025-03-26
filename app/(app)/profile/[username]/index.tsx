@@ -7,6 +7,7 @@ import { UserAvatar } from "~/src/components/ui/user-avatar";
 import { Button } from "~/src/components/ui/button";
 import { MapEvent } from "~/hooks/useMapEvents";
 import { EventDetailsSheet } from "~/src/components/map/EventDetailsSheet";
+import {  SafeAreaView} from "react-native-safe-area-context";
 
 type UserProfile = {
   id: string;
@@ -23,7 +24,7 @@ type UserProfile = {
 type TabType = "posts" | "events" | "info";
 
 export default function ProfilePage() {
-  const { username } = useLocalSearchParams();
+  const {  username } = useLocalSearchParams();
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("posts");
@@ -37,6 +38,8 @@ export default function ProfilePage() {
 
   const fetchUserProfile = async () => {
     try {
+      console.error("username>>:",username);
+      
       // Fetch user profile
       const { data: userData, error: userError } = await supabase
         .from("users")
@@ -50,11 +53,12 @@ export default function ProfilePage() {
           bio
         `
         )
-        .eq("username", username)
+        // .eq("username", username)
+         .eq("id", username)
         .single();
-
+console.error("fetchUserProfile:2");
       if (userError) throw userError;
-
+console.error("fetchUserProfile:3");
       // Get counts
       const [
         { count: followersCount },
@@ -74,7 +78,7 @@ export default function ProfilePage() {
           .select("*", { count: "exact" })
           .eq("user_id", userData.id),
       ]);
-
+console.error("fetchUserProfile:4");
       setProfile({
         ...userData,
         followers_count: followersCount || 0,
@@ -83,12 +87,13 @@ export default function ProfilePage() {
       });
 
       // Fetch user's events
+      console.log("userData.id>",userData.id);
       const { data: events } = await supabase
         .from("events")
         .select(
           `
           *,
-          created_by:created_by_id (
+          created_by:created_by (
             id,
             username,
             first_name,
@@ -114,7 +119,7 @@ export default function ProfilePage() {
         `
         )
         .or(
-          `created_by_id.eq.${userData.id},event_attendees.user_id.eq.${userData.id}`
+          `created_by.eq.${userData.id},event_attendees.user_id.eq.${userData.id}`
         )
         .order("start_datetime", { ascending: true });
 
@@ -140,13 +145,22 @@ export default function ProfilePage() {
           }))
         );
       }
+      console.log("events>>>",events)
     } catch (error) {
       console.error("Error fetching profile:", error);
+       setProfile({
+        ...userData,
+        followers_count:  0,
+        events_count:  0,
+        orbits_count:  0,
+      });
+        setIsLoading(false);
     } finally {
       setIsLoading(false);
     }
   };
 
+{console.log("profile>",profile)}
   if (isLoading || !profile) {
     return (
       <View className="items-center justify-center flex-1">
@@ -156,6 +170,7 @@ export default function ProfilePage() {
   }
 
   return (
+    <SafeAreaView className="flex-1">
     <View className="flex-1 bg-background">
       {/* Profile Header */}
       <View className="p-4">
@@ -315,5 +330,6 @@ export default function ProfilePage() {
         />
       )}
     </View>
+    </SafeAreaView>
   );
 }

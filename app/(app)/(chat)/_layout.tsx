@@ -5,6 +5,7 @@ import { useChat } from "~/src/lib/chat";
 import { View, Text, ActivityIndicator } from "react-native";
 import { useEffect } from "react";
 import { LiveLocationContextProvider } from "~/src/lib/LiveLocationContext";
+import { SafeAreaView} from "react-native-safe-area-context";
 
 export default function ChatLayout() {
   const { client, isConnecting } = useChat();
@@ -52,6 +53,7 @@ export default function ChatLayout() {
   });
 
   return (
+         <SafeAreaView className="flex-1 bg-background">
     <ChatThemeProvider>
       <OverlayProvider>
         <Chat client={client}>
@@ -100,5 +102,6 @@ export default function ChatLayout() {
         </Chat>
       </OverlayProvider>
     </ChatThemeProvider>
+    </SafeAreaView>
   );
 }
