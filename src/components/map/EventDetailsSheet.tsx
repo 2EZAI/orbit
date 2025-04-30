@@ -11,6 +11,7 @@ import {
 import { Text } from "~/src/components/ui/text";
 import { Button } from "~/src/components/ui/button";
 import { MapEvent } from "~/hooks/useMapEvents";
+import { router } from "expo-router";
 import {
   Share2,
   MapPin,
@@ -105,12 +106,28 @@ export function EventDetailsSheet({
             </View>
           </View>
           <Text className="mb-2 text-2xl font-bold">{event.name}</Text>
-          <View className="flex-row items-center">
+          
+          <View className="flex-row items-center justify-between">
             <View className="px-3 py-1 rounded-full bg-primary/10">
               <Text className="text-sm font-medium text-primary">
                 Starts: {formatTime(event.start_datetime)}
               </Text>
             </View>
+            {event.is_ticketmaster &&
+            <TouchableOpacity 
+            className="px-3 py-1 rounded-full bg-primary/10"
+            onPress={() => {
+              console.log(" book click:")
+              router.push({
+                pathname: "/(app)/(webview)",
+                params: { external_url: event.external_url },
+              });
+            }}>
+            <Text className="ml-1.5 font-semibold text-primary">
+                  Book Event
+                </Text>
+                </TouchableOpacity>
+            }
           </View>
         </View>
 
@@ -144,6 +161,7 @@ export function EventDetailsSheet({
                 <Text className="text-sm text-muted-foreground">
                   {event.address}
                 </Text>
+                
               </View>
             </View>
           </View>

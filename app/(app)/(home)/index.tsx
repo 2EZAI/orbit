@@ -29,7 +29,7 @@ export default function Home() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
 
-  const { events,isLoading, error } = useMapEvents({
+  const { events,eventsHome,isLoading, error } = useMapEvents({
     center: [37.7749, -122.4194],
     radius: 10000,
     timeRange: "now",
@@ -57,12 +57,14 @@ export default function Home() {
       <SearchBar onPress={() => setIsSearchOpen(true)} />
 
       <ScrollView className="flex-1">
-        {events.map((event) => (
+      
+          {eventsHome.map((event) => (
           <FeedEventCard
             key={event.id}
             event={event}
             onEventSelect={setSelectedEvent}
-            nearbyEvents={events}
+            // nearbyEvents={events}
+              nearbyEvents={eventsHome}
           />
         ))}
       </ScrollView>
@@ -77,7 +79,8 @@ export default function Home() {
           event={selectedEvent}
           isOpen={!!selectedEvent}
           onClose={() => setSelectedEvent(null)}
-          nearbyEvents={events}
+          // nearbyEvents={events}
+          nearbyEvents={eventsHome}
           onEventSelect={setSelectedEvent}
         />
       )}

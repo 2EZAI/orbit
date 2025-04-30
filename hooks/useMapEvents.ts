@@ -64,6 +64,7 @@ export function useMapEvents({
   timeRange = "now",
 }: UseMapEventsProps) {
   const [events, setEvents] = useState<MapEvent[]>([]);
+  const [eventsHome, setEventsHome] = useState<MapEvent[]>([]);
   const [clusters, setClusters] = useState<EventCluster[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<MapEvent | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -149,6 +150,7 @@ export function useMapEvents({
       }
 
       const data = await response.json();
+      // console.log("event data", data);
       console.log("[Events] Fetched", data.length, "events from API");
 
       // Validate event data
@@ -185,6 +187,30 @@ export function useMapEvents({
       const newClusters = clusterEvents(validEvents);
       console.log("[Events] Setting", newClusters.length, "clusters");
       setClusters(newClusters);
+ // Validate event data
+ const validEventsHome = data.filter((event: any) => {
+  const isValid =
+    !event.is_ticketmaster  &&
+    event.location &&
+    typeof event.location.latitude === "number" &&
+    typeof event.location.longitude === "number" &&
+    !isNaN(event.location.latitude) &&
+    !isNaN(event.location.longitude) &&
+    Math.abs(event.location.latitude) <= 90 &&
+    Math.abs(event.location.longitude) <= 180;
+
+  if (!isValid) {
+    console.warn(
+      "[Events] Invalid event data:",
+      event.id,
+      JSON.stringify(event.location)
+    );
+  }
+  return isValid;
+});
+console.log("validEventsHome>",validEventsHome.length);
+setEventsHome(validEventsHome);
+
       setError(null);
     } catch (err) {
       console.error("[Events] Error fetching events:", err);
@@ -227,6 +253,7 @@ export function useMapEvents({
   }, []);
 
   return {
+    eventsHome,
     events,
     clusters,
     selectedEvent,
