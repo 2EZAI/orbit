@@ -137,7 +137,11 @@ export function MapControls({
               </View>
             ) : (
               <TouchableOpacity
-                onPress={toggleSearch}
+                // onPress={toggleSearch}
+                onPress={() => {
+                      setSearchQuery();
+                      onSearch();
+                    }}
                 className="items-center justify-center border rounded-full w-11 h-11 bg-background/80 backdrop-blur-lg border-border"
               >
               { Platform.OS === 'ios' ?

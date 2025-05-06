@@ -27,6 +27,7 @@ import { UserMarker } from "~/src/components/map/UserMarker";
 import { EventMarker } from "~/src/components/map/EventMarker";
 import { ClusterSheet } from "~/src/components/map/ClusterSheet";
 import { MapEventCard } from "~/src/components/map/EventCard";
+import { SearchSheet } from "~/src/components/search/SearchSheet";
 
 // Replace with your Mapbox access token
 MapboxGL.setAccessToken(
@@ -40,6 +41,7 @@ const CUSTOM_DARK_STYLE =
   "mapbox://styles/tangentdigitalagency/clzwv4xtp002y01psdttf9jhr";
 
 export default function Map() {
+   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { theme, isDarkMode } = useTheme();
   const { user } = useUser();
   const mapRef = useRef<MapboxGL.MapView>(null);
@@ -63,7 +65,7 @@ export default function Map() {
     fitToEvents,
   } = useMapCamera();
 
-  const {
+  var {
     events,
     clusters,
     selectedEvent,
@@ -74,7 +76,8 @@ export default function Map() {
   } = useMapEvents({
     center: location
       ? [location.latitude, location.longitude]
-      : [37.7749, -122.4194],
+        : [0, 0],
+      // : [37.7749, -122.4194],
     radius: 50000,
     timeRange: "now",
   });
@@ -153,7 +156,7 @@ export default function Map() {
     useEffect(() => {
     console.log('useEffect','?');
     // console.log("events>",events.length);
-    console.log("clusters>",clusters);
+    // console.log("clusters>",clusters);
     // return;
   }, );
 
@@ -397,7 +400,7 @@ export default function Map() {
       </MapboxGL.MapView>
 
       <MapControls
-        onSearch={() => {}}
+        onSearch={() => setIsSearchOpen(true)}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onRecenter={() => handleRecenter(location)}
@@ -420,6 +423,11 @@ export default function Map() {
           onClose={handleClusterClose}
         />
       )}
+       <SearchSheet
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        eventsList={events}
+      />
     </View>
   );
 }

@@ -30,6 +30,7 @@ interface EventCardProps {
   onClose: () => void;
   onEventSelect: (event: MapEvent) => void;
   nearbyEvents: MapEvent[];
+  onShowDetails: () => void;
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -40,6 +41,7 @@ export function MapEventCard({
   onClose,
   onEventSelect,
   nearbyEvents,
+  onShowDetails,
 }: EventCardProps) {
   const router = useRouter();
   const { user } = useUser();
@@ -124,6 +126,7 @@ export function MapEventCard({
       onEventSelect(event);
     }
     setShowDetails(true);
+    // onShowDetails(true);
   };
 
   return (

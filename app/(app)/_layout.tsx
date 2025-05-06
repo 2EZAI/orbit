@@ -35,6 +35,7 @@ export default function AppLayout() {
           );
           // Show tab bar everywhere except onboarding and specific chat messages
           const isSpecificChatRoute =
+          currentRoute.name === "(webview)"||
             currentRoute.name === "(chat)" &&
             typeof currentRoute.params === "object" &&
             currentRoute.params !== null &&

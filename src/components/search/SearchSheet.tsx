@@ -21,6 +21,7 @@ import { MapEvent } from "~/hooks/useMapEvents";
 interface SearchSheetProps {
   isOpen: boolean;
   onClose: () => void;
+  eventsList:any;
 }
 
 type User = {
@@ -48,13 +49,15 @@ const processEvent = (event: any, user?: User): MapEvent => {
     image_urls: event.image_urls,
     created_by: event.created_by,
     location: event.location,
+    is_ticketmaster: event.is_ticketmaster || false,
+    external_url: event.external_url || '',
     distance: 0,
     attendees: { count: 0, profiles: [] },
     categories: [],
   };
 };
 
-export function SearchSheet({ isOpen, onClose }: SearchSheetProps) {
+export function SearchSheet({ isOpen, onClose ,eventsList}: SearchSheetProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState<SearchResults>({
@@ -74,33 +77,53 @@ export function SearchSheet({ isOpen, onClose }: SearchSheetProps) {
     setIsLoading(true);
     try {
       // Fetch events
-      const { data: events, error: eventsError } = await supabase
-        .from("events")
-        .select(
-          `
-          id,
-          name,
-          description,
-          venue_name,
-          address,
-          start_datetime,
-          end_datetime,
-          image_urls,
-          created_by,
-          location,
-          event_topics (
-            topics (
-              id,
-              name
-            )
-          )
-        `
-        )
-        .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
-        .order("start_datetime", { ascending: true })
-        .limit(5);
+      // const { data: events, error: eventsError } = await supabase
+      //   .from("events")
+      //   .select(
+      //     `
+      //     id,
+      //     name,
+      //     description,
+      //     venue_name,
+      //     address,
+      //     start_datetime,
+      //     end_datetime,
+      //     image_urls,
+      //     created_by,
+      //     location,
+      //     event_topics (
+      //       topics (
+      //         id,
+      //         name
+      //       )
+      //     )
+      //   `
+      //   )
+      //   .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
+      //   .order("start_datetime", { ascending: true })
+      //   .limit(5);
 
-      if (eventsError) throw eventsError;
+      // if (eventsError) throw eventsError;
+
+const searchQ = query.toLowerCase();
+
+      const events = eventsList.filter(event =>  
+      event.name.toLowerCase().includes(searchQ) )
+      .sort((a, b) => {
+    const aName = a.name.toLowerCase();
+    const bName = b.name.toLowerCase();
+    const aStarts = aName.startsWith(searchQ);
+    const bStarts = bName.startsWith(searchQ);
+    
+    // Prioritize startsWith
+    if (aStarts && !bStarts) return -1;
+    if (!aStarts && bStarts) return 1;
+    
+    // If both or neither start with the term, sort alphabetically
+    return aName.localeCompare(bName);
+  });
+
+      console.log(events);
 
       let processedEvents: MapEvent[] = [];
       if (events?.length > 0) {
@@ -161,6 +184,8 @@ export function SearchSheet({ isOpen, onClose }: SearchSheetProps) {
       onClose();
     } else if (type === "event" && data?.id) {
       setSelectedEvent(data);
+      onClose();
+      setSearchQuery('');
     }
   };
 
@@ -185,7 +210,10 @@ export function SearchSheet({ isOpen, onClose }: SearchSheetProps) {
                     className="flex-1 p-0 text-base bg-transparent border-0"
                   />
                 </View>
-                <TouchableOpacity className="p-2 ml-2" onPress={onClose}>
+                <TouchableOpacity className="p-2 ml-2" onPress={() => {
+                  setSearchQuery('');
+                  onClose();
+                }}>
                   <X size={24} />
                 </TouchableOpacity>
               </View>

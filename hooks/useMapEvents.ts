@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { Image } from "react-native";
+import { Image ,Platform } from "react-native";
 import { supabase } from "~/src/lib/supabase";
 import { debounce } from "lodash";
+// import Toast from "react-native-toast-message";
 
 interface Location {
   latitude: number;
@@ -63,11 +64,18 @@ export function useMapEvents({
   radius = 500000,
   timeRange = "now",
 }: UseMapEventsProps) {
+  // Toast.show({
+  //   type: "success",
+  //   text1: "first :"+center,
+  // });
   const [events, setEvents] = useState<MapEvent[]>([]);
+  const [firstHit, setfirstHit] = useState(false);
+  const [cLocation, setcLocation] = useState(center);
   const [eventsHome, setEventsHome] = useState<MapEvent[]>([]);
   const [clusters, setClusters] = useState<EventCluster[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<MapEvent | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [ncenter, setcenter] = useState(center);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
   const lastFetchTimeRef = useRef<number>(0);
@@ -120,7 +128,11 @@ export function useMapEvents({
     return clusters;
   }, []);
 
-  const fetchAllEvents = useCallback(async () => {
+  const fetchAllEvents = useCallback(async (centerr: any[]) => {
+    if(centerr[0] == 0 && centerr[1] == 0)
+    {
+      return;
+    }
     if (!isMountedRef.current || isLoading) return;
     setIsLoading(true);
 
@@ -134,17 +146,34 @@ export function useMapEvents({
         throw new Error("No valid auth session");
       }
 
+ // 2. get event using our API
+ const eventData = {
+  // latitude: 41.884109,
+  // longitude: -87.665881
+  latitude: centerr[0],
+  longitude: centerr[1]
+};
+// Toast.show({
+//   type: "success",
+//   text1: "eventData:"+eventData.latitude +"\n"+ eventData.longitude,
+// });
+
       const response = await fetch(
         `${process.env.BACKEND_MAP_URL}/api/events/all`,
         {
+          method: "POST",
           headers: {
+            "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`,
           },
+          body: JSON.stringify(eventData),
         }
       );
       console.log("session.access_token>>",
       session.access_token);
-
+      console.log("eventData",
+      eventData);
+      
       if (!response.ok) {
         throw new Error(await response.text());
       }
@@ -224,12 +253,54 @@ setEventsHome(validEventsHome);
 
   // Initial fetch only
   useEffect(() => {
+    // Toast.show({
+    //   type: "success",
+    //   text1: "iiinn :"+center,
+    // });
     isMountedRef.current = true;
-    fetchAllEvents();
+    fetchAllEvents(center);
     return () => {
       isMountedRef.current = false;
     };
   }, [fetchAllEvents]);
+
+  useEffect(() => {
+    if(Platform.OS === 'android')
+    {
+      if(!firstHit){
+        console.log("center changed:", center);
+        //setcLocation(center);
+        // Toast.show({
+        //   type: "success",
+        //   text1: "center changed:"+center +firstHit,
+        // });
+        
+        fetchAllEvents(center);
+        setTimeout(() => {
+          setfirstHit(true);
+        }, 3000);
+          
+       }
+    }
+    else{
+     if(!firstHit){
+    console.log("center changed:", center);
+    //setcLocation(center);
+    // Toast.show({
+    //   type: "success",
+    //   text1: "center changed:"+center +firstHit,
+    // });
+    
+    fetchAllEvents(center);
+    setTimeout(() => {
+      setfirstHit(true);
+    }, 300);
+      
+   }
+  }
+    
+  
+  }, [center]); // This runs every time `location` changes
 
 
   // Memoize the center value to prevent unnecessary updates

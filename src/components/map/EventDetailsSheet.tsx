@@ -115,7 +115,7 @@ export function EventDetailsSheet({
             </View>
             {event.is_ticketmaster &&
             <TouchableOpacity 
-            className="px-3 py-1 rounded-full bg-primary/10"
+            className="px-5 py-3 rounded-full bg-purple-700"
             onPress={() => {
               console.log(" book click:")
               router.push({
@@ -123,8 +123,8 @@ export function EventDetailsSheet({
                 params: { external_url: event.external_url },
               });
             }}>
-            <Text className="ml-1.5 font-semibold text-primary">
-                  Book Event
+            <Text className="ml-1.5 font-semibold text-white text-base">
+                  Join Event
                 </Text>
                 </TouchableOpacity>
             }
