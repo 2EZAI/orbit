@@ -8,7 +8,7 @@ import { FeedEventCard } from "~/src/components/feed/FeedEventCard";
 import { EventDetailsSheet } from "~/src/components/map/EventDetailsSheet";
 import { SearchSheet } from "~/src/components/search/SearchSheet";
 import * as Location from "expo-location";
-import PostsTab from "~/src/components/profile/PostsTab";
+import AllPostsTab from "~/src/components/profile/AllPostsTab";
 
 
 const SearchBar = ({ onPress }: { onPress: () => void }) => (
@@ -126,11 +126,7 @@ const renderTabContent = () => {
          <EventView/>
         );
       case "Posts":
-        return (
-          <View className="p-4">
-            <Text className="text-muted-foreground">No additional info</Text>
-          </View>
-        );
+        return <AllPostsTab  /> ;
     }
   };
 
@@ -205,6 +201,7 @@ const renderTabContent = () => {
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
         eventsList={events}
+        onShowControler={(value)  => {}}
       />
 
       {selectedEvent && (
@@ -215,6 +212,7 @@ const renderTabContent = () => {
           nearbyEvents={events}
           // nearbyEvents={eventsHome}
           onEventSelect={setSelectedEvent}
+          onShowControler={()  => {}}
         />
       )}
     </SafeAreaView>

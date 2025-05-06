@@ -22,6 +22,7 @@ interface SearchSheetProps {
   isOpen: boolean;
   onClose: () => void;
   eventsList:any;
+  onShowControler: () => void;
 }
 
 type User = {
@@ -57,7 +58,7 @@ const processEvent = (event: any, user?: User): MapEvent => {
   };
 };
 
-export function SearchSheet({ isOpen, onClose ,eventsList}: SearchSheetProps) {
+export function SearchSheet({ isOpen, onClose ,eventsList,onShowControler}: SearchSheetProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState<SearchResults>({
@@ -176,6 +177,7 @@ const searchQ = query.toLowerCase();
   };
 
   const handleSelectResult = (type: "event" | "user", data: any) => {
+    onShowControler(false);
     if (type === "user" && data?.username) {
       router.push({
         pathname: "/(app)/profile/[username]",
@@ -322,6 +324,7 @@ const searchQ = query.toLowerCase();
           }}
           nearbyEvents={results.events}
           onEventSelect={(event) => setSelectedEvent(event)}
+          onShowControler={()  => onShowControler(true)}
         />
       )}
     </>

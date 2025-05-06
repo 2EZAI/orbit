@@ -99,6 +99,7 @@ export function FeedEventCard({
           onClose={() => setShowDetails(false)}
           nearbyEvents={nearbyEvents || []}
           onEventSelect={onEventSelect || (() => {})}
+           onShowControler={()  => {}}
         />
       )}
     </>

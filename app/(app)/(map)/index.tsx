@@ -27,6 +27,7 @@ import { UserMarker } from "~/src/components/map/UserMarker";
 import { EventMarker } from "~/src/components/map/EventMarker";
 import { ClusterSheet } from "~/src/components/map/ClusterSheet";
 import { MapEventCard } from "~/src/components/map/EventCard";
+import { EventDetailsSheet } from "~/src/components/map/EventDetailsSheet";
 import { SearchSheet } from "~/src/components/search/SearchSheet";
 
 // Replace with your Mapbox access token
@@ -41,6 +42,8 @@ const CUSTOM_DARK_STYLE =
   "mapbox://styles/tangentdigitalagency/clzwv4xtp002y01psdttf9jhr";
 
 export default function Map() {
+    const [showDetails, setShowDetails] = useState(false);
+     const [showControler, setShowControler] = useState(true);
    const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { theme, isDarkMode } = useTheme();
   const { user } = useUser();
@@ -399,23 +402,27 @@ export default function Map() {
         )}
       </MapboxGL.MapView>
 
-      <MapControls
+     { showControler && <MapControls
         onSearch={() => setIsSearchOpen(true)}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onRecenter={() => handleRecenter(location)}
         isFollowingUser={isFollowingUser}
       />
-
+     }
       {selectedEvent && (
         <MapEventCard
           event={selectedEvent}
           nearbyEvents={events}
           onClose={handleCloseModal}
           onEventSelect={handleEventSelect}
+          onShowDetails={() => {
+            setShowControler(false);
+            setShowDetails(true);
+          }}
         />
       )}
-
+  
       {selectedCluster && (
         <ClusterSheet
           events={selectedCluster}
@@ -427,7 +434,17 @@ export default function Map() {
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
         eventsList={events}
+        onShowControler={(value)  => setShowControler(value)}
       />
+      {showDetails && (
+        <EventDetailsSheet
+          event={selectedEvent}
+          isOpen={showDetails}
+          onClose={() => setShowDetails(false)}
+          nearbyEvents={events}
+          onShowControler={()  => setShowControler(true)}
+        />
+      )}
     </View>
   );
 }

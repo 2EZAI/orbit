@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback ,useEffect} from "react";
 import {
   View,
   ScrollView,
@@ -37,6 +37,7 @@ interface EventDetailsSheetProps {
   onClose: () => void;
   nearbyEvents: MapEvent[];
   onEventSelect: (event: MapEvent) => void;
+  onShowControler: () => void;
 }
 
 export function EventDetailsSheet({
@@ -45,6 +46,7 @@ export function EventDetailsSheet({
   onClose,
   nearbyEvents,
   onEventSelect,
+  onShowControler,
 }: EventDetailsSheetProps) {
   const width = Dimensions.get("window").width;
   const imageSize = (width - 32) / 3; // 3 images per row with padding
@@ -69,6 +71,13 @@ export function EventDetailsSheet({
   };
 
   if (!isOpen) return null;
+
+ useEffect(() => {
+    return () => {
+      console.log('Hello');
+      onShowControler(true);
+    };
+  }, []);
 
   return (
     <BottomSheet
@@ -260,13 +269,14 @@ export function EventDetailsSheet({
       </BottomSheetScrollView>
 
       {/* Join Button */}
-      <View className="px-4 py-4 border-t border-border bg-background">
+     {/* <View className="px-4 py-4 border-t border-border bg-background">
         <Button className="w-full">
           <Text className="font-medium text-primary-foreground">
             Join Event
           </Text>
         </Button>
       </View>
+      */}
     </BottomSheet>
   );
 }

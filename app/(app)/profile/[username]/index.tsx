@@ -327,6 +327,7 @@ console.error("fetchUserProfile:4");
           onClose={() => setSelectedEvent(null)}
           nearbyEvents={userEvents}
           onEventSelect={setSelectedEvent}
+           onShowControler={()  => {}}
         />
       )}
     </View>

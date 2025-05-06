@@ -125,8 +125,8 @@ export function MapEventCard({
     if (onEventSelect) {
       onEventSelect(event);
     }
-    setShowDetails(true);
-    // onShowDetails(true);
+    // setShowDetails(true);
+    onShowDetails(true);
   };
 
   return (
@@ -233,6 +233,7 @@ export function MapEventCard({
           onClose={() => setShowDetails(false)}
           nearbyEvents={nearbyEvents}
           onEventSelect={onEventSelect}
+           onShowControler={()  => {}}
         />
       )}
     </>
