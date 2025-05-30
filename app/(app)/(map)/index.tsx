@@ -11,6 +11,8 @@ import {
   Platform,
   Linking,
 } from "react-native";
+import { supabase } from "~/src/lib/supabase";
+import { useAuth } from "~/src/lib/auth";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import * as Location from "expo-location";
@@ -24,6 +26,8 @@ import { X, MapPin } from "lucide-react-native";
 
 import { Sheet } from "~/src/components/ui/sheet";
 import { UserMarker } from "~/src/components/map/UserMarker";
+import { UserMarkerWithCount } from "~/src/components/map/UserMarkerWithCount";
+
 import { EventMarker } from "~/src/components/map/EventMarker";
 import { ClusterSheet } from "~/src/components/map/ClusterSheet";
 import { MapEventCard } from "~/src/components/map/EventCard";
@@ -42,18 +46,24 @@ const CUSTOM_DARK_STYLE =
   "mapbox://styles/tangentdigitalagency/clzwv4xtp002y01psdttf9jhr";
 
 export default function Map() {
+    const [selectedTimeFrame, setSelectedTimeFrame] = useState<TimeFrame>('Today');
     const [showDetails, setShowDetails] = useState(false);
+    const [hideCount, setHideCount] = useState(false);
+  
      const [showControler, setShowControler] = useState(true);
    const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { theme, isDarkMode } = useTheme();
-  const { user } = useUser();
+  const { user , updateUserLocations } = useUser();
   const mapRef = useRef<MapboxGL.MapView>(null);
+  const { session } = useAuth();
   const [location, setLocation] = useState<{
     latitude: numbrer;
     longitude: number;
     heading?: number | null;
   } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  
+   const [followerList, setFollowerList] = useState([]);
   const [selectedCluster, setSelectedCluster] = useState<MapEvent[] | null>(
     null
   );
@@ -70,7 +80,13 @@ export default function Map() {
 
   var {
     events,
+    eventsNow,
+    eventsToday,
+    eventsTomorrow,
     clusters,
+    clustersNow,
+    clustersToday,
+    clustersTomorrow,
     selectedEvent,
     isLoading,
     error,
@@ -95,6 +111,50 @@ export default function Map() {
       });
     }
   }, [selectedEvent]);
+
+useEffect(() => {
+  console.log("followerList updated >>>>", followerList);
+ 
+}, [followerList]);
+
+const haversine = (lat1, lon1, lat2, lon2) => {
+  const toRad = (value) => (value * Math.PI) / 180;
+  const R = 3956; // Radius of Earth in miles
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.asin(Math.sqrt(a));
+  return R * c;
+};
+
+// Compute nearby follower count for each user
+const getNearbyFollowerCounts = (followerList, radius = 10) => {
+  return followerList.map((user, index) => {
+    let nearbyCount = 0;
+    for (let i = 0; i < followerList.length; i++) {
+      if (i !== index) {
+        const other = followerList[i];
+        const distance = haversine(
+          user.live_location_latitude,
+          user.live_location_longitude,
+          other.live_location_latitude,
+          other.live_location_longitude
+        );
+        if (distance <= radius) {
+          nearbyCount++;
+        }
+      }
+    }
+    return {
+      ...user,
+      nearbyCount,
+    };
+  });
+};
 
   // Add logging for events
   useEffect(() => {
@@ -146,6 +206,164 @@ export default function Map() {
     }
   }, [events, mapRef, cameraRef]);
 
+  // Add logging for events
+  useEffect(() => {
+    console.log("[Map] Total followerList available:", followerList.length);
+    console.log("[Map] zoomlevel:", cameraRef.current);
+
+  }, [followerList, mapRef, cameraRef]);
+
+ // Add logging for events
+  useEffect(() => {
+
+    if(selectedTimeFrame == 'Today'){
+       // Fit map to events if we have any
+    if ( eventsNow.length > 0 && mapRef.current && cameraRef.current) {
+      const bounds = events.reduce(
+        (acc, event) => {
+          acc.north = Math.max(acc.north, event.location.latitude);
+          acc.south = Math.min(acc.south, event.location.latitude);
+          acc.east = Math.max(acc.east, event.location.longitude);
+          acc.west = Math.min(acc.west, event.location.longitude);
+          return acc;
+        },
+        {
+          north: -90,
+          south: 90,
+          east: -180,
+          west: 180,
+        }
+      );
+
+      console.log("[Map] Calculated bounds:", bounds);
+
+      // Add padding to bounds
+      const padding = 0.1; // degrees
+
+      // Only fit to bounds if they're valid (not the initial values)
+      if (bounds.north !== -90 && bounds.south !== 90) {
+        // Calculate center point of events
+        const centerLat = (bounds.north + bounds.south) / 2;
+        const centerLng = (bounds.east + bounds.west) / 2;
+
+        // Calculate appropriate zoom level based on bounds
+        const latDiff = Math.abs(bounds.north - bounds.south);
+        const lngDiff = Math.abs(bounds.east - bounds.west);
+        const maxDiff = Math.max(latDiff, lngDiff);
+        const zoomLevel = Math.floor(14 - Math.log2(maxDiff)); // Adjust 14 to change base zoom
+
+        cameraRef.current.setCamera({
+          centerCoordinate: [centerLng, centerLat],
+          zoomLevel: Math.min(Math.max(zoomLevel, 9), 16), // Clamp between min and max zoom
+          animationDuration: 1000,
+          animationMode: "flyTo",
+        });
+      }
+    }
+    console.log("[Map] Total eventsNow available:", eventsNow.length);
+    console.log("[Map] First event location:", eventsNow[0]?.location);
+    }
+
+
+    if(selectedTimeFrame == 'Week'){
+       // Fit map to events if we have any
+    if (eventsToday.length > 0 && mapRef.current && cameraRef.current) {
+      const bounds = events.reduce(
+        (acc, event) => {
+          acc.north = Math.max(acc.north, event.location.latitude);
+          acc.south = Math.min(acc.south, event.location.latitude);
+          acc.east = Math.max(acc.east, event.location.longitude);
+          acc.west = Math.min(acc.west, event.location.longitude);
+          return acc;
+        },
+        {
+          north: -90,
+          south: 90,
+          east: -180,
+          west: 180,
+        }
+      );
+
+      console.log("[Map] Calculated bounds:", bounds);
+
+      // Add padding to bounds
+      const padding = 0.1; // degrees
+
+      // Only fit to bounds if they're valid (not the initial values)
+      if (bounds.north !== -90 && bounds.south !== 90) {
+        // Calculate center point of events
+        const centerLat = (bounds.north + bounds.south) / 2;
+        const centerLng = (bounds.east + bounds.west) / 2;
+
+        // Calculate appropriate zoom level based on bounds
+        const latDiff = Math.abs(bounds.north - bounds.south);
+        const lngDiff = Math.abs(bounds.east - bounds.west);
+        const maxDiff = Math.max(latDiff, lngDiff);
+        const zoomLevel = Math.floor(14 - Math.log2(maxDiff)); // Adjust 14 to change base zoom
+
+        cameraRef.current.setCamera({
+          centerCoordinate: [centerLng, centerLat],
+          zoomLevel: Math.min(Math.max(zoomLevel, 9), 16), // Clamp between min and max zoom
+          animationDuration: 1000,
+          animationMode: "flyTo",
+        });
+      }
+    }
+    console.log("[Map] Total eventsToday available:", eventsToday.length);
+    console.log("[Map] First event location:", eventsToday[0]?.location);
+    }
+    if(selectedTimeFrame == 'Weekend'){
+         // Fit map to events if we have any
+    if (eventsTomorrow.length > 0 && mapRef.current && cameraRef.current) {
+      const bounds = events.reduce(
+        (acc, event) => {
+          acc.north = Math.max(acc.north, event.location.latitude);
+          acc.south = Math.min(acc.south, event.location.latitude);
+          acc.east = Math.max(acc.east, event.location.longitude);
+          acc.west = Math.min(acc.west, event.location.longitude);
+          return acc;
+        },
+        {
+          north: -90,
+          south: 90,
+          east: -180,
+          west: 180,
+        }
+      );
+
+      console.log("[Map] Calculated bounds:", bounds);
+
+      // Add padding to bounds
+      const padding = 0.1; // degrees
+
+      // Only fit to bounds if they're valid (not the initial values)
+      if (bounds.north !== -90 && bounds.south !== 90) {
+        // Calculate center point of events
+        const centerLat = (bounds.north + bounds.south) / 2;
+        const centerLng = (bounds.east + bounds.west) / 2;
+
+        // Calculate appropriate zoom level based on bounds
+        const latDiff = Math.abs(bounds.north - bounds.south);
+        const lngDiff = Math.abs(bounds.east - bounds.west);
+        const maxDiff = Math.max(latDiff, lngDiff);
+        const zoomLevel = Math.floor(14 - Math.log2(maxDiff)); // Adjust 14 to change base zoom
+
+        cameraRef.current.setCamera({
+          centerCoordinate: [centerLng, centerLat],
+          zoomLevel: Math.min(Math.max(zoomLevel, 9), 16), // Clamp between min and max zoom
+          animationDuration: 1000,
+          animationMode: "flyTo",
+        });
+      }
+    }
+     console.log("[Map] Total eventsTomorrow available:", eventsTomorrow.length);
+    console.log("[Map] First event location:", eventsTomorrow[0]?.location);
+    }
+   
+
+   
+  }, [selectedTimeFrame, mapRef, cameraRef]);
+
   // Add logging for user data
   useEffect(() => {
     if (user) {
@@ -162,6 +380,112 @@ export default function Map() {
     // console.log("clusters>",clusters);
     // return;
   }, );
+
+
+useEffect(()=>{
+  console.log("updateUserLocations>updateUserLocations");
+  // getFollowingsByFollower();
+  getFollowedUserDetails();
+(async () => {
+  
+  console.log("updateUserLocations>async",location);
+//  await updateUserLocations({
+//           live_location_latitude:location.latitude,
+//           live_location_longitude:location.longitude,
+//         });
+})();
+},[location]);
+
+const getFollowingsByFollower = async () => {
+    console.log("getFollowingsByFollower");
+   if (!session?.user.id) {
+      Alert.alert("Error", "Please sign in to like posts");
+      return;
+    }
+     console.log("getFollowingsByFollower>>");
+  const { data, error } = await supabase
+    .from("follows")
+    .select("*") // or specify fields like "following_id"
+    .eq("follower_id", session?.user.id);
+
+  if (error) throw error;
+
+  console.log("Matched followings:", data);
+  return data; // list of all following relationships for the given follower
+};
+
+const getFollowedUserDetails = async () => {
+  // Step 1: Get list of following_ids
+  const { data: follows, error: followError } = await supabase
+    .from("follows")
+    .select("following_id")
+    .eq("follower_id", session?.user.id);
+
+  if (followError) throw followError;
+  if (!follows || follows.length === 0) return [];
+
+  const followingIds = follows.map(f => f.following_id);
+  console.log("followingIds:", followingIds);
+
+  // Step 2: Check which of them also follow the session user
+const { data: mutuals, error: mutualError } = await supabase
+  .from("follows")
+  .select("follower_id")
+  .in("follower_id", followingIds)  // These people must be the follower
+  .eq("following_id", session?.user.id); // ...of the session user
+
+if (mutualError) throw mutualError;
+
+const mutualFollowerIds = mutuals.map(m => m.follower_id);
+
+console.log("Mutual followers:", mutualFollowerIds);
+  
+  // Step 2: Fetch user data in batch
+  const { data: users, error: usersError } = await supabase
+    .from("users")
+    .select("id, avatar_url")
+    .in("id", mutualFollowerIds);
+
+  if (usersError) throw usersError;
+  console.log("Followed user", users);
+  // Step 3: Fetch location data in batch
+  const { data: locations, error: locationError } = await supabase
+    .from("user_locations")
+    .select("user_id, live_location_latitude, live_location_longitude")
+    .in("user_id", mutualFollowerIds);
+  console.log("Followed locations", locations);
+  if (locationError) throw locationError;
+
+  // Step 4: Combine all data
+  const result = mutualFollowerIds.map((userId,index) => {
+    const user = users.find(u => u.id === userId);
+    const location = locations.find(l => l.user_id === userId);
+
+// let ll=[{ lat: 41.3688486, lng: -81.6293933 },
+//   { lat: 41.3688425, lng: -81.6303213 },
+//   { lat: 41.4439525, lng: -81.8009226 },];
+// const locationn = ll[index] ; 
+
+return {
+      userId,
+      avatar_url: user?.avatar_url || null,
+      live_location_latitude: parseFloat(location?.live_location_latitude) || 0.0 ,
+      live_location_longitude: parseFloat(location?.live_location_longitude) || 0.0,
+      // live_location_latitude: locationn.lat ,
+      // live_location_longitude: locationn.lng ,
+    };
+   
+  });
+
+  console.log("Followed user details:", result);
+  // setFollowerList(result);
+ const updatedFollowerList = getNearbyFollowerCounts(result);
+console.log("updatedFollowerList:", updatedFollowerList);
+setFollowerList([]);
+setFollowerList(updatedFollowerList);
+  return result;
+};
+
 
   // Initialize and watch location
   useEffect(() => {
@@ -222,6 +546,7 @@ export default function Map() {
               longitude: newLocation.coords.longitude,
               heading: newLocation.coords.heading || undefined,
             });
+        
           }
         );
       } catch (error) {
@@ -231,6 +556,7 @@ export default function Map() {
         );
       }
     })();
+    
 
     return () => locationSubscription?.remove();
   }, []);
@@ -326,6 +652,15 @@ export default function Map() {
         }}
         onRegionDidChange={(region) => {
           console.log("[Map] Region changed:", region);
+          let zoomLevel=region?.properties?.zoomLevel
+          if(zoomLevel <=12)
+          {
+setHideCount(true);
+          }
+          else{
+setHideCount(false);
+          }
+          
         }}
       >
         <MapboxGL.Camera
@@ -346,9 +681,78 @@ export default function Map() {
           followZoomLevel={14}
         />
 
+        
+       
+
         {/* Event markers */}
         
-        {clusters.map((cluster) => (
+     {selectedTimeFrame == 'Today' && clustersNow.map((cluster) => (
+          <MapboxGL.MarkerView
+            // key={`cluster-${cluster.mainEvent.id}`}
+            // id={`cluster-${cluster.mainEvent.id}`}
+               key={`cluster-${cluster.id}`}
+            id={`cluster-${cluster.id}`}
+            coordinate={[cluster.location.longitude, cluster.location.latitude]}
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
+            <View
+              style={{
+                zIndex: cluster.events.some((e) => e.id === selectedEvent?.id)
+                  ? 1000
+                  : 100,
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => handleClusterPress(cluster)}
+                style={{ padding: 5 }}
+              >
+                <EventMarker
+                  imageUrl={cluster.mainEvent.image_urls[0]}
+                 
+                  count={cluster.events.length}
+                  isSelected={cluster.events.some(
+                    (e) => e.id === selectedEvent?.id
+                  )}
+                />
+              </TouchableOpacity>
+            </View>
+          </MapboxGL.MarkerView>
+        ))}
+
+          {selectedTimeFrame == 'Week' && clustersToday.map((cluster) => (
+          <MapboxGL.MarkerView
+            // key={`cluster-${cluster.mainEvent.id}`}
+            // id={`cluster-${cluster.mainEvent.id}`}
+               key={`cluster-${cluster.id}`}
+            id={`cluster-${cluster.id}`}
+            coordinate={[cluster.location.longitude, cluster.location.latitude]}
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
+            <View
+              style={{
+                zIndex: cluster.events.some((e) => e.id === selectedEvent?.id)
+                  ? 1000
+                  : 100,
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => handleClusterPress(cluster)}
+                style={{ padding: 5 }}
+              >
+                <EventMarker
+                  imageUrl={cluster.mainEvent.image_urls[0]}
+                 
+                  count={cluster.events.length}
+                  isSelected={cluster.events.some(
+                    (e) => e.id === selectedEvent?.id
+                  )}
+                />
+              </TouchableOpacity>
+            </View>
+          </MapboxGL.MarkerView>
+        ))}
+
+        {selectedTimeFrame == 'Weekend' && clustersTomorrow.map((cluster) => (
           <MapboxGL.MarkerView
             // key={`cluster-${cluster.mainEvent.id}`}
             // id={`cluster-${cluster.mainEvent.id}`}
@@ -400,6 +804,46 @@ export default function Map() {
             </View>
           </MapboxGL.MarkerView>
         )}
+
+        {/*  {followerList.length>0 && followerList.map((followerUser, index) => (
+          
+        //   <MapboxGL.MarkerView
+        //        key={`followerUser-${followerUser?.userId}`}
+        //     id={`followerUser-${followerUser?.userId}`}
+        //     coordinate={[followerUser?.live_location_longitude ,followerUser?.live_location_latitude ]}
+        //     anchor={{ x: 0.5, y: 0.5 }}
+          
+        //   >
+        //    <View
+        //       className="items-center justify-center">
+        //      <UserMarkerWithCount
+        //         avatarUrl={followerUser?.avatar_url}
+        //         count={3}
+        //       />
+        //     </View>
+        //   </MapboxGL.MarkerView>
+         ))}*/}
+
+        {followerList.length > 0 &&
+  followerList.map((followerUser) => (
+    <MapboxGL.MarkerView
+      key={`followerUser-${followerUser?.userId}`}
+      id={`followerUser-${followerUser?.userId}`}
+      coordinate={[
+        followerUser?.live_location_longitude,
+        followerUser?.live_location_latitude,
+      ]}
+      anchor={{ x: 0.5, y: 0.5 }}
+    >
+      <View className="items-center justify-center">
+        <UserMarkerWithCount
+          avatarUrl={followerUser?.avatar_url}
+          showCount={hideCount}
+          count={followerUser.nearbyCount > 0 ? followerUser.nearbyCount + 1 : 0} // +1 to include the user
+        />
+      </View>
+    </MapboxGL.MarkerView>
+  ))}
       </MapboxGL.MapView>
 
      { showControler && <MapControls
@@ -408,6 +852,11 @@ export default function Map() {
         onZoomOut={handleZoomOut}
         onRecenter={() => handleRecenter(location)}
         isFollowingUser={isFollowingUser}
+        timeFrame={selectedTimeFrame}
+        onSelectedTimeFrame={(txt)=>{
+          console.log("txt>>",txt);
+        setSelectedTimeFrame(txt);
+        }}
       />
      }
       {selectedEvent && (

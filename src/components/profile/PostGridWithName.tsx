@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Image,
   RefreshControl,
+  DeviceEventEmitter,
 } from "react-native";
 import { router } from "expo-router";
 import { Text } from "~/src/components/ui/text";
@@ -31,7 +32,12 @@ export default function PostGridWithName({ posts, refreshControl }: PostGridWith
   
   const renderItem = ({ item: post }: { item: Post }) => (
     <TouchableOpacity
-  className="w-[49%] mt-3 aspect-square border rounded-2xl border-border">
+  className="w-[49%] mt-3 aspect-square border rounded-2xl border-border"
+ onPress={() => {
+  router.push(`/post/${post.id}`);
+   DeviceEventEmitter.emit('refreshPost', true);
+  }
+  } >
       {post.media_urls && post.media_urls.length > 0 ? (
         <View className="w-full">
   <View className="relative overflow-hidden rounded-t-2xl">

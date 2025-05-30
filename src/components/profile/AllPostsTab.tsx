@@ -3,6 +3,7 @@ import { View, RefreshControl } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import PostGridWithName from "./PostGridWithName";
 import { supabase } from "~/src/lib/supabase";
+import { useAuth } from "~/src/lib/auth";
 
 interface Post {
   id: string;
@@ -22,11 +23,13 @@ interface AllPostsTabProps {
 }
 
 export default function AllPostsTab({ userId }: AllPostsTabProps) {
+   const { session } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchPosts = async () => {
+      if (!session?.user.id) return;
     try {
       const { data, error } = await supabase
 
@@ -36,8 +39,10 @@ export default function AllPostsTab({ userId }: AllPostsTabProps) {
     *,
     users (username,avatar_url )
   `)
+   .neq("user_id", session.user.id) // <- filter out posts from this user
   .order("created_at", { ascending: false });
 
+console.log('dataposts>',data);
       if (error) throw error;
       setPosts(data || []);
     } catch (error) {

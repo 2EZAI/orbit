@@ -334,9 +334,8 @@ export default function NewChatScreen() {
                       <AvatarFallback>
                       {Platform.OS === 'ios'?
                         <Users size={16} className="text-muted-foreground" />
-                     :
-                     <Icon name="user" type="material-community"
-                      size={20}
+                     :<Icon name="account-multiple" type="material-community"
+                      size={16}
                       color="#239ED0"/>
                       }
                       </AvatarFallback>
@@ -344,7 +343,11 @@ export default function NewChatScreen() {
                     <Text className="text-secondary-foreground">
                       {user.first_name} {user.last_name}
                     </Text>
+                    {Platform.OS == 'ios' ?
                     <X size={16} className="text-secondary-foreground" />
+                    : <Icon name="close" type="material-community"
+                      size={16}
+                      color="#239ED0"/>}
                   </Button>
                 ))}
               </View>
@@ -352,7 +355,7 @@ export default function NewChatScreen() {
           </Card>
         )}
 
-        <Card className="flex-1">
+        <Card className={`flex-1 ${Platform.OS === 'android' ? 'mb-[34%]' : ''}`}>
           <CardContent className="py-4">
             {isLoading ? (
               <View className="items-center justify-center flex-1 py-8">
@@ -374,7 +377,12 @@ export default function NewChatScreen() {
                         alt={`${item.email}'s avatar`}
                       >
                         <AvatarFallback>
-                          <Users size={16} className="text-muted-foreground" />
+                        {Platform.OS == 'ios' ?
+                        <Users size={16} className="text-muted-foreground" />
+                        :  <Icon name="account-multiple" type="material-community"
+                      size={16}
+                      color="#239ED0"/>
+                      }
                         </AvatarFallback>
                       </Avatar>
                       <Text className="flex-1 text-foreground">
@@ -401,7 +409,7 @@ export default function NewChatScreen() {
         <Button
           onPress={createChat}
           disabled={selectedUsers.length === 0}
-          className="mt-4"
+          className={`${Platform.OS === 'android' ?  'absolute  bottom-0 left-0 right-0  mb-[12%] mr-[4%] ml-[4%]': ' mt-4'}`}
         >
           <Text className="text-primary-foreground">
             Create {isGroupChat ? "Group" : "Chat"}

@@ -29,7 +29,7 @@ if (Platform.OS === "android") {
   }
 }
 
-type TimeFrame = "Now" | "Today" | "Tomorrow";
+type TimeFrame = "Today" | "Week" | "Weekend";
 
 interface MapControlsProps {
   onSearch: (text: string) => void;
@@ -37,6 +37,7 @@ interface MapControlsProps {
   onZoomOut: () => void;
   onRecenter: () => void;
   isFollowingUser: boolean;
+  onSelectedTimeFrame: (text: string) => void;
 }
 
 export function MapControls({
@@ -45,13 +46,15 @@ export function MapControls({
   onZoomOut,
   onRecenter,
   isFollowingUser,
+  timeFrame,
+  onSelectedTimeFrame,
 }: MapControlsProps) {
   const { theme } = useTheme();
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-  const [selectedTimeFrame, setSelectedTimeFrame] = useState<TimeFrame>("Now");
+  const [selectedTimeFrame, setSelectedTimeFrame] = useState<TimeFrame>(timeFrame);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const timeFrames: TimeFrame[] = ["Now", "Today", "Tomorrow"];
+  const timeFrames: TimeFrame[] = ["Today", "Week", "Weekend"];
 
   const toggleSearch = () => {
     LayoutAnimation.configureNext(
@@ -78,7 +81,11 @@ export function MapControls({
             {timeFrames.map((timeFrame) => (
               <Pressable
                 key={timeFrame}
-                onPress={() => setSelectedTimeFrame(timeFrame)}
+                onPress={() => {
+                  setSelectedTimeFrame(timeFrame);
+                  onSelectedTimeFrame(timeFrame);
+                  }
+                }
                 className={`flex-1 py-2 px-4 rounded-md ${
                   selectedTimeFrame === timeFrame ? "bg-primary" : ""
                 }`}

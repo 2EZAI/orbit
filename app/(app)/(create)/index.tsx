@@ -5,10 +5,11 @@ import {
   TouchableOpacity,
   Alert,
   Image,
-  SafeAreaView,
   Platform,
   DeviceEventEmitter,
 } from "react-native";
+import { Icon } from 'react-native-elements';
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
 import { Button } from "~/src/components/ui/button";
@@ -527,12 +528,23 @@ export default function CreateEvent() {
                     }`}
                   >
                     <View className="items-center">
-                      <Globe
+                      {Platform.OS == 'ios' ?
+                        <Globe
                         size={24}
                         className={
                           !isPrivate ? "text-primary" : "text-muted-foreground"
                         }
                       />
+                      : <Icon 
+                          name="web" 
+                          type="material-community" 
+                          size={24} 
+                          color="#239ED0" 
+                           className={
+                          isPrivate ? "text-primary" : "text-muted-foreground"
+                        }
+                         />
+                      }
                       <Text className="mt-2 mb-1 font-semibold">Public</Text>
                       <Text className="text-xs text-center text-muted-foreground">
                         Everyone can see and join
@@ -549,12 +561,23 @@ export default function CreateEvent() {
                     }`}
                   >
                     <View className="items-center">
+                    { Platform.OS == 'ios' ?
                       <Lock
                         size={24}
                         className={
                           isPrivate ? "text-primary" : "text-muted-foreground"
                         }
                       />
+                      :  <Icon 
+                          name="lock-outline" 
+                          type="material-community" 
+                          size={24} 
+                          color="#239ED0" 
+                           className={
+                          isPrivate ? "text-primary" : "text-muted-foreground"
+                        }
+                         />
+                    }
                       <Text className="mt-2 mb-1 font-semibold">Private</Text>
                       <Text className="text-xs text-center text-muted-foreground">
                         Followers only
@@ -705,7 +728,14 @@ export default function CreateEvent() {
                     </Text>
                   </View>
                   <View className="items-center justify-center w-8 h-8 rounded-full bg-primary/10">
+                    {Platform.OS == 'ios' ?
                     <Clock size={18} className="text-primary" />
+                    : (<Icon 
+                          name="clock-outline" 
+                          type="material-community" 
+                          size={24} 
+                          color="#239ED0" 
+                         />)}
                   </View>
                 </View>
 
@@ -715,10 +745,18 @@ export default function CreateEvent() {
                     className="flex-row items-center justify-between p-3 border rounded-lg bg-background border-border"
                   >
                     <View className="flex-row items-center">
-                      <Calendar
+                      {Platform.OS == 'ios' ?
+                      (<Calendar
                         size={20}
                         className="mr-3 text-muted-foreground"
-                      />
+                      />)
+                      : (<Icon 
+                          name="calendar-outline" 
+                          type="material-community" 
+                          size={24} 
+                          color="#239ED0" 
+                         />)
+                      }
                       <Text>Date</Text>
                     </View>
                     <Text className="text-primary">
@@ -731,7 +769,13 @@ export default function CreateEvent() {
                     className="flex-row items-center justify-between p-3 border rounded-lg bg-background border-border"
                   >
                     <View className="flex-row items-center">
-                      <Clock size={20} className="mr-3 text-muted-foreground" />
+                     {Platform.OS == 'ios'? <Clock size={20} className="mr-3 text-muted-foreground" />
+                     : (<Icon 
+                          name="clock-outline" 
+                          type="material-community" 
+                          size={24} 
+                          color="#239ED0" 
+                         />)}
                       <Text>Time</Text>
                     </View>
                     <Text className="text-primary">
@@ -754,7 +798,15 @@ export default function CreateEvent() {
                     </Text>
                   </View>
                   <View className="items-center justify-center w-8 h-8 rounded-full bg-primary/10">
-                    <Clock size={18} className="text-primary" />
+                    {Platform.OS == 'ios' ?
+                      (<Clock size={18} className="text-primary" />)
+                    : (<Icon 
+                          name="clock-outline" 
+                          type="material-community" 
+                          size={24} 
+                          color="#239ED0" 
+                         />)
+                    }
                   </View>
                 </View>
 
@@ -764,10 +816,20 @@ export default function CreateEvent() {
                     className="flex-row items-center justify-between p-3 border rounded-lg bg-background border-border"
                   >
                     <View className="flex-row items-center">
-                      <Calendar
+                     {Platform.OS == 'ios'?
+                     ( <Calendar
                         size={20}
                         className="mr-3 text-muted-foreground"
-                      />
+                      />)
+                      :(
+                        (<Icon 
+                          name="calendar-outline" 
+                          type="material-community" 
+                          size={24} 
+                          color="#239ED0" 
+                         />)
+                      )
+                     }
                       <Text>Date</Text>
                     </View>
                     <Text className="text-primary">
@@ -780,7 +842,15 @@ export default function CreateEvent() {
                     className="flex-row items-center justify-between p-3 border rounded-lg bg-background border-border"
                   >
                     <View className="flex-row items-center">
-                      <Clock size={20} className="mr-3 text-muted-foreground" />
+                      {Platform.OS == 'ios' ?
+                        <Clock size={20} className="mr-3 text-muted-foreground" />
+                      : (<Icon 
+                          name="clock-outline" 
+                          type="material-community" 
+                          size={24} 
+                          color="#239ED0" 
+                         />)
+                      }
                       <Text>Time</Text>
                     </View>
                     <Text className="text-primary">

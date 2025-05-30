@@ -1,12 +1,14 @@
-import { View, Image } from "react-native";
+import { View, Image ,Text} from "react-native";
 import { useEffect, useState } from "react";
 
-interface UserMarkerProps {
+interface UserMarkerWithCountProps {
   avatarUrl?: string | null;
   heading?: number;
+  count?: number;
+  showCount?:boolean;
 }
 
-export const UserMarker = ({ avatarUrl, heading }: UserMarkerProps) => {
+export const UserMarkerWithCount = ({ avatarUrl, heading,count,showCount }: UserMarkerWithCountProps) => {
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
@@ -17,7 +19,7 @@ export const UserMarker = ({ avatarUrl, heading }: UserMarkerProps) => {
   return (
     <View className="items-center justify-center">
       <View
-        className="p-0.5 rounded-full bg-white shadow-lg"
+        className="p-6 rounded-full bg-white shadow-lg"
         style={{
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
@@ -34,7 +36,7 @@ export const UserMarker = ({ avatarUrl, heading }: UserMarkerProps) => {
               ? { uri: avatarUrl }
               : require("~/assets/favicon.png")
           }
-          className="w-12 h-12 rounded-full bg-muted"
+          className="absolute w-12 h-12 rounded-full bg-muted border-2 border-white"
           onError={(e) => {
             console.error(
               "[UserMarker] Failed to load avatar:",
@@ -43,6 +45,11 @@ export const UserMarker = ({ avatarUrl, heading }: UserMarkerProps) => {
             setImageError(true);
           }}
         />
+         {showCount && count > 8 && (
+        <View className="absolute w-12 h-12 justify-center rounded-full bg-muted border-2 border-white">
+          <Text className="text-xs text-center font-bold text-black">{count+"+"}</Text>
+        </View>
+      )}
       </View>
       <View className="w-2 h-2 -mt-1 rounded-full bg-black/20" />
     </View>

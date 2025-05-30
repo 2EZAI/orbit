@@ -3,12 +3,14 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { useState, useEffect, useCallback } from "react";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import { useChat } from "~/src/lib/chat";
 import { Text } from "~/src/components/ui/text";
 import { Check, X, Search } from "lucide-react-native";
+import { Icon } from 'react-native-elements';
 import { TextInput } from "react-native";
 import type { UserResponse } from "stream-chat";
 
@@ -89,8 +91,15 @@ export default function AddMembersScreen() {
             <TouchableOpacity
               onPress={() => router.back()}
               style={{ marginLeft: 16 }}
-            >
+            >{Platform.OS == 'ios' ?
               <X size={24} color="#007AFF" />
+              : <Icon 
+  name="close" 
+  type="material-community" 
+  size={24} 
+  color="#239ED0" 
+/>
+            }
             </TouchableOpacity>
           ),
           headerRight: () => (
@@ -119,7 +128,15 @@ export default function AddMembersScreen() {
             marginBottom: 16,
           }}
         >
+        {Platform.OS == 'ios' ?
           <Search size={20} color="#666" style={{ marginRight: 8 }} />
+          : <Icon 
+  name="Search" 
+  type="material-community" 
+  size={20} 
+  color="#239ED0" 
+/>
+        }
           <TextInput
             placeholder="Search users..."
             value={searchQuery}

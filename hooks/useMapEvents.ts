@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Image ,Platform } from "react-native";
 import { supabase } from "~/src/lib/supabase";
 import { debounce } from "lodash";
+import { parseISO,format, isWithinInterval, addHours, isSameDay, addDays } from 'date-fns';
+// import { utcToZonedTime } from 'date-fns-tz';
 // import Toast from "react-native-toast-message";
 
 interface Location {
@@ -44,8 +46,13 @@ export interface MapEvent {
     avatar_url: string | null;
   };
 }
+export interface Category {
+  id: string;
+  name: string;
+  source: string;
+}
 
-type TimeRange = "now" | "today" | "tomorrow";
+type TimeRange = "today" | "week" | "weekend";
 
 interface UseMapEventsProps {
   center: [number, number]; // [latitude, longitude]
@@ -68,11 +75,41 @@ export function useMapEvents({
   //   type: "success",
   //   text1: "first :"+center,
   // });
+  const now = new Date();
+  const SEVEN_DAYS_IN_MS =  7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+
+  const twenty_HOURS_IN_MS = 24 * 60 * 60 * 1000; // 4 hours in milliseconds
+  const FOUR_HOURS_IN_MS = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
+  const nowTime = now.getTime();
+const fourHoursLater = nowTime + FOUR_HOURS_IN_MS;
+const next24Hours = nowTime + twenty_HOURS_IN_MS;
+const next7Days =  nowTime + SEVEN_DAYS_IN_MS;
+
+// Get the current day of the week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+const currentDay = now.getDay();
+
+// Calculate how many days left until Sunday (end of the week)
+const daysUntilSunday = 7 - currentDay; // 0 if Sunday, 1 if Saturday, etc.
+
+// Convert days until Sunday to milliseconds
+const endOfWeekTime = nowTime + (daysUntilSunday * 24 * 60 * 60 * 1000);
+
+
+
+const twentyHoursLater = nowTime + 20 * 60 * 60 * 1000; // 20 hours
+
   const [events, setEvents] = useState<MapEvent[]>([]);
   const [firstHit, setfirstHit] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [cLocation, setcLocation] = useState(center);
   const [eventsHome, setEventsHome] = useState<MapEvent[]>([]);
+  const [eventsNow, setEventsNow] = useState<MapEvent[]>([]);
+  const [eventsToday, setEventsToday] = useState<MapEvent[]>([]);
+  const [eventsTomorrow, setEventsTomorrow] = useState<MapEvent[]>([]);
   const [clusters, setClusters] = useState<EventCluster[]>([]);
+  const [clustersNow, setClustersNow] = useState<EventCluster[]>([]);
+  const [clustersToday, setClustersToday] = useState<EventCluster[]>([]);
+  const [clustersTomorrow, setClustersTomorrow] = useState<EventCluster[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<MapEvent | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [ncenter, setcenter] = useState(center);
@@ -127,6 +164,62 @@ export function useMapEvents({
     );
     return clusters;
   }, []);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      console.log("[Events] Fetching all events");
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("No valid auth session");
+      }
+
+      const response = await fetch(
+        `${process.env.BACKEND_MAP_URL}/api/events/categories`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          //body: JSON.stringify(eventData),
+        }
+      );
+      console.log("session.access_token>>",
+      session.access_token);
+      
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+      setCategories([]);
+      const data = await response.json();
+      console.log("categories data", data);
+      setCategories(data);
+      if (!isMountedRef.current) return;
+
+
+      setError(null);
+    } catch (err) {
+      console.error("[categories] Error fetching categories:", err);
+      if (!isMountedRef.current) return;
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      if (!isMountedRef.current) return;
+      setIsLoading(false);
+    }
+  }, [clusterEvents]);
+
+  // Initial fetch only
+  useEffect(() => {
+    
+    // isMountedRef.current = true;
+    fetchCategories();
+    // return () => {
+    //   isMountedRef.current = false;
+    // };
+  }, [fetchCategories]);
 
   const fetchAllEvents = useCallback(async (centerr: any[]) => {
     if(centerr[0] == 0 && centerr[1] == 0)
@@ -192,7 +285,6 @@ export function useMapEvents({
           !isNaN(event.location.longitude) &&
           Math.abs(event.location.latitude) <= 90 &&
           Math.abs(event.location.longitude) <= 180;
-
         if (!isValid) {
           console.warn(
             "[Events] Invalid event data:",
@@ -212,10 +304,66 @@ export function useMapEvents({
       lastFetchTimeRef.current = Date.now();
       setEvents(validEvents);
       setClusters([]);
+      setClustersNow([]);
+      setClustersToday([]);
+      setClustersTomorrow([]);
       // Create initial clusters
       const newClusters = clusterEvents(validEvents);
-      console.log("[Events] Setting", newClusters.length, "clusters");
+      console.log("validEvents>", validEvents);
+      // console.log("[Events] Setting", newClusters.length, "clusters");
       setClusters(newClusters);
+      // console.log("now>>", now);
+
+  // "Now" = within the next 24 hours
+  const nowListt = validEvents.filter((event: any) => {
+  const eventTime = new Date(event.start_datetime).getTime();
+
+  // Check if the event starts between now and the next 24 hours
+  // return eventTime >= nowTime && eventTime <= FOUR_HOURS_IN_MS;
+  return eventTime >= nowTime && eventTime <= next24Hours;
+});
+const newClustersNow = clusterEvents(nowListt);
+// console.log("[Events] Setting", newClustersNow.length, "newClustersNow");
+setClustersNow(newClustersNow);
+
+const todayListt = validEvents.filter((event: any) => {
+  const eventDateObj = new Date(event.start_datetime);
+  // const eventTime = eventDateObj.getTime();
+  let localEventTime =format(new Date(event.start_datetime), 'yyyy-MM-dd')
+  let localnow =format(new Date(now), 'yyyy-MM-dd')
+  // console.log("localEventTime",localEventTime);
+  // console.log("localnow",localnow);
+
+ const day = new Date(localEventTime).getDay(); // 0 = Sunday, 5 = Friday, 6 = Saturday
+  console.log("day>>",day);
+  const eventTime = new Date(localEventTime).getTime();
+  return eventTime >= nowTime && eventTime <= next7Days;
+
+});
+const newClustersToday = clusterEvents(todayListt);
+// console.log("todayListt", todayListt);
+
+console.log("[Events] Setting", newClustersToday.length, "newClustersToday");
+setClustersToday(newClustersToday);
+
+const tomorrowListt = validEvents.filter((event: any) => {
+  let localEventTime =format(new Date(event.start_datetime), 'yyyy-MM-dd')
+  let localnow =format(new Date(now), 'yyyy-MM-dd')
+  // console.log("localEventTime",localEventTime);
+  // console.log("localnow",localnow);
+
+  const day = new Date(localEventTime).getDay(); // 0 = Sunday, 5 = Friday, 6 = Saturday
+  console.log("day>>",day);
+  const eventTime = new Date(localEventTime).getTime();
+  return (day === 5 || day === 6 || day === 0) && eventTime >= nowTime && eventTime <= next7Days;
+
+
+});
+const newClustersTomorrow = clusterEvents(tomorrowListt);
+// console.log("tomorrowListt", tomorrowListt);
+// console.log("[Events] Setting", newClustersTomorrow.length, "newClustersTomorrow");
+setClustersTomorrow(newClustersTomorrow);
+
  // Validate event data
  const validEventsHome = data.filter((event: any) => {
   const isValid =
@@ -237,8 +385,46 @@ export function useMapEvents({
   }
   return isValid;
 });
-console.log("validEventsHome>",validEventsHome.length);
+// console.log("validEventsHome>",validEventsHome.length);
 setEventsHome(validEventsHome);
+
+  // "Now" = within the next 4 hours
+const nowList = validEvents.filter((event: any) => {
+  const eventTime = new Date(event.start_datetime).getTime();
+
+  // Check if the event starts between now and the next 4 hours
+  // return eventTime >= nowTime && eventTime <= FOUR_HOURS_IN_MS;
+  return eventTime >= nowTime && eventTime <= next24Hours;
+});
+// console.log("nowList???",nowList);
+setEventsNow(nowList);
+
+const todayList = validEvents.filter((event: any) => {
+  const eventDateObj = new Date(event.start_datetime);
+  // const eventTime = eventDateObj.getTime();
+  let localEventTime =format(new Date(event.start_datetime), 'yyyy-MM-dd')
+  let localnow =format(new Date(now), 'yyyy-MM-dd')
+  // console.log("localEventTime",localEventTime);
+  // console.log("localnow",localnow);
+ const day = new Date(localEventTime).getDay(); // 0 = Sunday, 5 = Friday, 6 = Saturday
+ const eventTime = new Date(localEventTime).getTime();
+  return  eventTime >= nowTime && eventTime <= next7Days;
+});
+// console.log("todayList???",todayList);
+setEventsToday(todayList);
+
+const tomorrowList = validEvents.filter((event: any) => {
+  let localEventTime =format(new Date(event.start_datetime), 'yyyy-MM-dd')
+  let localnow =format(new Date(now), 'yyyy-MM-dd')
+  // console.log("localEventTime",localEventTime);
+  // console.log("localnow",localnow);
+ const day = new Date(localEventTime).getDay(); // 0 = Sunday, 5 = Friday, 6 = Saturday
+  console.log("day>>",day);
+  const eventTime = new Date(localEventTime).getTime();
+  return (day === 5 || day === 6 || day === 0) && eventTime >= nowTime && eventTime <= next7Days;
+
+});
+setEventsTomorrow(tomorrowList);
 
       setError(null);
     } catch (err) {
@@ -325,8 +511,15 @@ setEventsHome(validEventsHome);
 
   return {
     eventsHome,
+    categories,
     events,
+    eventsToday,
+    eventsNow,
+    eventsTomorrow,
     clusters,
+    clustersToday,
+    clustersNow,
+    clustersTomorrow,
     selectedEvent,
     isLoading,
     error,

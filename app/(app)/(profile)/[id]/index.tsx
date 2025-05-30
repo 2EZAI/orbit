@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   TouchableOpacity,
@@ -6,8 +6,11 @@ import {
   ScrollView,
   ActivityIndicator,
   Platform,
+  TextInput,
+  useWindowDimensions,
 } from "react-native";
-import {SafeAreaView} from "react-native-safe-area-context";
+import { debounce } from "lodash";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
 import { useUser } from "~/hooks/useUserData";
@@ -17,13 +20,23 @@ import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 import Toast from "react-native-toast-message";
+import { MapPin } from "lucide-react-native";
+import { Icon } from "react-native-elements";
+import {Sheet} from "../../../../src/components/ui/sheet"
 
 export default function EditProfile() {
-  const { user, updateUser } = useUser();
+  const { user,userlocation, updateUser,updateUserLocations } = useUser();
   const [loading, setLoading] = useState(false);
+  const [isSearchLocation, setIsSearchLocation] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const { height } = useWindowDimensions();
+  const [showResults, setShowResults] = useState(false);
+  const [searchResults, setSearchResults] = useState<MapboxFeature[]>([]);
 
   // Form state
+  const [profileImage, setProfileImage] = useState(
+    user?.avatar_url ? user?.avatar_url : ""
+  );
   const [firstName, setFirstName] = useState(user?.first_name || "");
   const [lastName, setLastName] = useState(user?.last_name || "");
   const [username, setUsername] = useState(user?.username || "");
@@ -31,22 +44,162 @@ export default function EditProfile() {
   const [phone, setPhone] = useState(user?.phone || "");
   const [location, setLocation] = useState(user?.location || "");
 
+  const [address1, setAddress1] = useState("");
+  const [address2, setAddress2] = useState("");
+  const [locationDetails, setLocationDetails] = useState<LocationDetails>({
+    address1: userlocation?.address || "",
+    address2: "",
+    city: userlocation?.city || "",
+    state: userlocation?.state || "",
+    zip: userlocation?.postal_code || "",
+    coordinates: [userlocation?.latitude || 0, userlocation?.longitude || 0],
+  });
+
+  useEffect(() => {
+    setProfileImage(user?.avatar_url ? user?.avatar_url : "");
+    setFirstName(user?.first_name || "");
+    setLastName(user?.last_name || "");
+    setUsername(user?.username || "");
+    setBio(user?.bio || "");
+    setPhone(user?.phone || "");
+    setLocation(user?.location || "");
+  }, [user]);
+
+  useEffect(() => {
+    setLocationDetails({
+    address1: userlocation?.address || "",
+    address2: "",
+    city: userlocation?.city || "",
+    state: userlocation?.state || "",
+    zip: userlocation?.postal_code || "",
+    coordinates: [userlocation?.latitude || 0, userlocation?.longitude || 0],
+  });
+   
+  }, [userlocation]);
+
+  const searchAddress = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      setShowResults(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+          query
+        )}.json?access_token=${
+          process.env.MAPBOX_ACCESS_TOKEN
+        }&country=US&types=address`
+      );
+      const data = await response.json();
+      setSearchResults(data.features || []);
+      setShowResults(true);
+    } catch (error) {
+      console.error("Error searching address:", error);
+    }
+  };
+
+  const debouncedSearch = debounce(searchAddress, 300);
+
+  const handleAddressSelect = (feature: MapboxFeature) => {
+    const contextMap = new Map(
+      feature.context?.map((item) => [item.id.split(".")[0], item.text])
+    );
+
+    const newLocationDetails = {
+      address1: feature.properties.address
+        ? `${feature.properties.address} ${feature.text}`
+        : feature.text,
+      address2: "",
+      city: contextMap.get("place") || "",
+      state: contextMap.get("region") || "",
+      zip: contextMap.get("postcode") || "",
+      coordinates: feature.center,
+    };
+    console.log("coordinates>>",feature.center);
+
+    setLocationDetails(newLocationDetails);
+    setAddress1(newLocationDetails.address1);
+    setAddress2("");
+    setShowResults(false);
+    setIsSearchLocation(false);
+  };
+
   const handleSave = async () => {
+    if (firstName == "") {
+      Toast.show({
+        type: "error",
+        text1: "First name cannot be empty",
+      });
+      return;
+    }
+    if (lastName == "") {
+      Toast.show({
+        type: "error",
+        text1: "Last name cannot be empty",
+      });
+      return;
+    }
+    if (bio == "") {
+      Toast.show({
+        type: "error",
+        text1: "Bio cannot be empty",
+      });
+      return;
+    }
+    if (phone == "") {
+      Toast.show({
+        type: "error",
+        text1: "Phone Number cannot be empty",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      await updateUser({
-        first_name: firstName,
-        last_name: lastName,
-        username,
-        bio,
-        location,
-        phone,
-      });
+
+ {locationDetails?.city  } {locationDetails?.state}{" "}
+                {locationDetails?.zip}
+
+ if(locationDetails?.address1 !== ''){
+         await updateUserLocations({
+           city:locationDetails.city,
+          state:locationDetails.state,
+          postal_code:locationDetails.zip,
+          address:locationDetails.address1,
+          latitude:locationDetails.coordinates[0],
+          longitude:locationDetails.coordinates[1],
+        });
+        }
+      if (profileImage == "") {
+        await updateUser({
+          first_name: firstName,
+          last_name: lastName,
+          username,
+          bio,
+          location,
+          phone,
+        });
+       
+      } else {
+        await updateUser({
+          avatar_url: profileImage,
+          first_name: firstName,
+          last_name: lastName,
+          username,
+          bio,
+          location,
+          phone,
+        });
+       
+      }
+
       Toast.show({
         type: "success",
         text1: "Profile updated successfully",
       });
-      router.back();
+      // router.back();
     } catch (error) {
       Toast.show({
         type: "error",
@@ -73,35 +226,33 @@ export default function EditProfile() {
           const file = result.assets[0].uri;
           const response = await fetch(file);
           const blob = await response.blob();
-          console.log("blob>>",blob);
+          console.log("blob>>", blob);
           // const fileExt = file.uri.split(".").pop();
           const fileExt = file.split(".").pop();
 
           const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
-       const filePath = `${FileSystem.documentDirectory}profile.${fileExt}`;
+          const filePath = `${FileSystem.documentDirectory}profile.${fileExt}`;
 
-
-           var base64='';
+          var base64 = "";
+          // Download the image first (needed for expo-file-system)
+          if (Platform.OS === "ios") {
             // Download the image first (needed for expo-file-system)
-      if (Platform.OS === 'ios') {
-      // Download the image first (needed for expo-file-system)
-      await FileSystem.downloadAsync(file, filePath);
+            await FileSystem.downloadAsync(file, filePath);
 
-      // Read the file as base64
-       base64 = await FileSystem.readAsStringAsync(filePath, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      }
-      else{
-         const urii = file; // Assuming this is a local file URI like 'file:///path/to/file'
-         const fileUri = `${FileSystem.documentDirectory}profile.${fileExt}`;
-         await FileSystem.copyAsync({ from: urii, to: fileUri });
             // Read the file as base64
-         base64 = await FileSystem.readAsStringAsync(fileUri, {
+            base64 = await FileSystem.readAsStringAsync(filePath, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+          } else {
+            const urii = file; // Assuming this is a local file URI like 'file:///path/to/file'
+            const fileUri = `${FileSystem.documentDirectory}profile.${fileExt}`;
+            await FileSystem.copyAsync({ from: urii, to: fileUri });
+            // Read the file as base64
+            base64 = await FileSystem.readAsStringAsync(fileUri, {
               encoding: FileSystem.EncodingType.Base64,
             });
           }
-          
+
           const { error: uploadError } = await supabase.storage
             .from("profile-pictures")
             // .from("avatars")
@@ -114,17 +265,18 @@ export default function EditProfile() {
 
           const {
             data: { publicUrl },
-            } = supabase.storage.from("profile-pictures").getPublicUrl(fileName);
+          } = supabase.storage.from("profile-pictures").getPublicUrl(fileName);
           // } = supabase.storage.from("avatars").getPublicUrl(fileName);
 
-          await updateUser({
-            avatar_url: publicUrl,
-          });
+          // await updateUser({
+          //   avatar_url: publicUrl,
+          // });
+          setProfileImage(publicUrl);
 
-          Toast.show({
-            type: "success",
-            text1: "Profile picture updated",
-          });
+          // Toast.show({
+          //   type: "success",
+          //   text1: "Profile picture updated",
+          // });
         } catch (error) {
           console.error("Upload error:", error);
           Toast.show({
@@ -143,15 +295,15 @@ export default function EditProfile() {
       setUploadingImage(false);
     }
   };
-// Function to convert base64 to Uint8Array for Supabase storage
-function decode(base64: string): Uint8Array {
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
+  // Function to convert base64 to Uint8Array for Supabase storage
+  function decode(base64: string): Uint8Array {
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
   }
-  return bytes;
-}
   if (!user) return null;
 
   return (
@@ -161,9 +313,9 @@ function decode(base64: string): Uint8Array {
           <TouchableOpacity onPress={pickImage} className="relative">
             <Image
               source={
-                user.avatar_url
-                  ? { uri: user.avatar_url }
-                  : require("~/assets/favicon.png")
+                profileImage == ""
+                  ? require("~/assets/favicon.png")
+                  : { uri: profileImage }
               }
               className="w-24 h-24 bg-gray-800 rounded-full"
             />
@@ -179,7 +331,7 @@ function decode(base64: string): Uint8Array {
 
         <View className="px-4 mt-6 space-y-6">
           <View>
-            <Text className="text-sm text-muted-foreground mb-1.5">Name</Text>
+            <Text className="text-sm text-muted-foreground mb-1.5 mt-2">Name</Text>
             <View className="flex-row gap-x-4">
               <View className="flex-1">
                 <Input
@@ -201,11 +353,12 @@ function decode(base64: string): Uint8Array {
           </View>
 
           <View>
-            <Text className="text-sm text-muted-foreground mb-1.5">
+            <Text className="text-sm text-muted-foreground mb-1.5 mt-2">
               Username
             </Text>
             <Input
               value={username}
+              editable={false}
               onChangeText={setUsername}
               placeholder="@username"
               className="h-12 px-4 border-0 bg-gray-800/40"
@@ -213,19 +366,7 @@ function decode(base64: string): Uint8Array {
           </View>
 
           <View>
-            <Text className="text-sm text-muted-foreground mb-1.5">
-              Location
-            </Text>
-            <Input
-              value={location}
-              onChangeText={setLocation}
-              placeholder="City, Country"
-              className="h-12 px-4 border-0 bg-gray-800/40"
-            />
-          </View>
-
-          <View>
-            <Text className="text-sm text-muted-foreground mb-1.5">Bio</Text>
+            <Text className="text-sm text-muted-foreground mb-1.5 mt-2">Bio</Text>
             <Input
               value={bio}
               onChangeText={setBio}
@@ -238,7 +379,7 @@ function decode(base64: string): Uint8Array {
           </View>
 
           <View>
-            <Text className="text-sm text-muted-foreground mb-1.5">
+            <Text className="text-sm text-muted-foreground mb-1.5 mt-2">
               Phone Number
             </Text>
             <Input
@@ -251,12 +392,56 @@ function decode(base64: string): Uint8Array {
           </View>
 
           <View>
-            <Text className="text-sm text-muted-foreground mb-1.5">Email</Text>
+            <Text className="text-sm text-muted-foreground mb-1.5 mt-2">Email</Text>
             <Input
               value={user.email}
               editable={false}
               className="h-12 px-4 border-0 opacity-50 bg-gray-800/40"
             />
+          </View>
+
+   
+          {/* Location Summary */}
+          {
+            <View>
+            <Text className="text-sm text-muted-foreground mb-1.5 mt-2">Address</Text>
+              <TouchableOpacity
+                  onPress={() => {setIsSearchLocation(true)}}
+                  className="h-12 flex-row items-center p-3  space-x-2 rounded-xl bg-gray-800/40"
+                >
+      
+              {Platform.OS == "ios" ? (
+                <MapPin size={16} className="text-muted-foreground" />
+              ) : (
+                <Icon
+                  name="map-marker-outline"
+                  type="material-community"
+                  size={16}
+                  color="#239ED0"
+                />
+              )}
+              <Text className="text-lg text-muted-foreground">
+                {locationDetails.city === ''? "Search Address":
+               locationDetails.city  }, {locationDetails?.state}{" "}
+                {locationDetails?.zip}
+              </Text>
+              </TouchableOpacity>
+              </View>
+            
+          }
+
+          {/* Update Out Button */}
+          <View className="mt-8">
+            <TouchableOpacity
+              onPress={() => {
+                handleSave();
+              }}
+              className="py-4 border rounded-xl border-primary"
+            >
+              <Text className="font-medium text-center text-primary">
+                Update
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {/* Sign Out Button */}
@@ -276,6 +461,55 @@ function decode(base64: string): Uint8Array {
 
           {/* Bottom Spacing */}
           <View className="h-20" />
+
+          
+      <Sheet isOpen={isSearchLocation}  onClose={()=>{setIsSearchLocation(false)}} >
+          <View className="flex-1 pt-4 mt-4 border-t border-border">
+            <TextInput
+              value={address1}
+              //  placeholder="Search Location of post?"
+              onChangeText={(text) => {
+                setAddress1(text);
+                if (text === "") {
+                  setSearchResults([]);
+                  setShowResults(false);
+                  setLocationDetails({
+                    address1: "",
+                    address2: "",
+                    city: "",
+                    state: "",
+                    zip: "",
+                  });
+                } else {
+                  debouncedSearch(text);
+                }
+              }}
+              placeholder="Search address..."
+              placeholderTextColor="#666"
+              className="text-base text-foreground p-4 mx-4 border border-border rounded-lg"
+              style={{ maxHeight: height * 0.2 }} // Limit height to 20% of screen
+            />
+          </View>
+
+          {/* Search Results Dropdown */}
+          {showResults && searchResults.length > 0 && (
+            <View className="border rounded-lg border-border bg-background mx-4">
+              {searchResults.slice(0, 5).map((result) => (
+                <TouchableOpacity
+                  key={result.id}
+                  onPress={() => handleAddressSelect(result)}
+                  className="p-3 border-b border-border"
+                >
+                  <Text className="font-medium">{result.text}</Text>
+                  <Text className="text-sm text-muted-foreground">
+                    {result.place_name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+           </Sheet>
+
         </View>
       </ScrollView>
     </SafeAreaView>

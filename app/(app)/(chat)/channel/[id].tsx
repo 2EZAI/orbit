@@ -45,6 +45,7 @@ import {
   Calendar,
   Search,
 } from "lucide-react-native";
+import { Icon } from 'react-native-elements';
 import type {
   Channel as ChannelType,
   DefaultGenerics,
@@ -608,7 +609,16 @@ export default function ChannelScreen() {
               onPress={handleInfoPress}
               style={{ marginRight: 8 }}
             >
-              <Info size={24} className="text-primary" />
+            {Platform.OS == 'ios' ? 
+            (<Info size={24} className="text-primary" />)
+              :
+              ( <Icon 
+  name="information-outline" 
+  type="material-community" 
+  size={24} 
+  color="gray" 
+/>)
+            }
             </TouchableOpacity>
           ),
         }}

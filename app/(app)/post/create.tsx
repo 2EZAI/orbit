@@ -12,6 +12,7 @@ import {
   Platform,
   useWindowDimensions,
 } from "react-native";
+import { debounce } from "lodash";
 import { Text } from "~/src/components/ui/text";
 import { Button } from "~/src/components/ui/button";
 import { router } from "expo-router";
@@ -24,6 +25,7 @@ import { useUser } from "~/hooks/useUserData";
 import { useSafeAreaInsets ,SafeAreaView} from "react-native-safe-area-context";
 import * as FileSystem from "expo-file-system";
 import { Icon } from 'react-native-elements';
+import Toast from "react-native-toast-message";
 
 export default function CreatePost() {
   const { session } = useAuth();
@@ -33,6 +35,18 @@ export default function CreatePost() {
   const [content, setContent] = useState("");
   const [mediaFiles, setMediaFiles] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+   const [address1, setAddress1] = useState("");
+  const [address2, setAddress2] = useState("");
+  const [locationDetails, setLocationDetails] = useState<LocationDetails>({
+    address1: "",
+    address2: "",
+    city: "",
+    state: "",
+    zip: "",
+    coordinates: [0, 0],
+  });
+  const [showResults, setShowResults] = useState(false);
+  const [searchResults, setSearchResults] = useState<MapboxFeature[]>([]);
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
@@ -57,6 +71,31 @@ function decode(base64: string): Uint8Array {
   }
   return bytes;
 }
+
+ const searchAddress = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      setShowResults(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+          query
+        )}.json?access_token=${
+          process.env.MAPBOX_ACCESS_TOKEN
+        }&country=US&types=address`
+      );
+      const data = await response.json();
+      setSearchResults(data.features || []);
+      setShowResults(true);
+    } catch (error) {
+      console.error("Error searching address:", error);
+    }
+  };
+
+  const debouncedSearch = debounce(searchAddress, 300);
 
   const removeMedia = (index: number) => {
     setMediaFiles(mediaFiles.filter((_, i) => i !== index));
@@ -115,6 +154,29 @@ function decode(base64: string): Uint8Array {
     }
   };
 
+  const handleAddressSelect = (feature: MapboxFeature) => {
+    const contextMap = new Map(
+      feature.context?.map((item) => [item.id.split(".")[0], item.text])
+    );
+
+    const newLocationDetails = {
+      address1: feature.properties.address
+        ? `${feature.properties.address} ${feature.text}`
+        : feature.text,
+      address2: "",
+      city: contextMap.get("place") || "",
+      state: contextMap.get("region") || "",
+      zip: contextMap.get("postcode") || "",
+      coordinates: feature.center,
+    };
+
+    setLocationDetails(newLocationDetails);
+    setAddress1(newLocationDetails.address1);
+    setAddress2("");
+    setShowResults(false);
+  };
+
+
   const createPost = async () => {
     if (!content.trim() && mediaFiles.length === 0) {
       Alert.alert("Error", "Please add some content or media to your post");
@@ -125,15 +187,57 @@ function decode(base64: string): Uint8Array {
     try {
       const mediaUrls = await Promise.all(mediaFiles.map(uploadMedia)); 
       // console.error("mediaUrls>", mediaUrls);
-      const { error } = await supabase.from("posts").insert([
-        {
-          user_id: session?.user.id,
+      // const { error } = await supabase.from("posts").insert([
+      //   {
+      //     user_id: session?.user.id,
+      //     content: content.trim(),
+      //     media_urls: mediaUrls,
+      //     address: locationDetails.address1,
+      //   city: locationDetails.city,
+      //   state: locationDetails.state,
+      //   zip: locationDetails.zip,
+      //   },
+      // ]);
+
+       // 2. Create event using our API
+      const postData = {
+       user_id: session?.user.id,
           content: content.trim(),
           media_urls: mediaUrls,
-        },
-      ]);
+          address: locationDetails.address1,
+        city: locationDetails.city,
+        state: locationDetails.state,
+        postal_code: locationDetails.zip,
+      };
+      console.log("postData>>",postData);
 
-      if (error) throw error;
+      const response = await fetch(
+        `${process.env.BACKEND_MAP_URL}/api/posts/create`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(postData),
+        }
+      );
+
+      if (!response.ok) {
+        const responseData = await response.json();
+        throw new Error(responseData?.error || "Failed to create post");
+      }
+
+      const event = await response.json();
+
+      Toast.show({
+        type: "success",
+        text1: "Post Created!",
+        text2: "Your post has been created successfully",
+      });
+
+
+      // if (error) throw error;
       router.back();
     } catch (error) {
       console.error("Error creating post:", error);
@@ -170,7 +274,7 @@ function decode(base64: string): Uint8Array {
           <Button
             variant="default"
             className="px-6 rounded-full bg-primary"
-            disabled={loading || (!content.trim() && mediaFiles.length === 0)}
+            disabled={loading || (!content.trim() && mediaFiles.length === 0) || locationDetails?.address1==""}
             onPress={createPost}
           >
             <Text className="font-medium text-primary-foreground">
@@ -194,7 +298,7 @@ function decode(base64: string): Uint8Array {
             }
             className="w-10 h-10 rounded-full bg-muted"
           />
-          <View className="flex-1 ml-3">
+          <View className="flex-1 ml-3 ">
             <TextInput
               className="text-base text-foreground"
               placeholder="What's happening?"
@@ -205,6 +309,66 @@ function decode(base64: string): Uint8Array {
               autoFocus
               style={{ maxHeight: height * 0.2 }} // Limit height to 20% of screen
             />
+
+ {/* Location Section */}
+           <View className="flex-1 pt-4 mt-4 border-t border-border">
+                <TextInput
+                  value={address1}
+                  //  placeholder="Search Location of post?"
+                  onChangeText={(text) => {
+                    setAddress1(text);
+                    if(text === ''){
+                       setSearchResults([]);
+                      setShowResults(false);
+                      setLocationDetails({ 
+                        address1: "",
+                        address2: "",city: "",
+                        state: "",zip: "",
+                         });
+                    }else{
+                    debouncedSearch(text);
+                    }
+                  }}
+                  placeholder="Search address..."
+                  placeholderTextColor="#666"
+                  className="text-base text-foreground"
+                  style={{ maxHeight: height * 0.2 }} // Limit height to 20% of screen
+         
+                />
+              </View>
+
+              {/* Search Results Dropdown */}
+              {showResults && searchResults.length > 0 && (
+                <View className="border rounded-lg border-border bg-background">
+                  {searchResults.slice(0, 5).map((result) => (
+                    <TouchableOpacity
+                      key={result.id}
+                      onPress={() => handleAddressSelect(result)}
+                      className="p-3 border-b border-border"
+                    >
+                      <Text className="font-medium">{result.text}</Text>
+                      <Text className="text-sm text-muted-foreground">
+                        {result.place_name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+           
+              {/* Location Summary */}
+              {locationDetails.city && (
+                <View className="flex-row items-center p-3 mt-2 space-x-2 rounded-lg bg-muted">
+                  <MapPin size={16} className="text-muted-foreground" />
+                  <Text className="text-sm text-muted-foreground">
+                    {locationDetails.city}, {locationDetails.state}{" "}
+                    {locationDetails.zip}
+                  </Text>
+                </View>
+              )}
+
+
+
 
             {/* Media Preview */}
             {mediaFiles.length > 0 && (
@@ -258,6 +422,7 @@ function decode(base64: string): Uint8Array {
               }
               </TouchableOpacity>
 
+ {/*  
               <TouchableOpacity
                 className="flex-row items-center"
                 onPress={() => {
@@ -274,7 +439,7 @@ function decode(base64: string): Uint8Array {
               color="#239ED0"
               />
               }
-              </TouchableOpacity>
+              </TouchableOpacity> */}
 
               {loading && (
                 <View className="flex-row items-center ml-auto">

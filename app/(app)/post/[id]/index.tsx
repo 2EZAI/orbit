@@ -10,7 +10,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
+  DeviceEventEmitter,
 } from "react-native";
+import Toast from "react-native-toast-message";
 import { Text } from "~/src/components/ui/text";
 import { useLocalSearchParams, Stack, router } from "expo-router";
 import { supabase } from "~/src/lib/supabase";
@@ -20,14 +22,16 @@ import {
   MessageCircle,
   MoreHorizontal,
   ArrowLeft,
+  MapPin,
 } from "lucide-react-native";
 import { format } from "date-fns";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Icon } from 'react-native-elements';
+import { Icon } from "react-native-elements";
 
 interface Post {
   id: string;
   content: string;
+  address: string;
   media_urls: string[];
   created_at: string;
   user: {
@@ -50,12 +54,13 @@ interface Comment {
 }
 
 export default function PostView() {
-    const marginBottom_ = Platform.OS === 'android' ? '2%' : '8%'; 
+  const marginBottom_ = Platform.OS === "android" ? "2%" : "8%";
   const params = useLocalSearchParams();
   const id = typeof params.id === "string" ? params.id : null;
   const { session } = useAuth();
   const insets = useSafeAreaInsets();
   const [post, setPost] = useState<Post | null>(null);
+  const [likeCount, setLikeCount] = useState("0");
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState(false);
@@ -72,48 +77,117 @@ export default function PostView() {
     }
 
     fetchPost();
+    getLikeCount();
     checkIfLiked();
     fetchComments();
   }, [id]);
+
+  useEffect(() => {
+    DeviceEventEmitter.addListener("refreshPost", (valueEvent) => {
+      console.log('event----refreshPost');
+      getLikeCount();
+      checkIfLiked();
+      fetchComments();
+    });
+  }, []);
+
+  //   const fetchPost = async () => {
+  //     if (!id) return;
+
+  //     try {
+  //       console.log("[PostView] Fetching post with ID:", id);
+  //       const { data: rawData, error } = await supabase
+  //         .from("posts")
+  //         .select(
+  //           `
+  //           id,
+  //           content,
+  //           address,
+  //           media_urls,
+  //           created_at,
+  //           like_count,
+  //           comment_count,
+  //           user:users!inner (
+  //             id,
+  //             username,
+  //             avatar_url
+  //           )
+  //         `
+  //         )
+  //         .eq("id", id)
+  //         .single();
+
+  //       console.log("[PostView] Fetch resulttt:", { data: rawData, error });
+  //       if (error) throw error;
+  //       if (!rawData) throw new Error("Post not found");
+
+  //       // Extract user data from the array
+  //       const userData = Array.isArray(rawData.user)
+  //         ? rawData.user[0]
+  //         : rawData.user;
+
+  //       // Transform the data to match the Post type
+  //       const transformedPost: Post = {
+  //         id: rawData.id,
+  //         content: rawData.content,
+  //         address:rawData.address,
+  //         media_urls: rawData.media_urls || [],
+  //         created_at: rawData.created_at,
+  //         like_count: rawData.like_count || 0,
+  //         comment_count: rawData.comment_count || 0,
+  //         user: {
+  //           id: userData?.id || "",
+  //           username: userData?.username || null,
+  //           avatar_url: userData?.avatar_url || null,
+  //         },
+  //       };
+  // console.log("transformedPost>",transformedPost);
+  //       setPost(transformedPost);
+  //       setError(null);
+  //     } catch (error) {
+  //       console.error("[PostView] Error fetching post:", error);
+  //       setError("Failed to load post");
+  //       setPost(null);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
 
   const fetchPost = async () => {
     if (!id) return;
 
     try {
-      console.log("[PostView] Fetching post with ID:", id);
       const { data: rawData, error } = await supabase
         .from("posts")
         .select(
           `
-          id,
-          content,
-          media_urls,
-          created_at,
-          like_count,
-          comment_count,
-          user:users!inner (
-            id,
-            username,
-            avatar_url
-          )
-        `
+    id,
+    content,
+    address,
+    media_urls,
+    created_at,
+    like_count,
+    comment_count,
+    user:users!posts_user_id_fkey (
+      id,
+      username,
+      avatar_url
+    )
+  `
         )
         .eq("id", id)
         .single();
 
-      console.log("[PostView] Fetch result:", { data: rawData, error });
       if (error) throw error;
       if (!rawData) throw new Error("Post not found");
 
-      // Extract user data from the array
-      const userData = Array.isArray(rawData.user)
-        ? rawData.user[0]
-        : rawData.user;
+      // user is an object (not array)
+      const userData = rawData.user;
 
-      // Transform the data to match the Post type
       const transformedPost: Post = {
         id: rawData.id,
         content: rawData.content,
+        address: rawData.address,
         media_urls: rawData.media_urls || [],
         created_at: rawData.created_at,
         like_count: rawData.like_count || 0,
@@ -124,7 +198,7 @@ export default function PostView() {
           avatar_url: userData?.avatar_url || null,
         },
       };
-console.log("transformedPost>",transformedPost);
+
       setPost(transformedPost);
       setError(null);
     } catch (error) {
@@ -151,6 +225,22 @@ console.log("transformedPost>",transformedPost);
       setLiked(!!data);
     } catch (error) {
       console.error("Error checking like status:", error);
+    }
+  };
+
+  const getLikeCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from("post_likes")
+        .select("id", { count: "exact", head: true })
+        .eq("post_id", id);
+
+      if (error) throw error;
+
+      console.log("Like count:", count);
+      setLikeCount(count); // if you have a state to store it
+    } catch (error) {
+      console.error("Error fetching like count:", error);
     }
   };
 
@@ -193,6 +283,7 @@ console.log("transformedPost>",transformedPost);
 
         if (error) throw error;
         setLiked(false);
+        setLikeCount(likeCount - 1);
         setPost((post) =>
           post ? { ...post, like_count: post.like_count - 1 } : null
         );
@@ -203,6 +294,7 @@ console.log("transformedPost>",transformedPost);
 
         if (error) throw error;
         setLiked(true);
+        setLikeCount(likeCount + 1);
         setPost((post) =>
           post ? { ...post, like_count: post.like_count + 1 } : null
         );
@@ -244,8 +336,7 @@ console.log("transformedPost>",transformedPost);
   return (
     <View
       className="flex-1 bg-background "
-      style={{ paddingBottom: insets.bottom ,
-       marginBottom: marginBottom_}}
+      style={{ paddingBottom: insets.bottom, marginBottom: marginBottom_ }}
     >
       <Stack.Screen
         options={{
@@ -253,7 +344,16 @@ console.log("transformedPost>",transformedPost);
           headerTitle: "Post",
           headerLeft: () => (
             <TouchableOpacity onPress={() => router.back()}>
-              <ArrowLeft size={24} className="text-foreground" />
+              {Platform.OS == "ios" ? (
+                <ArrowLeft size={24} className="text-foreground" />
+              ) : (
+                <Icon
+                  name="arrow-left"
+                  type="material-community"
+                  size={24}
+                  color="#239ED0"
+                />
+              )}
             </TouchableOpacity>
           ),
         }}
@@ -280,39 +380,59 @@ console.log("transformedPost>",transformedPost);
         >
           <ScrollView className="flex-1 ">
             {/* Post Header */}
-            <View className="flex-row items-center p-4">
-              <TouchableOpacity
-                onPress={() => {
-                  router.push(`/profile/${post.user.id}`)
-                }}
-                className="flex-row items-center flex-1"
-              >
-                <Image
-                  source={
-                    post.user.avatar_url
-                      ? { uri: post.user.avatar_url }
-                      : require("~/assets/favicon.png")
-                  }
-                  className="w-10 h-10 rounded-full bg-muted"
-                />
-                <View className="ml-3">
-                  <Text className="font-medium">
-                    {post.user.username ? `@${post.user.username}` : "User"}
-                  </Text>
-                  <Text className="text-sm text-muted-foreground">
-                    {format(new Date(post.created_at), "MMM d, yyyy")}
-                  </Text>
-                </View>
-              </TouchableOpacity>
+            {session.user.id !== post.user.id && (
+              <View className="flex-row items-center p-4">
+                <TouchableOpacity
+                  onPress={() => {
+                    router.push(`/profile/${post.user.id}`);
+                  }}
+                  className="flex-row items-center flex-1"
+                >
+                  <Image
+                    source={
+                      post.user.avatar_url
+                        ? { uri: post.user.avatar_url }
+                        : require("~/assets/favicon.png")
+                    }
+                    className="w-10 h-10 rounded-full bg-muted"
+                  />
+                  <View className="ml-3">
+                    <Text className="font-medium">
+                      {post.user.username ? `@${post.user.username}` : "User"}
+                    </Text>
+                    <Text className="text-sm text-muted-foreground">
+                      {format(new Date(post.created_at), "MMM d, yyyy")}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
 
-              <TouchableOpacity>
-                <MoreHorizontal size={24} className="text-foreground" />
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity>
+                  <MoreHorizontal size={24} className="text-foreground" />
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Post Content */}
-            <View className="p-4 pt-0">
+            <View className="p-4 mt-6 pt-0">
               <Text className="text-foreground">{post.content}</Text>
+            </View>
+
+            {/* Post address */}
+            <View className="p-3 pt-0 flex-row items-center">
+              {Platform.OS == "ios" ? (
+                <MapPin size={20} className="text-primary" />
+              ) : (
+                <Icon
+                  name="map-marker"
+                  type="material-community"
+                  size={20}
+                  color="#239ED0"
+                />
+              )}
+
+              <Text className="ml-2 text-sm text-muted-foreground">
+                {post.address}
+              </Text>
             </View>
 
             {/* Post Media */}
@@ -340,30 +460,36 @@ console.log("transformedPost>",transformedPost);
                 onPress={toggleLike}
                 className="flex-row items-center mr-6"
               >
-              {Platform.OS === 'ios' ?
-                <Heart
-                  size={24}
-                  className={liked ? "text-red-500" : "text-foreground"}
-                  fill={liked ? "#ef4444" : "none"}
-                />
-                : 
-                 <Icon name={liked ?"heart":"heart-outline"}
-                  type="material-community"
-                      size={24}
-                      color={liked ?"#ef4444":"#239ED0"}/>
-              }
-                <Text className="ml-2">{post.like_count}</Text>
+                {Platform.OS === "ios" ? (
+                  <Heart
+                    size={24}
+                    className={liked ? "text-red-500" : "text-foreground"}
+                    fill={liked ? "#ef4444" : "none"}
+                  />
+                ) : (
+                  <Icon
+                    name={liked ? "heart" : "heart-outline"}
+                    type="material-community"
+                    size={24}
+                    color={liked ? "#ef4444" : "#239ED0"}
+                  />
+                )}
+                <Text className="ml-2">{likeCount}</Text>
               </TouchableOpacity>
 
               <View className="flex-row items-center">
-              {Platform.OS === 'ios'?
-                <MessageCircle size={24} className="text-foreground" />
-              :
-               <Icon name="chat-outline" type="material-community"
-                      size={24}
-                      color="#239ED0"/>
-              }
-                <Text className="ml-2">{post.comment_count}</Text>
+                {Platform.OS === "ios" ? (
+                  <MessageCircle size={24} className="text-foreground" />
+                ) : (
+                  <Icon
+                    name="chat-outline"
+                    type="material-community"
+                    size={24}
+                    color="#239ED0"
+                  />
+                )}
+                {/*  <Text className="ml-2">{post.comment_count}</Text>*/}
+                <Text className="ml-2">{comments?.length}</Text>
               </View>
             </View>
 

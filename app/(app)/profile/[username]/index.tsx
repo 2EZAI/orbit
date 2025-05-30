@@ -7,7 +7,9 @@ import { UserAvatar } from "~/src/components/ui/user-avatar";
 import { Button } from "~/src/components/ui/button";
 import { MapEvent } from "~/hooks/useMapEvents";
 import { EventDetailsSheet } from "~/src/components/map/EventDetailsSheet";
-import {  SafeAreaView} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth } from "~/src/lib/auth";
+import Toast from "react-native-toast-message";
 
 type UserProfile = {
   id: string;
@@ -24,22 +26,38 @@ type UserProfile = {
 type TabType = "posts" | "events" | "info";
 
 export default function ProfilePage() {
-  const {  username } = useLocalSearchParams();
+  const { session } = useAuth();
+  const { username } = useLocalSearchParams();
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("posts");
   const [userEvents, setUserEvents] = useState<MapEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<MapEvent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFollowed, setIsFollowed] = useState(false);
 
   useEffect(() => {
     fetchUserProfile();
   }, [username]);
 
+  const isUserFollowing = async (followerId: string, followingId: string) => {
+    const { data, error } = await supabase
+      .from("follows")
+      .select("id") // or any minimal field
+      .eq("follower_id", followerId)
+      .eq("following_id", followingId)
+      .maybeSingle();
+
+    if (error) throw error;
+    console.log("data>>", !!data);
+    setIsFollowed(!!data);
+    return !!data; // returns true if relationship exists
+  };
+
   const fetchUserProfile = async () => {
     try {
-      console.error("username>>:",username);
-      
+      // console.error("username>>:", username);
+
       // Fetch user profile
       const { data: userData, error: userError } = await supabase
         .from("users")
@@ -54,11 +72,11 @@ export default function ProfilePage() {
         `
         )
         // .eq("username", username)
-         .eq("id", username)
+        .eq("id", username)
         .single();
-console.error("fetchUserProfile:2");
+      // console.error("fetchUserProfile:2");
       if (userError) throw userError;
-console.error("fetchUserProfile:3");
+      // console.error("fetchUserProfile:3");
       // Get counts
       const [
         { count: followersCount },
@@ -66,7 +84,7 @@ console.error("fetchUserProfile:3");
         { count: orbitsCount },
       ] = await Promise.all([
         supabase
-          .from("followers")
+          .from("follows")
           .select("*", { count: "exact" })
           .eq("following_id", userData.id),
         supabase
@@ -78,7 +96,7 @@ console.error("fetchUserProfile:3");
           .select("*", { count: "exact" })
           .eq("user_id", userData.id),
       ]);
-console.error("fetchUserProfile:4");
+      // console.error("fetchUserProfile:4");
       setProfile({
         ...userData,
         followers_count: followersCount || 0,
@@ -86,8 +104,10 @@ console.error("fetchUserProfile:4");
         orbits_count: orbitsCount || 0,
       });
 
+      let existing = isUserFollowing(session.user.id, userData.id);
+
       // Fetch user's events
-      console.log("userData.id>",userData.id);
+      console.log("userData.id>", userData.id);
       const { data: events } = await supabase
         .from("events")
         .select(
@@ -145,22 +165,21 @@ console.error("fetchUserProfile:4");
           }))
         );
       }
-      console.log("events>>>",events)
+      console.log("events>>>", events);
     } catch (error) {
       console.error("Error fetching profile:", error);
-       setProfile({
+      setProfile({
         ...userData,
-        followers_count:  0,
-        events_count:  0,
-        orbits_count:  0,
+        followers_count: 0,
+        events_count: 0,
+        orbits_count: 0,
       });
-        setIsLoading(false);
+      setIsLoading(false);
     } finally {
       setIsLoading(false);
     }
   };
 
-{console.log("profile>",profile)}
   if (isLoading || !profile) {
     return (
       <View className="items-center justify-center flex-1">
@@ -169,168 +188,220 @@ console.error("fetchUserProfile:4");
     );
   }
 
+  const updateFollowStatus = async () => {
+    if (!session?.user.id || !profile?.id) return;
+
+    try {
+      if (isFollowed) {
+        // Step 2a: If relationship exists, delete it (unfollow)
+        const { error: deleteError } = await supabase
+          .from("follows")
+          .delete()
+          .eq("follower_id", session.user.id)
+          .eq("following_id", profile.id);
+
+        console.log("delete>", session.user.id + " " + profile.id);
+        if (deleteError) throw deleteError;
+
+        Toast.show({
+          type: "info",
+          text1: "User unfollowed",
+        });
+      } else {
+        // Step 2b: If relationship does not exist, insert it (follow)
+        const { error: insertError } = await supabase.from("follows").insert([
+          {
+            follower_id: session.user.id,
+            following_id: profile.id,
+          },
+        ]);
+        console.log("insert>", session.user.id + " " + profile.id);
+        if (insertError) throw insertError;
+
+        Toast.show({
+          type: "success",
+          text1: "User followed successfully",
+        });
+      }
+      let existing = isUserFollowing(session.user.id, profile.id);
+      fetchUserProfile();
+    } catch (err) {
+      console.error("Error updating follow status:", err);
+      Toast.show({
+        type: "error",
+        text1: "Something went wrong",
+      });
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1">
-    <View className="flex-1 bg-background">
-      {/* Profile Header */}
-      <View className="p-4">
-        <View className="flex-row items-center mb-4">
-          <UserAvatar
-            user={{
-              id: profile.id,
-              name: `${profile.first_name} ${profile.last_name}`,
-              image: profile.avatar_url,
-            }}
-            size={80}
-          />
-          <View className="flex-1 ml-4">
-            <Text className="text-2xl font-semibold">
-              {profile.first_name} {profile.last_name}
-            </Text>
-            <Text className="text-muted-foreground">@{profile.username}</Text>
+      <View className="flex-1 bg-background">
+        {/* Profile Header */}
+        <View className="p-4">
+          <View className="flex-row items-center mb-4">
+            <UserAvatar
+              user={{
+                id: profile.id,
+                name: `${profile.first_name} ${profile.last_name}`,
+                image: profile.avatar_url,
+              }}
+              size={80}
+            />
+            <View className="flex-1 ml-4">
+              <Text className="text-2xl font-semibold">
+                {profile.first_name} {profile.last_name}
+              </Text>
+              <Text className="text-muted-foreground">@{profile.username}</Text>
+            </View>
           </View>
+
+          {profile.bio && (
+            <Text className="mb-4 text-muted-foreground">{profile.bio}</Text>
+          )}
+
+          <View className="flex-row justify-between mb-4">
+            <View className="items-center">
+              <Text className="text-lg font-semibold">
+                {profile.events_count}
+              </Text>
+              <Text className="text-muted-foreground">events</Text>
+            </View>
+            <View className="items-center">
+              <Text className="text-lg font-semibold">
+                {profile.followers_count}
+              </Text>
+              <Text className="text-muted-foreground">followers</Text>
+            </View>
+            <View className="items-center">
+              <Text className="text-lg font-semibold">
+                {profile.orbits_count}
+              </Text>
+              <Text className="text-muted-foreground">Orbits</Text>
+            </View>
+          </View>
+
+          {/* <Button className="w-full" variant="outline">
+        //   <Text>Message</Text>
+         </Button>*/}
+          <TouchableOpacity
+            className="w-[30%]  bg-primary rounded-lg self-end"
+            onPress={() => updateFollowStatus()}
+          >
+            <Text className="text-white text-center p-1">{isFollowed ? "UnFollow" : "Follow"}</Text>
+          </TouchableOpacity>
         </View>
 
-        {profile.bio && (
-          <Text className="mb-4 text-muted-foreground">{profile.bio}</Text>
-        )}
-
-        <View className="flex-row justify-between mb-4">
-          <View className="items-center">
-            <Text className="text-lg font-semibold">
-              {profile.events_count}
+        {/* Tabs */}
+        <View className="flex-row border-b border-border">
+          <TouchableOpacity
+            className={`flex-1 py-3 ${
+              activeTab === "posts" ? "border-b-2 border-primary" : ""
+            }`}
+            onPress={() => setActiveTab("posts")}
+          >
+            <Text
+              className={`text-center ${
+                activeTab === "posts"
+                  ? "text-primary font-medium"
+                  : "text-muted-foreground"
+              }`}
+            >
+              Posts
             </Text>
-            <Text className="text-muted-foreground">events</Text>
-          </View>
-          <View className="items-center">
-            <Text className="text-lg font-semibold">
-              {profile.followers_count}
+          </TouchableOpacity>
+          <TouchableOpacity
+            className={`flex-1 py-3 ${
+              activeTab === "events" ? "border-b-2 border-primary" : ""
+            }`}
+            onPress={() => setActiveTab("events")}
+          >
+            <Text
+              className={`text-center ${
+                activeTab === "events"
+                  ? "text-primary font-medium"
+                  : "text-muted-foreground"
+              }`}
+            >
+              Events
             </Text>
-            <Text className="text-muted-foreground">followers</Text>
-          </View>
-          <View className="items-center">
-            <Text className="text-lg font-semibold">
-              {profile.orbits_count}
+          </TouchableOpacity>
+          <TouchableOpacity
+            className={`flex-1 py-3 ${
+              activeTab === "info" ? "border-b-2 border-primary" : ""
+            }`}
+            onPress={() => setActiveTab("info")}
+          >
+            <Text
+              className={`text-center ${
+                activeTab === "info"
+                  ? "text-primary font-medium"
+                  : "text-muted-foreground"
+              }`}
+            >
+              Info
             </Text>
-            <Text className="text-muted-foreground">Orbits</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
-        <Button className="w-full" variant="outline">
-          <Text>Message</Text>
-        </Button>
-      </View>
+        {/* Tab Content */}
+        <ScrollView className="flex-1">
+          {activeTab === "posts" && (
+            <View className="p-4">
+              <Text className="text-center text-muted-foreground">
+                No posts yet
+              </Text>
+            </View>
+          )}
 
-      {/* Tabs */}
-      <View className="flex-row border-b border-border">
-        <TouchableOpacity
-          className={`flex-1 py-3 ${
-            activeTab === "posts" ? "border-b-2 border-primary" : ""
-          }`}
-          onPress={() => setActiveTab("posts")}
-        >
-          <Text
-            className={`text-center ${
-              activeTab === "posts"
-                ? "text-primary font-medium"
-                : "text-muted-foreground"
-            }`}
-          >
-            Posts
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          className={`flex-1 py-3 ${
-            activeTab === "events" ? "border-b-2 border-primary" : ""
-          }`}
-          onPress={() => setActiveTab("events")}
-        >
-          <Text
-            className={`text-center ${
-              activeTab === "events"
-                ? "text-primary font-medium"
-                : "text-muted-foreground"
-            }`}
-          >
-            Events
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          className={`flex-1 py-3 ${
-            activeTab === "info" ? "border-b-2 border-primary" : ""
-          }`}
-          onPress={() => setActiveTab("info")}
-        >
-          <Text
-            className={`text-center ${
-              activeTab === "info"
-                ? "text-primary font-medium"
-                : "text-muted-foreground"
-            }`}
-          >
-            Info
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Tab Content */}
-      <ScrollView className="flex-1">
-        {activeTab === "posts" && (
-          <View className="p-4">
-            <Text className="text-center text-muted-foreground">
-              No posts yet
-            </Text>
-          </View>
-        )}
-
-        {activeTab === "events" && (
-          <View>
-            {userEvents.map((event) => (
-              <TouchableOpacity
-                key={event.id}
-                onPress={() => setSelectedEvent(event)}
-                className="p-4 border-b border-border"
-              >
-                <View className="flex-row">
-                  <Image
-                    source={{ uri: event.image_urls[0] }}
-                    className="w-16 h-16 rounded-lg"
-                  />
-                  <View className="flex-1 ml-3">
-                    <Text className="mb-1 font-medium">{event.name}</Text>
-                    <Text className="text-sm text-muted-foreground">
-                      {event.venue_name}
-                    </Text>
-                    <Text className="text-sm text-muted-foreground">
-                      {event.attendees.count} attendees
-                    </Text>
+          {activeTab === "events" && (
+            <View>
+              {userEvents.map((event) => (
+                <TouchableOpacity
+                  key={event.id}
+                  onPress={() => setSelectedEvent(event)}
+                  className="p-4 border-b border-border"
+                >
+                  <View className="flex-row">
+                    <Image
+                      source={{ uri: event.image_urls[0] }}
+                      className="w-16 h-16 rounded-lg"
+                    />
+                    <View className="flex-1 ml-3">
+                      <Text className="mb-1 font-medium">{event.name}</Text>
+                      <Text className="text-sm text-muted-foreground">
+                        {event.venue_name}
+                      </Text>
+                      <Text className="text-sm text-muted-foreground">
+                        {event.attendees.count} attendees
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
-        {activeTab === "info" && (
-          <View className="p-4">
-            <Text className="text-center text-muted-foreground">
-              No additional info
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+          {activeTab === "info" && (
+            <View className="p-4">
+              <Text className="text-center text-muted-foreground">
+                No additional info
+              </Text>
+            </View>
+          )}
+        </ScrollView>
 
-      {selectedEvent && (
-        <EventDetailsSheet
-          event={selectedEvent}
-          isOpen={!!selectedEvent}
-          onClose={() => setSelectedEvent(null)}
-          nearbyEvents={userEvents}
-          onEventSelect={setSelectedEvent}
-           onShowControler={()  => {}}
-        />
-      )}
-    </View>
+        {selectedEvent && (
+          <EventDetailsSheet
+            event={selectedEvent}
+            isOpen={!!selectedEvent}
+            onClose={() => setSelectedEvent(null)}
+            nearbyEvents={userEvents}
+            onEventSelect={setSelectedEvent}
+            onShowControler={() => {}}
+          />
+        )}
+      </View>
     </SafeAreaView>
   );
 }

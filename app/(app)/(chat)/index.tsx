@@ -102,7 +102,15 @@ const SearchInput = ({
       </View>
       {value.length > 0 && (
         <TouchableOpacity onPress={onClose}>
+        {Platform.OS == 'ios' ?
           <X size={24} color={theme.colors.text} />
+       : <Icon 
+  name="close" 
+  type="material-community" 
+  size={24} 
+  color="#239ED0" 
+/>
+        }
         </TouchableOpacity>
       )}
     </View>
@@ -170,7 +178,16 @@ const EnhancedChannelPreview = (
           channel.state.messages[channel.state.messages.length - 1];
         return (
           <View className="flex-row items-center space-x-2">
-            {isMuted && <Bell size={16} className="text-muted-foreground" />}
+            {isMuted && ( Platform.OS == 'ios' ?
+            <Bell size={16} className="text-muted-foreground" />
+            : <Icon 
+              name="bell" 
+              type="material-community" 
+              size={16} 
+              color="#239ED0" 
+              />
+            )
+            }
             {unreadCount > 0 && (
               <View className="items-center justify-center w-6 h-6 rounded-full bg-primary">
                 <Text className="text-xs font-medium text-primary-foreground">
@@ -196,7 +213,15 @@ const EnhancedEmptyState = ({
   handleNewChat: () => void;
 }) => (
   <View className="items-center justify-center flex-1 px-6 py-12">
+  {Platform.OS == 'ios' ?
     <Users size={48} className="mb-4 text-muted-foreground" />
+    : <Icon 
+  name="account-group" 
+  type="material-community" 
+  size={48} 
+  color="#239ED0" 
+/>
+  }
     <Text className="mb-2 text-xl font-semibold text-foreground">
       No Conversations Yet
     </Text>

@@ -16,17 +16,33 @@ interface User {
   updated_at: string;
 }
 
+interface UserLoation {
+  user_id: string;
+  location: string;
+  accuracy: string | null;
+  latitude: string | null;
+  longitude: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+}
+
+
 interface UseUserReturn {
   user: User | null;
+  userlocation: UserLoation | null;
   loading: boolean;
   error: Error | null;
   refreshUser: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<void>;
+  updateUserLocations: (updates: Partial<UserLoation>) => Promise<void>;
 }
 
 export function useUser(): UseUserReturn {
   const { session } = useAuth();
   const [user, setUser] = useState<User | null>(null);
+  const [userlocation, setUserLocation] = useState<UserLoation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -46,6 +62,29 @@ export function useUser(): UseUserReturn {
 
       if (supabaseError) throw supabaseError;
       setUser(data);
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error("An error occurred"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUserLocation = async () => {
+    try {
+      if (!session?.user?.id) {
+        setUserLocation(null);
+        return;
+      }
+
+      const { data, error: supabaseError } = await supabase
+        .from("user_locations")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .single();
+
+      if (supabaseError) throw supabaseError;
+      console.log("fetch_location>>",data);
+      setUserLocation(data);
     } catch (e) {
       setError(e instanceof Error ? e : new Error("An error occurred"));
     } finally {
@@ -80,6 +119,7 @@ export function useUser(): UseUserReturn {
   const refreshUser = async () => {
     setLoading(true);
     await fetchUser();
+    // await fetchUserLocation();
   };
 
   // Update user data
@@ -99,6 +139,60 @@ export function useUser(): UseUserReturn {
 
       // Refresh user data after update
       await refreshUser();
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error("An error occurred"));
+      throw e;
+    }
+  };
+
+  // Update userlocation data
+  const updateUserLocations = async (updates: Partial<UserLoation>) => {
+    try {
+      if (!session?.user?.id) throw new Error("No user logged in");
+
+      const { data: existingUser, error: fetchError } = await supabase
+      .from('user_locations')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .single()
+  
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      // 'PGRST116' = No rows found
+      console.error('Error fetching user location:', fetchError)
+      return { error: fetchError }
+    }      
+
+    let result
+  if (existingUser) {
+    console.log("existingUser>>");
+    // Update existing record
+    const { data, error } = await supabase
+      .from('user_locations')
+      .update({  ...updates,
+        // updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', session.user.id)
+
+    result = { data, error }
+    console.log("data>>",data);
+    console.log("error>>",error);
+  } else {
+    // Insert new record
+    const { data, error } = await supabase
+      .from('user_locations')
+      .insert([
+        {
+          ...updates,
+          user_id:session.user.id,
+          // created_at: new Date().toISOString(),
+        },
+      ])
+
+    result = { data, error }
+  }
+
+  return result
+
     } catch (e) {
       setError(e instanceof Error ? e : new Error("An error occurred"));
       throw e;
@@ -135,13 +229,16 @@ export function useUser(): UseUserReturn {
   // Initial fetch
   useEffect(() => {
     fetchUser();
+    fetchUserLocation();
   }, [session?.user?.id]);
 
   return {
     user,
+    userlocation,
     loading,
     error,
     refreshUser,
     updateUser,
+    updateUserLocations,
   };
 }

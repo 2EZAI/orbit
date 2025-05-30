@@ -1,4 +1,4 @@
-import React, { useCallback ,useEffect} from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   ScrollView,
@@ -7,11 +7,15 @@ import {
   Dimensions,
   Share,
   StyleSheet,
+  Platform,
+  ActivityIndicator,
+  DeviceEventEmitter,
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Button } from "~/src/components/ui/button";
 import { MapEvent } from "~/hooks/useMapEvents";
 import { router } from "expo-router";
+import { Icon } from "react-native-elements";
 import {
   Share2,
   MapPin,
@@ -24,6 +28,8 @@ import {
 import { format } from "date-fns";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import { useMapEvents  } from "~/hooks/useMapEvents";
+import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 
 interface EventDetailsSheetProps {
   event: MapEvent & {
@@ -48,33 +54,75 @@ export function EventDetailsSheet({
   onEventSelect,
   onShowControler,
 }: EventDetailsSheetProps) {
+    const [loading, setLoading] = useState(true);
+    const [eventDetail, setEventDetail] = useState<{}>();
   const width = Dimensions.get("window").width;
   const imageSize = (width - 32) / 3; // 3 images per row with padding
   const bannerHeight = width * 0.5; // 50% of screen width
+  const { UpdateEventStatus,fetchEventDetail } = useUpdateEvents();
 
   const formatDate = (date: string) => {
+    try{
     return format(new Date(date), "EEE, MMM d");
+    }
+    catch(error)
+    {
+      return "";
+    } 
   };
 
   const formatTime = (date: string) => {
+    try{
     return format(new Date(date), "h:mm a");
+    }
+    catch(error)
+    {
+      return "";
+    }
   };
 
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Check out ${event.name} on Orbit!\n${event.description}`,
+        message: `Check out ${eventDetail?.name} on Orbit!\n${eventDetail?.description}`,
       });
     } catch (error) {
       console.error("Error sharing event:", error);
     }
   };
+   useEffect(() => {
+    DeviceEventEmitter.addListener('refreshEventDetail', valueEvent => {
+      // console.log('event----notitifactionBage', value);
+      hitEventDetail();
+    });
+  }, []);
+
+    const hitUpdaeEventApi = async () => {
+      setLoading(true)
+      console.log("hitUpdaeEventApi");
+    await UpdateEventStatus(event);
+       setTimeout(() => {
+        setLoading(false);
+        hitEventDetail();
+        }
+        , 2000 );};
+   const hitEventDetail = async () => {
+      console.log("hitEventDetail");
+    const eventDetails = await fetchEventDetail(event);
+    console.log("Returned event details:", eventDetails);
+     setEventDetail({});
+    setEventDetail(eventDetails);
+    setLoading(false)
+  };
 
   if (!isOpen) return null;
 
- useEffect(() => {
+  useEffect(() => {
+     setEventDetail({});
+    setEventDetail(event);
+    hitEventDetail();
     return () => {
-      console.log('Hello');
+      console.log("Hello");
       onShowControler(true);
     };
   }, []);
@@ -89,10 +137,10 @@ export function EventDetailsSheet({
     >
       <BottomSheetScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Banner Image */}
-        {event.image_urls?.[0] && (
+        {eventDetail?.image_urls?.[0] && (
           <View style={{ width, height: bannerHeight }}>
             <Image
-              source={{ uri: event.image_urls[0] }}
+              source={{ uri: eventDetail?.image_urls[0] }}
               style={{ width, height: bannerHeight }}
               resizeMode="cover"
             />
@@ -103,40 +151,90 @@ export function EventDetailsSheet({
         <View className="px-4 pt-4 pb-4 border-b border-border">
           <View className="flex-row items-center justify-between mb-4">
             <TouchableOpacity onPress={onClose}>
-              <ArrowLeft size={24} className="text-foreground" />
+              {Platform.OS == "ios" ? (
+                <ArrowLeft size={24} className="text-foreground" />
+              ) : (
+                <Icon
+                  name="arrow-left"
+                  type="material-community"
+                  size={20}
+                  color="#239ED0"
+                />
+              )}
             </TouchableOpacity>
             <View className="flex-row gap-4">
               <TouchableOpacity onPress={handleShare}>
-                <Share2 size={20} className="text-foreground" />
+                {Platform.OS == "ios" ? (
+                  <Share2 size={20} className="text-foreground" />
+                ) : (
+                  <Icon
+                    name="share"
+                    type="material-community"
+                    size={20}
+                    color="#239ED0"
+                  />
+                )}
               </TouchableOpacity>
               <TouchableOpacity>
-                <Bookmark size={20} className="text-foreground" />
+                {Platform.OS == "ios" ? (
+                  <Bookmark size={20} className="text-foreground" />
+                ) : (
+                  <Icon
+                    name="bookmark"
+                    type="material-community"
+                    size={20}
+                    color="#239ED0"
+                  />
+                )}
               </TouchableOpacity>
             </View>
           </View>
-          <Text className="mb-2 text-2xl font-bold">{event.name}</Text>
-          
+          <Text className="mb-2 text-2xl font-bold">{eventDetail?.name}</Text>
+
           <View className="flex-row items-center justify-between">
             <View className="px-3 py-1 rounded-full bg-primary/10">
               <Text className="text-sm font-medium text-primary">
-                Starts: {formatTime(event.start_datetime)}
+                Starts: {formatTime(eventDetail?.start_datetime)}
               </Text>
             </View>
-            {event.is_ticketmaster &&
-            <TouchableOpacity 
-            className="px-5 py-3 rounded-full bg-purple-700"
-            onPress={() => {
-              console.log(" book click:")
-              router.push({
-                pathname: "/(app)/(webview)",
-                params: { external_url: event.external_url },
-              });
-            }}>
-            <Text className="ml-1.5 font-semibold text-white text-base">
-                  Join Event
-                </Text>
+
+            <View className="flex-row items-center justify-between">
+              {!eventDetail?.join_status && eventDetail?.external_url && (
+                <TouchableOpacity
+                  className="px-5 py-3 rounded-full bg-purple-700"
+                  onPress={() => {
+                    console.log(" book click:");
+                    router.push({
+                      pathname: "/(app)/(webview)",
+                      params: { external_url: eventDetail?.external_url 
+                      ,eventSelected:JSON.stringify(eventDetail)},
+                    });
+                  }}
+                >
+                  <Text className="ml-1.5 font-semibold text-white text-base">
+                    Buy Tickets
+                  </Text>
                 </TouchableOpacity>
-            }
+              )}
+
+              {/*event.is_ticketmaster && */}
+              {
+                <TouchableOpacity
+                  className={`mx-2 px-5 py-3 rounded-full ${eventDetail?.join_status ? 'bg-gray-300' : 'bg-purple-700'}`}
+                  onPress={() => {
+                    console.log(" book click:");
+                    {!eventDetail?.join_status ? hitUpdaeEventApi()
+                  : ""}
+                    
+                   
+                  }}
+                >
+                  <Text className={`ml-1.5 font-semibold ${eventDetail?.join_status ? 'text-purple-700' : 'text-white'} text-base`}>
+                    {eventDetail?.join_status ? "Joined" : "Join Event"}
+                  </Text>
+                </TouchableOpacity>
+              }
+            </View>
           </View>
         </View>
 
@@ -146,51 +244,68 @@ export function EventDetailsSheet({
           <View className="py-4 space-y-3">
             <View className="flex-row items-center space-x-3">
               <View className="items-center justify-center w-10 h-10 rounded-full bg-primary/10">
-                <Calendar size={20} className="text-primary" />
+                {Platform.OS == "ios" ? (
+                  <Calendar size={20} className="text-primary" />
+                ) : (
+                  <Icon
+                    name="calendar"
+                    type="material-community"
+                    size={20}
+                    color="#239ED0"
+                  />
+                )}
               </View>
               <View>
                 <Text className="text-base font-medium">
-                  {formatDate(event.start_datetime)}
+                  {formatDate(eventDetail?.start_datetime)}
                 </Text>
                 <Text className="text-sm text-muted-foreground">
-                  {formatTime(event.start_datetime)} -{" "}
-                  {formatTime(event.end_datetime)}
+                  {formatTime(eventDetail?.start_datetime)} -{" "}
+                  {formatTime(eventDetail?.end_datetime)}
                 </Text>
               </View>
             </View>
 
             <View className="flex-row items-center space-x-3">
               <View className="items-center justify-center w-10 h-10 rounded-full bg-primary/10">
-                <MapPin size={20} className="text-primary" />
+                {Platform.OS == "ios" ? (
+                  <MapPin size={20} className="text-primary" />
+                ) : (
+                  <Icon
+                    name="map-marker"
+                    type="material-community"
+                    size={20}
+                    color="#239ED0"
+                  />
+                )}
               </View>
               <View className="flex-1">
                 <Text className="text-base font-medium">
-                  {event.venue_name}
+                  {eventDetail?.venue_name}
                 </Text>
                 <Text className="text-sm text-muted-foreground">
-                  {event.address}
+                  {eventDetail?.address}
                 </Text>
-                
               </View>
             </View>
           </View>
 
           {/* Host Info */}
-          {event.created_by && (
+          {eventDetail?.created_by && (
             <View className="flex-row items-center p-4 mb-6 bg-muted rounded-xl">
               <UserAvatar
                 size={40}
                 user={{
-                  id: event.created_by.id,
-                  name: event.created_by.name || "Unknown",
-                  image: event.created_by.avatar_url,
+                  id: eventDetail?.created_by.id,
+                  name: eventDetail?.created_by.name || "Unknown",
+                  image: eventDetail?.created_by.avatar_url,
                 }}
               />
               <View className="flex-1 ml-3">
                 <Text className="text-sm text-muted-foreground">Hosted by</Text>
                 <Text className="text-base font-medium">
-                  {event.created_by.name ||
-                    "@" + event.created_by.username ||
+                  {eventDetail?.created_by.name ||
+                    "@" + eventDetail?.created_by.username ||
                     "Unknown"}
                 </Text>
               </View>
@@ -201,16 +316,16 @@ export function EventDetailsSheet({
           <View className="mb-6">
             <Text className="mb-2 text-lg font-semibold">About this event</Text>
             <Text className="text-base leading-relaxed text-muted-foreground">
-              {event.description}
+              {eventDetail?.description}
             </Text>
           </View>
 
           {/* Image Gallery */}
-          {event.image_urls.length > 1 && (
+          {eventDetail?.image_urls?.length > 1 && (
             <View className="mb-6">
               <Text className="mb-3 text-lg font-semibold">Event Photos</Text>
               <View className="flex-row flex-wrap gap-2">
-                {event.image_urls.slice(1).map((imageUrl, index) => (
+                {eventDetail?.image_urls.slice(1).map((imageUrl, index) => (
                   <TouchableOpacity key={index} activeOpacity={0.8}>
                     <Image
                       source={{ uri: imageUrl }}
@@ -231,7 +346,7 @@ export function EventDetailsSheet({
             <Text className="mb-3 text-lg font-semibold">Who's coming</Text>
             <View className="flex-row items-center">
               <View className="flex-row -space-x-2">
-                {event.attendees.profiles.slice(0, 5).map((attendee) => (
+                {eventDetail?.attendees?.profiles.slice(0, 5).map((attendee) => (
                   <UserAvatar
                     key={attendee.id}
                     size={32}
@@ -244,17 +359,17 @@ export function EventDetailsSheet({
                 ))}
               </View>
               <Text className="ml-3 text-muted-foreground">
-                {event.attendees.count} people going
+                {eventDetail?.attendees?.count} people going
               </Text>
             </View>
           </View>
 
           {/* Categories */}
-          {event.categories.length > 0 && (
+          {eventDetail?.categories?.length > 0 && (
             <View className="mb-6">
               <Text className="mb-3 text-lg font-semibold">Categories</Text>
               <View className="flex-row flex-wrap gap-2">
-                {event.categories.map((category) => (
+                {eventDetail?.categories.map((category) => (
                   <View
                     key={category.id}
                     className="px-3 py-1 rounded-full bg-muted"
@@ -265,11 +380,17 @@ export function EventDetailsSheet({
               </View>
             </View>
           )}
+           {loading &&
+      (<View className="absolute bottom-0 top-0 left-0 right-0">
+        <ActivityIndicator size="large" color="#6200ee" />
+      </View>)
+   
+  }
         </View>
       </BottomSheetScrollView>
 
       {/* Join Button */}
-     {/* <View className="px-4 py-4 border-t border-border bg-background">
+      {/* <View className="px-4 py-4 border-t border-border bg-background">
         <Button className="w-full">
           <Text className="font-medium text-primary-foreground">
             Join Event

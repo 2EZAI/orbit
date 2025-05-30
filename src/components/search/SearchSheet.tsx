@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Text } from "../ui/text";
 import { Sheet } from "../ui/sheet";
+import { Icon } from 'react-native-elements';
 import { Search, X, MapPin, Users } from "lucide-react-native";
 import { Input } from "../ui/input";
 import { useRouter } from "expo-router";
@@ -204,7 +205,14 @@ const searchQ = query.toLowerCase();
             <View className="p-4 border-b border-border">
               <View className="flex-row items-center">
                 <View className="flex-row items-center flex-1 px-4 py-2 rounded-full bg-muted">
+                  {Platform.OS == 'ios'?
                   <Search size={20} className="mr-2 text-muted-foreground" />
+                  : <Icon 
+              name="magnify"
+               type="material-community" 
+              size={20}
+              color="#239ED0"
+              />}
                   <Input
                     placeholder="Search events and people..."
                     value={searchQuery}
@@ -216,7 +224,15 @@ const searchQ = query.toLowerCase();
                   setSearchQuery('');
                   onClose();
                 }}>
+                {Platform.OS == 'ios' ?
                   <X size={24} />
+                  :  <Icon 
+              name="close"
+               type="material-community" 
+              size={24}
+              color="#239ED0"
+              />
+                }
                 </TouchableOpacity>
               </View>
             </View>
