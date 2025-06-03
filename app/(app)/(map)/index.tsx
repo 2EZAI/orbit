@@ -387,12 +387,11 @@ useEffect(()=>{
   // getFollowingsByFollower();
   getFollowedUserDetails();
 (async () => {
-  
   console.log("updateUserLocations>async",location);
-//  await updateUserLocations({
-//           live_location_latitude:location.latitude,
-//           live_location_longitude:location.longitude,
-//         });
+ await updateUserLocations({
+          live_location_latitude:location.latitude,
+          live_location_longitude:location.longitude,
+        });
 })();
 },[location]);
 
@@ -444,20 +443,23 @@ console.log("Mutual followers:", mutualFollowerIds);
   const { data: users, error: usersError } = await supabase
     .from("users")
     .select("id, avatar_url")
-    .in("id", mutualFollowerIds);
+    .in("id", mutualFollowerIds)
+    .eq("is_live_location_shared", 1);
 
   if (usersError) throw usersError;
   console.log("Followed user", users);
+
+  const live_usersIds = users.map(m => m.id);
   // Step 3: Fetch location data in batch
   const { data: locations, error: locationError } = await supabase
     .from("user_locations")
     .select("user_id, live_location_latitude, live_location_longitude")
-    .in("user_id", mutualFollowerIds);
+    .in("user_id", live_usersIds);
   console.log("Followed locations", locations);
   if (locationError) throw locationError;
 
   // Step 4: Combine all data
-  const result = mutualFollowerIds.map((userId,index) => {
+  const result = live_usersIds.map((userId,index) => {
     const user = users.find(u => u.id === userId);
     const location = locations.find(l => l.user_id === userId);
 

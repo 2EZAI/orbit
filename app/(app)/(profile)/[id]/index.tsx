@@ -8,6 +8,7 @@ import {
   Platform,
   TextInput,
   useWindowDimensions,
+  Switch,
 } from "react-native";
 import { debounce } from "lodash";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -22,11 +23,26 @@ import * as FileSystem from "expo-file-system";
 import Toast from "react-native-toast-message";
 import { MapPin } from "lucide-react-native";
 import { Icon } from "react-native-elements";
-import {Sheet} from "../../../../src/components/ui/sheet"
+import { Sheet } from "../../../../src/components/ui/sheet";
 
 export default function EditProfile() {
-  const { user,userlocation, updateUser,updateUserLocations } = useUser();
+  const [isEnabled, setIsEnabled] = useState(
+    user?.is_live_location_shared == 1 ? true : false
+  );
+  const { user, userlocation, updateUser, updateUserLocations } = useUser();
   const [loading, setLoading] = useState(false);
+  const [isEventLocationShow, SetIsEventLocationShow] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState(0);
+  const [locationOptions, setLocationOptions] = useState([
+    {
+      id: 0,
+      name: "Current Location",
+    },
+    {
+      id: 1,
+      name: "Saved Address",
+    },
+  ]);
   const [isSearchLocation, setIsSearchLocation] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const { height } = useWindowDimensions();
@@ -55,26 +71,29 @@ export default function EditProfile() {
     coordinates: [userlocation?.latitude || 0, userlocation?.longitude || 0],
   });
 
+  const toggleSwitch = () => setIsEnabled((previousState) => !previousState);
+
   useEffect(() => {
     setProfileImage(user?.avatar_url ? user?.avatar_url : "");
+    setIsEnabled(user?.is_live_location_shared == 1 ? true : false);
     setFirstName(user?.first_name || "");
     setLastName(user?.last_name || "");
     setUsername(user?.username || "");
     setBio(user?.bio || "");
     setPhone(user?.phone || "");
     setLocation(user?.location || "");
+    setSelectedLocation(user?.event_location_preference == 1 ? 1 :0);
   }, [user]);
 
   useEffect(() => {
     setLocationDetails({
-    address1: userlocation?.address || "",
-    address2: "",
-    city: userlocation?.city || "",
-    state: userlocation?.state || "",
-    zip: userlocation?.postal_code || "",
-    coordinates: [userlocation?.latitude || 0, userlocation?.longitude || 0],
-  });
-   
+      address1: userlocation?.address || "",
+      address2: "",
+      city: userlocation?.city || "",
+      state: userlocation?.state || "",
+      zip: userlocation?.postal_code || "",
+      coordinates: [userlocation?.latitude || 0, userlocation?.longitude || 0],
+    });
   }, [userlocation]);
 
   const searchAddress = async (query: string) => {
@@ -117,7 +136,7 @@ export default function EditProfile() {
       zip: contextMap.get("postcode") || "",
       coordinates: feature.center,
     };
-    console.log("coordinates>>",feature.center);
+    console.log("coordinates>>", feature.center);
 
     setLocationDetails(newLocationDetails);
     setAddress1(newLocationDetails.address1);
@@ -158,20 +177,29 @@ export default function EditProfile() {
 
     setLoading(true);
     try {
+      {
+        locationDetails?.city;
+      }
+      {
+        locationDetails?.state;
+      }
+      {
+        (" ");
+      }
+      {
+        locationDetails?.zip;
+      }
 
- {locationDetails?.city  } {locationDetails?.state}{" "}
-                {locationDetails?.zip}
-
- if(locationDetails?.address1 !== ''){
-         await updateUserLocations({
-           city:locationDetails.city,
-          state:locationDetails.state,
-          postal_code:locationDetails.zip,
-          address:locationDetails.address1,
-          latitude:locationDetails.coordinates[0],
-          longitude:locationDetails.coordinates[1],
+      if (locationDetails?.address1 !== "") {
+        await updateUserLocations({
+          city: locationDetails.city,
+          state: locationDetails.state,
+          postal_code: locationDetails.zip,
+          address: locationDetails.address1,
+          latitude: locationDetails.coordinates[0],
+          longitude: locationDetails.coordinates[1],
         });
-        }
+      }
       if (profileImage == "") {
         await updateUser({
           first_name: firstName,
@@ -180,8 +208,9 @@ export default function EditProfile() {
           bio,
           location,
           phone,
+          is_live_location_shared: isEnabled ? 1 : 0,
+          event_location_preference: selectedLocation,
         });
-       
       } else {
         await updateUser({
           avatar_url: profileImage,
@@ -191,8 +220,9 @@ export default function EditProfile() {
           bio,
           location,
           phone,
+          is_live_location_shared: isEnabled ? 1 : 0,
+          event_location_preference: selectedLocation,
         });
-       
       }
 
       Toast.show({
@@ -306,6 +336,47 @@ export default function EditProfile() {
   }
   if (!user) return null;
 
+  const EventLocationOptionsListView = () => {
+    return (
+      <View className="flex-1 bg-background">
+        <ScrollView className="flex-1">
+          {locationOptions.map((option) => (
+            <TouchableOpacity
+              onPress={() => {
+                if( selectedLocation?.id == 1 &&
+                locationDetails?.address1 === ""){
+                   Toast.show({
+        type: "error",
+        text1: "Please Select Address First",
+      });
+                  return;
+                }
+                setSelectedLocation(option?.id);
+                SetIsEventLocationShow(false);
+              }}
+              className={` rounded ${
+                selectedLocation?.id === option.id
+                  ? "bg-primary"
+                  : "bg-transparent"
+              }`}
+            >
+              <Text
+                className={`text-muted-foreground m-4 ${
+                  selectedLocation?.id === option.id
+                    ? "text-white"
+                    : "text-muted-foreground"
+                }`}
+                numberOfLines={1}
+              >
+                {option.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -331,7 +402,9 @@ export default function EditProfile() {
 
         <View className="px-4 mt-6 space-y-6">
           <View>
-            <Text className="text-sm text-muted-foreground mb-1.5 mt-2">Name</Text>
+            <Text className="text-sm text-muted-foreground mb-1.5 mt-2">
+              Name
+            </Text>
             <View className="flex-row gap-x-4">
               <View className="flex-1">
                 <Input
@@ -366,7 +439,9 @@ export default function EditProfile() {
           </View>
 
           <View>
-            <Text className="text-sm text-muted-foreground mb-1.5 mt-2">Bio</Text>
+            <Text className="text-sm text-muted-foreground mb-1.5 mt-2">
+              Bio
+            </Text>
             <Input
               value={bio}
               onChangeText={setBio}
@@ -392,7 +467,9 @@ export default function EditProfile() {
           </View>
 
           <View>
-            <Text className="text-sm text-muted-foreground mb-1.5 mt-2">Email</Text>
+            <Text className="text-sm text-muted-foreground mb-1.5 mt-2">
+              Email
+            </Text>
             <Input
               value={user.email}
               editable={false}
@@ -400,34 +477,77 @@ export default function EditProfile() {
             />
           </View>
 
-   
           {/* Location Summary */}
           {
             <View>
-            <Text className="text-sm text-muted-foreground mb-1.5 mt-2">Address</Text>
-              <TouchableOpacity
-                  onPress={() => {setIsSearchLocation(true)}}
-                  className="h-12 flex-row items-center p-3  space-x-2 rounded-xl bg-gray-800/40"
-                >
-      
-              {Platform.OS == "ios" ? (
-                <MapPin size={16} className="text-muted-foreground" />
-              ) : (
-                <Icon
-                  name="map-marker-outline"
-                  type="material-community"
-                  size={16}
-                  color="#239ED0"
-                />
-              )}
-              <Text className="text-lg text-muted-foreground">
-                {locationDetails.city === ''? "Search Address":
-               locationDetails.city  }, {locationDetails?.state}{" "}
-                {locationDetails?.zip}
+              <Text className="text-sm text-muted-foreground mb-1.5 mt-2">
+                Address
               </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setIsSearchLocation(true);
+                }}
+                className="h-12 flex-row items-center p-3  space-x-2 rounded-xl bg-gray-800/40"
+              >
+                {Platform.OS == "ios" ? (
+                  <MapPin size={16} className="text-muted-foreground" />
+                ) : (
+                  <Icon
+                    name="map-marker-outline"
+                    type="material-community"
+                    size={16}
+                    color="#239ED0"
+                  />
+                )}
+                <Text className="text-lg text-muted-foreground">
+                  {locationDetails.city === ""
+                    ? "Search Address"
+                    : locationDetails.city}
+                  , {locationDetails?.state} {locationDetails?.zip}
+                </Text>
               </TouchableOpacity>
-              </View>
-            
+            </View>
+          }
+
+          {/*Event Location Preference */}
+          {
+            <View className=" mt-4">
+              <Text className="text-sm text-muted-foreground mb-1.5 mt-2">
+                Event Location Preference
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => {
+                  SetIsEventLocationShow(true);
+                }}
+                className="h-12 flex-row items-center p-3  space-x-2 rounded-xl bg-gray-800/40"
+              >
+                <Text className="text-lg text-muted-foreground">
+                  {locationOptions[selectedLocation]?.name}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          }
+          {isEventLocationShow && (
+            <View className="absolute bottom-[18%]  right-0 mr-4 z-10 bg-white  w-[100%] mx-4 mb-4 overflow-hidden border rounded-2xl  border-gray-300">
+              <EventLocationOptionsListView />
+            </View>
+          )}
+
+          {/*Share My Live Location */}
+          {
+            <View className="flex-row mt-4">
+              <Text className="text-sm text-muted-foreground  mr-2 mt-2">
+                Share My Live Location
+              </Text>
+              <Switch
+                trackColor={{ false: "#767577", true: "#239ED0" }}
+                thumbColor={isEnabled ? "#ffffff" : "#f4f3f4"}
+                ios_backgroundColor="#3e3e3e"
+                onValueChange={toggleSwitch}
+                value={isEnabled}
+              />
+            </View>
           }
 
           {/* Update Out Button */}
@@ -462,54 +582,57 @@ export default function EditProfile() {
           {/* Bottom Spacing */}
           <View className="h-20" />
 
-          
-      <Sheet isOpen={isSearchLocation}  onClose={()=>{setIsSearchLocation(false)}} >
-          <View className="flex-1 pt-4 mt-4 border-t border-border">
-            <TextInput
-              value={address1}
-              //  placeholder="Search Location of post?"
-              onChangeText={(text) => {
-                setAddress1(text);
-                if (text === "") {
-                  setSearchResults([]);
-                  setShowResults(false);
-                  setLocationDetails({
-                    address1: "",
-                    address2: "",
-                    city: "",
-                    state: "",
-                    zip: "",
-                  });
-                } else {
-                  debouncedSearch(text);
-                }
-              }}
-              placeholder="Search address..."
-              placeholderTextColor="#666"
-              className="text-base text-foreground p-4 mx-4 border border-border rounded-lg"
-              style={{ maxHeight: height * 0.2 }} // Limit height to 20% of screen
-            />
-          </View>
-
-          {/* Search Results Dropdown */}
-          {showResults && searchResults.length > 0 && (
-            <View className="border rounded-lg border-border bg-background mx-4">
-              {searchResults.slice(0, 5).map((result) => (
-                <TouchableOpacity
-                  key={result.id}
-                  onPress={() => handleAddressSelect(result)}
-                  className="p-3 border-b border-border"
-                >
-                  <Text className="font-medium">{result.text}</Text>
-                  <Text className="text-sm text-muted-foreground">
-                    {result.place_name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+          <Sheet
+            isOpen={isSearchLocation}
+            onClose={() => {
+              setIsSearchLocation(false);
+            }}
+          >
+            <View className="flex-1 pt-4 mt-4 border-t border-border">
+              <TextInput
+                value={address1}
+                //  placeholder="Search Location of post?"
+                onChangeText={(text) => {
+                  setAddress1(text);
+                  if (text === "") {
+                    setSearchResults([]);
+                    setShowResults(false);
+                    setLocationDetails({
+                      address1: "",
+                      address2: "",
+                      city: "",
+                      state: "",
+                      zip: "",
+                    });
+                  } else {
+                    debouncedSearch(text);
+                  }
+                }}
+                placeholder="Search address..."
+                placeholderTextColor="#666"
+                className="text-base text-foreground p-4 mx-4 border border-border rounded-lg"
+                style={{ maxHeight: height * 0.2 }} // Limit height to 20% of screen
+              />
             </View>
-          )}
-           </Sheet>
 
+            {/* Search Results Dropdown */}
+            {showResults && searchResults.length > 0 && (
+              <View className="border rounded-lg border-border bg-background mx-4">
+                {searchResults.slice(0, 5).map((result) => (
+                  <TouchableOpacity
+                    key={result.id}
+                    onPress={() => handleAddressSelect(result)}
+                    className="p-3 border-b border-border"
+                  >
+                    <Text className="font-medium">{result.text}</Text>
+                    <Text className="text-sm text-muted-foreground">
+                      {result.place_name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </Sheet>
         </View>
       </ScrollView>
     </SafeAreaView>

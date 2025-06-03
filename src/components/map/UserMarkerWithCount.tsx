@@ -17,7 +17,7 @@ export const UserMarkerWithCount = ({ avatarUrl, heading,count,showCount }: User
   }, [avatarUrl]);
 
   return (
-    <View className="items-center justify-center">
+    <View className="items-center w-20 justify-center">
       <View
         className="p-6 rounded-full bg-white shadow-lg"
         style={{
@@ -45,6 +45,10 @@ export const UserMarkerWithCount = ({ avatarUrl, heading,count,showCount }: User
             setImageError(true);
           }}
         />
+       <View className="absolute items-center justify-center mt-2 w-4 h-4 border rounded-full -top-1 -left-1 bg-green-400">
+  <View className="w-2 h-2 rounded-full bg-white" />
+</View>
+
          {showCount && count > 8 && (
         <View className="absolute w-12 h-12 justify-center rounded-full bg-muted border-2 border-white">
           <Text className="text-xs text-center font-bold text-black">{count+"+"}</Text>
