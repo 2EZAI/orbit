@@ -31,7 +31,7 @@ import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { useMapEvents  } from "~/hooks/useMapEvents";
 import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 
-interface EventDetailsSheetProps {
+interface LocationDetailsSheetProps {
   event: MapEvent & {
     created_by?: {
       id: string;
@@ -46,14 +46,14 @@ interface EventDetailsSheetProps {
   onShowControler: () => void;
 }
 
-export function EventDetailsSheet({
+export function LocationDetailsSheet({
   event,
   isOpen,
   onClose,
   nearbyEvents,
   onEventSelect,
   onShowControler,
-}: EventDetailsSheetProps) {
+}: LocationDetailsSheetProps) {
     const [loading, setLoading] = useState(true);
     const [eventDetail, setEventDetail] = useState<{}>();
   const width = Dimensions.get("window").width;
@@ -151,10 +151,10 @@ const handleCreateOrbit = () => {
     >
       <BottomSheetScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Banner Image */}
-        {eventDetail?.image_urls?.[0] && (
+        {eventDetail?.image_urls && (
           <View style={{ width, height: bannerHeight }}>
             <Image
-              source={{ uri: eventDetail?.image_urls[0] }}
+              source={{ uri: eventDetail?.image_urls }}
               style={{ width, height: bannerHeight }}
               resizeMode="cover"
             />
@@ -206,13 +206,13 @@ const handleCreateOrbit = () => {
           <Text className="mb-2 text-2xl font-bold">{eventDetail?.name}</Text>
 
           <View className="flex-row items-center justify-between">
-            <View className="px-3 py-1 rounded-full bg-primary/10">
+           {/* <View className="px-3 py-1 rounded-full bg-primary/10">
               <Text className="text-sm font-medium text-primary">
                 Starts: {formatTime(eventDetail?.start_datetime)}
               </Text>
-            </View>
+            </View>*/}
 
-            <View className="flex-row items-center justify-between">
+          {/*  <View className="flex-row items-center justify-between">
               {!eventDetail?.join_status && eventDetail?.external_url && (
                 <TouchableOpacity
                   className="px-5 py-3 rounded-full bg-purple-700"
@@ -231,7 +231,7 @@ const handleCreateOrbit = () => {
                 </TouchableOpacity>
               )}
 
-              {/*event.is_ticketmaster && */}
+              
               {
                 <TouchableOpacity
                   className={`mx-2 px-5 py-3 rounded-full ${eventDetail?.join_status ? 'bg-gray-300' : 'bg-purple-700'}`}
@@ -248,14 +248,14 @@ const handleCreateOrbit = () => {
                   </Text>
                 </TouchableOpacity>
               }
-            </View>
+            </View> */}
           </View>
         </View>
 
         {/* Main Content */}
         <View className="px-4">
           {/* Date and Location */}
-          <View className="py-4 space-y-3">
+         {/*  <View className="py-4 space-y-3">
             <View className="flex-row items-center space-x-3">
               <View className="items-center justify-center w-10 h-10 rounded-full bg-primary/10">
                 {Platform.OS == "ios" ? (
@@ -302,10 +302,10 @@ const handleCreateOrbit = () => {
                 </Text>
               </View>
             </View>
-          </View>
+          </View>*/}
 
           {/* Host Info */}
-          {eventDetail?.created_by && (
+        {/* {eventDetail?.created_by && (
             <View className="flex-row items-center p-4 mb-6 bg-muted rounded-xl">
               <UserAvatar
                 size={40}
@@ -324,7 +324,7 @@ const handleCreateOrbit = () => {
                 </Text>
               </View>
             </View>
-          )}
+          )} */}
 
           {/* Description */}
           <View className="mb-6">
@@ -335,7 +335,7 @@ const handleCreateOrbit = () => {
           </View>
 
           {/* Image Gallery */}
-          {eventDetail?.image_urls?.length > 1 && (
+         {/*  {eventDetail?.image_urls?.length > 1 && (
             <View className="mb-6">
               <Text className="mb-3 text-lg font-semibold">Event Photos</Text>
               <View className="flex-row flex-wrap gap-2">
@@ -353,7 +353,7 @@ const handleCreateOrbit = () => {
                 ))}
               </View>
             </View>
-          )}
+          )} */}
 
           {/* Attendees */}
           <View className="mb-6">

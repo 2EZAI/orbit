@@ -355,7 +355,7 @@ export default function NewChatScreen() {
           </Card>
         )}
 
-        <Card className={`flex-1 ${Platform.OS === 'android' ? 'mb-[34%]' : ''}`}>
+        <Card className={`flex-1 ${Platform.OS === 'android' ? 'mb-[34%]' : 'mb-[24%]'}`}>
           <CardContent className="py-4">
             {isLoading ? (
               <View className="items-center justify-center flex-1 py-8">
@@ -409,7 +409,7 @@ export default function NewChatScreen() {
         <Button
           onPress={createChat}
           disabled={selectedUsers.length === 0}
-          className={`${Platform.OS === 'android' ?  'absolute  bottom-0 left-0 right-0  mb-[12%] mr-[4%] ml-[4%]': ' mt-4'}`}
+          className={`${Platform.OS === 'android' ?  'absolute  bottom-0 left-0 right-0  mb-[12%] mr-[4%] ml-[4%]': ' absolute  bottom-0 left-0 right-0  mb-[8%] mr-[4%] ml-[4%]'}`}
         >
           <Text className="text-primary-foreground">
             Create {isGroupChat ? "Group" : "Chat"}

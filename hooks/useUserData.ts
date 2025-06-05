@@ -14,6 +14,7 @@ interface User {
   phone: string | null;
   created_at: string;
   updated_at: string;
+  event_location_preference: number;
 }
 
 interface UserLoation {

@@ -29,7 +29,7 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 
-interface EventCardProps {
+interface LocationCardProps {
   event: MapEvent;
   onClose: () => void;
   onEventSelect: (event: MapEvent) => void;
@@ -40,13 +40,13 @@ interface EventCardProps {
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
 
-export function MapEventCard({
+export function MapLocationCard({
   event,
   onClose,
   onEventSelect,
   nearbyEvents,
   onShowDetails,
-}: EventCardProps) {
+}: LocationCardProps) {
   const { UpdateEventStatus,fetchEventDetail } = useUpdateEvents();
   const router = useRouter();
   const { user } = useUser();
@@ -202,7 +202,7 @@ useEffect(() => {
 
           <View className="overflow-hidden rounded-2xl">
             <Image
-              source={{ uri: event?.image_urls[0] }}
+              source={{ uri: event?.image_urls }}
               className="absolute w-full h-full"
               blurRadius={3}
             />
@@ -215,10 +215,10 @@ useEffect(() => {
                 <Text className="text-2xl font-semibold text-white">
                   {eventDetail?.name}
                 </Text>
-                <Text className="mt-1 text-white/90">
+               {/* <Text className="mt-1 text-white/90">
                   {formatDate(event?.start_datetime)} •{" "}
                   {formatTime(event?.start_datetime)}
-                </Text>
+                </Text>*/}
               </View>
 
               {/* Location */}

@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import { Search, Filter } from "lucide-react-native";
 import { Icon } from 'react-native-elements';
+import { useUser } from "~/hooks/useUserData";
 
 import { useMapEvents } from "~/hooks/useMapEvents";
 import { FeedEventCard } from "~/src/components/feed/FeedEventCard";
@@ -13,6 +14,7 @@ import * as Location from "expo-location";
 import AllPostsTab from "~/src/components/profile/AllPostsTab";
 
 export default function Home() {
+    const { user ,userlocation, updateUserLocations } = useUser();
   const [activeTab, setActiveTab] = useState<Tab>("Events");
   const [location, setLocation] = useState<{
     latitude: numbrer;
@@ -28,8 +30,13 @@ export default function Home() {
 
   const { events, categories, eventsHome, isLoading, error } = useMapEvents({
     // center: [37.7749, -122.4194],
-    center: location ? [location.latitude, location.longitude] : [0, 0],
-
+    // center: location ? [location.latitude, location.longitude] : [0, 0],
+center:
+  user?.event_location_preference == 1
+    ? [userlocation?.latitude, userlocation?.longitude]
+    : location
+      ? [location.latitude, location.longitude]
+      : [0, 0],
     radius: 10000,
     timeRange: "now",
   });

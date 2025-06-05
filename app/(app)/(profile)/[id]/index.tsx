@@ -196,8 +196,8 @@ export default function EditProfile() {
           state: locationDetails.state,
           postal_code: locationDetails.zip,
           address: locationDetails.address1,
-          latitude: locationDetails.coordinates[0],
-          longitude: locationDetails.coordinates[1],
+          latitude: locationDetails.coordinates[1],
+          longitude: locationDetails.coordinates[0],
         });
       }
       if (profileImage == "") {

@@ -5,7 +5,34 @@ import { debounce } from "lodash";
 import { parseISO,format, isWithinInterval, addHours, isSameDay, addDays } from 'date-fns';
 // import { utcToZonedTime } from 'date-fns-tz';
 // import Toast from "react-native-toast-message";
+import { useAuth } from "~/src/lib/auth";
 
+interface User {
+  id: string;
+  email: string;
+  username: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  location: string | null;
+  phone: string | null;
+  created_at: string;
+  updated_at: string;
+  event_location_preference: number;
+}
+
+interface UserLoation {
+  user_id: string;
+  location: string;
+  accuracy: string | null;
+  latitude: string | null;
+  longitude: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+}
 interface Location {
   latitude: number;
   longitude: number;
@@ -46,6 +73,17 @@ export interface MapEvent {
     avatar_url: string | null;
   };
 }
+export interface MapLocation {
+  id: string;
+  name: string;
+  description: string;
+  location: Location;
+  address: string;
+  image_urls: string;
+  distance: number;
+  categories: string;
+  
+}
 export interface Category {
   id: string;
   name: string;
@@ -66,6 +104,12 @@ interface EventCluster {
   mainEvent: MapEvent; // The event whose image we'll show
 }
 
+interface LocationCluster {
+  events: MapLocation[];
+  location: Location;
+  mainEvent: MapLocation; // The event whose image we'll show
+}
+
 export function useMapEvents({
   center,
   radius = 500000,
@@ -75,6 +119,7 @@ export function useMapEvents({
   //   type: "success",
   //   text1: "first :"+center,
   // });
+
   const now = new Date();
   const SEVEN_DAYS_IN_MS =  7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
@@ -98,6 +143,9 @@ const endOfWeekTime = nowTime + (daysUntilSunday * 24 * 60 * 60 * 1000);
 
 const twentyHoursLater = nowTime + 20 * 60 * 60 * 1000; // 20 hours
 
+let user:any=null;
+let userLocation:any =null;
+const [locations, setLocations] = useState<MapEvent[]>([]);
   const [events, setEvents] = useState<MapEvent[]>([]);
   const [firstHit, setfirstHit] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -106,6 +154,7 @@ const twentyHoursLater = nowTime + 20 * 60 * 60 * 1000; // 20 hours
   const [eventsNow, setEventsNow] = useState<MapEvent[]>([]);
   const [eventsToday, setEventsToday] = useState<MapEvent[]>([]);
   const [eventsTomorrow, setEventsTomorrow] = useState<MapEvent[]>([]);
+  const [clustersLocations, setClustersLocations] = useState<LocationCluster[]>([]);
   const [clusters, setClusters] = useState<EventCluster[]>([]);
   const [clustersNow, setClustersNow] = useState<EventCluster[]>([]);
   const [clustersToday, setClustersToday] = useState<EventCluster[]>([]);
@@ -117,7 +166,7 @@ const twentyHoursLater = nowTime + 20 * 60 * 60 * 1000; // 20 hours
   const isMountedRef = useRef(true);
   const lastFetchTimeRef = useRef<number>(0);
   const cachedEventsRef = useRef<MapEvent[]>([]);
-
+  const { session } = useAuth();
   // Function to group events by location with a smaller precision for better clustering
   const clusterEvents = useCallback((events: MapEvent[]) => {
     console.log("[Events] Clustering", events.length, "events");
@@ -148,6 +197,52 @@ const twentyHoursLater = nowTime + 20 * 60 * 60 * 1000; // 20 hours
         if (event.attendees.count > cluster.mainEvent.attendees.count) {
           cluster.mainEvent = event;
         }
+      } else {
+        locationMap.set(key, {
+          events: [event],
+          location: event.location,
+          mainEvent: event,
+        });
+      }
+    });
+
+    const clusters = Array.from(locationMap.values());
+    console.log(
+      "[Events] Created clusters at locations:",
+      clusters.map((c) => `${c.location.latitude},${c.location.longitude}`)
+    );
+    return clusters;
+  }, []);
+
+  const clusterLocations = useCallback((events: MapLocation[]) => {
+    console.log("[Events] Clustering", events.length, "events");
+    const locationMap = new Map<string, LocationCluster>();
+
+    events.forEach((event) => {
+      if (
+        !event.location ||
+        typeof event.location.latitude !== "number" ||
+        typeof event.location.longitude !== "number"
+      ) {
+        console.warn("[Events] Invalid location for event:", event.id);
+        return;
+      }
+
+      // Log the actual coordinates for debugging
+      console.log(`[Events] Event ${event.id} location:`, event.location);
+
+      // Use 3 decimal places for clustering (roughly 100m precision)
+      const key = `${event.location.latitude.toFixed(
+        3
+      )},${event.location.longitude.toFixed(3)}`;
+
+      if (locationMap.has(key)) {
+        const cluster = locationMap.get(key)!;
+        cluster.events.push(event);
+        // Update main event if this one has more attendees
+        // if (event.attendees.count > cluster.mainEvent.attendees.count) {
+        //   cluster.mainEvent = event;
+        // }
       } else {
         locationMap.set(key, {
           events: [event],
@@ -229,6 +324,46 @@ const twentyHoursLater = nowTime + 20 * 60 * 60 * 1000; // 20 hours
     if (!isMountedRef.current || isLoading) return;
     setIsLoading(true);
 
+    ///fetch user
+    try {
+      if (!session?.user?.id) {
+        return;
+      }
+
+      const { data, error: supabaseError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", session.user.id)
+        .single();
+
+        
+      if (supabaseError) throw supabaseError;
+      console.log("fetch_user>?>>",data);
+      user=data;
+    } catch (e) {
+    } finally {
+    }
+
+    ///fetch location
+    try {
+      if (!session?.user?.id) {
+        return;
+      }
+
+      const { data, error: supabaseError } = await supabase
+        .from("user_locations")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .single();
+
+        
+      if (supabaseError) throw supabaseError;
+      console.log("fetch_location>?>>",data);
+      userLocation =data;
+    } catch (e) {
+    } finally {
+    }
+
     try {
       console.log("[Events] Fetching all events");
 
@@ -239,18 +374,79 @@ const twentyHoursLater = nowTime + 20 * 60 * 60 * 1000; // 20 hours
         throw new Error("No valid auth session");
       }
 
+ 
+  console.log('user?.event_location_preference>',user?.event_location_preference);
+  console.log('userlocation?.latitude>',userLocation?.latitude);
+
  // 2. get event using our API
  const eventData = {
   // latitude: 41.884109,
   // longitude: -87.665881
-  latitude: centerr[0],
-  longitude: centerr[1]
+  latitude: user != null && user?.event_location_preference == 1 ?
+  userLocation?.latitude :centerr[0],
+  longitude: user != null && user?.event_location_preference == 1 ?
+  userLocation?.longitude : centerr[1]
 };
 // Toast.show({
 //   type: "success",
 //   text1: "eventData:"+eventData.latitude +"\n"+ eventData.longitude,
 // });
 
+////fetch locations
+
+const responseLocations = await fetch(
+  `${process.env.BACKEND_MAP_URL}/api/locations/all`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify(eventData),
+  }
+);
+console.log("session.access_token>>",
+session.access_token);
+console.log("dataLocations",
+eventData);
+
+if (!responseLocations.ok) {
+  throw new Error(await responseLocations.text());
+}
+
+const dataLocations = await responseLocations.json();
+// console.log("event data", data);
+console.log("[Events] Locations", dataLocations.length, "Locations from API");
+
+// Validate event data
+const validLocations = dataLocations.filter((event: any) => {
+  const isValid =
+    event.location &&
+    typeof event.location.latitude === "number" &&
+    typeof event.location.longitude === "number" &&
+    !isNaN(event.location.latitude) &&
+    !isNaN(event.location.longitude) &&
+    Math.abs(event.location.latitude) <= 90 &&
+    Math.abs(event.location.longitude) <= 180;
+  if (!isValid) {
+    console.warn(
+      "[Events] Invalid event data:",
+      event.id,
+      JSON.stringify(event.location)
+    );
+  }
+  return isValid;
+});
+
+setLocations(validLocations);
+setClustersLocations([]);
+      // Create initial clusters
+      const newClustersLocations = clusterLocations(validLocations);
+      console.log("validEvents>", validLocations);
+      // console.log("[Events] Setting", newClusters.length, "clusters");
+      setClustersLocations(newClustersLocations);
+
+///fetch events
       const response = await fetch(
         `${process.env.BACKEND_MAP_URL}/api/events/all`,
         {
@@ -513,10 +709,12 @@ setEventsTomorrow(tomorrowList);
     eventsHome,
     categories,
     events,
+    locations,
     eventsToday,
     eventsNow,
     eventsTomorrow,
     clusters,
+    clustersLocations,
     clustersToday,
     clustersNow,
     clustersTomorrow,

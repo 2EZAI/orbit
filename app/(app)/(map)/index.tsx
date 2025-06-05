@@ -31,7 +31,10 @@ import { UserMarkerWithCount } from "~/src/components/map/UserMarkerWithCount";
 import { EventMarker } from "~/src/components/map/EventMarker";
 import { ClusterSheet } from "~/src/components/map/ClusterSheet";
 import { MapEventCard } from "~/src/components/map/EventCard";
+import { MapLocationCard } from "~/src/components/map/LocationCard";
 import { EventDetailsSheet } from "~/src/components/map/EventDetailsSheet";
+import { LocationDetailsSheet } from "~/src/components/map/LocationDetailsSheet";
+
 import { SearchSheet } from "~/src/components/search/SearchSheet";
 
 // Replace with your Mapbox access token
@@ -48,12 +51,13 @@ const CUSTOM_DARK_STYLE =
 export default function Map() {
     const [selectedTimeFrame, setSelectedTimeFrame] = useState<TimeFrame>('Today');
     const [showDetails, setShowDetails] = useState(false);
+     const [isEvent, setIsEvent] = useState(false);
     const [hideCount, setHideCount] = useState(false);
   
      const [showControler, setShowControler] = useState(true);
    const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { theme, isDarkMode } = useTheme();
-  const { user , updateUserLocations } = useUser();
+  const { user ,userlocation, updateUserLocations } = useUser();
   const mapRef = useRef<MapboxGL.MapView>(null);
   const { session } = useAuth();
   const [location, setLocation] = useState<{
@@ -80,10 +84,12 @@ export default function Map() {
 
   var {
     events,
+    locations,
     eventsNow,
     eventsToday,
     eventsTomorrow,
     clusters,
+    clustersLocations,
     clustersNow,
     clustersToday,
     clustersTomorrow,
@@ -93,9 +99,15 @@ export default function Map() {
     handleEventClick,
     handleCloseModal,
   } = useMapEvents({
-    center: location
+    center:
+  user?.event_location_preference == 1
+    ? [userlocation?.latitude, userlocation?.longitude]
+    : location
       ? [location.latitude, location.longitude]
-        : [0, 0],
+      : [0, 0],
+    // center: location
+    //   ? [location.latitude, location.longitude]
+    //     : [0, 0],
       // : [37.7749, -122.4194],
     radius: 50000,
     timeRange: "now",
@@ -587,12 +599,12 @@ setFollowerList(updatedFollowerList);
 
   const handleClusterPress = useCallback(
     (cluster: { events: MapEvent[] }) => {
-      console.log("[Map] Cluster pressed:", {
-        eventCount: cluster.events.length,
-        firstEventId: cluster.events[0]?.id,
-      });
+      // console.log("[Map] Cluster pressed:", {
+      //   eventCount: cluster?.events?.length,
+      //   firstEventId: cluster?.events[0]?.id,
+      // });
 
-      if (cluster.events.length === 1) {
+      if (cluster.events?.length === 1) {
         // Center map on selected event
         if (cameraRef.current) {
           cameraRef.current.setCamera({
@@ -705,7 +717,9 @@ setHideCount(false);
               }}
             >
               <TouchableOpacity
-                onPress={() => handleClusterPress(cluster)}
+                onPress={() => {
+                  setIsEvent(true);
+                  handleClusterPress(cluster)}}
                 style={{ padding: 5 }}
               >
                 <EventMarker
@@ -738,7 +752,11 @@ setHideCount(false);
               }}
             >
               <TouchableOpacity
-                onPress={() => handleClusterPress(cluster)}
+                onPress={() => {
+                  setIsEvent(true);
+                  handleClusterPress(cluster)
+                }
+                }
                 style={{ padding: 5 }}
               >
                 <EventMarker
@@ -771,7 +789,10 @@ setHideCount(false);
               }}
             >
               <TouchableOpacity
-                onPress={() => handleClusterPress(cluster)}
+                onPress={() =>{ 
+                  setIsEvent(true);
+                  handleClusterPress(cluster)
+                }}
                 style={{ padding: 5 }}
               >
                 <EventMarker
@@ -779,6 +800,41 @@ setHideCount(false);
                  
                   count={cluster.events.length}
                   isSelected={cluster.events.some(
+                    (e) => e.id === selectedEvent?.id
+                  )}
+                />
+              </TouchableOpacity>
+            </View>
+          </MapboxGL.MarkerView>
+        ))}
+
+{/* locations fetched from static_location table for (beach, club , park etc) */}
+        { clustersLocations.length > 0  && clustersLocations.map((cluster) => (
+          <MapboxGL.MarkerView
+               key={`cluster-${cluster.id}`}
+            id={`cluster-${cluster.id}`}
+            coordinate={[cluster.location.longitude, cluster.location.latitude]}
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
+            <View
+              style={{
+                zIndex: cluster?.events?.some((e) => e.id === selectedEvent?.id)
+                  ? 1000
+                  : 100,
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => {
+                  setIsEvent(false);
+                  handleClusterPress(cluster)
+                }}
+                style={{ padding: 5 }}
+              >
+                <EventMarker
+                  imageUrl={cluster.mainEvent?.image_urls}
+                 
+                  count={cluster?.events?.length}
+                  isSelected={cluster?.events?.some(
                     (e) => e.id === selectedEvent?.id
                   )}
                 />
@@ -806,25 +862,6 @@ setHideCount(false);
             </View>
           </MapboxGL.MarkerView>
         )}
-
-        {/*  {followerList.length>0 && followerList.map((followerUser, index) => (
-          
-        //   <MapboxGL.MarkerView
-        //        key={`followerUser-${followerUser?.userId}`}
-        //     id={`followerUser-${followerUser?.userId}`}
-        //     coordinate={[followerUser?.live_location_longitude ,followerUser?.live_location_latitude ]}
-        //     anchor={{ x: 0.5, y: 0.5 }}
-          
-        //   >
-        //    <View
-        //       className="items-center justify-center">
-        //      <UserMarkerWithCount
-        //         avatarUrl={followerUser?.avatar_url}
-        //         count={3}
-        //       />
-        //     </View>
-        //   </MapboxGL.MarkerView>
-         ))}*/}
 
         {followerList.length > 0 &&
   followerList.map((followerUser) => (
@@ -861,11 +898,27 @@ setHideCount(false);
         }}
       />
      }
-      {selectedEvent && (
+      {selectedEvent && isEvent && (
         <MapEventCard
           event={selectedEvent}
           nearbyEvents={events}
           onClose={handleCloseModal}
+          onEventSelect={handleEventSelect}
+          onShowDetails={() => {
+            setShowControler(false);
+            setShowDetails(true);
+          }}
+        />
+      )}
+
+      {selectedEvent && !isEvent && (
+        <MapLocationCard
+          event={selectedEvent}
+          nearbyEvents={events}
+          onClose={()=>{
+            console.log("vvvv>>");
+            handleCloseModal();
+            }}
           onEventSelect={handleEventSelect}
           onShowDetails={() => {
             setShowControler(false);
@@ -896,6 +949,16 @@ setHideCount(false);
           onShowControler={()  => setShowControler(true)}
         />
       )}
+      {showDetails && !isEvent && (
+        <LocationDetailsSheet
+          event={selectedEvent}
+          isOpen={showDetails}
+          onClose={() => setShowDetails(false)}
+          nearbyEvents={events}
+          onShowControler={()  => setShowControler(true)}
+        />
+      )}
+      
     </View>
   );
 }

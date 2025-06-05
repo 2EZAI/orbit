@@ -194,7 +194,7 @@ export const CreateOrbitModal = ({
 
           {/* Search Results */}
           {searchResults.length > 0 && (
-            <View className="mt-2 space-y-2">
+            <View className="mt-2  space-y-2">
               {searchResults.map((searchUser) => {
                 const isSelected = selectedUsers.some(
                   (u) => u.id === searchUser.id
