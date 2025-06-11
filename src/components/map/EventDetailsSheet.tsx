@@ -378,6 +378,29 @@ const handleCreateOrbit = () => {
             </View>
           </View>
 
+{/* Category prompts */}
+          {eventDetail?.category && (
+            <View className="mb-6">
+              <Text className="mb-3 text-lg font-semibold">Category</Text>
+             <View className="flex-row flex-wrap gap-2">
+              <View className="px-3 py-1 rounded-full bg-muted">
+                    <Text className="text-sm">{eventDetail?.category?.name}</Text>
+                  </View>
+                  </View>
+              <Text className="mb-3 mt-4 text-lg font-semibold">Prompt</Text>
+
+              <View className="flex-row flex-wrap gap-2">
+                {eventDetail?.category?.prompts?.map((prompt) => (
+                  <View
+                    key={prompt.id}
+                    className="px-3 py-1 rounded-full bg-muted"
+                  >
+                    <Text className="text-sm">{prompt.name}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
           {/* Categories */}
           {eventDetail?.categories?.length > 0 && (
             <View className="mb-6">

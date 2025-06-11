@@ -22,9 +22,8 @@ export function FeedEventCard({
   const endTime = new Date(event.end_datetime);
 
   // console.log("event>",event)
-  
+
   return (
-  
     <>
       <TouchableOpacity
         className="mx-4 mb-4 overflow-hidden border rounded-3xl border-border"
@@ -35,7 +34,6 @@ export function FeedEventCard({
       >
         <View className="relative">
           <Image
-         
             source={{ uri: event.image_urls[0] }}
             className="w-full h-48"
             style={{ resizeMode: "cover" }}
@@ -47,7 +45,9 @@ export function FeedEventCard({
             </Text>
           </View>
           <View className="absolute px-3 py-1 rounded-full right-4 top-4 bg-white/90">
-            <Text className="text-sm font-medium">{event?.attendees?.count}</Text>
+            <Text className="text-sm font-medium">
+              {event?.attendees?.count}
+            </Text>
           </View>
         </View>
 
@@ -59,7 +59,6 @@ export function FeedEventCard({
 
           {/* Title */}
           <Text className="mb-2 text-xl font-semibold">{event.name}</Text>
-       
 
           {/* Time */}
           <View className="flex-row items-center mb-2">
@@ -70,12 +69,38 @@ export function FeedEventCard({
           </View>
 
           {/* Location */}
-          <View className="flex-row items-center mb-3">
+          {/* <View className="flex-row items-center mb-3">
             <MapPin size={16} className="mr-2 text-muted-foreground" />
             <Text className="text-muted-foreground">{event.venue_name}</Text>
             
+         </View>*/}
+          {/* Location */}
+           <TouchableOpacity
+        onPress={() => {
+          setShowDetails(true);
+          onEventSelect?.(event);
+        }}
+      >
+          <View className="flex-row items-center mb-3">
+            <MapPin size={16} className="mr-2 text-muted-foreground" />
+            <View className="flex-1">
+              {event?.venue_name ? (
+                <>
+                  <Text className="text-muted-foreground">
+                    {event?.venue_name}
+                  </Text>
+                  <Text className="text-sm text-muted-foreground">
+                    {event?.address}
+                  </Text>
+                </>
+              ) : (
+                <Text className="text-sm text-muted-foreground">
+                  {event?.address}
+                </Text>
+              )}
+            </View>
           </View>
-
+ </TouchableOpacity>
           {/* Categories */}
           <View className="flex-row flex-wrap gap-2">
             {event?.categories?.map((category) => (
@@ -99,7 +124,7 @@ export function FeedEventCard({
           onClose={() => setShowDetails(false)}
           nearbyEvents={nearbyEvents || []}
           onEventSelect={onEventSelect || (() => {})}
-           onShowControler={()  => {}}
+          onShowControler={() => {}}
         />
       )}
     </>

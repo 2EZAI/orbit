@@ -831,7 +831,7 @@ setHideCount(false);
                 style={{ padding: 5 }}
               >
                 <EventMarker
-                  imageUrl={cluster.mainEvent?.image_urls}
+                  imageUrl={cluster.mainEvent?.image_urls?.[0]}
                  
                   count={cluster?.events?.length}
                   isSelected={cluster?.events?.some(
@@ -914,11 +914,8 @@ setHideCount(false);
       {selectedEvent && !isEvent && (
         <MapLocationCard
           event={selectedEvent}
-          nearbyEvents={events}
-          onClose={()=>{
-            console.log("vvvv>>");
-            handleCloseModal();
-            }}
+          nearbyEvents={locations}
+          onClose={handleCloseModal}
           onEventSelect={handleEventSelect}
           onShowDetails={() => {
             setShowControler(false);
@@ -940,7 +937,7 @@ setHideCount(false);
         eventsList={events}
         onShowControler={(value)  => setShowControler(value)}
       />
-      {showDetails && (
+      {showDetails && isEvent && (
         <EventDetailsSheet
           event={selectedEvent}
           isOpen={showDetails}

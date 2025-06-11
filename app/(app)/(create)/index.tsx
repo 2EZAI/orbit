@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState , useEffect } from "react";
 import {
   View,
   ScrollView,
@@ -8,6 +8,7 @@ import {
   Platform,
   DeviceEventEmitter,
 } from "react-native";
+import { Category } from "~/hooks/useMapEvents";
 import { Icon } from 'react-native-elements';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
@@ -31,6 +32,7 @@ import { supabase } from "~/src/lib/supabase";
 import { router } from "expo-router";
 import { debounce } from "lodash";
 import Toast from "react-native-toast-message";
+import { useLocalSearchParams } from "expo-router";
 
 interface EventImage {
   uri: string;
@@ -64,6 +66,7 @@ interface LocationDetails {
   coordinates: [number, number];
 }
 
+
 // Function to convert base64 to Uint8Array for Supabase storage
 function decode(base64: string): Uint8Array {
   const binaryString = atob(base64);
@@ -75,6 +78,34 @@ function decode(base64: string): Uint8Array {
 }
 
 export default function CreateEvent() {
+// const { locationid,locationtype,Latitude,Longitude,category} = useLocalSearchParams();
+//   console.log("locationType>>", locationtype);
+//   console.log("latitude>>", Latitude);
+//    console.log("longitude>>", Longitude);
+//    const [locationId, setlocationId] = useState(locationid ? locationid : undefined);
+//    const [locationType, setlocationType] = useState(locationtype ? locationtype : undefined);
+//    const [latitude, setlatitude] = useState(Latitude ? Latitude : undefined);
+//    const [longitude, setlongitude] = useState(Longitude ? Longitude : undefined);
+
+
+//    const parsedCategory = category ? JSON.parse(category as string) : [];
+// console.log("parsedCategory>>", parsedCategory);
+// const [categoryList, setCategoryList] = useState<Category>(parsedCategory === undefined ? {} : parsedCategory);
+// const [selectedPrompts, setSelectedPrompts] = useState<Prompts>({});
+// const [showPrompts, setshowPrompts] = useState( categoryList?.prompts === undefined ? false : true);
+  
+    const [locationId, setlocationId] = useState(undefined);
+   const [locationType, setlocationType] = useState(undefined);
+   const [latitude, setlatitude] = useState(undefined);
+   const [longitude, setlongitude] = useState(undefined);
+
+
+
+const [categoryList, setCategoryList] = useState<Category>( {} );
+const [selectedPrompts, setSelectedPrompts] = useState<Prompts>({});
+const [showPrompts, setshowPrompts] = useState( false );
+
+  
   const { showActionSheetWithOptions } = useActionSheet();
   const { user } = useUser();
   const [name, setName] = useState("");
@@ -91,12 +122,43 @@ export default function CreateEvent() {
     coordinates: [0, 0],
   });
   const [searchResults, setSearchResults] = useState<MapboxFeature[]>([]);
-  const [showResults, setShowResults] = useState(false);
+  const [showResults, setShowResults] = useState();
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
   const [externalUrl, setExternalUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
+
+
+useEffect(()=>{
+console.log("createevent_useEffect");
+ DeviceEventEmitter.addListener("passDataToCreateEvent", (locationid,
+                  locationtype,
+                  Latitude,
+                  Longitude,
+                  category) => {
+      console.log('event----passDataToCreateEvent');
+
+console.log("locationType>>", locationtype);
+  console.log("latitude>>", Latitude);
+   console.log("longitude>>", Longitude);
+   setlocationId(locationid ? locationid : undefined);
+   setlocationType(locationtype ? locationtype : undefined);
+   setlatitude(Latitude ? Latitude : undefined);
+   setlongitude(Longitude ? Longitude : undefined);
+
+
+   const parsedCategory = category ? JSON.parse(category as string) : [];
+console.log("parsedCategory>>", parsedCategory);
+setCategoryList(parsedCategory === undefined ? {} : parsedCategory);
+// setshowPrompts( categoryList?.prompts === undefined ? false : true);
+setshowPrompts( parsedCategory === undefined ? false : true);
+
+
+     
+    });
+},[]);
+
 
   const showDatePicker = (isStart: boolean) => {
     const currentDate = isStart ? startDate : endDate;
@@ -308,7 +370,24 @@ export default function CreateEvent() {
       return;
     }
 
+    if(locationType === 'static' || 
+      locationType === 'googleApi')
+      {
+
     if (
+      !name ||
+      !description ||
+      !selectedPrompts?.id ||
+      images.length === 0 ) {
+      Alert.alert(
+        "Error",
+        "Please fill in all required fields and add at least one image"
+      );
+      return;
+    }
+      }
+      else{
+        if (
       !name ||
       !description ||
       images.length === 0 ||
@@ -323,6 +402,7 @@ export default function CreateEvent() {
       );
       return;
     }
+      }
 
     setIsLoading(true);
 
@@ -412,9 +492,11 @@ export default function CreateEvent() {
       }
 
       // 2. Create event using our API
-      const eventData = {
+      
+      let eventData = {
         name,
         description,
+        type:'Default',
         address: locationDetails.address1,
         address_line2: locationDetails.address2,
         city: locationDetails.city,
@@ -426,6 +508,28 @@ export default function CreateEvent() {
         image_urls: imageUrls,
         is_private: isPrivate,
       };
+      if(locationType === 'static' || 
+      locationType === 'googleApi')
+      {
+        let promtIds = []; // an empty array
+promtIds.push(selectedPrompts?.id);
+ eventData = {
+        name,
+        description,
+        location_id:locationId,
+        prompt_ids:promtIds,
+        category_id:categoryList?.id,
+        type:locationType,
+        latitude:latitude,
+        longitude:longitude,
+        start_datetime: startDate.toISOString(),
+        end_datetime: endDate.toISOString(),
+        external_url: externalUrl || null,
+        image_urls: imageUrls,
+        is_private: isPrivate,
+      };
+      }
+      console.log("eventData>>",eventData);
 
       const response = await fetch(
         `${process.env.BACKEND_MAP_URL}/api/events`,
@@ -445,7 +549,7 @@ export default function CreateEvent() {
       }
 
       const event = await response.json();
-
+console.log("event>>",event);
       Toast.show({
         type: "success",
         text1: "Event Created!",
@@ -611,6 +715,39 @@ export default function CreateEvent() {
             </View>
           </View>
 
+   {/* Prompts Section */}
+          {showPrompts && categoryList?.prompts.length>0 && (<View className="p-4 mb-6 rounded-lg bg-card">
+           <Text className="mb-1.5 font-medium">Prompts *</Text>
+
+            <View className="m-4 flex-row flex-wrap gap-2">
+      {categoryList?.prompts?.map((prompt) => {
+        const isSelected = selectedPrompts?.id === prompt?.id ? true :false;
+        return (
+          <TouchableOpacity
+            key={prompt.id}
+            onPress={() => {
+            setSelectedPrompts(prompt);
+            }
+            }
+            className={`px-4 py-2 rounded-full border ${
+              isSelected
+                ? "bg-primary border-primary"
+                : "bg-transparent border-border"
+            }`}
+          >
+            <Text
+              className={
+                isSelected ? "text-primary-foreground" : "text-foreground"
+              }
+            >
+              {prompt.name}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+    </View>)}
+
           {/* Images Section */}
           <View className="p-4 mb-6 rounded-lg bg-card">
             <View className="mb-4">
@@ -647,7 +784,7 @@ export default function CreateEvent() {
           </View>
 
           {/* Location Section */}
-          <View className="p-4 mb-6 rounded-lg bg-card">
+         { locationType === undefined && <View className="p-4 mb-6 rounded-lg bg-card">
             <View className="mb-4">
               <Text className="mb-1 text-lg font-semibold">Location</Text>
               <Text className="text-sm text-muted-foreground">
@@ -707,6 +844,7 @@ export default function CreateEvent() {
               )}
             </View>
           </View>
+         }
 
           {/* Date & Time Section */}
           <View className="p-4 mb-6 rounded-lg bg-card">

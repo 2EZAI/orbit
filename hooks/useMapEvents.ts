@@ -72,6 +72,26 @@ export interface MapEvent {
     username: string;
     avatar_url: string | null;
   };
+  location_detail?:MapLocation;
+}
+
+export interface Prompt {
+  id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+  location_id: string | null;
+  category_id: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  icon: string | null;
+  created_at: string;
+  updated_at: string;
+  source: string;
+  prompts: Prompt[];
 }
 export interface MapLocation {
   id: string;
@@ -79,16 +99,13 @@ export interface MapLocation {
   description: string;
   location: Location;
   address: string;
-  image_urls: string;
+  image_urls: string[];
   distance: number;
-  categories: string;
+  type:string;
+  category: Category;
   
 }
-export interface Category {
-  id: string;
-  name: string;
-  source: string;
-}
+
 
 type TimeRange = "today" | "week" | "weekend";
 
@@ -415,7 +432,7 @@ if (!responseLocations.ok) {
 }
 
 const dataLocations = await responseLocations.json();
-// console.log("event data", data);
+console.log("dataLocations", dataLocations);
 console.log("[Events] Locations", dataLocations.length, "Locations from API");
 
 // Validate event data
@@ -442,7 +459,8 @@ setLocations(validLocations);
 setClustersLocations([]);
       // Create initial clusters
       const newClustersLocations = clusterLocations(validLocations);
-      console.log("validEvents>", validLocations);
+      console.log("validLocations>", validLocations);
+      // console.log("validLocationscategory.prompts>", validLocations[1].category.prompts);
       // console.log("[Events] Setting", newClusters.length, "clusters");
       setClustersLocations(newClustersLocations);
 

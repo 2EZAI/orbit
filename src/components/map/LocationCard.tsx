@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { Text } from "../ui/text";
 import { BlurView } from "expo-blur";
-import { MapEvent } from "~/hooks/useMapEvents";
+import { MapLocation } from "~/hooks/useMapEvents";
 import { formatTime, formatDate } from "~/src/lib/date";
 import { X, Info, Users, MessageCircle, Navigation } from "lucide-react-native";
 import { Icon } from "react-native-elements";
@@ -30,10 +30,10 @@ import Animated, {
 } from "react-native-reanimated";
 
 interface LocationCardProps {
-  event: MapEvent;
+  event: MapLocation;
   onClose: () => void;
-  onEventSelect: (event: MapEvent) => void;
-  nearbyEvents: MapEvent[];
+  onEventSelect: (event: MapLocation) => void;
+  nearbyEvents: MapLocation[];
   onShowDetails: () => void;
 }
 
@@ -61,9 +61,11 @@ useEffect(() => {
       // console.log('event----notitifactionBage', value);
       hitEventDetail();
     });
+    console.log("location card");
   }, []);
 useEffect(() => {
      setEventDetail({});
+     console.log("event//",event);
     setEventDetail(event);
     hitEventDetail();
   }, []);
@@ -139,14 +141,27 @@ useEffect(() => {
     setLoading(false)
   };
 
-  const handleCreateOrbit = () => {
-    router.push({
-      pathname: "/new",
-      params: {
-        eventId: eventDetail?.id,
-        eventName: eventDetail?.name,
-      },
-    });
+  const handleCreateEvent = () => {
+
+     router.push({
+                pathname: "/(app)/(create)",
+                params: { 
+                  locationId: eventDetail?.id,
+                  locationType: eventDetail?.type,
+                  latitude:eventDetail?.location?.latitude,
+                  longitude:eventDetail?.location?.longitude,
+                  category: JSON.stringify(event?.category),
+                 },
+              });
+              setTimeout(() => {
+ DeviceEventEmitter.emit('passDataToCreateEvent', 
+    eventDetail?.id,
+                   eventDetail?.type,
+                 eventDetail?.location?.latitude,
+                  eventDetail?.location?.longitude,
+                  JSON.stringify(event?.category),);
+              },300);
+                 
   };
 
   const handleGetDirections = () => {
@@ -161,6 +176,7 @@ useEffect(() => {
   };
 
   const handleShowDetails = () => {
+    console.log("handleShowDetails>");
     if (onEventSelect) {
       onEventSelect(event);
     }
@@ -184,10 +200,10 @@ useEffect(() => {
             animatedStyle,
           ]}
         >
+       
           <TouchableOpacity
             className="absolute z-10 items-center justify-center w-8 h-8 rounded-full right-2 top-2 bg-black/20"
-            onPress={onClose}
-          >
+             onPress={onClose} >
             {Platform.OS == "ios" ? (
               <X size={20} color="white" />
             ) : (
@@ -201,11 +217,11 @@ useEffect(() => {
           </TouchableOpacity>
 
           <View className="overflow-hidden rounded-2xl">
-            <Image
-              source={{ uri: event?.image_urls }}
+           {event?.image_urls?.[0] && <Image
+              source={{ uri: event?.image_urls[0] }}
               className="absolute w-full h-full"
               blurRadius={3}
-            />
+            />}
             {/* Dark overlay */}
             <View className="absolute w-full h-full bg-black/40" />
 
@@ -248,33 +264,8 @@ useEffect(() => {
 
               {/* Action Buttons */}
               <View className="flex-row gap-3">
-               
-                <Button className={`flex-1 ${eventDetail?.join_status ? 'bg-gray-300' : 'bg-white'}`}  onPress={()=>{
-                  // handleJoinOrbit();
-                  {!eventDetail?.join_status ? hitUpdaeEventApi(eventDetail)
-                  : ""}
 
-                }
-                  }>
-                  <View className="flex-row items-center justify-center">
-                    {Platform.OS == "ios" ? (
-                      <Users size={16} className="text-primary" />
-                    ) : (
-                      <Icon
-                        name="account-multiple-outline"
-                        type="material-community"
-                        size={16}
-                        color="#239ED0"
-                      />
-                    )}
-                    <Text className="ml-1.5 font-semibold text-primary">
-                      {eventDetail?.join_status ? "Joined" : "Join"}
-                    </Text>
-                  </View>
-                </Button>
-                
-
-                <Button className="flex-1 bg-white" onPress={handleCreateOrbit}>
+                <Button className="flex-1 bg-white" onPress={handleCreateEvent}>
                   <View className="flex-row items-center justify-center">
                     {Platform.OS == "ios" ? (
                       <MessageCircle size={16} className="text-primary" />
@@ -287,7 +278,7 @@ useEffect(() => {
                       />
                     )}
                     <Text className="ml-1.5 font-semibold text-primary">
-                      Create
+                      Create Event
                     </Text>
                   </View>
                 </Button>
@@ -318,12 +309,7 @@ useEffect(() => {
         </Animated.View>
       </GestureDetector>
 
-         {loading &&
-      (<View className="absolute bottom-0 top-0 left-0 right-0">
-        <ActivityIndicator size="large" color="#6200ee" />
-      </View>)
-   
-  }
+      
 
       {showDetails && (
         <EventDetailsSheet

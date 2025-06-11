@@ -15,6 +15,7 @@ import { Settings } from "lucide-react-native";
 import { router } from "expo-router";
 import { Button } from "~/src/components/ui/button";
 import PostsTab from "~/src/components/profile/PostsTab";
+import EventsTab from "~/src/components/profile/EventsTab";
 
 type Tab = "Events" | "Posts" | "Info";
 
@@ -46,11 +47,8 @@ export default function Profile() {
       case "Posts":
         return user?.id ? <PostsTab userId={user.id} /> : null;
       case "Events":
-        return (
-          <View className="p-4">
-            <Text className="text-muted-foreground">No events yet</Text>
-          </View>
-        );
+        return user?.id ? <EventsTab userId={user.id} /> : null;
+
       case "Info":
         return (
           <View className="p-4">
@@ -72,7 +70,7 @@ export default function Profile() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      
         <View className="px-4 pt-2">
           {/* Profile Header */}
           <View className="flex-row items-start">
@@ -166,7 +164,7 @@ export default function Profile() {
 
         {/* Tab Content */}
         <View className="flex-1 mt-4">{renderTabContent()}</View>
-      </ScrollView>
+      
     </SafeAreaView>
   );
 }

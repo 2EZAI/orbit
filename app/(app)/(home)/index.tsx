@@ -9,11 +9,13 @@ import { useUser } from "~/hooks/useUserData";
 import { useMapEvents } from "~/hooks/useMapEvents";
 import { FeedEventCard } from "~/src/components/feed/FeedEventCard";
 import { EventDetailsSheet } from "~/src/components/map/EventDetailsSheet";
+import { LocationDetailsSheet } from "~/src/components/map/LocationDetailsSheet";
 import { SearchSheet } from "~/src/components/search/SearchSheet";
 import * as Location from "expo-location";
 import AllPostsTab from "~/src/components/profile/AllPostsTab";
 
 export default function Home() {
+  const [isEvent, setIsEvent] = useState(false);
     const { user ,userlocation, updateUserLocations } = useUser();
   const [activeTab, setActiveTab] = useState<Tab>("Events");
   const [location, setLocation] = useState<{
@@ -239,7 +241,17 @@ center:
             <FeedEventCard
               key={event.id}
               event={event}
-              onEventSelect={setSelectedEvent}
+              onEventSelect={ (event) =>{
+                if(event?.location_detail && (event?.type === 'static' ||
+                event?.type === 'googleApi')){
+                setSelectedEvent(event?.location_detail );
+                setIsEvent(false);
+                }
+                else{
+                  setSelectedEvent(event );
+                  setIsEvent(true);
+                }
+              }}
               nearbyEvents={events}
               // nearbyEvents={eventsHome}
             />
@@ -304,7 +316,7 @@ center:
         onShowControler={(value) => {}}
       />
 
-      {selectedEvent && (
+      {selectedEvent && isEvent && (
         <EventDetailsSheet
           event={selectedEvent}
           isOpen={!!selectedEvent}
@@ -313,6 +325,15 @@ center:
           // nearbyEvents={eventsHome}
           onEventSelect={setSelectedEvent}
           onShowControler={() => {}}
+        />
+      )}
+      {selectedEvent && !isEvent && (
+        <LocationDetailsSheet
+          event={selectedEvent}
+          isOpen={!!selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+          // nearbyEvents={events}
+          onShowControler={()  => {}}
         />
       )}
     </SafeAreaView>
