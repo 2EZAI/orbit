@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { View, RefreshControl } from "react-native";
+import { View, RefreshControl ,
+FlatList,TouchableOpacity,Image,ActivityIndicator} from "react-native";
 import { Text } from "~/src/components/ui/text";
 import PostGrid from "./PostGrid";
 import CreatePostButton from "./CreatePostButton";
 import { supabase } from "~/src/lib/supabase";
+import { router } from "expo-router";
+import { useUser } from "~/hooks/useUserData";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface Post {
   id: string;
@@ -23,68 +27,159 @@ interface PostsTabProps {
 }
 
 export default function PostsTab({ userId }: PostsTabProps) {
+    const { user } = useUser();
   const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(false);
+ const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
 
-  const fetchPosts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("posts")
-        .select(
-          `
-          *,
-          user:users!inner (
-            username,
-            avatar_url
-          )
+  const PAGE_SIZE = 2;
+
+const loadPosts = async () => {
+  if (loading || !hasMore) return;
+  setLoading(true);
+
+  try {
+    const from = page * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
+    const { data, error } = await supabase
+      .from("posts")
+      .select(
         `
+        *,
+        user:users!inner (
+          username,
+          avatar_url
         )
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
+        `
+      )
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .range(from, to); // <-- Pagination here
+ console.warn("from.",from);
+ console.warn("to.",to);
+    if (error) throw error;
 
-      if (error) throw error;
-      setPosts(data || []);
-    } catch (error) {
-      console.error("Error fetching posts:", error);
-    } finally {
-      setLoading(false);
+    if (!data || data.length === 0) {
+      console.warn("No more posts.");
+      setHasMore(false);
+      // Optional: setHasMore(false);
+    } else {
+      console.warn("data.>",data);
+      setPosts((prev) => [...prev, ...data]);
+      setPage((prev) => prev + 1);
     }
-  };
+  } catch (error) {
+    console.error("Error fetching posts:", error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+  // const fetchPosts = async () => {
+  //   try {
+  //     const { data, error } = await supabase
+  //       .from("posts")
+  //       .select(
+  //         `
+  //         *,
+  //         user:users!inner (
+  //           username,
+  //           avatar_url
+  //         )
+  //       `
+  //       )
+  //       .eq("user_id", userId)
+  //       .order("created_at", { ascending: false });
+
+  //     if (error) throw error;
+  //     setPosts(data || []);
+  //   } catch (error) {
+  //     console.error("Error fetching posts:", error);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   useEffect(() => {
-    fetchPosts();
+    loadPosts();
   }, [userId]);
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchPosts();
-    setRefreshing(false);
-  };
+  // const onRefresh = async () => {
+  //   setRefreshing(true);
+  //   await fetchPosts();
+  //   setRefreshing(false);
+  // };
 
-  if (loading) {
-    return (
-      <View className="flex-1 items-center justify-center">
-        <Text className="text-muted-foreground">Loading posts...</Text>
-      </View>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <View className="flex-1 items-center justify-center">
+  //       <Text className="text-muted-foreground">Loading posts...</Text>
+  //     </View>
+  //   );
+  // }
+  
+   const renderItem = ({ item: post }: { item: Post }) => (
+    <TouchableOpacity
+      className="w-full aspect-[4/2] p-0.5"
+      onPress={() => router.push(`/post/${post.id}`)}
+    >
+      {post.media_urls && post.media_urls.length > 0 ? (
+        <Image
+          source={{ uri: post.media_urls[0] }}
+          className="w-full aspect-[4/2]"
+          resizeMode="cover"
+        />
+      ) : (
+        <View className="w-full aspect-[4/2] bg-muted justify-center items-center">
+          <View className="p-2">
+            <Text
+              className="text-xs text-center text-muted-foreground"
+              numberOfLines={3}
+            >
+              {post.content}
+            </Text>
+          </View>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
 
   return (
     <View className="flex-1">
-      <CreatePostButton />
+      {user?.id === userId && <CreatePostButton />}
       {posts.length === 0 ? (
         <View className="flex-1 items-center justify-center p-4">
           <Text className="text-muted-foreground">No posts yet</Text>
         </View>
       ) : (
-        <PostGrid
-          posts={posts}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-        />
+         <FlatList
+      data={posts}
+      renderItem={renderItem}
+      keyExtractor={(item) => item.id.toString}
+     
+     
+     
+      onEndReached={(d) => {
+      console.log("onEndReached", d.distanceFromEnd);
+      
+      loadPosts();
+      
+    }}
+    onEndReachedThreshold={0.2}
+    ListFooterComponent={loading && hasMore && <ActivityIndicator />}
+    />
+       
       )}
+       {loading &&  hasMore &&
+            <SafeAreaView className="absolute left-0 right-0 mb-[20%] bottom-0 items-center justify-center ">
+        <ActivityIndicator size="large" color="#000080"/>
+      </SafeAreaView>
+  
+  }
     </View>
   );
 }

@@ -127,15 +127,6 @@ export function LocationDetailsSheet({
     }, 2000);
   };
 
-  const hitGetEvents = async () => {
-    console.log("hitGetEvents");
-    const evnts = await fetchLocationEvents(event);
-    console.log("evnts:", evnts);
-    setEventsList({});
-    setEventsList(evnts);
-    setLoading(false);
-  };
-
   if (!isOpen) return null;
 
   useEffect(() => {
@@ -145,7 +136,7 @@ export function LocationDetailsSheet({
     setEventDetail(event);
     setPage(1);
     loadEvents();
-    // hitGetEvents();
+
     return () => {
       console.log("Hello");
       onShowControler(true);
@@ -154,14 +145,15 @@ export function LocationDetailsSheet({
 
   const loadEvents = async () => {
     console.log("loadEvents:>");
-    //  if (loading || !hasMore) return; // 👈 prevent infinite
+     if (loading || !hasMore) return; // 👈 prevent infinite
     setLoading(true);
 
-    console.log("loadEvents:");
-    const data = await fetchLocationEvents(eventDetail, page, PAGE_SIZE);
+    console.log("loadEvents:",event);
+    const data = await fetchLocationEvents(event, page, PAGE_SIZE);
     console.log("data>:", data);
     if (data.length === 0) {
       setLoading(false);
+      setHasMore(false);
       console.error("Fetch error:", error);
     } else {
       setEventsList((prev) => [...prev, ...data]);
@@ -440,7 +432,9 @@ export function LocationDetailsSheet({
                 <FeedEventCard
                   key={item.id}
                   event={item}
-                  onEventSelect={setSelectedEvent}
+                  onEventSelect={ (event,locationDetail) =>{
+                    setSelectedEvent(event);
+                    }}
                   // nearbyEvents={events}
                   // nearbyEvents={eventsHome}
                 />
@@ -452,7 +446,7 @@ export function LocationDetailsSheet({
                 }
               }}
               onEndReachedThreshold={0.5}
-              ListFooterComponent={loading && <ActivityIndicator />}
+              ListFooterComponent={loading && hasMore && <ActivityIndicator />}
             />
           </View>
 
@@ -551,7 +545,7 @@ export function LocationDetailsSheet({
                 }
               }}
               onEndReachedThreshold={0.5}
-              ListFooterComponent={loading && <ActivityIndicator />}
+              ListFooterComponent={loading && hasMore && <ActivityIndicator />}
             />
           </View>
         </View>

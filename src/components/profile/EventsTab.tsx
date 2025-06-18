@@ -6,7 +6,9 @@ import CreatePostButton from "./CreatePostButton";
 import { supabase } from "~/src/lib/supabase";
 import { useUser } from "~/hooks/useUserData";
 import PostsTab from "~/src/components/profile/PostsTab";
-import EventList from "~/src/components/profile/EventList";
+import CreatedEventList from "~/src/components/profile/CreatedEventList";
+import JoinedEventsList from "~/src/components/profile/JoinedEventsList";
+
 
 interface Event {
   id: string;
@@ -22,50 +24,16 @@ interface Event {
 }
 
 interface EventsTabProps {
-  userId: string;
+  userId_: string;
+  selectedItem_: any;
 }
 
-export default function EventsTab({ userId }: EventsTabProps) {
+export default function EventsTab({ userId_ , selectedItem_ }: EventsTabProps) {
    const { user } = useUser();
   const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("Created Events");
-
-  const fetchEvents = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("posts")
-        .select(
-          `
-          *,
-          user:users!inner (
-            username,
-            avatar_url
-          )
-        `
-        )
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setEvents(data || []);
-    } catch (error) {
-      console.error("Error fetching posts:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchEvents();
-  }, [userId]);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchEvents();
-    setRefreshing(false);
-  };
 
   if (loading) {
     return (
@@ -78,9 +46,18 @@ export default function EventsTab({ userId }: EventsTabProps) {
    const renderTabContent = () => {
     switch (activeTab) {
       case "Created Events":
-        return user?.id ? <EventList userId={user.id} /> : null;
+        return userId_ ? <CreatedEventList userid={userId_}
+         selectedItem={(item,locationDetail)=>{
+selectedItem_(item,locationDetail);
+
+        }} /> : null;
       case "Joined Events":
-        return user?.id ? <PostsTab userId={user.id} /> : null;
+        return userId_ ? <JoinedEventsList userid={userId_}
+         selectedItem={(item,locationDetail)=>{
+selectedItem_(item,locationDetail);
+
+        }} 
+         /> : null;
     }
   };
 

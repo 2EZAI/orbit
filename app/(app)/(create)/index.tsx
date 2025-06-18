@@ -33,6 +33,7 @@ import { router } from "expo-router";
 import { debounce } from "lodash";
 import Toast from "react-native-toast-message";
 import { useLocalSearchParams } from "expo-router";
+import { TopicListSingleSelection } from "~/src/components/topics/TopicListSingleSelection";
 
 interface EventImage {
   uri: string;
@@ -98,6 +99,7 @@ export default function CreateEvent() {
    const [locationType, setlocationType] = useState(undefined);
    const [latitude, setlatitude] = useState(undefined);
    const [longitude, setlongitude] = useState(undefined);
+  const [selectedTopics, setSelectedTopics] = useState<string>('');
 
 
 
@@ -378,6 +380,7 @@ setshowPrompts( parsedCategory === undefined ? false : true);
       !name ||
       !description ||
       !selectedPrompts?.id ||
+      selectedTopics=== ''||
       images.length === 0 ) {
       Alert.alert(
         "Error",
@@ -390,6 +393,7 @@ setshowPrompts( parsedCategory === undefined ? false : true);
         if (
       !name ||
       !description ||
+      selectedTopics=== ''||
       images.length === 0 ||
       !locationDetails.address1 ||
       !locationDetails.city ||
@@ -507,6 +511,7 @@ setshowPrompts( parsedCategory === undefined ? false : true);
         external_url: externalUrl || null,
         image_urls: imageUrls,
         is_private: isPrivate,
+        topic_id:selectedTopics,
       };
       if(locationType === 'static' || 
       locationType === 'googleApi')
@@ -527,6 +532,7 @@ promtIds.push(selectedPrompts?.id);
         external_url: externalUrl || null,
         image_urls: imageUrls,
         is_private: isPrivate,
+        topic_id:selectedTopics,
       };
       }
       console.log("eventData>>",eventData);
@@ -747,6 +753,14 @@ console.log("event>>",event);
       })}
     </View>
     </View>)}
+
+<View className="p-4 mb-6 rounded-lg bg-card">
+           <Text className="mb-1.5 font-medium">Category *</Text>
+    <TopicListSingleSelection
+          selectedTopics={selectedTopics}
+          onSelectTopic={setSelectedTopics}
+        />
+        </View>
 
           {/* Images Section */}
           <View className="p-4 mb-6 rounded-lg bg-card">

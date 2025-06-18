@@ -186,10 +186,7 @@ useEffect(() => {
         >
           <TouchableOpacity
             className="absolute z-10 items-center justify-center w-8 h-8 rounded-full right-2 top-2 bg-black/20"
-          onPress={() => {
-  console.log("Close button pressed");
-  
-}}
+          onPress={onClose}
           >
             {Platform.OS == "ios" ? (
               <X size={20} color="white" />

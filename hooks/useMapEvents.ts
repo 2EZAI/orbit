@@ -66,13 +66,14 @@ export interface MapEvent {
     profiles: EventAttendee[];
   };
   categories: EventCategory[];
+  type: string;
   created_by?: {
     id: string;
     name: string;
     username: string;
     avatar_url: string | null;
   };
-  location_detail?:MapLocation;
+  static_location?:MapLocation;
 }
 
 export interface Prompt {
@@ -162,6 +163,7 @@ const twentyHoursLater = nowTime + 20 * 60 * 60 * 1000; // 20 hours
 
 let user:any=null;
 let userLocation:any =null;
+let savedCentre:any[] =null;
 const [locations, setLocations] = useState<MapEvent[]>([]);
   const [events, setEvents] = useState<MapEvent[]>([]);
   const [firstHit, setfirstHit] = useState(false);
@@ -277,6 +279,151 @@ const [locations, setLocations] = useState<MapEvent[]>([]);
     return clusters;
   }, []);
 
+  const hitEventsApi=async(page:string, pageSize:string) =>{
+console.log("apihitt",page," ",pageSize);
+
+setIsLoading(true);
+
+    ///fetch user
+    try {
+      if (!session?.user?.id) {
+        return;
+      }
+
+      const { data, error: supabaseError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", session.user.id)
+        .single();
+
+        
+      if (supabaseError) throw supabaseError;
+      console.log("fetch_user>?>>",data);
+      user=data;
+    } catch (e) {
+    } finally {
+    }
+
+    ///fetch location
+    try {
+      if (!session?.user?.id) {
+        return;
+      }
+
+      const { data, error: supabaseError } = await supabase
+        .from("user_locations")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .single();
+
+        
+      if (supabaseError) throw supabaseError;
+      console.log("fetch_location>?>>",data);
+      userLocation =data;
+    } catch (e) {
+    } finally {
+    }
+
+    try {
+      console.log("[Events] Fetching all events");
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("No valid auth session");
+      }
+
+ 
+  console.log('user?.event_location_preference>',user?.event_location_preference);
+  console.log('userlocation?.latitude>',userLocation?.latitude);
+
+ // 2. get event using our API
+ const eventData = {
+  // latitude: 41.884109,
+  // longitude: -87.665881
+  latitude: user != null && user?.event_location_preference == 1 ?
+  userLocation?.latitude :savedCentre[0],
+  longitude: user != null && user?.event_location_preference == 1 ?
+  userLocation?.longitude : savedCentre[1]
+};
+
+try {
+  if (!session?.user?.id) {
+    return;
+  }
+///fetch events
+      const response = await fetch(
+        `${process.env.BACKEND_MAP_URL}/api/events/all?page=${page}&limit=${pageSize}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(eventData),
+        }
+      );
+      console.log("session.access_token>>",
+      session.access_token);
+      console.log("eventData",
+      eventData);
+      
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      const data_ = await response.json();
+      const data = data_.events;
+      // console.log("event data", data);
+      console.log("[Events] Fetched HOMEevents>:", data.length, "events from API");
+
+      // Validate event data
+      const validEvents = data.filter((event: any) => {
+        const isValid =
+          event.location &&
+          typeof event.location.latitude === "number" &&
+          typeof event.location.longitude === "number" &&
+          !isNaN(event.location.latitude) &&
+          !isNaN(event.location.longitude) &&
+          Math.abs(event.location.latitude) <= 90 &&
+          Math.abs(event.location.longitude) <= 180;
+        if (!isValid) {
+          console.warn(
+            "[Events] Invalid event data:",
+            event.id,
+            JSON.stringify(event.location)
+          );
+        }
+        return isValid;
+      });
+
+      console.log("[Events] Valid HOMEevents>:", validEvents);
+
+      if (!isMountedRef.current) return;
+
+      // Update cache and state
+      cachedEventsRef.current = validEvents;
+      lastFetchTimeRef.current = Date.now();
+      setEventsHome(validEvents);
+      // setEventsHome(prevEvents => [...prevEvents, ...validEvents]);
+      return validEvents;
+    }
+    catch (e) {
+    } finally {
+    }
+  }
+    catch (err) {
+      console.error("[Events] Error fetching events Pagination:", err);
+      if (!isMountedRef.current) return;
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      if (!isMountedRef.current) return;
+      setIsLoading(false);
+    }
+      
+  };
+
   const fetchCategories = useCallback(async () => {
     try {
       console.log("[Events] Fetching all events");
@@ -338,6 +485,7 @@ const [locations, setLocations] = useState<MapEvent[]>([]);
     {
       return;
     }
+    savedCentre=centerr;
     if (!isMountedRef.current || isLoading) return;
     setIsLoading(true);
 
@@ -485,7 +633,8 @@ setClustersLocations([]);
         throw new Error(await response.text());
       }
 
-      const data = await response.json();
+      const data_ = await response.json();
+      const data = data_.events;
       // console.log("event data", data);
       console.log("[Events] Fetched", data.length, "events from API");
 
@@ -530,7 +679,7 @@ setClustersLocations([]);
 
   // "Now" = within the next 24 hours
   const nowListt = validEvents.filter((event: any) => {
-  const eventTime = new Date(event.start_datetime).getTime();
+  const eventTime = new Date(event?.start_datetime).getTime();
 
   // Check if the event starts between now and the next 24 hours
   // return eventTime >= nowTime && eventTime <= FOUR_HOURS_IN_MS;
@@ -541,9 +690,9 @@ const newClustersNow = clusterEvents(nowListt);
 setClustersNow(newClustersNow);
 
 const todayListt = validEvents.filter((event: any) => {
-  const eventDateObj = new Date(event.start_datetime);
+  const eventDateObj = new Date(event?.start_datetime);
   // const eventTime = eventDateObj.getTime();
-  let localEventTime =format(new Date(event.start_datetime), 'yyyy-MM-dd')
+  let localEventTime =format(new Date(event?.start_datetime), 'yyyy-MM-dd')
   let localnow =format(new Date(now), 'yyyy-MM-dd')
   // console.log("localEventTime",localEventTime);
   // console.log("localnow",localnow);
@@ -561,7 +710,7 @@ console.log("[Events] Setting", newClustersToday.length, "newClustersToday");
 setClustersToday(newClustersToday);
 
 const tomorrowListt = validEvents.filter((event: any) => {
-  let localEventTime =format(new Date(event.start_datetime), 'yyyy-MM-dd')
+  let localEventTime =format(new Date(event?.start_datetime), 'yyyy-MM-dd')
   let localnow =format(new Date(now), 'yyyy-MM-dd')
   // console.log("localEventTime",localEventTime);
   // console.log("localnow",localnow);
@@ -600,11 +749,11 @@ setClustersTomorrow(newClustersTomorrow);
   return isValid;
 });
 // console.log("validEventsHome>",validEventsHome.length);
-setEventsHome(validEventsHome);
+// setEventsHome(validEventsHome);
 
   // "Now" = within the next 4 hours
 const nowList = validEvents.filter((event: any) => {
-  const eventTime = new Date(event.start_datetime).getTime();
+  const eventTime = new Date(event?.start_datetime).getTime();
 
   // Check if the event starts between now and the next 4 hours
   // return eventTime >= nowTime && eventTime <= FOUR_HOURS_IN_MS;
@@ -614,9 +763,9 @@ const nowList = validEvents.filter((event: any) => {
 setEventsNow(nowList);
 
 const todayList = validEvents.filter((event: any) => {
-  const eventDateObj = new Date(event.start_datetime);
+  const eventDateObj = new Date(event?.start_datetime);
   // const eventTime = eventDateObj.getTime();
-  let localEventTime =format(new Date(event.start_datetime), 'yyyy-MM-dd')
+  let localEventTime =format(new Date(event?.start_datetime), 'yyyy-MM-dd')
   let localnow =format(new Date(now), 'yyyy-MM-dd')
   // console.log("localEventTime",localEventTime);
   // console.log("localnow",localnow);
@@ -628,7 +777,7 @@ const todayList = validEvents.filter((event: any) => {
 setEventsToday(todayList);
 
 const tomorrowList = validEvents.filter((event: any) => {
-  let localEventTime =format(new Date(event.start_datetime), 'yyyy-MM-dd')
+  let localEventTime =format(new Date(event?.start_datetime), 'yyyy-MM-dd')
   let localnow =format(new Date(now), 'yyyy-MM-dd')
   // console.log("localEventTime",localEventTime);
   // console.log("localnow",localnow);
@@ -724,6 +873,7 @@ setEventsTomorrow(tomorrowList);
   }, []);
 
   return {
+    hitEventsApi,
     eventsHome,
     categories,
     events,

@@ -6,7 +6,7 @@ import {
   ScrollView,
   Pressable,
 } from "react-native";
-import {SafeAreaView} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import { useAuth } from "~/src/lib/auth";
 import { useUser } from "~/hooks/useUserData";
@@ -16,14 +16,18 @@ import { router } from "expo-router";
 import { Button } from "~/src/components/ui/button";
 import PostsTab from "~/src/components/profile/PostsTab";
 import EventsTab from "~/src/components/profile/EventsTab";
+import { EventDetailsSheet } from "~/src/components/map/EventDetailsSheet";
+import { LocationDetailsSheet } from "~/src/components/map/LocationDetailsSheet";
 
 type Tab = "Events" | "Posts" | "Info";
 
 export default function Profile() {
   const { session } = useAuth();
   const { user } = useUser();
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [isEvent, setIsEvent] = useState(false);
   const { getFollowCounts } = useFollow();
-  const [activeTab, setActiveTab] = useState<Tab>("Events");
+  const [activeTab, setActiveTab] = useState<Tab>("Posts");
   const [counts, setCounts] = useState({
     followerCount: 0,
     followingCount: 0,
@@ -47,7 +51,27 @@ export default function Profile() {
       case "Posts":
         return user?.id ? <PostsTab userId={user.id} /> : null;
       case "Events":
-        return user?.id ? <EventsTab userId={user.id} /> : null;
+        return user?.id ? (
+          <EventsTab
+            userId_={user.id}
+            selectedItem_={(selectedItem,locationDetail) => {
+              // console.log("locationDetail>",locationDetail);
+              //  console.log("selectedItem>",selectedItem);
+              if (
+                locationDetail &&
+                selectedItem?.static_location &&
+                (selectedItem?.type === "static" ||
+                  selectedItem?.type === "googleApi")
+              ) {
+                setSelectedEvent(selectedItem.static_location);
+                setIsEvent(false);
+              } else {
+                setSelectedEvent(selectedItem);
+                setIsEvent(true);
+              }
+            }}
+          />
+        ) : null;
 
       case "Info":
         return (
@@ -70,101 +94,116 @@ export default function Profile() {
         </TouchableOpacity>
       </View>
 
-      
-        <View className="px-4 pt-2">
-          {/* Profile Header */}
-          <View className="flex-row items-start">
-            <Image
-              source={
-                user.avatar_url
-                  ? { uri: user.avatar_url }
-                  : require("~/assets/favicon.png")
-              }
-              className="w-20 h-20 bg-gray-800 rounded-full"
-            />
-            <View className="flex-1 ml-4">
-              <Text className="text-xl font-bold">
-                {user.first_name} {user.last_name}
-              </Text>
-              <Text className="text-muted-foreground">
-                @{user.username || "username"}
-              </Text>
+      <View className="px-4 pt-2">
+        {/* Profile Header */}
+        <View className="flex-row items-start">
+          <Image
+            source={
+              user.avatar_url
+                ? { uri: user.avatar_url }
+                : require("~/assets/favicon.png")
+            }
+            className="w-20 h-20 bg-gray-800 rounded-full"
+          />
+          <View className="flex-1 ml-4">
+            <Text className="text-xl font-bold">
+              {user.first_name} {user.last_name}
+            </Text>
+            <Text className="text-muted-foreground">
+              @{user.username || "username"}
+            </Text>
 
-              <View className="flex-row items-center mt-2 space-x-4 gap-x-4">
-                <View>
-                  <Text className="font-medium">{counts.followerCount}</Text>
-                  <Text className="text-sm text-muted-foreground">
-                    followers
-                  </Text>
-                </View>
-                <View>
-                  <Text className="font-medium">5</Text>
-                  <Text className="text-sm text-muted-foreground">events</Text>
-                </View>
-                <View>
-                  <Text className="font-medium">23</Text>
-                  <Text className="text-sm text-muted-foreground">Orbits</Text>
-                </View>
+            <View className="flex-row items-center mt-2 space-x-4 gap-x-4">
+              <View>
+                <Text className="font-medium">{counts.followerCount}</Text>
+                <Text className="text-sm text-muted-foreground">followers</Text>
+              </View>
+              <View>
+                <Text className="font-medium">5</Text>
+                <Text className="text-sm text-muted-foreground">events</Text>
+              </View>
+              <View>
+                <Text className="font-medium">23</Text>
+                <Text className="text-sm text-muted-foreground">Orbits</Text>
               </View>
             </View>
           </View>
-
-          {/* Bio */}
-          {user.bio && (
-            <Text className="mt-4 text-foreground">
-              {user.bio ? user.bio : "No bio yet"}
-            </Text>
-          )}
-
-          {/* Action Buttons */}
-          <View className="flex-row mt-4 space-x-2 gap-x-4">
-            <Button
-              className="flex-1 bg-gray-800"
-              onPress={() => router.push(`/(app)/(profile)/${user.id}`)}
-            >
-              <Text className="font-medium text-primary-foreground">
-                Edit Profile
-              </Text>
-            </Button>
-            <Button
-              className="flex-1 bg-gray-800"
-              onPress={() => {
-                /* Handle share */
-              }}
-            >
-              <Text className="font-medium text-primary-foreground">
-                Share Profile
-              </Text>
-            </Button>
-          </View>
-
-          {/* Tabs */}
-          <View className="flex-row mt-6 border-b border-border">
-            {(["Posts", "Events", "Info"] as Tab[]).map((tab) => (
-              <Pressable
-                key={tab}
-                onPress={() => setActiveTab(tab)}
-                className={`flex-1 py-2 ${
-                  activeTab === tab ? "border-b-2 border-primary" : ""
-                }`}
-              >
-                <Text
-                  className={`text-center ${
-                    activeTab === tab
-                      ? "text-primary font-medium"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {tab}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
         </View>
 
-        {/* Tab Content */}
-        <View className="flex-1 mt-4">{renderTabContent()}</View>
-      
+        {/* Bio */}
+        {user.bio && (
+          <Text className="mt-4 text-foreground">
+            {user.bio ? user.bio : "No bio yet"}
+          </Text>
+        )}
+
+        {/* Action Buttons */}
+        <View className="flex-row mt-4 space-x-2 gap-x-4">
+          <Button
+            className="flex-1 bg-gray-800"
+            onPress={() => router.push(`/(app)/(profile)/${user.id}`)}
+          >
+            <Text className="font-medium text-primary-foreground">
+              Edit Profile
+            </Text>
+          </Button>
+          <Button
+            className="flex-1 bg-gray-800"
+            onPress={() => {
+              /* Handle share */
+            }}
+          >
+            <Text className="font-medium text-primary-foreground">
+              Share Profile
+            </Text>
+          </Button>
+        </View>
+
+        {/* Tabs */}
+        <View className="flex-row mt-6 border-b border-border">
+          {(["Posts", "Events", "Info"] as Tab[]).map((tab) => (
+            <Pressable
+              key={tab}
+              onPress={() => setActiveTab(tab)}
+              className={`flex-1 py-2 ${
+                activeTab === tab ? "border-b-2 border-primary" : ""
+              }`}
+            >
+              <Text
+                className={`text-center ${
+                  activeTab === tab
+                    ? "text-primary font-medium"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {tab}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      {/* Tab Content */}
+      <View className="flex-1 mt-4">{renderTabContent()}</View>
+      {selectedEvent && isEvent && (
+        <EventDetailsSheet
+          event={selectedEvent}
+          isOpen={!!selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+          // nearbyEvents={events}
+          onEventSelect={setSelectedEvent}
+          onShowControler={() => {}}
+        />
+      )}
+      {selectedEvent && !isEvent && (
+        <LocationDetailsSheet
+          event={selectedEvent}
+          isOpen={!!selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+          // nearbyEvents={events}
+          onShowControler={() => {}}
+        />
+      )}
     </SafeAreaView>
   );
 }

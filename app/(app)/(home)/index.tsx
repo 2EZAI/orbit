@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { View, ScrollView, TouchableOpacity, Pressable,Platform } from "react-native";
+import React, { useState, useEffect,useRef } from "react";
+import { View, ScrollView, TouchableOpacity,
+ActivityIndicator,FlatList, Pressable,Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import { Search, Filter } from "lucide-react-native";
@@ -15,7 +16,10 @@ import * as Location from "expo-location";
 import AllPostsTab from "~/src/components/profile/AllPostsTab";
 
 export default function Home() {
+   const PAGE_SIZE=20;
+   const ref = useRef();
   const [isEvent, setIsEvent] = useState(false);
+   const [page, setPage] = useState(1);
     const { user ,userlocation, updateUserLocations } = useUser();
   const [activeTab, setActiveTab] = useState<Tab>("Events");
   const [location, setLocation] = useState<{
@@ -30,7 +34,7 @@ export default function Home() {
 
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
 
-  const { events, categories, eventsHome, isLoading, error } = useMapEvents({
+  const { events, categories, eventsHome ,hitEventsApi, isLoading, error } = useMapEvents({
     // center: [37.7749, -122.4194],
     // center: location ? [location.latitude, location.longitude] : [0, 0],
 center:
@@ -43,15 +47,58 @@ center:
     timeRange: "now",
   });
   useEffect(()=>{
+    if(page ==1 ){
+      console.log("useEffect??}}}");
     if(selectedCategory ==null){
     FilterList(null);
     }
     else{
       FilterList(selectedCategory);
     }
-  },[events])
+    }
+  },[eventsHome])
+
+  const loadEvents=async()=>{
+    try {
+      setPage(prevPage => prevPage + 1); // Increment page
+
+      const response = await hitEventsApi(page,PAGE_SIZE);
+       console.log('eventshmmm:response', response);
+       if(response.length>0){
+       const indexTo=filteredEvents.length-2;
+       setFilteredEvents(prevEvents => [...prevEvents, ...response]);
+
+setTimeout(() => {
+  try{
+ ref?.current?.scrollToIndex({
+            animated: true,
+            index: indexTo,
+        });
+        }
+catch(eee)
+{
+
+}
+}, 500);
+       }
+
+      // if (!response.ok) throw new Error('Network response was not ok');
+      // const data = await response.json();
+      // return data; // assuming data is an array of events
+      // if (data.length >0) {
+      // }
+
+      // setEvents(prevEvents => [...prevEvents, ...data]);
+     
+    } catch (error) {
+      console.error('Error fetching eventshmmm:', error);
+      return []; // return empty list on error
+    }
+  }
   // Initialize and watch location
   useEffect(() => {
+    loadEvents();
+  
     
     let locationSubscription: Location.LocationSubscription;
 
@@ -209,12 +256,14 @@ center:
   };
 
   const FilterList = (category) => {
-  setFilteredEvents([]);
+  // setFilteredEvents([]);
 
   if (category == null || category.id === "all") {
-    setFilteredEvents(events);
+    console.log("eventsHome???",eventsHome);
+    setFilteredEvents(prevEvents => [...prevEvents, ...eventsHome]);
+    // setFilteredEvents(eventsHome);
   } else {
-     const filteredEventsList = events.filter((event) => {
+     const filteredEventsList = eventsHome.filter((event) => {
     const hasCategory = event.categories.some((eventCategory) => {
       console.log('Checking:', eventCategory.id, 'vs', category.id);
       return eventCategory.name.toLowerCase() === category.name.toLowerCase();
@@ -222,8 +271,9 @@ center:
     return hasCategory;
   });
     console.log("filteredEventsList>>",filteredEventsList);
+    setFilteredEvents(prevEvents => [...prevEvents, ...filteredEventsList]);
 
-    setFilteredEvents(filteredEventsList);
+    // setFilteredEvents(filteredEventsList);
   }
 };
 
@@ -236,43 +286,69 @@ center:
             <FilterListView />
           </View>
         )}
-        <ScrollView className="flex-1">
-          {filteredEvents.map((event) => (
-            <FeedEventCard
-              key={event.id}
-              event={event}
-              onEventSelect={ (event) =>{
-                if(event?.location_detail && (event?.type === 'static' ||
-                event?.type === 'googleApi')){
-                setSelectedEvent(event?.location_detail );
-                setIsEvent(false);
-                }
-                else{
-                  setSelectedEvent(event );
-                  setIsEvent(true);
-                }
-              }}
-              nearbyEvents={events}
-              // nearbyEvents={eventsHome}
-            />
-          ))}
+      
+
+       {filteredEvents.length > 0 && (
+  <FlatList
+  ref={ref}
+    className="w-full h-full bg-white"
+    data={filteredEvents}
+keyExtractor={(event) => event.id.toString()}
+    renderItem={({ item: eventItem }) => (
+      <FeedEventCard
+        event={eventItem}
+        onEventSelect={(event, locationDetail) => {
+          if (
+            locationDetail &&
+            event?.static_location &&
+            (event?.type === 'static' || event?.type === 'googleApi')
+          ) {
+            setSelectedEvent(event?.static_location);
+            setIsEvent(false);
+          } else {
+            setSelectedEvent(event);
+            setIsEvent(true);
+          }
+        }}
+        nearbyEvents={filteredEvents}
+      />
+    )}
+    onEndReached={({ distanceFromEnd }) => {
+      console.log("onEndReached", distanceFromEnd);
+      loadEvents();
+    }}
+    onEndReachedThreshold={0.5}
+    removeClippedSubviews={false} // or false if you're seeing flickers
+    ListFooterComponent={isLoading && <ActivityIndicator />}
+  />
+)}
+
+          
           {filteredEvents.length <=0 &&
           <View className="mt-[50%] items-center justify-center"> 
           <Text className="text-primary" >No events found</Text>  
           </View> }
-          
-        </ScrollView>
+         
+          {isLoading &&
+            <SafeAreaView className="absolute left-0 right-0 mb-[20%] bottom-0 items-center justify-center ">
+        <ActivityIndicator size="large" color="#000080"/>
+      </SafeAreaView>
+  
+  }
+        
       </View>
     );
   };
 
-  if (isLoading) {
+  if (isLoading && filteredEvents.length ==0) {
     return (
       <SafeAreaView className="items-center justify-center flex-1">
         <Text>Loading events...</Text>
       </SafeAreaView>
     );
   }
+
+  
 
   if (error) {
     return (
@@ -321,8 +397,8 @@ center:
           event={selectedEvent}
           isOpen={!!selectedEvent}
           onClose={() => setSelectedEvent(null)}
-          nearbyEvents={events}
-          // nearbyEvents={eventsHome}
+          // nearbyEvents={events}
+          nearbyEvents={eventsHome}
           onEventSelect={setSelectedEvent}
           onShowControler={() => {}}
         />

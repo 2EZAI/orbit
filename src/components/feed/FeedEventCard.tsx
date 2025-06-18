@@ -8,7 +8,7 @@ import { EventDetailsSheet } from "../map/EventDetailsSheet";
 
 interface FeedEventCardProps {
   event: MapEvent;
-  onEventSelect?: (event: MapEvent) => void;
+  onEventSelect?: (event: MapEvent,locationDetail) => void;
   nearbyEvents?: MapEvent[];
 }
 
@@ -17,9 +17,10 @@ export function FeedEventCard({
   onEventSelect,
   nearbyEvents,
 }: FeedEventCardProps) {
+  // console.log(">event>",event);
   const [showDetails, setShowDetails] = useState(false);
-  const startTime = new Date(event.start_datetime);
-  const endTime = new Date(event.end_datetime);
+  const startTime = new Date(event?.start_datetime);
+  const endTime = new Date(event?.end_datetime);
 
   // console.log("event>",event)
 
@@ -34,7 +35,7 @@ export function FeedEventCard({
       >
         <View className="relative">
           <Image
-            source={{ uri: event.image_urls[0] }}
+            source={{ uri: event?.image_urls[0] }}
             className="w-full h-48"
             style={{ resizeMode: "cover" }}
           />
@@ -54,11 +55,11 @@ export function FeedEventCard({
         <View className="p-4">
           {/* Host */}
           <Text className="mb-1 text-sm text-muted-foreground">
-            @{event.created_by?.name || event.created_by?.username}
+            @{event.created_by?.name || event?.created_by?.username}
           </Text>
 
           {/* Title */}
-          <Text className="mb-2 text-xl font-semibold">{event.name}</Text>
+          <Text className="mb-2 text-xl font-semibold">{event?.name}</Text>
 
           {/* Time */}
           <View className="flex-row items-center mb-2">
@@ -78,7 +79,7 @@ export function FeedEventCard({
            <TouchableOpacity
         onPress={() => {
           setShowDetails(true);
-          onEventSelect?.(event);
+          onEventSelect?.(event,'locationDetail');
         }}
       >
           <View className="flex-row items-center mb-3">
@@ -109,7 +110,7 @@ export function FeedEventCard({
                 className="px-3 py-1 rounded-full bg-purple-100/50"
               >
                 <Text className="text-sm font-medium text-purple-700">
-                  {category.name}
+                  {category?.name}
                 </Text>
               </View>
             ))}
@@ -117,7 +118,7 @@ export function FeedEventCard({
         </View>
       </TouchableOpacity>
 
-      {showDetails && (
+     {/* {showDetails && (
         <EventDetailsSheet
           event={event}
           isOpen={showDetails}
@@ -126,7 +127,7 @@ export function FeedEventCard({
           onEventSelect={onEventSelect || (() => {})}
           onShowControler={() => {}}
         />
-      )}
+      )} */}
     </>
   );
 }

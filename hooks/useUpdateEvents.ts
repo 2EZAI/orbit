@@ -79,6 +79,9 @@ interface UseUserReturn {
   UpdateEventStatus: (updates: Partial<MapEvent>) => Promise<void>;
   fetchEventDetail: (updates: Partial<MapEvent>) => Promise<void>;
   fetchLocationEvents: (updates: Partial<any>,page: Partial<any>,pageSize:Partial<any>) => Promise<void>;
+  fetchCreatedEvents: (type: String,updates: Partial<any>,page: Partial<any>,pageSize:Partial<any>) => Promise<void>;
+
+  
 }
 
 export function useUpdateEvents(): UseUserReturn {
@@ -225,6 +228,53 @@ export function useUpdateEvents(): UseUserReturn {
     }
   };
 
+ // fetch location events
+ const fetchCreatedEvents = async (type_: String,pagee: Partial<any>,pageSize: Partial<any>,userid:string) => {
+  try {
+    if (!session?.user?.id) throw new Error("No user logged in");
+
+    const eventData = {
+              page: pagee,
+              limit: pageSize,
+              type:type_,
+              user_id:userid,
+    };
+          const response = await fetch(
+            
+            `${process.env.BACKEND_MAP_URL}/api/events/my-events?page=${pagee}&limit=${pageSize}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify(eventData),
+            }
+          );
+          console.log("session.access_token>>",
+          session.access_token);
+          console.log("fetchCreatedEvents>fetchEvent",
+          eventData);
+
+          if (!response.ok) {
+            throw new Error(await response.text());
+          }
+    
+          const data = await response.json();
+          // console.log("event data", data);
+          console.log("[Events] fetchCreatedEvents", data, "events from API");
+    // Toast.show({
+    //   type: "success",
+    //   text1: "Event fetched"
+    // });
+    return data.events; 
+          
+  } catch (e) {
+    setError(e instanceof Error ? e : new Error("An error occurred"));
+    throw e;
+  }
+};
+
 
   // Subscribe to realtime changes
   useEffect(() => {
@@ -265,5 +315,6 @@ export function useUpdateEvents(): UseUserReturn {
     UpdateEventStatus,
     fetchEventDetail,
     fetchLocationEvents,
+    fetchCreatedEvents,
   };
 }

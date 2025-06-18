@@ -24,12 +24,41 @@ import Toast from "react-native-toast-message";
 import { MapPin } from "lucide-react-native";
 import { Icon } from "react-native-elements";
 import { Sheet } from "../../../../src/components/ui/sheet";
+import { TopicList } from "~/src/components/topics/TopicList";
 
 export default function EditProfile() {
+  const [genderList, setGenderList] = useState<any>([
+    { name: "Male" },
+    { name: "Female" },
+    { name: "Non-Binary" },
+    { name: "Other" },
+  ]);
+  const [occupationList, setOccupationList] = useState<any>(
+    allOcupationList?.length > 0 ? allOcupationList : []
+  );
+    const [occupationListShow, setOccupationListShow] = useState<any>(
+    allOcupationList?.length > 0 ? allOcupationList : []
+  );
+  const [isGenderShow, setIsGenderShow] = useState(false);
+  const [selectedGender, setSelectedGender] = useState<any>(  user?.gender !=null ? { name: user.gender } : null);
+  const [isOcupationShow, setIsOcupationShow] = useState(false);
+  const [selectedOcupation, setSelectedOcupation] = useState<any>(allOcupationList?.length >0 && user?.occupation_id !=null ?
+   allOcupationList.find(item => item.id === user.occupation_id) || null
+    : null);
+
   const [isEnabled, setIsEnabled] = useState(
     user?.is_live_location_shared == 1 ? true : false
   );
-  const { user, userlocation, updateUser, updateUserLocations } = useUser();
+  const {
+    user,
+    userlocation,
+    userTopicsList,
+    userHomeTownlocation,
+    allOcupationList,
+    updateUser,
+    updateUserLocations,
+    updateHomeTownLocations,
+  } = useUser();
   const [loading, setLoading] = useState(false);
   const [isEventLocationShow, SetIsEventLocationShow] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(0);
@@ -43,9 +72,14 @@ export default function EditProfile() {
       name: "Saved Address",
     },
   ]);
-  const [isSearchLocation, setIsSearchLocation] = useState(false);
+    const [isSearchHomeTown, setIsSearchHomeTown] = useState(false);
+  const [showHomeTownResults, setShowHomeTownResults] = useState(false);
+  const [searchHomeTownResults, setSearchHomeTownResults] = useState<MapboxFeature[]>([]);
+
   const [uploadingImage, setUploadingImage] = useState(false);
   const { height } = useWindowDimensions();
+
+  const [isSearchLocation, setIsSearchLocation] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [searchResults, setSearchResults] = useState<MapboxFeature[]>([]);
 
@@ -57,6 +91,7 @@ export default function EditProfile() {
   const [lastName, setLastName] = useState(user?.last_name || "");
   const [username, setUsername] = useState(user?.username || "");
   const [bio, setBio] = useState(user?.bio || "");
+  const [education, setEducation] = useState(user?.education || "");
   const [phone, setPhone] = useState(user?.phone || "");
   const [location, setLocation] = useState(user?.location || "");
 
@@ -71,6 +106,18 @@ export default function EditProfile() {
     coordinates: [userlocation?.latitude || 0, userlocation?.longitude || 0],
   });
 
+  const [addressHomeTown1, setAddressHomeTown1] = useState("");
+  const [addressHomeTown2, setAddressHomeTown2] = useState("");
+  const [locationHomeTownDetails, setLocationHomeTownDetails] = useState<LocationDetails>({
+    address1: userHomeTownlocation?.address || "",
+    address2: "",
+    city: userHomeTownlocation?.city || "",
+    state: userHomeTownlocation?.state || "",
+    zip: userHomeTownlocation?.postal_code || "",
+    coordinates: [userHomeTownlocation?.latitude || 0, userHomeTownlocation?.longitude || 0],
+  });
+
+  const [selectedTopics, setSelectedTopics] = useState<string[]>(userTopicsList?.length>0 ? userTopicsList : []);
   const toggleSwitch = () => setIsEnabled((previousState) => !previousState);
 
   useEffect(() => {
@@ -82,8 +129,26 @@ export default function EditProfile() {
     setBio(user?.bio || "");
     setPhone(user?.phone || "");
     setLocation(user?.location || "");
-    setSelectedLocation(user?.event_location_preference == 1 ? 1 :0);
+    setEducation(user?.education || "");
+    setSelectedLocation(user?.event_location_preference == 1 ? 1 : 0);
+  setSelectedGender(user?.gender !=null ? { name: user.gender } : null);
+  setSelectedOcupation(allOcupationList?.length >0 && user?.occupation_id !=null 
+  ? allOcupationList.find(item => item.id === user.occupation_id) || null
+    : null);
   }, [user]);
+
+  useEffect(() => {
+
+  setSelectedOcupation(allOcupationList?.length >0 && user?.occupation_id !=null 
+  ? allOcupationList.find(item => item.id === user.occupation_id) || null
+    : null);
+  }, [allOcupationList]);
+ 
+    useEffect(() => {
+
+    setSelectedTopics(userTopicsList?.length>0 ? userTopicsList : []);
+
+  }, [userTopicsList]);
 
   useEffect(() => {
     setLocationDetails({
@@ -95,6 +160,22 @@ export default function EditProfile() {
       coordinates: [userlocation?.latitude || 0, userlocation?.longitude || 0],
     });
   }, [userlocation]);
+
+   useEffect(() => {
+    setLocationHomeTownDetails({
+      address1: userHomeTownlocation?.address || "",
+      address2: "",
+      city: userHomeTownlocation?.city || "",
+      state: userHomeTownlocation?.state || "",
+      zip: userHomeTownlocation?.postal_code || "",
+      coordinates: [userHomeTownlocation?.latitude || 0, userHomeTownlocation?.longitude || 0],
+    });
+  }, [userHomeTownlocation]);
+
+  useEffect(() => {
+    setOccupationList(allOcupationList?.length > 0 ? allOcupationList : []);
+ setOccupationListShow(allOcupationList?.length > 0 ? allOcupationList : []);
+  }, [allOcupationList]);
 
   const searchAddress = async (query: string) => {
     if (!query.trim()) {
@@ -119,7 +200,32 @@ export default function EditProfile() {
     }
   };
 
+  const searchAddressHomeTown = async (query: string) => {
+    if (!query.trim()) {
+      setSearchHomeTownResults([]);
+      setShowHomeTownResults(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+          query
+        )}.json?access_token=${
+          process.env.MAPBOX_ACCESS_TOKEN
+        }&country=US&types=address`
+      );
+      const data = await response.json();
+      setSearchHomeTownResults(data.features || []);
+      setShowHomeTownResults(true);
+    } catch (error) {
+      console.error("Error searching address:", error);
+    }
+  };
+
   const debouncedSearch = debounce(searchAddress, 300);
+
+  const debouncedSearchHomeTown = debounce(searchAddressHomeTown, 300);
 
   const handleAddressSelect = (feature: MapboxFeature) => {
     const contextMap = new Map(
@@ -143,6 +249,90 @@ export default function EditProfile() {
     setAddress2("");
     setShowResults(false);
     setIsSearchLocation(false);
+  };
+  const handleAddressHomeTownSelect = (feature: MapboxFeature) => {
+    const contextMap = new Map(
+      feature.context?.map((item) => [item.id.split(".")[0], item.text])
+    );
+
+    const newLocationDetails = {
+      address1: feature.properties.address
+        ? `${feature.properties.address} ${feature.text}`
+        : feature.text,
+      address2: "",
+      city: contextMap.get("place") || "",
+      state: contextMap.get("region") || "",
+      zip: contextMap.get("postcode") || "",
+      coordinates: feature.center,
+    };
+    console.log("coordinates>>", feature.center);
+
+    setLocationHomeTownDetails(newLocationDetails);
+    setAddressHomeTown1(newLocationDetails.address1);
+    setAddressHomeTown2("");
+    setShowHomeTownResults(false);
+    setIsSearchHomeTown(false);
+  };
+
+  const GenderListView = () => {
+    return (
+      <View className="flex-1 bg-background border rounded-2xl  border-gray-300">
+        <ScrollView className="flex-1">
+          {genderList.map((gender) => (
+            <TouchableOpacity
+              onPress={() => {
+                setSelectedGender(gender);
+                setIsGenderShow(false);
+              }}
+              className={` rounded ${
+                selectedGender?.name === gender.name
+                  ? "bg-primary"
+                  : "bg-transparent"
+              }`}
+            >
+              <Text
+                className={`text-muted-foreground m-4 ${
+                  selectedGender?.name === gender.name
+                    ? "text-white"
+                    : "text-muted-foreground"
+                }`}
+                numberOfLines={1}
+              >
+                {gender.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  const handleUpdateInterests = async () => {
+    if (!user) return;
+
+    try {
+
+// Step 1: Delete existing interests for this user
+    const { error: deleteError } = await supabase
+      .from("user_topics")
+      .delete()
+      .eq("user_id", user.id);
+
+      if (deleteError) throw deleteError;
+
+  // Step 2: Insert new selected topics
+      const { error } = await supabase.from("user_topics").insert(
+        selectedTopics.map((topic) => ({
+          user_id: user.id,
+          topic,
+        }))
+      );
+
+      if (error) throw error;
+
+    } catch (error) {
+      console.error("Error saving topics:", error);
+    }
   };
 
   const handleSave = async () => {
@@ -190,6 +380,9 @@ export default function EditProfile() {
         locationDetails?.zip;
       }
 
+if(selectedTopics.length>0){
+  handleUpdateInterests();
+}
       if (locationDetails?.address1 !== "") {
         await updateUserLocations({
           city: locationDetails.city,
@@ -198,6 +391,16 @@ export default function EditProfile() {
           address: locationDetails.address1,
           latitude: locationDetails.coordinates[1],
           longitude: locationDetails.coordinates[0],
+        });
+      }
+       if (locationDetails?.addressHomeTown1 !== "") {
+        await updateHomeTownLocations({
+          city: locationHomeTownDetails.city,
+          state: locationHomeTownDetails.state,
+          postal_code: locationHomeTownDetails.zip,
+          address: locationHomeTownDetails.address1,
+          latitude: locationHomeTownDetails.coordinates[1],
+          longitude: locationHomeTownDetails.coordinates[0],
         });
       }
       if (profileImage == "") {
@@ -210,6 +413,9 @@ export default function EditProfile() {
           phone,
           is_live_location_shared: isEnabled ? 1 : 0,
           event_location_preference: selectedLocation,
+          education,
+          gender:selectedGender !=null ? selectedGender?.name : null,
+          occupation_id:selectedOcupation !=null ? selectedOcupation?.id :null,
         });
       } else {
         await updateUser({
@@ -222,6 +428,10 @@ export default function EditProfile() {
           phone,
           is_live_location_shared: isEnabled ? 1 : 0,
           event_location_preference: selectedLocation,
+          education,
+          gender:selectedGender !=null ? selectedGender?.name : null,
+          occupation_id:selectedOcupation !=null ? selectedOcupation?.id :null,
+       
         });
       }
 
@@ -343,12 +553,14 @@ export default function EditProfile() {
           {locationOptions.map((option) => (
             <TouchableOpacity
               onPress={() => {
-                if( selectedLocation?.id == 1 &&
-                locationDetails?.address1 === ""){
-                   Toast.show({
-        type: "error",
-        text1: "Please Select Address First",
-      });
+                if (
+                  selectedLocation?.id == 1 &&
+                  locationDetails?.address1 === ""
+                ) {
+                  Toast.show({
+                    type: "error",
+                    text1: "Please Select Address First",
+                  });
                   return;
                 }
                 setSelectedLocation(option?.id);
@@ -440,6 +652,62 @@ export default function EditProfile() {
 
           <View>
             <Text className="text-sm text-muted-foreground mb-1.5 mt-2">
+              Gender
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                setIsGenderShow(!isGenderShow);
+              }}
+              className="h-12 flex-row  p-3  space-x-2 rounded-xl bg-gray-800/40"
+            >
+              <Text className="text-lg text-muted-foreground">
+                {selectedGender === null
+                  ? "Select Gender"
+                  : selectedGender.name}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {isGenderShow && (
+            <View className="absolute justify-center items-center left-0 right-0  overflow-hidden ">
+              <GenderListView />
+            </View>
+          )}
+
+          <View>
+            <Text className="text-sm text-muted-foreground mb-1.5 mt-2">
+              Occupation
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                setIsOcupationShow(!isOcupationShow);
+              }}
+              className="h-12 flex-row  p-3  space-x-2 rounded-xl bg-gray-800/40"
+            >
+              <Text className="text-lg text-muted-foreground">
+                {selectedOcupation === null
+                  ? "Select Occupation"
+                  : selectedOcupation.name}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View>
+            <Text className="text-sm text-muted-foreground mb-1.5 mt-2">
+              Education
+            </Text>
+            <Input
+              value={education}
+              onChangeText={setEducation}
+              placeholder="College"
+              numberOfLines={1}
+              className="h-24 px-4 py-3 align-text-top border-0 bg-gray-800/40"
+              textAlignVertical="top"
+            />
+          </View>
+
+          <View>
+            <Text className="text-sm text-muted-foreground mb-1.5 mt-2">
               Bio
             </Text>
             <Input
@@ -476,6 +744,38 @@ export default function EditProfile() {
               className="h-12 px-4 border-0 opacity-50 bg-gray-800/40"
             />
           </View>
+
+          {/* home town*/}
+          {
+            <View>
+              <Text className="text-sm text-muted-foreground mb-1.5 mt-2">
+                Home Town 
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setIsSearchHomeTown(true);
+                }}
+                className="h-12 flex-row items-center p-3  space-x-2 rounded-xl bg-gray-800/40"
+              >
+                {Platform.OS == "ios" ? (
+                  <MapPin size={16} className="text-muted-foreground" />
+                ) : (
+                  <Icon
+                    name="map-marker-outline"
+                    type="material-community"
+                    size={16}
+                    color="#239ED0"
+                  />
+                )}
+                <Text className="text-lg text-muted-foreground">
+                  {locationHomeTownDetails.city === ""
+                    ? "Search Address"
+                    : locationHomeTownDetails.city}
+                  , {locationHomeTownDetails?.state} {locationHomeTownDetails?.zip}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          }
 
           {/* Location Summary */}
           {
@@ -534,6 +834,13 @@ export default function EditProfile() {
             </View>
           )}
 
+ <View className="p-4 mb-6 rounded-lg bg-card">
+           <Text className="mb-1.5 font-medium">Interests </Text>
+    <TopicList
+          selectedTopics={selectedTopics}
+          onSelectTopic={setSelectedTopics}
+        />
+        </View>
           {/*Share My Live Location */}
           {
             <View className="flex-row mt-4">
@@ -549,6 +856,8 @@ export default function EditProfile() {
               />
             </View>
           }
+
+         
 
           {/* Update Out Button */}
           <View className="mt-8">
@@ -633,8 +942,108 @@ export default function EditProfile() {
               </View>
             )}
           </Sheet>
+
+ {/* home town search */}
+          <Sheet
+            isOpen={isSearchHomeTown}
+            onClose={() => {
+              setIsSearchHomeTown(false);
+            }}
+          >
+            <View className="flex-1 pt-4 mt-4 border-t border-border">
+              <TextInput
+                value={addressHomeTown1}
+                //  placeholder="Search Location of post?"
+                onChangeText={(text) => {
+                  setAddressHomeTown1(text);
+                  if (text === "") {
+                    setSearchHomeTownResults([]);
+                    setShowHomeTownResults(false);
+                    setLocationHomeTownDetails({
+                      address1: "",
+                      address2: "",
+                      city: "",
+                      state: "",
+                      zip: "",
+                    });
+                  } else {
+                    debouncedSearchHomeTown(text);
+                  }
+                }}
+                placeholder="Search address..."
+                placeholderTextColor="#666"
+                className="text-base text-foreground p-4 mx-4 border border-border rounded-lg"
+                style={{ maxHeight: height * 0.2 }} // Limit height to 20% of screen
+              />
+            </View>
+
+            {/* Search Results Dropdown */}
+            {showHomeTownResults && searchHomeTownResults.length > 0 && (
+              <View className="border rounded-lg border-border bg-background mx-4">
+                {searchHomeTownResults.slice(0, 5).map((result) => (
+                  <TouchableOpacity
+                    key={result.id}
+                    onPress={() => handleAddressHomeTownSelect(result)}
+                    className="p-3 border-b border-border"
+                  >
+                    <Text className="font-medium">{result.text}</Text>
+                    <Text className="text-sm text-muted-foreground">
+                      {result.place_name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </Sheet>
         </View>
       </ScrollView>
+      {isOcupationShow && (
+        <View className="flex-1 px-4  ">
+          <View className="flex-1 bg-white border rounded-2xl  border-gray-300">
+            <View>
+              <Input
+                onChangeText={(text) => {
+                  const filtered = occupationList.filter((item) =>
+                    item.name.toLowerCase().includes(text.toLowerCase())
+                  );
+
+                  setOccupationListShow(filtered);
+                }}
+                placeholder="Search Occupation"
+                numberOfLines={1}
+                className="h-24  px-4 py-3 align-text-top border-0 bg-gray-300"
+                textAlignVertical="top"
+              />
+            </View>
+            <ScrollView className="flex-1">
+              {occupationListShow.map((occupation) => (
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedOcupation(occupation);
+                    setIsOcupationShow(false);
+                  }}
+                  className={` rounded ${
+                    selectedOcupation?.name === occupation.name
+                      ? "bg-primary"
+                      : "bg-transparent"
+                  }`}
+                >
+                  <Text
+                    className={`text-muted-foreground m-4 ${
+                      selectedOcupation?.name === occupation.name
+                        ? "text-white w-[90%]"
+                        : "text-muted-foreground w-[90%]"
+                    }`}
+                    numberOfLines={1}
+                  >
+                    {occupation.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }

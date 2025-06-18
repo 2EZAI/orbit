@@ -1,15 +1,21 @@
 import React, { useEffect, useState } from "react";
-import { View, ScrollView, TouchableOpacity, Image } from "react-native";
+import { View, ScrollView, 
+TouchableOpacity, Image,Pressable } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { supabase } from "~/src/lib/supabase";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
 import { Button } from "~/src/components/ui/button";
 import { MapEvent } from "~/hooks/useMapEvents";
-import { EventDetailsSheet } from "~/src/components/map/EventDetailsSheet";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "~/src/lib/auth";
 import Toast from "react-native-toast-message";
+import PostsTab from "~/src/components/profile/PostsTab";
+import EventsTab from "~/src/components/profile/EventsTab";
+import { EventDetailsSheet } from "~/src/components/map/EventDetailsSheet";
+import { LocationDetailsSheet } from "~/src/components/map/LocationDetailsSheet";
+
+type Tab = "Events" | "Posts" | "Info";
 
 type UserProfile = {
   id: string;
@@ -23,16 +29,17 @@ type UserProfile = {
   orbits_count: number;
 };
 
-type TabType = "posts" | "events" | "info";
+
 
 export default function ProfilePage() {
   const { session } = useAuth();
   const { username } = useLocalSearchParams();
+   const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [isEvent, setIsEvent] = useState(false);
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<TabType>("posts");
+  const [activeTab, setActiveTab] = useState<Tab>("Posts");
   const [userEvents, setUserEvents] = useState<MapEvent[]>([]);
-  const [selectedEvent, setSelectedEvent] = useState<MapEvent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFollowed, setIsFollowed] = useState(false);
 
@@ -54,9 +61,47 @@ export default function ProfilePage() {
     return !!data; // returns true if relationship exists
   };
 
+
+const renderTabContent = () => {
+    switch (activeTab) {
+      case "Posts":
+        return username ? <PostsTab userId={username} /> : null;
+      case "Events":
+        return username ? (
+          <EventsTab
+            userId_={username}
+            selectedItem_={(selectedItem,locationDetail) => {
+              // console.log("locationDetail>",locationDetail);
+              //  console.log("selectedItem>",selectedItem);
+              if (
+                locationDetail &&
+                selectedItem?.static_location &&
+                (selectedItem?.type === "static" ||
+                  selectedItem?.type === "googleApi")
+              ) {
+                setSelectedEvent(selectedItem.static_location);
+                setIsEvent(false);
+              } else {
+                setSelectedEvent(selectedItem);
+                setIsEvent(true);
+              }
+            }}
+          />
+        ) : null;
+
+      case "Info":
+        return (
+          <View className="p-4">
+            <Text className="text-muted-foreground">No additional info</Text>
+          </View>
+        );
+    }
+  };
+
+
   const fetchUserProfile = async () => {
     try {
-      // console.error("username>>:", username);
+      console.error("username>>:", username);
 
       // Fetch user profile
       const { data: userData, error: userError } = await supabase
@@ -292,115 +337,53 @@ export default function ProfilePage() {
           </TouchableOpacity>
         </View>
 
-        {/* Tabs */}
-        <View className="flex-row border-b border-border">
-          <TouchableOpacity
-            className={`flex-1 py-3 ${
-              activeTab === "posts" ? "border-b-2 border-primary" : ""
-            }`}
-            onPress={() => setActiveTab("posts")}
-          >
-            <Text
-              className={`text-center ${
-                activeTab === "posts"
-                  ? "text-primary font-medium"
-                  : "text-muted-foreground"
+       {/* Tabs */}
+        <View className="flex-row mt-6 border-b border-border">
+          {(["Posts", "Events", "Info"] as Tab[]).map((tab) => (
+            <Pressable
+              key={tab}
+              onPress={() => setActiveTab(tab)}
+              className={`flex-1 py-2 ${
+                activeTab === tab ? "border-b-2 border-primary" : ""
               }`}
             >
-              Posts
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            className={`flex-1 py-3 ${
-              activeTab === "events" ? "border-b-2 border-primary" : ""
-            }`}
-            onPress={() => setActiveTab("events")}
-          >
-            <Text
-              className={`text-center ${
-                activeTab === "events"
-                  ? "text-primary font-medium"
-                  : "text-muted-foreground"
-              }`}
-            >
-              Events
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            className={`flex-1 py-3 ${
-              activeTab === "info" ? "border-b-2 border-primary" : ""
-            }`}
-            onPress={() => setActiveTab("info")}
-          >
-            <Text
-              className={`text-center ${
-                activeTab === "info"
-                  ? "text-primary font-medium"
-                  : "text-muted-foreground"
-              }`}
-            >
-              Info
-            </Text>
-          </TouchableOpacity>
+              <Text
+                className={`text-center ${
+                  activeTab === tab
+                    ? "text-primary font-medium"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {tab}
+              </Text>
+            </Pressable>
+          ))}
         </View>
+      
 
-        {/* Tab Content */}
-        <ScrollView className="flex-1">
-          {activeTab === "posts" && (
-            <View className="p-4">
-              <Text className="text-center text-muted-foreground">
-                No posts yet
-              </Text>
-            </View>
-          )}
-
-          {activeTab === "events" && (
-            <View>
-              {userEvents.map((event) => (
-                <TouchableOpacity
-                  key={event.id}
-                  onPress={() => setSelectedEvent(event)}
-                  className="p-4 border-b border-border"
-                >
-                  <View className="flex-row">
-                    <Image
-                      source={{ uri: event.image_urls[0] }}
-                      className="w-16 h-16 rounded-lg"
-                    />
-                    <View className="flex-1 ml-3">
-                      <Text className="mb-1 font-medium">{event.name}</Text>
-                      <Text className="text-sm text-muted-foreground">
-                        {event.venue_name}
-                      </Text>
-                      <Text className="text-sm text-muted-foreground">
-                        {event.attendees.count} attendees
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-          {activeTab === "info" && (
-            <View className="p-4">
-              <Text className="text-center text-muted-foreground">
-                No additional info
-              </Text>
-            </View>
-          )}
-        </ScrollView>
-
-        {selectedEvent && (
-          <EventDetailsSheet
-            event={selectedEvent}
-            isOpen={!!selectedEvent}
-            onClose={() => setSelectedEvent(null)}
-            nearbyEvents={userEvents}
-            onEventSelect={setSelectedEvent}
-            onShowControler={() => {}}
-          />
-        )}
+      {/* Tab Content */}
+      <View className="flex-1 mt-4">{renderTabContent()}</View>
+      {selectedEvent && isEvent && (
+        <EventDetailsSheet
+          event={selectedEvent}
+          isOpen={!!selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+          // nearbyEvents={events}
+          onEventSelect={setSelectedEvent}
+          onShowControler={() => {}}
+        />
+      )}
+      {selectedEvent && !isEvent && (
+        <LocationDetailsSheet
+          event={selectedEvent}
+          isOpen={!!selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+          // nearbyEvents={events}
+          onShowControler={() => {}}
+        />
+      )}
+ 
+       
       </View>
     </SafeAreaView>
   );
