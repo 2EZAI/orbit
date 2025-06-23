@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
 } from "react-native";
+import { Input } from "~/src/components/ui/input";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import { useAuth } from "~/src/lib/auth";
@@ -16,6 +17,7 @@ import { router } from "expo-router";
 import { Button } from "~/src/components/ui/button";
 import PostsTab from "~/src/components/profile/PostsTab";
 import EventsTab from "~/src/components/profile/EventsTab";
+import InfoTab from "~/src/components/profile/InfoTab";
 import { EventDetailsSheet } from "~/src/components/map/EventDetailsSheet";
 import { LocationDetailsSheet } from "~/src/components/map/LocationDetailsSheet";
 
@@ -54,7 +56,7 @@ export default function Profile() {
         return user?.id ? (
           <EventsTab
             userId_={user.id}
-            selectedItem_={(selectedItem,locationDetail) => {
+            selectedItem_={(selectedItem, locationDetail) => {
               // console.log("locationDetail>",locationDetail);
               //  console.log("selectedItem>",selectedItem);
               if (
@@ -74,11 +76,12 @@ export default function Profile() {
         ) : null;
 
       case "Info":
-        return (
-          <View className="p-4">
-            <Text className="text-muted-foreground">No additional info</Text>
-          </View>
-        );
+        return user?.id ? (
+          <InfoTab
+            userId_={user.id}
+          
+          />
+        ) : null;
     }
   };
 

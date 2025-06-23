@@ -17,6 +17,7 @@ import AllPostsTab from "~/src/components/profile/AllPostsTab";
 
 export default function Home() {
    const PAGE_SIZE=20;
+   const [hasMore, setHasMore] = useState(true);
    const ref = useRef();
   const [isEvent, setIsEvent] = useState(false);
    const [page, setPage] = useState(1);
@@ -30,6 +31,7 @@ export default function Home() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isFilterShow, setIsFilterShow] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
+  let selectedCat=null;
   const [filteredEvents, setFilteredEvents] = useState<any>([]);
 
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
@@ -59,11 +61,17 @@ center:
   },[eventsHome])
 
   const loadEvents=async()=>{
+      if (isLoading || !hasMore) return; // 👈 prevent infinite
     try {
       setPage(prevPage => prevPage + 1); // Increment page
 
-      const response = await hitEventsApi(page,PAGE_SIZE);
+      const response = await hitEventsApi(page,PAGE_SIZE,selectedCat);
        console.log('eventshmmm:response', response);
+       if(page == 1)
+       {
+        setFilteredEvents([]);
+       }
+       if (response.length < PAGE_SIZE) setHasMore(false); // stop if no more
        if(response.length>0){
        const indexTo=filteredEvents.length-2;
        setFilteredEvents(prevEvents => [...prevEvents, ...response]);
@@ -95,6 +103,29 @@ catch(eee)
       return []; // return empty list on error
     }
   }
+
+
+const hitApi=async(selectedCat:string)=>{
+  if (isLoading || !hasMore) return; // 👈 prevent infinite
+    try {
+      setPage(1); 
+
+      const response = await hitEventsApi(1,PAGE_SIZE,selectedCat);
+       console.log('eventshmmm:response', response);
+       if (response.length < PAGE_SIZE) setHasMore(false); // stop if no more
+       if(response.length>0){
+       setFilteredEvents(response);
+       }
+       else{
+        setFilteredEvents([]);
+       }
+     
+    } catch (error) {
+      console.error('Error fetching eventshmmm:', error);
+      return []; // return empty list on error
+    }
+  }
+
   // Initialize and watch location
   useEffect(() => {
     loadEvents();
@@ -223,14 +254,14 @@ catch(eee)
           {categories.map((category) => (
             <TouchableOpacity
               onPress={() => {
-                if (selectedCategory?.id === category.id) {
-                  setSelectedCategory(null);
-                  FilterList(null);
-                } else {
+               
                   setSelectedCategory(category);
-                  FilterList(category);
-                }
+                  selectedCat=category?.name;
+                  // FilterList(category);
+                
                 setIsFilterShow(false);
+                setHasMore(true);
+                hitApi(selectedCat);
               }}
               className={` rounded ${
                 selectedCategory?.id === category.id
@@ -314,12 +345,13 @@ keyExtractor={(event) => event.id.toString()}
       />
     )}
     onEndReached={({ distanceFromEnd }) => {
+     
       console.log("onEndReached", distanceFromEnd);
       loadEvents();
+      
     }}
-    onEndReachedThreshold={0.5}
-    removeClippedSubviews={false} // or false if you're seeing flickers
-    ListFooterComponent={isLoading && <ActivityIndicator />}
+    onEndReachedThreshold={0.2}
+    // ListFooterComponent={isLoading &&  hasMore && <ActivityIndicator />}
   />
 )}
 
@@ -329,9 +361,9 @@ keyExtractor={(event) => event.id.toString()}
           <Text className="text-primary" >No events found</Text>  
           </View> }
          
-          {isLoading &&
+          {isLoading && hasMore &&
             <SafeAreaView className="absolute left-0 right-0 mb-[20%] bottom-0 items-center justify-center ">
-        <ActivityIndicator size="large" color="#000080"/>
+        <ActivityIndicator size="large" color="#8B0000"/>
       </SafeAreaView>
   
   }
@@ -340,7 +372,7 @@ keyExtractor={(event) => event.id.toString()}
     );
   };
 
-  if (isLoading && filteredEvents.length ==0) {
+  if (isLoading && hasMore && filteredEvents.length ==0) {
     return (
       <SafeAreaView className="items-center justify-center flex-1">
         <Text>Loading events...</Text>

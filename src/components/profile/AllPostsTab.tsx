@@ -78,14 +78,14 @@ console.log('dataposts>',data);
           <Text className="text-muted-foreground">No posts yet</Text>
         </View>
       ) : (
-         <View className="flex-1 items-center justify-center p-4">
+        
         <PostGridWithName
           posts={posts}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         />
-        </View>
+     
       )}
     </View>
   );

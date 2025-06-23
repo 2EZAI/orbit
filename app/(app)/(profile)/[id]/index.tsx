@@ -36,15 +36,19 @@ export default function EditProfile() {
   const [occupationList, setOccupationList] = useState<any>(
     allOcupationList?.length > 0 ? allOcupationList : []
   );
-    const [occupationListShow, setOccupationListShow] = useState<any>(
+  const [occupationListShow, setOccupationListShow] = useState<any>(
     allOcupationList?.length > 0 ? allOcupationList : []
   );
   const [isGenderShow, setIsGenderShow] = useState(false);
-  const [selectedGender, setSelectedGender] = useState<any>(  user?.gender !=null ? { name: user.gender } : null);
+  const [selectedGender, setSelectedGender] = useState<any>(
+    user?.gender != null ? { name: user.gender } : null
+  );
   const [isOcupationShow, setIsOcupationShow] = useState(false);
-  const [selectedOcupation, setSelectedOcupation] = useState<any>(allOcupationList?.length >0 && user?.occupation_id !=null ?
-   allOcupationList.find(item => item.id === user.occupation_id) || null
-    : null);
+  const [selectedOcupation, setSelectedOcupation] = useState<any>(
+    allOcupationList?.length > 0 && user?.occupation_id != null
+      ? allOcupationList.find((item) => item.id === user.occupation_id) || null
+      : null
+  );
 
   const [isEnabled, setIsEnabled] = useState(
     user?.is_live_location_shared == 1 ? true : false
@@ -72,9 +76,11 @@ export default function EditProfile() {
       name: "Saved Address",
     },
   ]);
-    const [isSearchHomeTown, setIsSearchHomeTown] = useState(false);
+  const [isSearchHomeTown, setIsSearchHomeTown] = useState(false);
   const [showHomeTownResults, setShowHomeTownResults] = useState(false);
-  const [searchHomeTownResults, setSearchHomeTownResults] = useState<MapboxFeature[]>([]);
+  const [searchHomeTownResults, setSearchHomeTownResults] = useState<
+    MapboxFeature[]
+  >([]);
 
   const [uploadingImage, setUploadingImage] = useState(false);
   const { height } = useWindowDimensions();
@@ -103,21 +109,28 @@ export default function EditProfile() {
     city: userlocation?.city || "",
     state: userlocation?.state || "",
     zip: userlocation?.postal_code || "",
-    coordinates: [userlocation?.latitude || 0, userlocation?.longitude || 0],
+    coordinates: [userlocation?.longitude || 0, userlocation?.latitude|| 0],
   });
 
   const [addressHomeTown1, setAddressHomeTown1] = useState("");
   const [addressHomeTown2, setAddressHomeTown2] = useState("");
-  const [locationHomeTownDetails, setLocationHomeTownDetails] = useState<LocationDetails>({
-    address1: userHomeTownlocation?.address || "",
-    address2: "",
-    city: userHomeTownlocation?.city || "",
-    state: userHomeTownlocation?.state || "",
-    zip: userHomeTownlocation?.postal_code || "",
-    coordinates: [userHomeTownlocation?.latitude || 0, userHomeTownlocation?.longitude || 0],
-  });
+  const [locationHomeTownDetails, setLocationHomeTownDetails] =
+    useState<LocationDetails>({
+      address1: userHomeTownlocation?.address || "",
+      address2: "",
+      city: userHomeTownlocation?.city || "",
+      state: userHomeTownlocation?.state || "",
+      zip: userHomeTownlocation?.postal_code || "",
+      coordinates: [
+        userHomeTownlocation?.latitude || 0,
+        userHomeTownlocation?.longitude || 0,
+      ],
+    });
 
-  const [selectedTopics, setSelectedTopics] = useState<string[]>(userTopicsList?.length>0 ? userTopicsList : []);
+  const [isTopicsShow, setIsTopicsShow] = useState(false);
+  const [selectedTopics, setSelectedTopics] = useState<string[]>(
+    userTopicsList?.length > 0 ? userTopicsList : []
+  );
   const toggleSwitch = () => setIsEnabled((previousState) => !previousState);
 
   useEffect(() => {
@@ -131,23 +144,26 @@ export default function EditProfile() {
     setLocation(user?.location || "");
     setEducation(user?.education || "");
     setSelectedLocation(user?.event_location_preference == 1 ? 1 : 0);
-  setSelectedGender(user?.gender !=null ? { name: user.gender } : null);
-  setSelectedOcupation(allOcupationList?.length >0 && user?.occupation_id !=null 
-  ? allOcupationList.find(item => item.id === user.occupation_id) || null
-    : null);
+    setSelectedGender(user?.gender != null ? { name: user.gender } : null);
+    setSelectedOcupation(
+      allOcupationList?.length > 0 && user?.occupation_id != null
+        ? allOcupationList.find((item) => item.id === user.occupation_id) ||
+            null
+        : null
+    );
   }, [user]);
 
   useEffect(() => {
-
-  setSelectedOcupation(allOcupationList?.length >0 && user?.occupation_id !=null 
-  ? allOcupationList.find(item => item.id === user.occupation_id) || null
-    : null);
+    setSelectedOcupation(
+      allOcupationList?.length > 0 && user?.occupation_id != null
+        ? allOcupationList.find((item) => item.id === user.occupation_id) ||
+            null
+        : null
+    );
   }, [allOcupationList]);
- 
-    useEffect(() => {
 
-    setSelectedTopics(userTopicsList?.length>0 ? userTopicsList : []);
-
+  useEffect(() => {
+    setSelectedTopics(userTopicsList?.length > 0 ? userTopicsList : []);
   }, [userTopicsList]);
 
   useEffect(() => {
@@ -157,24 +173,27 @@ export default function EditProfile() {
       city: userlocation?.city || "",
       state: userlocation?.state || "",
       zip: userlocation?.postal_code || "",
-      coordinates: [userlocation?.latitude || 0, userlocation?.longitude || 0],
+      coordinates: [userlocation?.longitude || 0, userlocation?.latitude || 0],
     });
   }, [userlocation]);
 
-   useEffect(() => {
+  useEffect(() => {
     setLocationHomeTownDetails({
       address1: userHomeTownlocation?.address || "",
       address2: "",
       city: userHomeTownlocation?.city || "",
       state: userHomeTownlocation?.state || "",
       zip: userHomeTownlocation?.postal_code || "",
-      coordinates: [userHomeTownlocation?.latitude || 0, userHomeTownlocation?.longitude || 0],
+      coordinates: [
+        userHomeTownlocation?.latitude || 0,
+        userHomeTownlocation?.longitude || 0,
+      ],
     });
   }, [userHomeTownlocation]);
 
   useEffect(() => {
     setOccupationList(allOcupationList?.length > 0 ? allOcupationList : []);
- setOccupationListShow(allOcupationList?.length > 0 ? allOcupationList : []);
+    setOccupationListShow(allOcupationList?.length > 0 ? allOcupationList : []);
   }, [allOcupationList]);
 
   const searchAddress = async (query: string) => {
@@ -311,16 +330,15 @@ export default function EditProfile() {
     if (!user) return;
 
     try {
-
-// Step 1: Delete existing interests for this user
-    const { error: deleteError } = await supabase
-      .from("user_topics")
-      .delete()
-      .eq("user_id", user.id);
+      // Step 1: Delete existing interests for this user
+      const { error: deleteError } = await supabase
+        .from("user_topics")
+        .delete()
+        .eq("user_id", user.id);
 
       if (deleteError) throw deleteError;
 
-  // Step 2: Insert new selected topics
+      // Step 2: Insert new selected topics
       const { error } = await supabase.from("user_topics").insert(
         selectedTopics.map((topic) => ({
           user_id: user.id,
@@ -329,7 +347,6 @@ export default function EditProfile() {
       );
 
       if (error) throw error;
-
     } catch (error) {
       console.error("Error saving topics:", error);
     }
@@ -380,9 +397,9 @@ export default function EditProfile() {
         locationDetails?.zip;
       }
 
-if(selectedTopics.length>0){
-  handleUpdateInterests();
-}
+      if (selectedTopics.length > 0) {
+        handleUpdateInterests();
+      }
       if (locationDetails?.address1 !== "") {
         await updateUserLocations({
           city: locationDetails.city,
@@ -393,7 +410,7 @@ if(selectedTopics.length>0){
           longitude: locationDetails.coordinates[0],
         });
       }
-       if (locationDetails?.addressHomeTown1 !== "") {
+      if (locationDetails?.addressHomeTown1 !== "") {
         await updateHomeTownLocations({
           city: locationHomeTownDetails.city,
           state: locationHomeTownDetails.state,
@@ -414,8 +431,9 @@ if(selectedTopics.length>0){
           is_live_location_shared: isEnabled ? 1 : 0,
           event_location_preference: selectedLocation,
           education,
-          gender:selectedGender !=null ? selectedGender?.name : null,
-          occupation_id:selectedOcupation !=null ? selectedOcupation?.id :null,
+          gender: selectedGender != null ? selectedGender?.name : null,
+          occupation_id:
+            selectedOcupation != null ? selectedOcupation?.id : null,
         });
       } else {
         await updateUser({
@@ -429,9 +447,9 @@ if(selectedTopics.length>0){
           is_live_location_shared: isEnabled ? 1 : 0,
           event_location_preference: selectedLocation,
           education,
-          gender:selectedGender !=null ? selectedGender?.name : null,
-          occupation_id:selectedOcupation !=null ? selectedOcupation?.id :null,
-       
+          gender: selectedGender != null ? selectedGender?.name : null,
+          occupation_id:
+            selectedOcupation != null ? selectedOcupation?.id : null,
         });
       }
 
@@ -749,7 +767,7 @@ if(selectedTopics.length>0){
           {
             <View>
               <Text className="text-sm text-muted-foreground mb-1.5 mt-2">
-                Home Town 
+                Home Town
               </Text>
               <TouchableOpacity
                 onPress={() => {
@@ -771,7 +789,8 @@ if(selectedTopics.length>0){
                   {locationHomeTownDetails.city === ""
                     ? "Search Address"
                     : locationHomeTownDetails.city}
-                  , {locationHomeTownDetails?.state} {locationHomeTownDetails?.zip}
+                  , {locationHomeTownDetails?.state}{" "}
+                  {locationHomeTownDetails?.zip}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -834,13 +853,21 @@ if(selectedTopics.length>0){
             </View>
           )}
 
- <View className="p-4 mb-6 rounded-lg bg-card">
-           <Text className="mb-1.5 font-medium">Interests </Text>
-    <TopicList
-          selectedTopics={selectedTopics}
-          onSelectTopic={setSelectedTopics}
-        />
-        </View>
+          <View className="mt-4 mb-6 rounded-lg bg-card">
+            <Text className="text-sm text-muted-foreground mb-1.5 mt-2">Interests </Text>
+            <TouchableOpacity
+              onPress={() => {
+                setIsTopicsShow(true);
+              }}
+              className="h-12 flex-row items-center p-3  space-x-2 rounded-xl bg-gray-800/40"
+            >
+              <Text className="text-lg text-muted-foreground">
+                {selectedTopics.length == 0
+                  ? "Select Interests"
+                  : selectedTopics.map((topic) => topic).join(", ")}
+              </Text>
+            </TouchableOpacity>
+          </View>
           {/*Share My Live Location */}
           {
             <View className="flex-row mt-4">
@@ -856,8 +883,6 @@ if(selectedTopics.length>0){
               />
             </View>
           }
-
-         
 
           {/* Update Out Button */}
           <View className="mt-8">
@@ -943,7 +968,7 @@ if(selectedTopics.length>0){
             )}
           </Sheet>
 
- {/* home town search */}
+          {/* home town search */}
           <Sheet
             isOpen={isSearchHomeTown}
             onClose={() => {
@@ -1040,6 +1065,31 @@ if(selectedTopics.length>0){
                   </Text>
                 </TouchableOpacity>
               ))}
+            </ScrollView>
+          </View>
+        </View>
+      )}
+      {isTopicsShow && (
+        <View className="flex-1 bg-transparent">
+          <TouchableOpacity
+            onPress={() => {
+              setIsTopicsShow(false);
+            }}
+          >
+            <Icon
+              name="close-circle"
+              type="material-community"
+              size={20}
+              color="#239ED0" // red or your preferred color
+              style={{ marginLeft: 8 }}
+            />
+          </TouchableOpacity>
+          <View className="flex-1 bg-white border rounded-2xl px-2  mb-12 mx-4 border-gray-300">
+            <ScrollView>
+              <TopicList
+                selectedTopics={selectedTopics}
+                onSelectTopic={setSelectedTopics}
+              />
             </ScrollView>
           </View>
         </View>

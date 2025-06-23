@@ -12,6 +12,7 @@ import { useAuth } from "~/src/lib/auth";
 import Toast from "react-native-toast-message";
 import PostsTab from "~/src/components/profile/PostsTab";
 import EventsTab from "~/src/components/profile/EventsTab";
+import InfoTabOtherUser from "~/src/components/profile/InfoTabOtherUser";
 import { EventDetailsSheet } from "~/src/components/map/EventDetailsSheet";
 import { LocationDetailsSheet } from "~/src/components/map/LocationDetailsSheet";
 
@@ -90,11 +91,12 @@ const renderTabContent = () => {
         ) : null;
 
       case "Info":
-        return (
-          <View className="p-4">
-            <Text className="text-muted-foreground">No additional info</Text>
-          </View>
-        );
+       return username? (
+          <InfoTabOtherUser
+            userId_={username}
+          
+          />
+        ) : null;
     }
   };
 

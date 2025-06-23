@@ -64,7 +64,6 @@ export function LocationDetailsSheet({
   const PAGE_SIZE = 40;
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
 
-
   const [page, setPage] = useState(1);
   const [eventsList, setEventsList] = useState([]);
   const [hasMore, setHasMore] = useState(true);
@@ -145,10 +144,10 @@ export function LocationDetailsSheet({
 
   const loadEvents = async () => {
     console.log("loadEvents:>");
-     if (loading || !hasMore) return; // 👈 prevent infinite
+    if (loading || !hasMore) return; // 👈 prevent infinite
     setLoading(true);
 
-    console.log("loadEvents:",event);
+    console.log("loadEvents:", event);
     const data = await fetchLocationEvents(event, page, PAGE_SIZE);
     console.log("data>:", data);
     if (data.length === 0) {
@@ -206,34 +205,44 @@ export function LocationDetailsSheet({
                 />
               )}
             </TouchableOpacity>
-            {/* <View className="flex-row gap-4">
-              <TouchableOpacity onPress={handleShare}>
-                {Platform.OS == "ios" ? (
-                  <Share2 size={20} className="text-foreground" />
-                ) : (
-                  <Icon
-                    name="share"
-                    type="material-community"
-                    size={20}
-                    color="#239ED0"
-                  />
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity>
-                {Platform.OS == "ios" ? (
-                  <Bookmark size={20} className="text-foreground" />
-                ) : (
-                  <Icon
-                    name="bookmark"
-                    type="material-community"
-                    size={20}
-                    color="#239ED0"
-                  />
-                )}
-              </TouchableOpacity>
-            </View>*/}
           </View>
-          <Text className="mb-2 text-2xl font-bold">{eventDetail?.name}</Text>
+          <View className="mb-2 flex-row items-center justify-between">
+            <Text className=" text-2xl font-bold w-[60%]">
+              {eventDetail?.name}
+            </Text>
+            <Button
+              className=" bg-primary"
+              onPress={() => {
+                router.push({
+                  pathname: "/(app)/(create)",
+                  params: {
+                    locationId: eventDetail?.id,
+                    locationType: eventDetail?.type,
+                    latitude: eventDetail?.location?.latitude,
+                    longitude: eventDetail?.location?.longitude,
+                    category: JSON.stringify(event?.category),
+                  },
+                });
+
+                setTimeout(() => {
+                  DeviceEventEmitter.emit(
+                    "passDataToCreateEvent",
+                    eventDetail?.id,
+                    eventDetail?.type,
+                    eventDetail?.location?.latitude,
+                    eventDetail?.location?.longitude,
+                    JSON.stringify(event?.category)
+                  );
+                }, 300);
+              }}
+            >
+              <View className="flex-row items-center justify-center">
+                <Text className="ml-1.5 font-semibold text-white">
+                  Create Event
+                </Text>
+              </View>
+            </Button>
+          </View>
 
           <View className="flex-row items-center justify-between">
             {/* <View className="px-3 py-1 rounded-full bg-primary/10">
@@ -284,78 +293,6 @@ export function LocationDetailsSheet({
 
         {/* Main Content */}
         <View className="px-4">
-          {/* Date and Location */}
-          {/*  <View className="py-4 space-y-3">
-            <View className="flex-row items-center space-x-3">
-              <View className="items-center justify-center w-10 h-10 rounded-full bg-primary/10">
-                {Platform.OS == "ios" ? (
-                  <Calendar size={20} className="text-primary" />
-                ) : (
-                  <Icon
-                    name="calendar"
-                    type="material-community"
-                    size={20}
-                    color="#239ED0"
-                  />
-                )}
-              </View>
-              <View>
-                <Text className="text-base font-medium">
-                  {formatDate(eventDetail?.start_datetime)}
-                </Text>
-                <Text className="text-sm text-muted-foreground">
-                  {formatTime(eventDetail?.start_datetime)} -{" "}
-                  {formatTime(eventDetail?.end_datetime)}
-                </Text>
-              </View>
-            </View>
-
-            <View className="flex-row items-center space-x-3">
-              <View className="items-center justify-center w-10 h-10 rounded-full bg-primary/10">
-                {Platform.OS == "ios" ? (
-                  <MapPin size={20} className="text-primary" />
-                ) : (
-                  <Icon
-                    name="map-marker"
-                    type="material-community"
-                    size={20}
-                    color="#239ED0"
-                  />
-                )}
-              </View>
-              <View className="flex-1">
-                <Text className="text-base font-medium">
-                  {eventDetail?.venue_name}
-                </Text>
-                <Text className="text-sm text-muted-foreground">
-                  {eventDetail?.address}
-                </Text>
-              </View>
-            </View>
-          </View>*/}
-
-          {/* Host Info */}
-          {/* {eventDetail?.created_by && (
-            <View className="flex-row items-center p-4 mb-6 bg-muted rounded-xl">
-              <UserAvatar
-                size={40}
-                user={{
-                  id: eventDetail?.created_by.id,
-                  name: eventDetail?.created_by.name || "Unknown",
-                  image: eventDetail?.created_by.avatar_url,
-                }}
-              />
-              <View className="flex-1 ml-3">
-                <Text className="text-sm text-muted-foreground">Hosted by</Text>
-                <Text className="text-base font-medium">
-                  {eventDetail?.created_by.name ||
-                    "@" + eventDetail?.created_by.username ||
-                    "Unknown"}
-                </Text>
-              </View>
-            </View>
-          )} */}
-
           {/* Description */}
           <View className="mb-6">
             <Text className="mb-2 text-lg font-semibold">
@@ -370,11 +307,11 @@ export function LocationDetailsSheet({
           {eventDetail?.category && (
             <View className="mb-6">
               <Text className="mb-3 text-lg font-semibold">Category</Text>
-             <View className="flex-row flex-wrap gap-2">
-              <View className="px-3 py-1 rounded-full bg-muted">
-                    <Text className="text-sm">{eventDetail?.category?.name}</Text>
-                  </View>
-                  </View>
+              <View className="flex-row flex-wrap gap-2">
+                <View className="px-3 py-1 rounded-full bg-muted">
+                  <Text className="text-sm">{eventDetail?.category?.name}</Text>
+                </View>
+              </View>
               <Text className="mb-3 mt-4 text-lg font-semibold">Prompt</Text>
 
               <View className="flex-row flex-wrap gap-2">
@@ -393,7 +330,9 @@ export function LocationDetailsSheet({
           {/* Image Gallery */}
           {eventDetail?.image_urls?.length > 1 && (
             <View className="mb-6">
-              <Text className="mb-3 text-lg font-semibold">Event Photos</Text>
+              <Text className="mb-3 text-lg font-semibold">
+                Location Photos
+              </Text>
               <View className="flex-row flex-wrap gap-2">
                 {eventDetail?.image_urls.slice(1).map((imageUrl, index) => (
                   <TouchableOpacity key={index} activeOpacity={0.8}>
@@ -411,11 +350,11 @@ export function LocationDetailsSheet({
             </View>
           )}
 
-        
-
           <View className="mb-6">
             <View className="mb-6 flex-row items-center justify-between">
-              <Text className="text-lg font-semibold">Events</Text>
+              <View>
+                <Text className="text-lg font-semibold">Events</Text>
+              </View>
               <TouchableOpacity
                 onPress={() => {
                   setShowAllEvents(true);
@@ -432,9 +371,9 @@ export function LocationDetailsSheet({
                 <FeedEventCard
                   key={item.id}
                   event={item}
-                  onEventSelect={ (event,locationDetail) =>{
+                  onEventSelect={(event, locationDetail) => {
                     setSelectedEvent(event);
-                    }}
+                  }}
                   // nearbyEvents={events}
                   // nearbyEvents={eventsHome}
                 />
@@ -464,15 +403,16 @@ export function LocationDetailsSheet({
                 },
               });
 
-               setTimeout(() => {
-            DeviceEventEmitter.emit('passDataToCreateEvent', 
-                   eventDetail?.id,
-                   eventDetail?.type,
-                 eventDetail?.location?.latitude,
+              setTimeout(() => {
+                DeviceEventEmitter.emit(
+                  "passDataToCreateEvent",
+                  eventDetail?.id,
+                  eventDetail?.type,
+                  eventDetail?.location?.latitude,
                   eventDetail?.location?.longitude,
-                  JSON.stringify(event?.category),);
-              },300);
-              
+                  JSON.stringify(event?.category)
+                );
+              }, 300);
             }}
           >
             <View className="flex-row items-center justify-center">
@@ -483,16 +423,6 @@ export function LocationDetailsSheet({
           </Button>
         </View>
       </BottomSheetScrollView>
-
-      {/* Join Button */}
-      {/* <View className="px-4 py-4 border-t border-border bg-background">
-        <Button className="w-full">
-          <Text className="font-medium text-primary-foreground">
-            Join Event
-          </Text>
-        </Button>
-      </View>
-      */}
 
       {selectedEvent && (
         <EventDetailsSheet
@@ -550,8 +480,6 @@ export function LocationDetailsSheet({
           </View>
         </View>
       )}
-
-      
     </BottomSheet>
   );
 }

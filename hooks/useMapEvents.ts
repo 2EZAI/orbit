@@ -279,8 +279,8 @@ const [locations, setLocations] = useState<MapEvent[]>([]);
     return clusters;
   }, []);
 
-  const hitEventsApi=async(page:string, pageSize:string) =>{
-console.log("apihitt",page," ",pageSize);
+  const hitEventsApi=async(page:string, pageSize:string,selectedCat:string) =>{
+console.log("apihitt",page," ",pageSize," ",selectedCat);
 
 setIsLoading(true);
 
@@ -345,7 +345,10 @@ setIsLoading(true);
   latitude: user != null && user?.event_location_preference == 1 ?
   userLocation?.latitude :savedCentre[0],
   longitude: user != null && user?.event_location_preference == 1 ?
-  userLocation?.longitude : savedCentre[1]
+  userLocation?.longitude : savedCentre[1],
+  category:selectedCat !=null ? (
+    selectedCat !=="All Events" ?selectedCat : "") :
+  "",
 };
 
 try {

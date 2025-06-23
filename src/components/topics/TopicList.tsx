@@ -59,13 +59,13 @@ export function TopicList({ selectedTopics, onSelectTopic }: TopicListProps) {
             onPress={() => toggleTopic(topic)}
             className={`px-4 py-2 rounded-full border ${
               isSelected
-                ? "bg-primary border-primary"
+                ? "bg-gray-300 border-gray-800"
                 : "bg-transparent border-border"
             }`}
           >
             <Text
               className={
-                isSelected ? "text-primary-foreground" : "text-foreground"
+                isSelected ? "text-gray-300-foreground" : "text-foreground"
               }
             >
               {topic}

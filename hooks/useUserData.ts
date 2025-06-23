@@ -35,8 +35,10 @@ interface UserLoation {
 
 interface UseUserReturn {
   user: User | null;
+  otherUser:User | null;
   userlocation: UserLoation | null;
   userHomeTownlocation:UserLoation | null;
+  otherUserHomeTownlocation:UserLoation | null;
   loading: boolean;
   error: Error | null;
   refreshUser: () => Promise<void>;
@@ -44,15 +46,23 @@ interface UseUserReturn {
   updateUserLocations: (updates: Partial<UserLoation>) => Promise<void>;
   updateHomeTownLocations: (updates: Partial<UserLoation>) => Promise<void>;
   userTopicsList:string |null;
+  otherUserTopicsList:string |null;
+  fetchOherUserTopics: (userId: string) => Promise<void>;
+  fetchOtherUserHomeTownLocation: (userId: string) => Promise<void>;
+  fetchOtherUser: (userId: string) => Promise<void>;
 }
 
 export function useUser(): UseUserReturn {
   const { session } = useAuth();
   const [user, setUser] = useState<User | null>(null);
+  const [otherUser, setOtherUser] = useState<User | null>(null);
   const [userTopicsList, setUserTopicsList] = useState<any | null>(null);
+  const [otherUserTopicsList, setOtherUserTopicsList] = useState<any | null>(null);
   const [allOcupationList, setAllOcupationList] = useState<any | null>(null);
   const [userlocation, setUserLocation] = useState<UserLoation | null>(null);
   const [userHomeTownlocation, setUserHomeTownLocation] = useState<UserLoation | null>(null);
+  const [otherUserHomeTownlocation, setOtherUserHomeTownlocation] = useState<UserLoation | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -166,6 +176,78 @@ export function useUser(): UseUserReturn {
       // Example: setUserTopics(data); if you're storing it in state
     } catch (error) {
       console.error("Error fetching user topics:", error);
+    }
+  };
+
+ // Fetch OtherUser data
+ const fetchOtherUser = async (userId:string) => {
+  try {
+    if (!userId) {
+      setOtherUser(null);
+      return;
+    }
+
+    const { data, error: supabaseError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", userId)
+      .single();
+
+    if (supabaseError) throw supabaseError;
+    setOtherUser(data);
+  } catch (e) {
+    setError(e instanceof Error ? e : new Error("An error occurred"));
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const fetchOherUserTopics = async (userId:any) => {
+    if (!userId) return;
+    console.log("userId>",userId);
+    try {
+      const { data, error } = await supabase
+        .from("user_topics")
+        .select("*") // or specify columns like 'topic'
+        .eq("user_id", userId);
+  
+      if (error) throw error;
+  
+      console.log("userId topics:", data);
+      const topics = data?.map(item => item.topic) || [];
+      if(topics.length>0){
+        setOtherUserTopicsList(topics);
+        return topics;
+      }
+      else{
+        return [];
+      }
+      // Example: setUserTopics(data); if you're storing it in state
+    } catch (error) {
+      console.error("Error fetching user topics:", error);
+    }
+  };
+
+  const fetchOtherUserHomeTownLocation = async (userId:any) => {
+    try {
+      if (!userId) {
+        setOtherUserHomeTownlocation(null);
+        return;
+      }
+
+      const { data, error: supabaseError } = await supabase
+        .from("user_hometown_locations")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
+
+      if (supabaseError) throw supabaseError;
+      console.log("fetchOtherUserHomeTownLocation>>",data);
+      setOtherUserHomeTownlocation(data);
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error("An error occurred"));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -368,8 +450,10 @@ export function useUser(): UseUserReturn {
 
   return {
     user,
+    otherUser,
     userlocation,
     userHomeTownlocation,
+    otherUserHomeTownlocation,
     allOcupationList,
     loading,
     error,
@@ -378,5 +462,9 @@ export function useUser(): UseUserReturn {
     updateUserLocations,
     updateHomeTownLocations,
     userTopicsList,
+    otherUserTopicsList,
+    fetchOherUserTopics,
+    fetchOtherUserHomeTownLocation,
+    fetchOtherUser,
   };
 }

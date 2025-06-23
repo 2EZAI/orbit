@@ -27,7 +27,7 @@ export default function JoinedEventsList({
   selectedItem,
     refreshControl,
 }: JoinedEventsListProps) {
-  const PAGE_SIZE = 5;
+  const PAGE_SIZE = 20;
     const [selectedEvent, setSelectedEvent] = useState<any>(null);
    const [isEvent, setIsEvent] = useState(false);
   const { fetchCreatedEvents } = useUpdateEvents();
