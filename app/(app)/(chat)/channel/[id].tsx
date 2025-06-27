@@ -45,7 +45,7 @@ import {
   Calendar,
   Search,
 } from "lucide-react-native";
-import { Icon } from 'react-native-elements';
+import { Icon } from "react-native-elements";
 import type {
   Channel as ChannelType,
   DefaultGenerics,
@@ -164,7 +164,7 @@ const EventMessage = (props: any) => {
                 <View className="flex-row items-center mb-2 space-x-2">
                   <Calendar size={20} className="text-primary" />
                   <Text className="font-medium text-foreground">
-                    {attachment.title} 
+                    {attachment.title}
                   </Text>
                 </View>
                 <Text className="text-muted-foreground">{attachment.text}</Text>
@@ -285,6 +285,13 @@ export default function ChannelScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Event[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [orbitMsg, setorbitMsg] = useState("yess");
+
+  console.log("chanell???", channel?.data);
+  // if (channel?.data?.name === "Orbit App") {
+  //   console.log("messages???", channel?.state.messages);
+  //   setorbitMsg(channel?.state.messages);
+  // }
 
   const handleInfoPress = useCallback(() => {
     if (!channel) return;
@@ -498,6 +505,11 @@ export default function ChannelScreen() {
         channel.on(event, updateMemberCount)
       );
 
+      if (channel?.data?.name === "Orbit App") {
+    console.log("messages???", channel?.state?.messages);
+    setorbitMsg(channel?.state?.messages[0]);
+  }
+
       return () => {
         unsubscribePromises.forEach((promise) => {
           if (promise && typeof promise.unsubscribe === "function") {
@@ -596,31 +608,39 @@ export default function ChannelScreen() {
               >
                 {channel?.data?.name || "Chat"}
               </Text>
-              <Text
-                style={{ fontSize: 13, textAlign: "center" }}
-                className="text-muted-foreground"
-              >
-                {memberCount} {memberCount === 1 ? "member" : "members"}
-              </Text>
+
+              {channel?.data?.name !== "Orbit App" ? (
+                <Text
+                  style={{ fontSize: 13, textAlign: "center" }}
+                  className="text-muted-foreground"
+                >
+                  {memberCount} {memberCount === 1 ? "member" : "members"}
+                </Text>
+              ) : (
+                <></>
+              )}
             </View>
           ),
-          headerRight: () => (
-            <TouchableOpacity
-              onPress={handleInfoPress}
-              style={{ marginRight: 8 }}
-            >
-            {Platform.OS == 'ios' ? 
-            (<Info size={24} className="text-primary" />)
-              :
-              ( <Icon 
-  name="information-outline" 
-  type="material-community" 
-  size={24} 
-  color="gray" 
-/>)
-            }
-            </TouchableOpacity>
-          ),
+          headerRight: () =>
+            channel?.data?.name !== "Orbit App" ? (
+              <TouchableOpacity
+                onPress={handleInfoPress}
+                style={{ marginRight: 8 }}
+              >
+                {Platform.OS == "ios" ? (
+                  <Info size={24} className="text-primary" />
+                ) : (
+                  <Icon
+                    name="information-outline"
+                    type="material-community"
+                    size={24}
+                    color="gray"
+                  />
+                )}
+              </TouchableOpacity>
+            ) : (
+              <></>
+            ),
         }}
       />
       {loading ? (
@@ -731,28 +751,50 @@ export default function ChannelScreen() {
             <Thread />
           ) : (
             <>
-              <MessageList
-                onThreadSelect={setThread}
-                additionalFlatListProps={{
-                  initialNumToRender: 30,
-                  maxToRenderPerBatch: 10,
-                  windowSize: 10,
-                  removeClippedSubviews: false,
-                  inverted: Platform.OS === 'ios' ? true
-                  : false,
-                }}
-                loadMore={() => {
-                  console.log("[ChatChannel] Loading more messages...");
-                  return Promise.resolve();
-                }}
-              />
-              <MessageInput
-                additionalTextInputProps={{
-                  placeholder: "Type /event to share an event...",
-                  placeholderTextColor: theme.colors.text,
-                }}
-              />
-            </>
+  {channel?.data?.name === 'Orbit App' ? (
+   <View 
+
+   style={{
+    flex: 1,
+    justifyContent: 'flex-end', // align children to bottom
+    alignItems: 'flex-start',   // align to the left
+    padding: 16,
+   }
+   }>
+   <View 
+  className="w-[80%] p-4 border bg-muted/50 border-border rounded-tl-3xl rounded-tr-3xl rounded-bl-none rounded-br-3xl">
+ 
+ <Text  
+>  {orbitMsg?.text || 'No orbit message'}
+</Text>
+</View>
+</View>
+  ) : (
+    <>
+      <MessageList
+        onThreadSelect={setThread}
+        additionalFlatListProps={{
+          initialNumToRender: 30,
+          maxToRenderPerBatch: 10,
+          windowSize: 10,
+          removeClippedSubviews: false,
+          inverted: Platform.OS === 'ios' ? true : false,
+        }}
+        loadMore={() => {
+          console.log('[ChatChannel] Loading more messages...');
+          return Promise.resolve();
+        }}
+      />
+      <MessageInput
+        additionalTextInputProps={{
+          placeholder: 'Type /event to share an event...',
+          placeholderTextColor: theme.colors.text,
+        }}
+      />
+    </>
+  )}
+</>
+
           )}
         </Channel>
       ) : null}

@@ -8,6 +8,7 @@ import {
   ScrollView,
   Platform,
 } from "react-native";
+import { useChat } from "~/src/lib/chat";
 import { supabase } from "../../src/lib/supabase";
 import { router } from "expo-router";
 import { Input } from "~/src/components/ui/input";
@@ -38,6 +39,7 @@ function decode(base64: string): Uint8Array {
 }
 
 export default function SignUp() {
+  const { client } = useChat();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -96,6 +98,9 @@ export default function SignUp() {
       throw error;
     }
   }
+
+
+ 
 
   async function signUp() {
     setLoading(true);

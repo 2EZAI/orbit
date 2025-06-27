@@ -51,7 +51,14 @@ export default function Profile() {
   const renderTabContent = () => {
     switch (activeTab) {
       case "Posts":
-        return user?.id ? <PostsTab userId={user.id} /> : null;
+        return user?.id ? <PostsTab userId={user.id} 
+         selectedItem={(selectedItem) => {
+              // console.log("locationDetail>",locationDetail);
+              //  console.log("selectedItem>",selectedItem);
+                setSelectedEvent(selectedItem);
+                setIsEvent(true);
+              
+            }}/> : null;
       case "Events":
         return user?.id ? (
           <EventsTab

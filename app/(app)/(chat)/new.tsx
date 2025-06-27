@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { SafeAreaView, View, FlatList, Alert,Platform } from "react-native";
+import { SafeAreaView, View, FlatList, Alert, Platform } from "react-native";
 import { useChat } from "~/src/lib/chat";
 import { useRouter } from "expo-router";
 import { supabase } from "~/src/lib/supabase";
@@ -14,7 +14,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "~/src/components/ui/avatar";
-import { Icon } from 'react-native-elements';
+import { Icon } from "react-native-elements";
 
 interface User extends AuthUser {
   first_name: string | null;
@@ -74,11 +74,20 @@ export default function NewChatScreen() {
 
         console.log("Fetching users for client ID:", client.userID);
 
+        const excludeEmails = [
+          "orbit@gmail.com",
+          "testuser@yopmail.com",
+          "orbitapp@yopmail.com",
+        ];
+        const formatted = `(${excludeEmails
+          .map((email) => `"${email}"`)
+          .join(",")})`;
         // Get users from the public view
         const { data: users, error } = await supabase
           .from("public_users")
           .select("*")
           .neq("id", client.userID)
+          .not("email", "in", formatted)
           .order("first_name");
 
         if (error) {
@@ -285,22 +294,26 @@ export default function NewChatScreen() {
                   size="icon"
                   onPress={() => setSearchText("")}
                 >
-                {Platform.OS === 'ios' ?
-                  <X size={20} className="text-muted-foreground" />
-                :
-                <Icon name="close" type="material-community"
+                  {Platform.OS === "ios" ? (
+                    <X size={20} className="text-muted-foreground" />
+                  ) : (
+                    <Icon
+                      name="close"
+                      type="material-community"
                       size={20}
-                      color="#239ED0"/>
-                }
+                      color="#239ED0"
+                    />
+                  )}
                 </Button>
-              ) : (
-                Platform.OS === 'ios' ?
+              ) : Platform.OS === "ios" ? (
                 <Search size={20} className="text-muted-foreground" />
-              :
-               <Icon name="magnify" type="material-community"
-                      size={20}
-                      color="#239ED0"/>
-              
+              ) : (
+                <Icon
+                  name="magnify"
+                  type="material-community"
+                  size={20}
+                  color="#239ED0"
+                />
               )}
             </View>
           </CardContent>
@@ -332,22 +345,31 @@ export default function NewChatScreen() {
                       alt={`${user.email}'s avatar`}
                     >
                       <AvatarFallback>
-                      {Platform.OS === 'ios'?
-                        <Users size={16} className="text-muted-foreground" />
-                     :<Icon name="account-multiple" type="material-community"
-                      size={16}
-                      color="#239ED0"/>
-                      }
+                        {Platform.OS === "ios" ? (
+                          <Users size={16} className="text-muted-foreground" />
+                        ) : (
+                          <Icon
+                            name="account-multiple"
+                            type="material-community"
+                            size={16}
+                            color="#239ED0"
+                          />
+                        )}
                       </AvatarFallback>
                     </Avatar>
                     <Text className="text-secondary-foreground">
                       {user.first_name} {user.last_name}
                     </Text>
-                    {Platform.OS == 'ios' ?
-                    <X size={16} className="text-secondary-foreground" />
-                    : <Icon name="close" type="material-community"
-                      size={16}
-                      color="#239ED0"/>}
+                    {Platform.OS == "ios" ? (
+                      <X size={16} className="text-secondary-foreground" />
+                    ) : (
+                      <Icon
+                        name="close"
+                        type="material-community"
+                        size={16}
+                        color="#239ED0"
+                      />
+                    )}
                   </Button>
                 ))}
               </View>
@@ -355,7 +377,11 @@ export default function NewChatScreen() {
           </Card>
         )}
 
-        <Card className={`flex-1 ${Platform.OS === 'android' ? 'mb-[34%]' : 'mb-[24%]'}`}>
+        <Card
+          className={`flex-1 ${
+            Platform.OS === "android" ? "mb-[34%]" : "mb-[24%]"
+          }`}
+        >
           <CardContent className="py-4">
             {isLoading ? (
               <View className="items-center justify-center flex-1 py-8">
@@ -377,12 +403,19 @@ export default function NewChatScreen() {
                         alt={`${item.email}'s avatar`}
                       >
                         <AvatarFallback>
-                        {Platform.OS == 'ios' ?
-                        <Users size={16} className="text-muted-foreground" />
-                        :  <Icon name="account-multiple" type="material-community"
-                      size={16}
-                      color="#239ED0"/>
-                      }
+                          {Platform.OS == "ios" ? (
+                            <Users
+                              size={16}
+                              className="text-muted-foreground"
+                            />
+                          ) : (
+                            <Icon
+                              name="account-multiple"
+                              type="material-community"
+                              size={16}
+                              color="#239ED0"
+                            />
+                          )}
                         </AvatarFallback>
                       </Avatar>
                       <Text className="flex-1 text-foreground">
@@ -409,7 +442,11 @@ export default function NewChatScreen() {
         <Button
           onPress={createChat}
           disabled={selectedUsers.length === 0}
-          className={`${Platform.OS === 'android' ?  'absolute  bottom-0 left-0 right-0  mb-[12%] mr-[4%] ml-[4%]': ' absolute  bottom-0 left-0 right-0  mb-[8%] mr-[4%] ml-[4%]'}`}
+          className={`${
+            Platform.OS === "android"
+              ? "absolute  bottom-0 left-0 right-0  mb-[12%] mr-[4%] ml-[4%]"
+              : " absolute  bottom-0 left-0 right-0  mb-[8%] mr-[4%] ml-[4%]"
+          }`}
         >
           <Text className="text-primary-foreground">
             Create {isGroupChat ? "Group" : "Chat"}

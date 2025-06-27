@@ -16,6 +16,8 @@ import { useUser } from "~/hooks/useUserData";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { format } from "date-fns";
 import { Icon } from "react-native-elements";
+import { useAuth } from "~/src/lib/auth";
+import { MapEvent } from "~/hooks/useMapEvents";
 
 interface Post {
   id: string;
@@ -28,18 +30,21 @@ interface Post {
   };
   like_count: number;
   comment_count: number;
+  event: MapEvent;
 }
 
 interface PostsTabProps {
   userId: string;
+  selectedItem: any;
 }
 
-export default function PostsTab({ userId }: PostsTabProps) {
+export default function PostsTab({ userId, selectedItem }: PostsTabProps) {
   const { user } = useUser();
+  const { session } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
   const PAGE_SIZE = 20;
@@ -49,26 +54,31 @@ export default function PostsTab({ userId }: PostsTabProps) {
     setLoading(true);
 
     try {
-      const from = page * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
+      const eventData = {
+        user_id: userId,
+      };
+      const response = await fetch(
+        `${process.env.BACKEND_MAP_URL}/api/posts/all/user?page=${page}&limit=${PAGE_SIZE}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(eventData),
+        }
+      );
+      console.log("session.access_token>>", session.access_token);
+      console.log("page>", page);
+      console.log("session.access_token>>", session.access_token);
 
-      const { data, error } = await supabase
-        .from("posts")
-        .select(
-          `
-        *,
-        user:users!inner (
-          username,
-          avatar_url
-        )
-        `
-        )
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .range(from, to); // <-- Pagination here
-      console.warn("from.", from);
-      console.warn("to.", to);
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      const data_ = await response.json();
+      console.warn("data_>>", data_);
+      const data = data_?.data;
 
       if (!data || data.length === 0) {
         console.warn("No more posts.");
@@ -94,7 +104,14 @@ export default function PostsTab({ userId }: PostsTabProps) {
     <>
       <TouchableOpacity
         className="mx-4 mb-4 overflow-hidden border rounded-3xl border-border"
-        onPress={() => router.push(`/post/${post.id}`)}
+        onPress={() => {
+          // router.push(`/post/${post.id}`)
+
+          router.push({
+            pathname: `/post/${post.id}`,
+            params: { event: JSON.stringify(post?.event) },
+          });
+        }}
       >
         <View className="relative">
           {post?.media_urls?.[0] ? (
@@ -142,6 +159,21 @@ export default function PostsTab({ userId }: PostsTabProps) {
               </View>
             </View>
           </TouchableOpacity>
+
+          {/* event */}
+          {post?.event && (
+            <View className="flex-row items-center mb-3 justify-between">
+              <Text className="text-sm text-primary">{post?.event?.name}</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  selectedItem(post?.event);
+                }}
+                className=" bg-primary rounded-full px-4 py-2"
+              >
+                <Text className="text-sm text-white">View Event</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </TouchableOpacity>
     </>

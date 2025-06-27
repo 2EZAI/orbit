@@ -36,7 +36,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       streamAppId: process.env.STREAM_APP_ID,
       backendUrl,
       eas: {
-        projectId: "04abef5f-862b-4691-bded-b1014ac6dc90",
+        // projectId: "04abef5f-862b-4691-bded-b1014ac6dc90",
+        projectId: "6b459c07-abd5-4900-bf95-9ac72753d335",
       },
     },
     plugins: [

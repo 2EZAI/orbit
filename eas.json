@@ -9,7 +9,38 @@
       "ios": {
         "simulator": true
       },
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleDebug"
+      },
       "env": {
+        "STREAM_API_KEY":"bz7a6w7sfmy3",
+        "STREAM_APP_ID":"1357436",
+        "MAPBOX_ACCESS_TOKEN": "pk.eyJ1IjoidGFuZ2VudGRpZ2l0YWxhZ2VuY3kiLCJhIjoiY2xwMHR0bTVmMGJwbTJtbzhxZ2pvZWNoYiJ9.ZGwLHw0gLeEVxPhoYq2WyA"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleDebug"
+      },
+      "env": {
+        "STREAM_API_KEY":"bz7a6w7sfmy3",
+        "STREAM_APP_ID":"1357436",
+        "MAPBOX_ACCESS_TOKEN": "pk.eyJ1IjoidGFuZ2VudGRpZ2l0YWxhZ2VuY3kiLCJhIjoiY2xwMHR0bTVmMGJwbTJtbzhxZ2pvZWNoYiJ9.ZGwLHw0gLeEVxPhoYq2WyA"
+      }
+    },
+
+    "production": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleDebug"
+      },
+      "env": {
+        "STREAM_API_KEY":"bz7a6w7sfmy3",
+        "STREAM_APP_ID":"1357436",
         "MAPBOX_ACCESS_TOKEN": "pk.eyJ1IjoidGFuZ2VudGRpZ2l0YWxhZ2VuY3kiLCJhIjoiY2xwMHR0bTVmMGJwbTJtbzhxZ2pvZWNoYiJ9.ZGwLHw0gLeEVxPhoYq2WyA"
       }
     }

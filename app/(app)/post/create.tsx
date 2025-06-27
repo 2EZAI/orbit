@@ -26,6 +26,7 @@ import { useSafeAreaInsets ,SafeAreaView} from "react-native-safe-area-context";
 import * as FileSystem from "expo-file-system";
 import { Icon } from 'react-native-elements';
 import Toast from "react-native-toast-message";
+import JoinedEvents from "~/src/components/createpost/JoinedEvents";
 
 export default function CreatePost() {
   const { session } = useAuth();
@@ -45,6 +46,9 @@ export default function CreatePost() {
     zip: "",
     coordinates: [0, 0],
   });
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+    const [isEventShow, setIsEventShow] = useState(false);
+   
   const [showResults, setShowResults] = useState(false);
   const [searchResults, setSearchResults] = useState<MapboxFeature[]>([]);
   const pickImage = async () => {
@@ -200,7 +204,7 @@ function decode(base64: string): Uint8Array {
       // ]);
 
        // 2. Create event using our API
-      const postData = {
+      let postData = {
        user_id: session?.user.id,
           content: content.trim(),
           media_urls: mediaUrls,
@@ -209,6 +213,20 @@ function decode(base64: string): Uint8Array {
         state: locationDetails.state,
         postal_code: locationDetails.zip,
       };
+if(selectedEvent != null)
+{
+  postData = {
+       user_id: session?.user.id,
+          content: content.trim(),
+          media_urls: mediaUrls,
+          address: locationDetails.address1,
+        city: locationDetails.city,
+        state: locationDetails.state,
+        postal_code: locationDetails.zip,
+        event_id:selectedEvent?.id,
+      };
+}
+
       console.log("postData>>",postData);
 
       const response = await fetch(
@@ -283,6 +301,8 @@ function decode(base64: string): Uint8Array {
           </Button>
         </View>
 
+           
+
       <ScrollView
         className="flex-1"
         contentContainerStyle={{
@@ -335,7 +355,11 @@ function decode(base64: string): Uint8Array {
                   style={{ maxHeight: height * 0.2 }} // Limit height to 20% of screen
          
                 />
+
+                 
               </View>
+
+            
 
               {/* Search Results Dropdown */}
               {showResults && searchResults.length > 0 && (
@@ -367,7 +391,16 @@ function decode(base64: string): Uint8Array {
                 </View>
               )}
 
-
+<TouchableOpacity
+             
+              className="flex-1 pt-4 mt-4 border-t border-border"
+            >
+              <Text className="text-lg text-muted-foreground">
+                {selectedEvent === null
+                  ? "Select Event"
+                  : selectedEvent.name}
+              </Text>
+            </TouchableOpacity>
 
 
             {/* Media Preview */}
@@ -421,7 +454,13 @@ function decode(base64: string): Uint8Array {
                       color="#239ED0"/>
               }
               </TouchableOpacity>
-
+                <TouchableOpacity
+              onPress={() => {
+                setIsEventShow(!isEventShow);
+              }}
+            >
+              <Icon name="calendar-check" type="material-community" size={24} color="#239ED0" />
+</TouchableOpacity>
  {/*  
               <TouchableOpacity
                 className="flex-row items-center"
@@ -447,11 +486,30 @@ function decode(base64: string): Uint8Array {
                   <Text className="ml-2 text-muted-foreground">Posting...</Text>
                 </View>
               )}
+
+            
             </View>
           </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+
+     
+     {isEventShow && (
+        <View className=" flex-1 px-4 mb-[14%]">
+          <View className="flex-1 bg-white border rounded-2xl  border-gray-300">
+            <JoinedEvents 
+         selectedItem={(item)=>{
+setSelectedEvent(item);
+setIsEventShow(false);
+
+        }} 
+         /> 
+           
+          </View>
+        </View>
+      )}
+    
     </SafeAreaView>
   );
 }

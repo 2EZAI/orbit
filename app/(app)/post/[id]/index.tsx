@@ -27,6 +27,9 @@ import {
 import { format } from "date-fns";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "react-native-elements";
+import { MapEvent } from "~/hooks/useMapEvents";
+import { EventDetailsSheet } from "~/src/components/map/EventDetailsSheet";
+
 
 interface Post {
   id: string;
@@ -41,6 +44,7 @@ interface Post {
   };
   like_count: number;
   comment_count: number;
+  event:MapEvent;
 }
 
 interface Comment {
@@ -67,6 +71,7 @@ export default function PostView() {
   const [newComment, setNewComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isShowEvent, setIsShowEvent] = useState(false);
 
   useEffect(() => {
     console.log("[PostView] Received post ID:", id);
@@ -90,6 +95,21 @@ export default function PostView() {
       fetchComments();
     });
   }, []);
+
+
+   const { event } = useLocalSearchParams();
+  const [eventObj, setEventObj] = useState(null);
+
+  useEffect(() => {
+    if (event) {
+      try {
+        const parsed = typeof event === 'string' ? JSON.parse(event) : event;
+        setEventObj(parsed);
+      } catch (e) {
+        console.error('Failed to parse event:', e);
+      }
+    }
+  }, [event]);
 
   //   const fetchPost = async () => {
   //     if (!id) return;
@@ -197,6 +217,7 @@ export default function PostView() {
           username: userData?.username || null,
           avatar_url: userData?.avatar_url || null,
         },
+         event:rawData?.event || null,
       };
 
       setPost(transformedPost);
@@ -431,9 +452,28 @@ export default function PostView() {
               )}
 
               <Text className="ml-2 text-sm text-muted-foreground">
-                {post.address}
+                {post?.address}
               </Text>
             </View>
+
+             {/* event */}
+         { eventObj!=null && 
+            <View className="flex-row items-center mb-3 justify-between px-4">
+               <Text className="text-sm text-primary">
+                  {eventObj?.name}
+                </Text>
+             <TouchableOpacity
+             onPress={()=>{
+              setIsShowEvent(!isShowEvent);
+             }}
+             className=" bg-primary rounded-full px-4 py-2">
+                <Text className="text-sm text-white">
+                View Event
+                </Text>
+               </TouchableOpacity>
+            </View>
+         
+         }
 
             {/* Post Media */}
             {post.media_urls && post.media_urls.length > 0 && (
@@ -453,6 +493,7 @@ export default function PostView() {
                 ))}
               </ScrollView>
             )}
+             
 
             {/* Post Actions */}
             <View className="flex-row items-center p-4 border-t border-border">
@@ -549,7 +590,20 @@ export default function PostView() {
               </TouchableOpacity>
             </View>
           </View>
+
+           {eventObj!=null && isShowEvent  && (
+        <EventDetailsSheet
+          event={eventObj}
+          isOpen={!!isShowEvent}
+          onClose={() => setIsShowEvent(false)}
+          // nearbyEvents={events}
+          // onEventSelect={setSelectedEvent}
+          onShowControler={() => {}}
+        />
+      )}
         </KeyboardAvoidingView>
+
+       
       )}
     </View>
   );

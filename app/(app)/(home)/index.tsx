@@ -244,7 +244,10 @@ const hitApi=async(selectedCat:string)=>{
       case "Events":
         return <EventView />;
       case "Posts":
-        return <AllPostsTab />;
+        return <AllPostsTab  selectedItem={(selectedItem) => {
+                setSelectedEvent(selectedItem);
+                setIsEvent(true);
+            }}/>;
     }
   };
   const FilterListView = () => {

@@ -66,7 +66,14 @@ export default function ProfilePage() {
 const renderTabContent = () => {
     switch (activeTab) {
       case "Posts":
-        return username ? <PostsTab userId={username} /> : null;
+        return username ? <PostsTab userId={username} 
+         selectedItem={(selectedItem) => {
+              // console.log("locationDetail>",locationDetail);
+              //  console.log("selectedItem>",selectedItem);
+                setSelectedEvent(selectedItem);
+                setIsEvent(true);
+              
+            }}/> : null;
       case "Events":
         return username ? (
           <EventsTab

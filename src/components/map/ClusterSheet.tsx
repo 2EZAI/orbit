@@ -17,13 +17,16 @@ export function ClusterSheet({
   onEventSelect,
   onClose,
 }: ClusterSheetProps) {
+  console.log("event???", events);
   return (
     <Sheet isOpen onClose={onClose}>
       <View className="flex-1 bg-background">
         <View className="px-4 pt-4 pb-2 border-b border-border">
           <View className="flex-row justify-between items-center mb-2">
             <Text className="text-xl font-semibold">
-              {events.length} Events at this location
+              {events?.[0]?.type === "googleApi" || events?.[0]?.type === "static"
+                ? `${events.length} Locations ` 
+                : `${events.length} Events at this location`}
             </Text>
             <TouchableOpacity onPress={onClose}>
               <X size={24} className="text-foreground" />
@@ -44,7 +47,7 @@ export function ClusterSheet({
               {/* Event Image */}
               <View className="w-20 h-20 rounded-lg overflow-hidden mr-3">
                 <Image
-                  source={{ uri: event.image_urls[0] }}
+                  source={{ uri: event?.image_urls?.[0] }}
                   className="w-full h-full"
                   resizeMode="cover"
                 />
@@ -59,10 +62,13 @@ export function ClusterSheet({
                 {/* Date and Time */}
                 <View className="flex-row items-center mb-1">
                   <Calendar size={14} className="text-muted-foreground mr-1" />
-                  <Text className="text-sm text-muted-foreground">
-                    {formatDate(event.start_datetime)} •{" "}
-                    {formatTime(event.start_datetime)}
-                  </Text>
+                  {event?.start_datetime !== null ||
+                    (event?.start_datetime !== undefined && (
+                      <Text className="text-sm text-muted-foreground">
+                        {formatDate(event?.start_datetime)} •{" "}
+                        {formatTime(event?.start_datetime)}
+                      </Text>
+                    ))}
                 </View>
 
                 {/* Venue */}
@@ -79,10 +85,13 @@ export function ClusterSheet({
                 )}
 
                 {/* Attendee count */}
-                <Text className="text-sm text-primary mt-1">
-                  {event.attendees.count}{" "}
-                  {event.attendees.count === 1 ? "attendee" : "attendees"}
-                </Text>
+                {event?.attendees != null ||
+                  (event?.attendees != undefined && (
+                    <Text className="text-sm text-primary mt-1">
+                      {event.attendees.count}{" "}
+                      {event.attendees.count === 1 ? "attendee" : "attendees"}
+                    </Text>
+                  ))}
               </View>
             </TouchableOpacity>
           ))}
