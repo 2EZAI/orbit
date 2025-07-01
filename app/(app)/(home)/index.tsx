@@ -21,7 +21,7 @@ export default function Home() {
    const ref = useRef();
   const [isEvent, setIsEvent] = useState(false);
    const [page, setPage] = useState(1);
-    const { user ,userlocation, updateUserLocations } = useUser();
+    const { user ,userlocation } = useUser();
   const [activeTab, setActiveTab] = useState<Tab>("Events");
   const [location, setLocation] = useState<{
     latitude: numbrer;

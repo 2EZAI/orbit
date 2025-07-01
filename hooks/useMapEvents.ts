@@ -457,7 +457,7 @@ try {
       }
       setCategories([]);
       const data = await response.json();
-      console.log("categories data", data);
+      // console.log("categories data", data);
       setCategories(data);
       if (!isMountedRef.current) return;
 
@@ -675,7 +675,7 @@ setClustersLocations([]);
       setClustersTomorrow([]);
       // Create initial clusters
       const newClusters = clusterEvents(validEvents);
-      console.log("validEvents>", validEvents);
+      // console.log("validEvents>", validEvents);
       // console.log("[Events] Setting", newClusters.length, "clusters");
       setClusters(newClusters);
       // console.log("now>>", now);
@@ -701,7 +701,7 @@ const todayListt = validEvents.filter((event: any) => {
   // console.log("localnow",localnow);
 
  const day = new Date(localEventTime).getDay(); // 0 = Sunday, 5 = Friday, 6 = Saturday
-  console.log("day>>",day);
+  // console.log("day>>",day);
   const eventTime = new Date(localEventTime).getTime();
   return eventTime >= nowTime && eventTime <= next7Days;
 
@@ -719,7 +719,7 @@ const tomorrowListt = validEvents.filter((event: any) => {
   // console.log("localnow",localnow);
 
   const day = new Date(localEventTime).getDay(); // 0 = Sunday, 5 = Friday, 6 = Saturday
-  console.log("day>>",day);
+  // console.log("day>>",day);
   const eventTime = new Date(localEventTime).getTime();
   return (day === 5 || day === 6 || day === 0) && eventTime >= nowTime && eventTime <= next7Days;
 
@@ -785,7 +785,7 @@ const tomorrowList = validEvents.filter((event: any) => {
   // console.log("localEventTime",localEventTime);
   // console.log("localnow",localnow);
  const day = new Date(localEventTime).getDay(); // 0 = Sunday, 5 = Friday, 6 = Saturday
-  console.log("day>>",day);
+  // console.log("day>>",day);
   const eventTime = new Date(localEventTime).getTime();
   return (day === 5 || day === 6 || day === 0) && eventTime >= nowTime && eventTime <= next7Days;
 

@@ -400,6 +400,7 @@ export default function EditProfile() {
       if (selectedTopics.length > 0) {
         handleUpdateInterests();
       }
+      console.log("locationDetails?.address1>",locationDetails?.address1)
       if (locationDetails?.address1 !== "") {
         await updateUserLocations({
           city: locationDetails.city,

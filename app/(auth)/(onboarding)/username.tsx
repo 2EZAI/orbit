@@ -14,7 +14,8 @@ import Constants from "expo-constants";
 import { useChat } from "~/src/lib/chat";
 
 export default function UsernameScreen() {
-  const senderId="f2cb0eea-edef-4d9a-9d6e-8a6023cc1055";
+  // const senderId="f2cb0eea-edef-4d9a-9d6e-8a6023cc1055";
+    const senderId="00ec5a71-8807-4ef7-809e-2ffe45682ef2";
   const senderEmail="orbit@gmail.com";
   const { client } = useChat();
   const { user, updateUser, fetchUserNew } = useUser();

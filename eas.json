@@ -21,14 +21,25 @@
     },
     "preview": {
       "distribution": "internal",
+      "developmentClient": false,
       "android": {
         "buildType": "apk",
-        "gradleCommand": ":app:assembleDebug"
+        "gradleCommand": ":app:assembleRelease" 
       },
       "env": {
         "STREAM_API_KEY":"bz7a6w7sfmy3",
         "STREAM_APP_ID":"1357436",
-        "MAPBOX_ACCESS_TOKEN": "pk.eyJ1IjoidGFuZ2VudGRpZ2l0YWxhZ2VuY3kiLCJhIjoiY2xwMHR0bTVmMGJwbTJtbzhxZ2pvZWNoYiJ9.ZGwLHw0gLeEVxPhoYq2WyA"
+        "MAPBOX_ACCESS_TOKEN": "pk.eyJ1IjoidGFuZ2VudGRpZ2l0YWxhZ2VuY3kiLCJhIjoiY2xwMHR0bTVmMGJwbTJtbzhxZ2pvZWNoYiJ9.ZGwLHw0gLeEVxPhoYq2WyA",
+      
+        "SUPABASE_URL":"https://yasmkjtmutzyijpgafiv.supabase.co",
+        "SUPABASE_ANON_KEY":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlhc21ranRtdXR6eWlqcGdhZml2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU3OTUyMDksImV4cCI6MjA1MTM3MTIwOX0.1FeX7II_4RCtqBpWg4xGA5iOTDwIE9g2f4hY5FnucGw",
+        
+        
+        "STREAM_API_SECRET":"ffxhrrvfzbj43tt48gg5sawtyxg4vywrmzr7dtkfnnu2y4jdbcn85qyauuktwb98",
+        
+        "BACKEND_CHAT_URL":"https://orbit-chat-backend-old-9d2b903ab237.herokuapp.com",
+        
+        "BACKEND_MAP_URL":"https://orbit-map-backend-c2b17aebdb75.herokuapp.com"
       }
     },
 

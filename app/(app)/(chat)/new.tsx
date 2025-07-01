@@ -76,8 +76,6 @@ export default function NewChatScreen() {
 
         const excludeEmails = [
           "orbit@gmail.com",
-          "testuser@yopmail.com",
-          "orbitapp@yopmail.com",
         ];
         const formatted = `(${excludeEmails
           .map((email) => `"${email}"`)

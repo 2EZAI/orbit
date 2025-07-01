@@ -95,7 +95,7 @@ export function useUser(): UseUserReturn {
         setUserLocation(null);
         return;
       }
-
+      console.log("fetchUserLocation>>",session?.user?.id);
       const { data, error: supabaseError } = await supabase
         .from("user_locations")
         .select("*")
@@ -148,7 +148,7 @@ export function useUser(): UseUserReturn {
     
 
       if (supabaseError) throw supabaseError;
-      console.log("fetchAllOcupations>>",data);
+      // console.log("fetchAllOcupations>>",data);
       setAllOcupationList(data);
     } catch (e) {
       setError(e instanceof Error ? e : new Error("An error occurred"));
@@ -307,6 +307,7 @@ export function useUser(): UseUserReturn {
   // Update userlocation data
   const updateUserLocations = async (updates: Partial<UserLoation>) => {
     try {
+      // console.error("updateUserLocations:>>>");
       if (!session?.user?.id) throw new Error("No user logged in");
 
       const { data: existingUser, error: fetchError } = await supabase
@@ -315,12 +316,14 @@ export function useUser(): UseUserReturn {
       .eq('user_id', session.user.id)
       .single()
   
+     
     if (fetchError && fetchError.code !== 'PGRST116') {
       // 'PGRST116' = No rows found
       console.error('Error fetching user location:', fetchError)
       return { error: fetchError }
     }      
-
+    console.log("session.user.id>>>",session.user.id);
+    console.log("existingUser:>>>",existingUser);
     let result
   if (existingUser) {
     console.log("existingUser>>");

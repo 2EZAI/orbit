@@ -53,7 +53,7 @@ export default function Map() {
     const [showDetails, setShowDetails] = useState(false);
      const [isEvent, setIsEvent] = useState(false);
     const [hideCount, setHideCount] = useState(false);
-  
+   let isUpdatLiveLocation = true;
      const [showControler, setShowControler] = useState(true);
    const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { theme, isDarkMode } = useTheme();
@@ -393,19 +393,29 @@ const getNearbyFollowerCounts = (followerList, radius = 10) => {
     // return;
   }, );
 
+const locationUpdateTimeoutRef = useRef(null);
 
-useEffect(()=>{
+async function scheduleLocationUpdate(location) {
+  if (!location) return;
+
+  clearTimeout(locationUpdateTimeoutRef.current);
+
+  locationUpdateTimeoutRef.current = setTimeout(async () => {
+    console.error("Updating user location (debounced)");
+    await updateUserLocations({
+      live_location_latitude: location.latitude,
+      live_location_longitude: location.longitude,
+    });
+  }, 2000);
+}
+
+useEffect(() => {
   console.log("updateUserLocations>updateUserLocations");
-  // getFollowingsByFollower();
-  getFollowedUserDetails();
-(async () => {
-  console.log("updateUserLocations>async",location);
- await updateUserLocations({
-          live_location_latitude:location.latitude,
-          live_location_longitude:location.longitude,
-        });
-})();
-},[location]);
+
+  getFollowedUserDetails(); // Assuming this doesn't rely on location
+
+  scheduleLocationUpdate(location);
+}, [location]);
 
 const getFollowingsByFollower = async () => {
     console.log("getFollowingsByFollower");
