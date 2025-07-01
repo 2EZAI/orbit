@@ -228,6 +228,9 @@ const getNearbyFollowerCounts = (followerList, radius = 10) => {
  // Add logging for events
   useEffect(() => {
 
+setTimeout(()=>{
+  setIsFollowingUser(false)
+},2000);
     if(selectedTimeFrame == 'Today'){
        // Fit map to events if we have any
     if ( eventsNow.length > 0 && mapRef.current && cameraRef.current) {
@@ -401,7 +404,7 @@ async function scheduleLocationUpdate(location) {
   clearTimeout(locationUpdateTimeoutRef.current);
 
   locationUpdateTimeoutRef.current = setTimeout(async () => {
-    console.error("Updating user location (debounced)");
+    // console.error("Updating user location (debounced)");
     await updateUserLocations({
       live_location_latitude: location.latitude,
       live_location_longitude: location.longitude,
@@ -710,11 +713,13 @@ setHideCount(false);
 
         {/* Event markers */}
         
-     {selectedTimeFrame == 'Today' && clustersNow.map((cluster) => (
+     {selectedTimeFrame == 'Today' && clustersNow.map((cluster,index) => (
+     
           <MapboxGL.MarkerView
             // key={`cluster-${cluster.mainEvent.id}`}
             // id={`cluster-${cluster.mainEvent.id}`}
-               key={`cluster-${cluster.id}`}
+              //  key={`cluster-${cluster.id}`}
+              key={cluster.id ? `cluster-${cluster.id}` : `cluster-${index}`}
             id={`cluster-${cluster.id}`}
             coordinate={[cluster.location.longitude, cluster.location.latitude]}
             anchor={{ x: 0.5, y: 0.5 }}
@@ -745,11 +750,12 @@ setHideCount(false);
           </MapboxGL.MarkerView>
         ))}
 
-          {selectedTimeFrame == 'Week' && clustersToday.map((cluster) => (
+          {selectedTimeFrame == 'Week' && clustersToday.map((cluster,index) => (
           <MapboxGL.MarkerView
             // key={`cluster-${cluster.mainEvent.id}`}
             // id={`cluster-${cluster.mainEvent.id}`}
-               key={`cluster-${cluster.id}`}
+              //  key={`cluster-${cluster.id}`}
+              key={cluster.id ? `cluster-${cluster.id}` : `cluster-${index}`}
             id={`cluster-${cluster.id}`}
             coordinate={[cluster.location.longitude, cluster.location.latitude]}
             anchor={{ x: 0.5, y: 0.5 }}
@@ -782,11 +788,12 @@ setHideCount(false);
           </MapboxGL.MarkerView>
         ))}
 
-        {selectedTimeFrame == 'Weekend' && clustersTomorrow.map((cluster) => (
+        {selectedTimeFrame == 'Weekend' && clustersTomorrow.map((cluster,index) => (
           <MapboxGL.MarkerView
             // key={`cluster-${cluster.mainEvent.id}`}
             // id={`cluster-${cluster.mainEvent.id}`}
-               key={`cluster-${cluster.id}`}
+              //  key={`cluster-${cluster.id}`}
+              key={cluster.id ? `cluster-${cluster.id}` : `cluster-${index}`}
             id={`cluster-${cluster.id}`}
             coordinate={[cluster.location.longitude, cluster.location.latitude]}
             anchor={{ x: 0.5, y: 0.5 }}
@@ -819,9 +826,11 @@ setHideCount(false);
         ))}
 
 {/* locations fetched from static_location table for (beach, club , park etc) */}
-        { clustersLocations.length > 0  && clustersLocations.map((cluster) => (
+        { clustersLocations.length > 0  && clustersLocations.map((cluster,index) => (
+
           <MapboxGL.MarkerView
-               key={`cluster-${cluster.id}`}
+              //  key={`cluster-${cluster.id}`}
+              key={cluster.id ? `cluster-${cluster.id}` : `cluster-${index}`}
             id={`cluster-${cluster.id}`}
             coordinate={[cluster.location.longitude, cluster.location.latitude]}
             anchor={{ x: 0.5, y: 0.5 }}
@@ -874,9 +883,12 @@ setHideCount(false);
         )}
 
         {followerList.length > 0 &&
-  followerList.map((followerUser) => (
+  followerList.map((followerUser,index) => (
+
+
     <MapboxGL.MarkerView
-      key={`followerUser-${followerUser?.userId}`}
+      // key={`followerUser-${followerUser?.userId}`}
+      key={followerUser.userId ? `followerUser-${followerUser?.userId}` : `followerUser-${index}`}
       id={`followerUser-${followerUser?.userId}`}
       coordinate={[
         followerUser?.live_location_longitude,

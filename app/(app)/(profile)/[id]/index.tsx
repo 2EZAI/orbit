@@ -297,8 +297,9 @@ export default function EditProfile() {
     return (
       <View className="flex-1 bg-background border rounded-2xl  border-gray-300">
         <ScrollView className="flex-1">
-          {genderList.map((gender) => (
+          {genderList.map((gender,index) => (
             <TouchableOpacity
+            key={index}
               onPress={() => {
                 setSelectedGender(gender);
                 setIsGenderShow(false);
@@ -569,8 +570,9 @@ export default function EditProfile() {
     return (
       <View className="flex-1 bg-background">
         <ScrollView className="flex-1">
-          {locationOptions.map((option) => (
+          {locationOptions.map((option,index) => (
             <TouchableOpacity
+            key={index}
               onPress={() => {
                 if (
                   selectedLocation?.id == 1 &&
@@ -1042,8 +1044,9 @@ export default function EditProfile() {
               />
             </View>
             <ScrollView className="flex-1">
-              {occupationListShow.map((occupation) => (
+              {occupationListShow.map((occupation, index) => (
                 <TouchableOpacity
+                key={index}
                   onPress={() => {
                     setSelectedOcupation(occupation);
                     setIsOcupationShow(false);

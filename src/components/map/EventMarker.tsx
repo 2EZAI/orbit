@@ -32,7 +32,7 @@ export function EventMarker({
           source={{ uri: imageUrl }}
           className="w-full h-full rounded-lg"
           onError={(e) =>
-            console.error(
+            console.log(
               "[EventMarker] Image load error:",
               e.nativeEvent.error
             )

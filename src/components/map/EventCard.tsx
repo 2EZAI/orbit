@@ -65,6 +65,7 @@ useEffect(() => {
 useEffect(() => {
      setEventDetail({});
     setEventDetail(event);
+    console.log("event>",event)
     hitEventDetail();
   }, []);
   const handleSwipeComplete = (direction: "left" | "right") => {

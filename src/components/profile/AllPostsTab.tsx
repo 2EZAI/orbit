@@ -199,7 +199,7 @@ export default function AllPostsTab({
         <FlatList
           data={posts}
           renderItem={renderItem}
-          keyExtractor={(item) => item.id.toString}
+          keyExtractor={(item) => item.id.toString()}
           onEndReached={(d) => {
             console.log("onEndReached", d.distanceFromEnd);
 

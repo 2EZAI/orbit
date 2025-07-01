@@ -85,7 +85,7 @@ export default function PostsTab({ userId, selectedItem }: PostsTabProps) {
         setHasMore(false);
         // Optional: setHasMore(false);
       } else {
-        console.warn("data.>", data);
+        // console.warn("data.>", data);
         setPosts((prev) => [...prev, ...data]);
         setPage((prev) => prev + 1);
       }
@@ -190,7 +190,7 @@ export default function PostsTab({ userId, selectedItem }: PostsTabProps) {
         <FlatList
           data={posts}
           renderItem={renderItem}
-          keyExtractor={(item) => item.id.toString}
+          keyExtractor={(item) => item.id.toString()}
           onEndReached={(d) => {
             console.log("onEndReached", d.distanceFromEnd);
 

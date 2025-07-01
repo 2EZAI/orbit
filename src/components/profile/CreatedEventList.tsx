@@ -47,26 +47,6 @@ export default function CreatedEventList({
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [events, setEvents] = useState<MapLocation[]>([]);
-  //  const fetchEvents = async () => {
-  //     try {
-  //       const { data, error } = await supabase
-  //         .from("events")
-  //         .select(
-  //           `
-  //           *
-  //         `
-  //         )
-  //         .eq("created_by", userId)
-  //         .order("created_at", { ascending: false });
-
-  //       if (error) throw error;
-  //       setEvents(data || []);
-  //     } catch (error) {
-  //       console.error("Error fetching create events:", error);
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
 
   useEffect(() => {
     loadEvents();
@@ -107,6 +87,7 @@ export default function CreatedEventList({
     {events?.length > 0 && (
   <FlatList
     data={events}
+    keyExtractor={(item) => item.id.toString()}
     renderItem={({ item }) => {
       // console.log("item>", item);
       return (

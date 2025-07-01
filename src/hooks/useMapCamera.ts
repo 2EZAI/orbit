@@ -57,6 +57,10 @@ export const useMapCamera = ({
           zoomLevel: 16,
           animationDuration: 500,
         });
+
+        setTimeout(()=>{
+          setIsFollowingUser(false)
+        },2000);
       }
     },
     []

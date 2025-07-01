@@ -95,6 +95,7 @@ export default function JoinedEventsList({
     {events?.length > 0 && (
   <FlatList
     data={events}
+    keyExtractor={(item) => item.id.toString()}
     renderItem={({ item }) => {
       // console.log("item>", item);
       return (

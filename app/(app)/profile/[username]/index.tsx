@@ -110,7 +110,7 @@ const renderTabContent = () => {
 
   const fetchUserProfile = async () => {
     try {
-      console.error("username>>:", username);
+      // console.error("username>>:", username);
 
       // Fetch user profile
       const { data: userData, error: userError } = await supabase
