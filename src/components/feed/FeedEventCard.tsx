@@ -8,7 +8,7 @@ import { EventDetailsSheet } from "../map/EventDetailsSheet";
 
 interface FeedEventCardProps {
   event: MapEvent;
-  onEventSelect?: (event: MapEvent, locationDetail) => void;
+  onEventSelect?: (event: MapEvent, locationDetail: boolean) => void;
   nearbyEvents?: MapEvent[];
 }
 
@@ -30,7 +30,7 @@ export function FeedEventCard({
         className="overflow-hidden mx-4 mb-4 rounded-3xl border border-border"
         onPress={() => {
           setShowDetails(true);
-          onEventSelect?.(event);
+          onEventSelect?.(event, false);
         }}
       >
         <View className="relative">
@@ -79,7 +79,7 @@ export function FeedEventCard({
           <TouchableOpacity
             onPress={() => {
               setShowDetails(true);
-              onEventSelect?.(event, "locationDetail");
+              onEventSelect?.(event, true);
             }}
           >
             <View className="flex-row items-center mb-3">
@@ -118,7 +118,7 @@ export function FeedEventCard({
         </View>
       </TouchableOpacity>
 
-      {/* {showDetails && (
+      {showDetails && (
         <EventDetailsSheet
           event={event}
           isOpen={showDetails}
@@ -127,7 +127,7 @@ export function FeedEventCard({
           onEventSelect={onEventSelect || (() => {})}
           onShowControler={() => {}}
         />
-      )} */}
+      )}
     </>
   );
 }

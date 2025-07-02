@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { View, ScrollView, 
-TouchableOpacity, Image,Pressable } from "react-native";
+import {
+  View,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  Pressable,
+} from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { supabase } from "~/src/lib/supabase";
@@ -15,6 +20,7 @@ import EventsTab from "~/src/components/profile/EventsTab";
 import InfoTabOtherUser from "~/src/components/profile/InfoTabOtherUser";
 import { EventDetailsSheet } from "~/src/components/map/EventDetailsSheet";
 import { LocationDetailsSheet } from "~/src/components/map/LocationDetailsSheet";
+import { ArrowLeft } from "lucide-react-native";
 
 type Tab = "Events" | "Posts" | "Info";
 
@@ -30,12 +36,10 @@ type UserProfile = {
   orbits_count: number;
 };
 
-
-
 export default function ProfilePage() {
   const { session } = useAuth();
   const { username } = useLocalSearchParams();
-   const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [isEvent, setIsEvent] = useState(false);
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -62,23 +66,25 @@ export default function ProfilePage() {
     return !!data; // returns true if relationship exists
   };
 
-
-const renderTabContent = () => {
+  const renderTabContent = () => {
     switch (activeTab) {
       case "Posts":
-        return username ? <PostsTab userId={username} 
-         selectedItem={(selectedItem) => {
+        return username ? (
+          <PostsTab
+            userId={username}
+            selectedItem={(selectedItem) => {
               // console.log("locationDetail>",locationDetail);
               //  console.log("selectedItem>",selectedItem);
-                setSelectedEvent(selectedItem);
-                setIsEvent(true);
-              
-            }}/> : null;
+              setSelectedEvent(selectedItem);
+              setIsEvent(true);
+            }}
+          />
+        ) : null;
       case "Events":
         return username ? (
           <EventsTab
             userId_={username}
-            selectedItem_={(selectedItem,locationDetail) => {
+            selectedItem_={(selectedItem, locationDetail) => {
               // console.log("locationDetail>",locationDetail);
               //  console.log("selectedItem>",selectedItem);
               if (
@@ -98,15 +104,9 @@ const renderTabContent = () => {
         ) : null;
 
       case "Info":
-       return username? (
-          <InfoTabOtherUser
-            userId_={username}
-          
-          />
-        ) : null;
+        return username ? <InfoTabOtherUser userId_={username} /> : null;
     }
   };
-
 
   const fetchUserProfile = async () => {
     try {
@@ -291,6 +291,14 @@ const renderTabContent = () => {
   return (
     <SafeAreaView className="flex-1">
       <View className="flex-1 bg-background">
+        {/* Back Button */}
+        <View className="flex-row items-center p-4 border-b border-gray-200">
+          <TouchableOpacity onPress={() => router.back()} className="mr-3 p-2">
+            <ArrowLeft size={24} color="#000" />
+          </TouchableOpacity>
+          <Text className="text-lg font-semibold">Profile</Text>
+        </View>
+
         {/* Profile Header */}
         <View className="p-4">
           <View className="flex-row items-center mb-4">
@@ -342,11 +350,13 @@ const renderTabContent = () => {
             className="w-[30%]  bg-primary rounded-lg self-end"
             onPress={() => updateFollowStatus()}
           >
-            <Text className="text-white text-center p-1">{isFollowed ? "UnFollow" : "Follow"}</Text>
+            <Text className="text-white text-center p-1">
+              {isFollowed ? "UnFollow" : "Follow"}
+            </Text>
           </TouchableOpacity>
         </View>
 
-       {/* Tabs */}
+        {/* Tabs */}
         <View className="flex-row mt-6 border-b border-border">
           {(["Posts", "Events", "Info"] as Tab[]).map((tab) => (
             <Pressable
@@ -368,31 +378,28 @@ const renderTabContent = () => {
             </Pressable>
           ))}
         </View>
-      
 
-      {/* Tab Content */}
-      <View className="flex-1 mt-4">{renderTabContent()}</View>
-      {selectedEvent && isEvent && (
-        <EventDetailsSheet
-          event={selectedEvent}
-          isOpen={!!selectedEvent}
-          onClose={() => setSelectedEvent(null)}
-          // nearbyEvents={events}
-          onEventSelect={setSelectedEvent}
-          onShowControler={() => {}}
-        />
-      )}
-      {selectedEvent && !isEvent && (
-        <LocationDetailsSheet
-          event={selectedEvent}
-          isOpen={!!selectedEvent}
-          onClose={() => setSelectedEvent(null)}
-          // nearbyEvents={events}
-          onShowControler={() => {}}
-        />
-      )}
- 
-       
+        {/* Tab Content */}
+        <View className="flex-1 mt-4">{renderTabContent()}</View>
+        {selectedEvent && isEvent && (
+          <EventDetailsSheet
+            event={selectedEvent}
+            isOpen={!!selectedEvent}
+            onClose={() => setSelectedEvent(null)}
+            // nearbyEvents={events}
+            onEventSelect={setSelectedEvent}
+            onShowControler={() => {}}
+          />
+        )}
+        {selectedEvent && !isEvent && (
+          <LocationDetailsSheet
+            event={selectedEvent}
+            isOpen={!!selectedEvent}
+            onClose={() => setSelectedEvent(null)}
+            // nearbyEvents={events}
+            onShowControler={() => {}}
+          />
+        )}
       </View>
     </SafeAreaView>
   );

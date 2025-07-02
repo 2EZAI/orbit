@@ -65,12 +65,12 @@ export function LocationDetailsSheet({
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
 
   const [page, setPage] = useState(1);
-  const [eventsList, setEventsList] = useState([]);
+  const [eventsList, setEventsList] = useState<any[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [showAllEvents, setShowAllEvents] = useState(false);
   const [loading, setLoading] = useState(false);
   const [onEndReached, setonEndReached] = useState(true);
-  const [eventDetail, setEventDetail] = useState<{}>();
+  const [eventDetail, setEventDetail] = useState<any>({});
   const width = Dimensions.get("window").width;
   const imageSize = (width - 32) / 3; // 3 images per row with padding
   const bannerHeight = width * 0.5; // 50% of screen width
@@ -116,14 +116,19 @@ export function LocationDetailsSheet({
   const hitUpdaeEventApi = async () => {
     setLoading(true);
     console.log("hitUpdaeEventApi");
-    let data = await UpdateEventStatus(event);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const data = await UpdateEventStatus(event);
+      setTimeout(() => {
+        setLoading(false);
 
-      if (data?.success) {
-        handleCreateOrbit();
-      }
-    }, 2000);
+        if (data?.success) {
+          handleCreateOrbit();
+        }
+      }, 2000);
+    } catch (error) {
+      console.error("Error updating event status:", error);
+      setLoading(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -148,16 +153,21 @@ export function LocationDetailsSheet({
     setLoading(true);
 
     console.log("loadEvents:", event);
-    const data = await fetchLocationEvents(event, page, PAGE_SIZE);
-    console.log("data>:", data);
-    if (data.length === 0) {
+    try {
+      const data = await fetchLocationEvents(event, page, PAGE_SIZE);
+      console.log("data>:", data);
+      if (data.length === 0) {
+        setLoading(false);
+        setHasMore(false);
+      } else {
+        setEventsList((prev) => [...prev, ...data]);
+        setPage((prev) => prev + 1);
+        // if (data.length < PAGE_SIZE) setHasMore(false); // stop if no more
+      }
+    } catch (error) {
+      console.error("Fetch error:", error);
       setLoading(false);
       setHasMore(false);
-      console.error("Fetch error:", error);
-    } else {
-      setEventsList((prev) => [...prev, ...data]);
-      setPage((prev) => prev + 1);
-      // if (data.length < PAGE_SIZE) setHasMore(false); // stop if no more
     }
 
     setLoading(false);
@@ -319,7 +329,7 @@ export function LocationDetailsSheet({
                 <Text className="mt-4 mb-3 text-lg font-semibold">Prompt</Text>
 
                 <View className="flex-row flex-wrap gap-2">
-                  {eventDetail.category.prompts.map((prompt) => (
+                  {eventDetail.category.prompts.map((prompt: any) => (
                     <View
                       key={prompt.id}
                       className="px-3 py-1 rounded-full bg-muted"

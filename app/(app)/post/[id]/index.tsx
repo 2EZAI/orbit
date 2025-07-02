@@ -23,12 +23,15 @@ import {
   MoreHorizontal,
   ArrowLeft,
   MapPin,
+  Share2,
+  Users,
 } from "lucide-react-native";
 import { format } from "date-fns";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "react-native-elements";
 import { MapEvent } from "~/hooks/useMapEvents";
 import { EventDetailsSheet } from "~/src/components/map/EventDetailsSheet";
+import { LocationDetailsSheet } from "~/src/components/map/LocationDetailsSheet";
 
 interface Post {
   id: string;
@@ -63,7 +66,7 @@ export default function PostView() {
   const { session } = useAuth();
   const insets = useSafeAreaInsets();
   const [post, setPost] = useState<Post | null>(null);
-  const [likeCount, setLikeCount] = useState("0");
+  const [likeCount, setLikeCount] = useState(0);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState(false);
@@ -186,10 +189,21 @@ export default function PostView() {
     created_at,
     like_count,
     comment_count,
+    event_id,
     user:users!posts_user_id_fkey (
       id,
       username,
       avatar_url
+    ),
+    event:events!posts_event_id_fkey (
+      id,
+      name,
+      start_datetime,
+      end_datetime,
+      venue_name,
+      address,
+      city,
+      state
     )
   `
         )
@@ -257,7 +271,7 @@ export default function PostView() {
       if (error) throw error;
 
       console.log("Like count:", count);
-      setLikeCount(count); // if you have a state to store it
+      setLikeCount(count || 0); // if you have a state to store it
     } catch (error) {
       console.error("Error fetching like count:", error);
     }
@@ -302,7 +316,7 @@ export default function PostView() {
 
         if (error) throw error;
         setLiked(false);
-        setLikeCount(likeCount - 1);
+        setLikeCount((prev) => prev - 1);
         setPost((post) =>
           post ? { ...post, like_count: post.like_count - 1 } : null
         );
@@ -313,7 +327,7 @@ export default function PostView() {
 
         if (error) throw error;
         setLiked(true);
-        setLikeCount(likeCount + 1);
+        setLikeCount((prev) => prev + 1);
         setPost((post) =>
           post ? { ...post, like_count: post.like_count + 1 } : null
         );
@@ -462,7 +476,7 @@ export default function PostView() {
                   onPress={() => {
                     setIsShowEvent(!isShowEvent);
                   }}
-                  className="px-4 py-2 rounded-full  bg-primary"
+                  className="px-4 py-2 rounded-full bg-primary"
                 >
                   <Text className="text-sm text-white">View Event</Text>
                 </TouchableOpacity>
