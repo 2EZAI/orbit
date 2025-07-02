@@ -10,7 +10,10 @@ import {
   ScrollView,
   Platform,
   Linking,
+  Alert,
 } from "react-native";
+
+type TimeFrame = "Today" | "Week" | "Weekend";
 import { supabase } from "~/src/lib/supabase";
 import { useAuth } from "~/src/lib/auth";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -19,7 +22,11 @@ import * as Location from "expo-location";
 import { useTheme } from "~/src/components/ThemeProvider";
 import MapboxGL, { UserTrackingMode } from "@rnmapbox/maps";
 import { useUser } from "~/hooks/useUserData";
-import { useMapEvents, type MapEvent } from "~/hooks/useMapEvents";
+import {
+  useMapEvents,
+  type MapEvent,
+  type MapLocation,
+} from "~/hooks/useMapEvents";
 import { useMapCamera } from "~/src/hooks/useMapCamera";
 import { MapControls } from "~/src/components/map/MapControls";
 import { X, MapPin } from "lucide-react-native";
@@ -49,28 +56,82 @@ const CUSTOM_DARK_STYLE =
   "mapbox://styles/tangentdigitalagency/clzwv4xtp002y01psdttf9jhr";
 
 export default function Map() {
-    const [selectedTimeFrame, setSelectedTimeFrame] = useState<TimeFrame>('Today');
-    const [showDetails, setShowDetails] = useState(false);
-     const [isEvent, setIsEvent] = useState(false);
-    const [hideCount, setHideCount] = useState(false);
-   let isUpdatLiveLocation = true;
-     const [showControler, setShowControler] = useState(true);
-   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [selectedTimeFrame, setSelectedTimeFrame] =
+    useState<TimeFrame>("Today");
+  const [showDetails, setShowDetails] = useState(false);
+  const [isEvent, setIsEvent] = useState(false);
+  const [hideCount, setHideCount] = useState(false);
+  let isUpdatLiveLocation = true;
+  const [showControler, setShowControler] = useState(true);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { theme, isDarkMode } = useTheme();
-  const { user ,userlocation, updateUserLocations } = useUser();
+  const { user, userlocation, updateUserLocations } = useUser();
   const mapRef = useRef<MapboxGL.MapView>(null);
   const { session } = useAuth();
   const [location, setLocation] = useState<{
-    latitude: numbrer;
+    latitude: number;
     longitude: number;
     heading?: number | null;
   } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  
-   const [followerList, setFollowerList] = useState([]);
+
+  const [followerList, setFollowerList] = useState([]);
   const [selectedCluster, setSelectedCluster] = useState<MapEvent[] | null>(
     null
   );
+
+  // Add state to track current map center
+  const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
+
+  // Add debounced region change handler
+  const regionChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastCenterRef = useRef<[number, number] | null>(null);
+
+  const handleRegionChange = useCallback((region: any) => {
+    console.log("[Map] Region changed:", region);
+
+    // Clear existing timeout
+    if (regionChangeTimeoutRef.current) {
+      clearTimeout(regionChangeTimeoutRef.current);
+    }
+
+    // Debounce the region change to avoid too many API calls
+    regionChangeTimeoutRef.current = setTimeout(() => {
+      const centerLat = region?.properties?.center?.[1];
+      const centerLng = region?.properties?.center?.[0];
+      const zoomLevel = region?.properties?.zoomLevel;
+
+      if (centerLat && centerLng && zoomLevel) {
+        // Check if the center has meaningfully changed (more than 0.01 degrees)
+        const newCenter: [number, number] = [centerLat, centerLng];
+        const lastCenter = lastCenterRef.current;
+
+        if (
+          !lastCenter ||
+          Math.abs(newCenter[0] - lastCenter[0]) > 0.01 ||
+          Math.abs(newCenter[1] - lastCenter[1]) > 0.01
+        ) {
+          console.log("[Map] Fetching events for new region:", {
+            lat: centerLat,
+            lng: centerLng,
+            zoom: zoomLevel,
+          });
+
+          // Update the map center to trigger new data fetch
+          setMapCenter(newCenter);
+          lastCenterRef.current = newCenter;
+        }
+      }
+    }, 2000); // Increased to 2 seconds to reduce API calls
+
+    // Handle zoom level for follower count visibility
+    let zoomLevel = region?.properties?.zoomLevel;
+    if (zoomLevel <= 12) {
+      setHideCount(true);
+    } else {
+      setHideCount(false);
+    }
+  }, []);
 
   const {
     cameraRef,
@@ -100,17 +161,15 @@ export default function Map() {
     handleCloseModal,
   } = useMapEvents({
     center:
-  user?.event_location_preference == 1
-    ? [userlocation?.latitude, userlocation?.longitude]
-    : location
-      ? [location.latitude, location.longitude]
-      : [0, 0],
-    // center: location
-    //   ? [location.latitude, location.longitude]
-    //     : [0, 0],
-      // : [37.7749, -122.4194],
+      mapCenter ||
+      (location ? [location.latitude, location.longitude] : [0, 0]), // Use the dynamic map center instead of static coordinates
     radius: 50000,
-    timeRange: "now",
+    timeRange:
+      selectedTimeFrame === "Today"
+        ? "today"
+        : selectedTimeFrame === "Week"
+        ? "week"
+        : "weekend",
   });
 
   // Add logging for event selection
@@ -124,392 +183,190 @@ export default function Map() {
     }
   }, [selectedEvent]);
 
-useEffect(() => {
-  console.log("followerList updated >>>>", followerList);
- 
-}, [followerList]);
+  // Update mapCenter when location becomes available
+  useEffect(() => {
+    if (location?.latitude && location?.longitude && !mapCenter) {
+      console.log("[Map] Setting initial map center to user location:", {
+        lat: location.latitude,
+        lng: location.longitude,
+      });
+      setMapCenter([location.latitude, location.longitude]);
+    }
+  }, [location, mapCenter]);
 
-const haversine = (lat1, lon1, lat2, lon2) => {
-  const toRad = (value) => (value * Math.PI) / 180;
-  const R = 3956; // Radius of Earth in miles
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) ** 2;
-  const c = 2 * Math.asin(Math.sqrt(a));
-  return R * c;
-};
+  useEffect(() => {
+    console.log("followerList updated >>>>", followerList);
+  }, [followerList]);
 
-// Compute nearby follower count for each user
-const getNearbyFollowerCounts = (followerList, radius = 10) => {
-  return followerList.map((user, index) => {
-    let nearbyCount = 0;
-    for (let i = 0; i < followerList.length; i++) {
-      if (i !== index) {
-        const other = followerList[i];
-        const distance = haversine(
-          user.live_location_latitude,
-          user.live_location_longitude,
-          other.live_location_latitude,
-          other.live_location_longitude
-        );
-        if (distance <= radius) {
-          nearbyCount++;
+  const haversine = (lat1, lon1, lat2, lon2) => {
+    const toRad = (value) => (value * Math.PI) / 180;
+    const R = 3956; // Radius of Earth in miles
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    const c = 2 * Math.asin(Math.sqrt(a));
+    return R * c;
+  };
+
+  // Compute nearby follower count for each user
+  const getNearbyFollowerCounts = (followerList, radius = 10) => {
+    return followerList.map((user, index) => {
+      let nearbyCount = 0;
+      for (let i = 0; i < followerList.length; i++) {
+        if (i !== index) {
+          const other = followerList[i];
+          const distance = haversine(
+            user.live_location_latitude,
+            user.live_location_longitude,
+            other.live_location_latitude,
+            other.live_location_longitude
+          );
+          if (distance <= radius) {
+            nearbyCount++;
+          }
         }
       }
-    }
-    return {
-      ...user,
-      nearbyCount,
-    };
-  });
-};
+      return {
+        ...user,
+        nearbyCount,
+      };
+    });
+  };
 
   // Add logging for events
   useEffect(() => {
-    console.log("[Map] Total events available:", events.length);
-    console.log("[Map] First event location:", events[0]?.location);
-
-    // Fit map to events if we have any
-    if (events.length > 0 && mapRef.current && cameraRef.current) {
-      const bounds = events.reduce(
-        (acc, event) => {
-          acc.north = Math.max(acc.north, event.location.latitude);
-          acc.south = Math.min(acc.south, event.location.latitude);
-          acc.east = Math.max(acc.east, event.location.longitude);
-          acc.west = Math.min(acc.west, event.location.longitude);
-          return acc;
-        },
-        {
-          north: -90,
-          south: 90,
-          east: -180,
-          west: 180,
-        }
-      );
-
-      console.log("[Map] Calculated bounds:", bounds);
-
-      // Add padding to bounds
-      const padding = 0.1; // degrees
-
-      // Only fit to bounds if they're valid (not the initial values)
-      if (bounds.north !== -90 && bounds.south !== 90) {
-        // Calculate center point of events
-        const centerLat = (bounds.north + bounds.south) / 2;
-        const centerLng = (bounds.east + bounds.west) / 2;
-
-        // Calculate appropriate zoom level based on bounds
-        const latDiff = Math.abs(bounds.north - bounds.south);
-        const lngDiff = Math.abs(bounds.east - bounds.west);
-        const maxDiff = Math.max(latDiff, lngDiff);
-        const zoomLevel = Math.floor(14 - Math.log2(maxDiff)); // Adjust 14 to change base zoom
-
-        cameraRef.current.setCamera({
-          centerCoordinate: [centerLng, centerLat],
-          zoomLevel: Math.min(Math.max(zoomLevel, 9), 16), // Clamp between min and max zoom
-          animationDuration: 1000,
-          animationMode: "flyTo",
-        });
-      }
-    }
+    // Removed console.log and camera operations to prevent infinite loops
   }, [events, mapRef, cameraRef]);
 
   // Add logging for events
   useEffect(() => {
-    console.log("[Map] Total followerList available:", followerList.length);
-    console.log("[Map] zoomlevel:", cameraRef.current);
-
+    // Removed console.log to prevent infinite loops
   }, [followerList, mapRef, cameraRef]);
 
- // Add logging for events
+  // Add logging for events
   useEffect(() => {
-
-    if(selectedTimeFrame == 'Today'){
-       // Fit map to events if we have any
-    if ( eventsNow.length > 0 && mapRef.current && cameraRef.current) {
-      const bounds = events.reduce(
-        (acc, event) => {
-          acc.north = Math.max(acc.north, event.location.latitude);
-          acc.south = Math.min(acc.south, event.location.latitude);
-          acc.east = Math.max(acc.east, event.location.longitude);
-          acc.west = Math.min(acc.west, event.location.longitude);
-          return acc;
-        },
-        {
-          north: -90,
-          south: 90,
-          east: -180,
-          west: 180,
-        }
-      );
-
-      console.log("[Map] Calculated bounds:", bounds);
-
-      // Add padding to bounds
-      const padding = 0.1; // degrees
-
-      // Only fit to bounds if they're valid (not the initial values)
-      if (bounds.north !== -90 && bounds.south !== 90) {
-        // Calculate center point of events
-        const centerLat = (bounds.north + bounds.south) / 2;
-        const centerLng = (bounds.east + bounds.west) / 2;
-
-        // Calculate appropriate zoom level based on bounds
-        const latDiff = Math.abs(bounds.north - bounds.south);
-        const lngDiff = Math.abs(bounds.east - bounds.west);
-        const maxDiff = Math.max(latDiff, lngDiff);
-        const zoomLevel = Math.floor(14 - Math.log2(maxDiff)); // Adjust 14 to change base zoom
-
-        cameraRef.current.setCamera({
-          centerCoordinate: [centerLng, centerLat],
-          zoomLevel: Math.min(Math.max(zoomLevel, 9), 16), // Clamp between min and max zoom
-          animationDuration: 1000,
-          animationMode: "flyTo",
-        });
-      }
-    }
-    console.log("[Map] Total eventsNow available:", eventsNow.length);
-    console.log("[Map] First event location:", eventsNow[0]?.location);
-    }
-
-
-    if(selectedTimeFrame == 'Week'){
-       // Fit map to events if we have any
-    if (eventsToday.length > 0 && mapRef.current && cameraRef.current) {
-      const bounds = events.reduce(
-        (acc, event) => {
-          acc.north = Math.max(acc.north, event.location.latitude);
-          acc.south = Math.min(acc.south, event.location.latitude);
-          acc.east = Math.max(acc.east, event.location.longitude);
-          acc.west = Math.min(acc.west, event.location.longitude);
-          return acc;
-        },
-        {
-          north: -90,
-          south: 90,
-          east: -180,
-          west: 180,
-        }
-      );
-
-      console.log("[Map] Calculated bounds:", bounds);
-
-      // Add padding to bounds
-      const padding = 0.1; // degrees
-
-      // Only fit to bounds if they're valid (not the initial values)
-      if (bounds.north !== -90 && bounds.south !== 90) {
-        // Calculate center point of events
-        const centerLat = (bounds.north + bounds.south) / 2;
-        const centerLng = (bounds.east + bounds.west) / 2;
-
-        // Calculate appropriate zoom level based on bounds
-        const latDiff = Math.abs(bounds.north - bounds.south);
-        const lngDiff = Math.abs(bounds.east - bounds.west);
-        const maxDiff = Math.max(latDiff, lngDiff);
-        const zoomLevel = Math.floor(14 - Math.log2(maxDiff)); // Adjust 14 to change base zoom
-
-        cameraRef.current.setCamera({
-          centerCoordinate: [centerLng, centerLat],
-          zoomLevel: Math.min(Math.max(zoomLevel, 9), 16), // Clamp between min and max zoom
-          animationDuration: 1000,
-          animationMode: "flyTo",
-        });
-      }
-    }
-    console.log("[Map] Total eventsToday available:", eventsToday.length);
-    console.log("[Map] First event location:", eventsToday[0]?.location);
-    }
-    if(selectedTimeFrame == 'Weekend'){
-         // Fit map to events if we have any
-    if (eventsTomorrow.length > 0 && mapRef.current && cameraRef.current) {
-      const bounds = events.reduce(
-        (acc, event) => {
-          acc.north = Math.max(acc.north, event.location.latitude);
-          acc.south = Math.min(acc.south, event.location.latitude);
-          acc.east = Math.max(acc.east, event.location.longitude);
-          acc.west = Math.min(acc.west, event.location.longitude);
-          return acc;
-        },
-        {
-          north: -90,
-          south: 90,
-          east: -180,
-          west: 180,
-        }
-      );
-
-      console.log("[Map] Calculated bounds:", bounds);
-
-      // Add padding to bounds
-      const padding = 0.1; // degrees
-
-      // Only fit to bounds if they're valid (not the initial values)
-      if (bounds.north !== -90 && bounds.south !== 90) {
-        // Calculate center point of events
-        const centerLat = (bounds.north + bounds.south) / 2;
-        const centerLng = (bounds.east + bounds.west) / 2;
-
-        // Calculate appropriate zoom level based on bounds
-        const latDiff = Math.abs(bounds.north - bounds.south);
-        const lngDiff = Math.abs(bounds.east - bounds.west);
-        const maxDiff = Math.max(latDiff, lngDiff);
-        const zoomLevel = Math.floor(14 - Math.log2(maxDiff)); // Adjust 14 to change base zoom
-
-        cameraRef.current.setCamera({
-          centerCoordinate: [centerLng, centerLat],
-          zoomLevel: Math.min(Math.max(zoomLevel, 9), 16), // Clamp between min and max zoom
-          animationDuration: 1000,
-          animationMode: "flyTo",
-        });
-      }
-    }
-     console.log("[Map] Total eventsTomorrow available:", eventsTomorrow.length);
-    console.log("[Map] First event location:", eventsTomorrow[0]?.location);
-    }
-   
-
-   
+    // Removed console.log and camera operations to prevent infinite loops
   }, [selectedTimeFrame, mapRef, cameraRef]);
 
-  // Add logging for user data
-  useEffect(() => {
-    if (user) {
-      console.log("[Map] User data:", {
-        id: user.id,
-        avatar_url: user?.avatar_url,
+  const locationUpdateTimeoutRef = useRef(null);
+
+  async function scheduleLocationUpdate(location: Location.LocationObject) {
+    if (!location) return;
+
+    clearTimeout(locationUpdateTimeoutRef.current as unknown as NodeJS.Timeout);
+
+    locationUpdateTimeoutRef.current = setTimeout(async () => {
+      console.error("Updating user location (debounced)");
+      await updateUserLocations({
+        live_location_latitude: location.coords.latitude,
+        live_location_longitude: location.coords.longitude,
       });
-    }
-  }, [user]);
+    }, 2000);
+  }
 
-    useEffect(() => {
-    console.log('useEffect','?');
-    // console.log("events>",events.length);
-    // console.log("clusters>",clusters);
-    // return;
-  }, );
+  useEffect(() => {
+    console.log("updateUserLocations>updateUserLocations");
 
-const locationUpdateTimeoutRef = useRef(null);
+    getFollowedUserDetails(); // Assuming this doesn't rely on location
 
-async function scheduleLocationUpdate(location) {
-  if (!location) return;
+    scheduleLocationUpdate(location as Location.LocationObject);
+  }, [location]);
 
-  clearTimeout(locationUpdateTimeoutRef.current);
-
-  locationUpdateTimeoutRef.current = setTimeout(async () => {
-    console.error("Updating user location (debounced)");
-    await updateUserLocations({
-      live_location_latitude: location.latitude,
-      live_location_longitude: location.longitude,
-    });
-  }, 2000);
-}
-
-useEffect(() => {
-  console.log("updateUserLocations>updateUserLocations");
-
-  getFollowedUserDetails(); // Assuming this doesn't rely on location
-
-  scheduleLocationUpdate(location);
-}, [location]);
-
-const getFollowingsByFollower = async () => {
+  const getFollowingsByFollower = async () => {
     console.log("getFollowingsByFollower");
-   if (!session?.user.id) {
+    if (!session?.user.id) {
       Alert.alert("Error", "Please sign in to like posts");
       return;
     }
-     console.log("getFollowingsByFollower>>");
-  const { data, error } = await supabase
-    .from("follows")
-    .select("*") // or specify fields like "following_id"
-    .eq("follower_id", session?.user.id);
+    console.log("getFollowingsByFollower>>");
+    const { data, error } = await supabase
+      .from("follows")
+      .select("*") // or specify fields like "following_id"
+      .eq("follower_id", session?.user.id);
 
-  if (error) throw error;
+    if (error) throw error;
 
-  console.log("Matched followings:", data);
-  return data; // list of all following relationships for the given follower
-};
+    console.log("Matched followings:", data);
+    return data; // list of all following relationships for the given follower
+  };
 
-const getFollowedUserDetails = async () => {
-  // Step 1: Get list of following_ids
-  const { data: follows, error: followError } = await supabase
-    .from("follows")
-    .select("following_id")
-    .eq("follower_id", session?.user.id);
+  const getFollowedUserDetails = async () => {
+    // Step 1: Get list of following_ids
+    const { data: follows, error: followError } = await supabase
+      .from("follows")
+      .select("following_id")
+      .eq("follower_id", session?.user.id);
 
-  if (followError) throw followError;
-  if (!follows || follows.length === 0) return [];
+    if (followError) throw followError;
+    if (!follows || follows.length === 0) return [];
 
-  const followingIds = follows.map(f => f.following_id);
-  console.log("followingIds:", followingIds);
+    const followingIds = follows.map((f) => f.following_id);
+    console.log("followingIds:", followingIds);
 
-  // Step 2: Check which of them also follow the session user
-const { data: mutuals, error: mutualError } = await supabase
-  .from("follows")
-  .select("follower_id")
-  .in("follower_id", followingIds)  // These people must be the follower
-  .eq("following_id", session?.user.id); // ...of the session user
+    // Step 2: Check which of them also follow the session user
+    const { data: mutuals, error: mutualError } = await supabase
+      .from("follows")
+      .select("follower_id")
+      .in("follower_id", followingIds) // These people must be the follower
+      .eq("following_id", session?.user.id); // ...of the session user
 
-if (mutualError) throw mutualError;
+    if (mutualError) throw mutualError;
 
-const mutualFollowerIds = mutuals.map(m => m.follower_id);
+    const mutualFollowerIds = mutuals.map((m) => m.follower_id);
 
-console.log("Mutual followers:", mutualFollowerIds);
-  
-  // Step 2: Fetch user data in batch
-  const { data: users, error: usersError } = await supabase
-    .from("users")
-    .select("id, avatar_url")
-    .in("id", mutualFollowerIds)
-    .eq("is_live_location_shared", 1);
+    console.log("Mutual followers:", mutualFollowerIds);
 
-  if (usersError) throw usersError;
-  console.log("Followed user", users);
+    // Step 2: Fetch user data in batch
+    const { data: users, error: usersError } = await supabase
+      .from("users")
+      .select("id, avatar_url")
+      .in("id", mutualFollowerIds)
+      .eq("is_live_location_shared", 1);
 
-  const live_usersIds = users.map(m => m.id);
-  // Step 3: Fetch location data in batch
-  const { data: locations, error: locationError } = await supabase
-    .from("user_locations")
-    .select("user_id, live_location_latitude, live_location_longitude")
-    .in("user_id", live_usersIds);
-  console.log("Followed locations", locations);
-  if (locationError) throw locationError;
+    if (usersError) throw usersError;
+    console.log("Followed user", users);
 
-  // Step 4: Combine all data
-  const result = live_usersIds.map((userId,index) => {
-    const user = users.find(u => u.id === userId);
-    const location = locations.find(l => l.user_id === userId);
+    const live_usersIds = users.map((m) => m.id);
+    // Step 3: Fetch location data in batch
+    const { data: locations, error: locationError } = await supabase
+      .from("user_locations")
+      .select("user_id, live_location_latitude, live_location_longitude")
+      .in("user_id", live_usersIds);
+    console.log("Followed locations", locations);
+    if (locationError) throw locationError;
 
-// let ll=[{ lat: 41.3688486, lng: -81.6293933 },
-//   { lat: 41.3688425, lng: -81.6303213 },
-//   { lat: 41.4439525, lng: -81.8009226 },];
-// const locationn = ll[index] ; 
+    // Step 4: Combine all data
+    const result = live_usersIds.map((userId, index) => {
+      const user = users.find((u) => u.id === userId);
+      const location = locations.find((l) => l.user_id === userId);
 
-return {
-      userId,
-      avatar_url: user?.avatar_url || null,
-      live_location_latitude: parseFloat(location?.live_location_latitude) || 0.0 ,
-      live_location_longitude: parseFloat(location?.live_location_longitude) || 0.0,
-      // live_location_latitude: locationn.lat ,
-      // live_location_longitude: locationn.lng ,
-    };
-   
-  });
+      // let ll=[{ lat: 41.3688486, lng: -81.6293933 },
+      //   { lat: 41.3688425, lng: -81.6303213 },
+      //   { lat: 41.4439525, lng: -81.8009226 },];
+      // const locationn = ll[index] ;
 
-  console.log("Followed user details:", result);
-  // setFollowerList(result);
- const updatedFollowerList = getNearbyFollowerCounts(result);
-console.log("updatedFollowerList:", updatedFollowerList);
-setFollowerList([]);
-setFollowerList(updatedFollowerList);
-  return result;
-};
+      return {
+        userId,
+        avatar_url: user?.avatar_url || null,
+        live_location_latitude:
+          parseFloat(location?.live_location_latitude) || 0.0,
+        live_location_longitude:
+          parseFloat(location?.live_location_longitude) || 0.0,
+        // live_location_latitude: locationn.lat ,
+        // live_location_longitude: locationn.lng ,
+      };
+    });
 
+    console.log("Followed user details:", result);
+    // setFollowerList(result);
+    const updatedFollowerList = getNearbyFollowerCounts(result);
+    console.log("updatedFollowerList:", updatedFollowerList);
+    setFollowerList([]);
+    setFollowerList(updatedFollowerList);
+    return result;
+  };
 
   // Initialize and watch location
   useEffect(() => {
@@ -570,7 +427,6 @@ setFollowerList(updatedFollowerList);
               longitude: newLocation.coords.longitude,
               heading: newLocation.coords.heading || undefined,
             });
-        
           }
         );
       } catch (error) {
@@ -580,7 +436,6 @@ setFollowerList(updatedFollowerList);
         );
       }
     })();
-    
 
     return () => locationSubscription?.remove();
   }, []);
@@ -635,16 +490,83 @@ setFollowerList(updatedFollowerList);
     [handleEventClick, cameraRef]
   );
 
+  const handleLocationSelect = useCallback(
+    (location: MapLocation) => {
+      // Center map on selected location
+      if (cameraRef.current) {
+        cameraRef.current.setCamera({
+          centerCoordinate: [
+            location.location.longitude,
+            location.location.latitude,
+          ],
+          zoomLevel: 14,
+          animationDuration: 500,
+          animationMode: "flyTo",
+        });
+      }
+      // Convert MapLocation to MapEvent format for the card
+      const locationAsEvent = {
+        ...location,
+        start_datetime: new Date().toISOString(),
+        end_datetime: new Date().toISOString(),
+        venue_name: location.name,
+        attendees: { count: 0, profiles: [] },
+        categories: location.category ? [location.category] : [],
+      } as MapEvent;
+
+      handleEventClick(locationAsEvent);
+    },
+    [cameraRef, handleEventClick]
+  );
+
+  const handleLocationClusterPress = useCallback(
+    (cluster: { events: MapLocation[] }) => {
+      console.log("[Map] Location cluster pressed:", {
+        locationCount: cluster?.events?.length,
+        firstLocationId: cluster?.events[0]?.id,
+      });
+
+      if (cluster.events?.length === 1) {
+        // Center map on selected location
+        if (cameraRef.current) {
+          cameraRef.current.setCamera({
+            centerCoordinate: [
+              cluster.events[0].location.longitude,
+              cluster.events[0].location.latitude,
+            ],
+            zoomLevel: 14,
+            animationDuration: 500,
+            animationMode: "flyTo",
+          });
+        }
+        // Convert MapLocation to MapEvent format for the card
+        const locationAsEvent = {
+          ...cluster.events[0],
+          start_datetime: new Date().toISOString(),
+          end_datetime: new Date().toISOString(),
+          venue_name: cluster.events[0].name,
+          attendees: { count: 0, profiles: [] },
+          categories: cluster.events[0].category
+            ? [cluster.events[0].category]
+            : [],
+        } as MapEvent;
+
+        handleEventClick(locationAsEvent);
+      } else {
+        // For multiple locations, show cluster sheet
+        setSelectedCluster(cluster.events as any);
+      }
+    },
+    [cameraRef, handleEventClick]
+  );
+
   const handleClusterClose = useCallback(() => {
     setSelectedCluster(null);
   }, []);
 
- 
- 
-
   if (errorMsg) {
     return (
-      <View className="items-center justify-center flex-1">
+      <View className="flex-1 justify-center items-center">
         <Text className="text-red-500">{errorMsg}</Text>
       </View>
     );
@@ -652,7 +574,7 @@ setFollowerList(updatedFollowerList);
 
   if (!location) {
     return (
-      <View className="items-center justify-center flex-1">
+      <View className="flex-1 justify-center items-center">
         <ActivityIndicator size="large" />
         <Text className="mt-4">Getting your location...</Text>
       </View>
@@ -674,30 +596,19 @@ setFollowerList(updatedFollowerList);
         onDidFinishLoadingMap={() => {
           console.log("[Map] Map finished loading");
         }}
-        onRegionDidChange={(region) => {
-          console.log("[Map] Region changed:", region);
-          let zoomLevel=region?.properties?.zoomLevel
-          if(zoomLevel <=12)
-          {
-setHideCount(true);
-          }
-          else{
-setHideCount(false);
-          }
-          
-        }}
+        onRegionDidChange={handleRegionChange}
       >
         <MapboxGL.Camera
           ref={cameraRef}
           defaultSettings={{
             centerCoordinate: [
-              location?.longitude || -122.4194,
-              location?.latitude || 37.7749,
+              location?.longitude || 0,
+              location?.latitude || 0,
             ],
             zoomLevel: 11,
           }}
           maxZoomLevel={16}
-          minZoomLevel={9}
+          minZoomLevel={3}
           animationMode="flyTo"
           animationDuration={1000}
           followUserLocation={isFollowingUser}
@@ -705,153 +616,250 @@ setHideCount(false);
           followZoomLevel={14}
         />
 
-        
-       
-
         {/* Event markers */}
-        
-     {selectedTimeFrame == 'Today' && clustersNow.map((cluster) => (
-          <MapboxGL.MarkerView
-            // key={`cluster-${cluster.mainEvent.id}`}
-            // id={`cluster-${cluster.mainEvent.id}`}
-               key={`cluster-${cluster.id}`}
-            id={`cluster-${cluster.id}`}
-            coordinate={[cluster.location.longitude, cluster.location.latitude]}
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <View
-              style={{
-                zIndex: cluster.events.some((e) => e.id === selectedEvent?.id)
-                  ? 1000
-                  : 100,
-              }}
-            >
-              <TouchableOpacity
-                onPress={() => {
-                  setIsEvent(true);
-                  handleClusterPress(cluster)}}
-                style={{ padding: 5 }}
-              >
-                <EventMarker
-                  imageUrl={cluster.mainEvent.image_urls[0]}
-                 
-                  count={cluster.events.length}
-                  isSelected={cluster.events.some(
-                    (e) => e.id === selectedEvent?.id
-                  )}
-                />
-              </TouchableOpacity>
-            </View>
-          </MapboxGL.MarkerView>
-        ))}
 
-          {selectedTimeFrame == 'Week' && clustersToday.map((cluster) => (
-          <MapboxGL.MarkerView
-            // key={`cluster-${cluster.mainEvent.id}`}
-            // id={`cluster-${cluster.mainEvent.id}`}
-               key={`cluster-${cluster.id}`}
-            id={`cluster-${cluster.id}`}
-            coordinate={[cluster.location.longitude, cluster.location.latitude]}
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <View
-              style={{
-                zIndex: cluster.events.some((e) => e.id === selectedEvent?.id)
-                  ? 1000
-                  : 100,
-              }}
-            >
-              <TouchableOpacity
-                onPress={() => {
-                  setIsEvent(true);
-                  handleClusterPress(cluster)
-                }
-                }
-                style={{ padding: 5 }}
-              >
-                <EventMarker
-                  imageUrl={cluster.mainEvent.image_urls[0]}
-                 
-                  count={cluster.events.length}
-                  isSelected={cluster.events.some(
-                    (e) => e.id === selectedEvent?.id
-                  )}
-                />
-              </TouchableOpacity>
-            </View>
-          </MapboxGL.MarkerView>
-        ))}
+        {/* Debug info */}
+        {/* Removed console.log to prevent infinite loop */}
 
-        {selectedTimeFrame == 'Weekend' && clustersTomorrow.map((cluster) => (
-          <MapboxGL.MarkerView
-            // key={`cluster-${cluster.mainEvent.id}`}
-            // id={`cluster-${cluster.mainEvent.id}`}
-               key={`cluster-${cluster.id}`}
-            id={`cluster-${cluster.id}`}
-            coordinate={[cluster.location.longitude, cluster.location.latitude]}
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <View
-              style={{
-                zIndex: cluster.events.some((e) => e.id === selectedEvent?.id)
-                  ? 1000
-                  : 100,
-              }}
-            >
-              <TouchableOpacity
-                onPress={() =>{ 
-                  setIsEvent(true);
-                  handleClusterPress(cluster)
-                }}
-                style={{ padding: 5 }}
+        {selectedTimeFrame == "Today" &&
+          clustersToday.map((cluster, index) =>
+            !cluster.mainEvent ||
+            !Array.isArray(cluster.mainEvent.image_urls) ||
+            !cluster.mainEvent.image_urls[0] ? null : (
+              <MapboxGL.MarkerView
+                key={`cluster-now-${cluster.location.latitude.toFixed(
+                  3
+                )}-${cluster.location.longitude.toFixed(3)}-${index}`}
+                id={`cluster-now-${cluster.location.latitude.toFixed(
+                  3
+                )}-${cluster.location.longitude.toFixed(3)}-${index}`}
+                coordinate={[
+                  cluster.location.longitude,
+                  cluster.location.latitude,
+                ]}
+                anchor={{ x: 0.5, y: 0.5 }}
               >
-                <EventMarker
-                  imageUrl={cluster.mainEvent.image_urls[0]}
-                 
-                  count={cluster.events.length}
-                  isSelected={cluster.events.some(
-                    (e) => e.id === selectedEvent?.id
-                  )}
-                />
-              </TouchableOpacity>
-            </View>
-          </MapboxGL.MarkerView>
-        ))}
+                <View
+                  style={{
+                    zIndex: cluster.events.some(
+                      (e) => e.id === selectedEvent?.id
+                    )
+                      ? 1000
+                      : 100,
+                  }}
+                >
+                  <TouchableOpacity
+                    onPress={() => {
+                      setIsEvent(true);
+                      handleClusterPress(cluster);
+                    }}
+                    style={{ padding: 5 }}
+                  >
+                    <EventMarker
+                      imageUrl={cluster.mainEvent.image_urls[0]}
+                      count={cluster.events.length}
+                      isSelected={cluster.events.some(
+                        (e) => e.id === selectedEvent?.id
+                      )}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </MapboxGL.MarkerView>
+            )
+          )}
 
-{/* locations fetched from static_location table for (beach, club , park etc) */}
-        { clustersLocations.length > 0  && clustersLocations.map((cluster) => (
-          <MapboxGL.MarkerView
-               key={`cluster-${cluster.id}`}
-            id={`cluster-${cluster.id}`}
-            coordinate={[cluster.location.longitude, cluster.location.latitude]}
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <View
-              style={{
-                zIndex: cluster?.events?.some((e) => e.id === selectedEvent?.id)
-                  ? 1000
-                  : 100,
-              }}
-            >
-              <TouchableOpacity
-                onPress={() => {
-                  setIsEvent(false);
-                  handleClusterPress(cluster)
-                }}
-                style={{ padding: 5 }}
+        {selectedTimeFrame == "Week" &&
+          clustersNow.map((cluster, index) =>
+            !cluster.mainEvent ||
+            !Array.isArray(cluster.mainEvent.image_urls) ||
+            !cluster.mainEvent.image_urls[0] ? null : (
+              <MapboxGL.MarkerView
+                key={`cluster-week-${cluster.location.latitude.toFixed(
+                  3
+                )}-${cluster.location.longitude.toFixed(3)}-${index}`}
+                id={`cluster-week-${cluster.location.latitude.toFixed(
+                  3
+                )}-${cluster.location.longitude.toFixed(3)}-${index}`}
+                coordinate={[
+                  cluster.location.longitude,
+                  cluster.location.latitude,
+                ]}
+                anchor={{ x: 0.5, y: 0.5 }}
               >
-                <EventMarker
-                  imageUrl={cluster.mainEvent?.image_urls?.[0]}
-                 
-                  count={cluster?.events?.length}
-                  isSelected={cluster?.events?.some(
-                    (e) => e.id === selectedEvent?.id
-                  )}
-                />
-              </TouchableOpacity>
-            </View>
-          </MapboxGL.MarkerView>
-        ))}
+                <View
+                  style={{
+                    zIndex: cluster.events.some(
+                      (e) => e.id === selectedEvent?.id
+                    )
+                      ? 1000
+                      : 100,
+                  }}
+                >
+                  <TouchableOpacity
+                    onPress={() => {
+                      setIsEvent(true);
+                      handleClusterPress(cluster);
+                    }}
+                    style={{ padding: 5 }}
+                  >
+                    <EventMarker
+                      imageUrl={cluster.mainEvent.image_urls[0]}
+                      count={cluster.events.length}
+                      isSelected={cluster.events.some(
+                        (e) => e.id === selectedEvent?.id
+                      )}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </MapboxGL.MarkerView>
+            )
+          )}
+
+        {selectedTimeFrame == "Weekend" &&
+          clustersTomorrow.map((cluster, index) =>
+            !cluster.mainEvent ||
+            !Array.isArray(cluster.mainEvent.image_urls) ||
+            !cluster.mainEvent.image_urls[0] ? null : (
+              <MapboxGL.MarkerView
+                key={`cluster-weekend-${cluster.location.latitude.toFixed(
+                  3
+                )}-${cluster.location.longitude.toFixed(3)}-${index}`}
+                id={`cluster-weekend-${cluster.location.latitude.toFixed(
+                  3
+                )}-${cluster.location.longitude.toFixed(3)}-${index}`}
+                coordinate={[
+                  cluster.location.longitude,
+                  cluster.location.latitude,
+                ]}
+                anchor={{ x: 0.5, y: 0.5 }}
+              >
+                <View
+                  style={{
+                    zIndex: cluster.events.some(
+                      (e) => e.id === selectedEvent?.id
+                    )
+                      ? 1000
+                      : 100,
+                  }}
+                >
+                  <TouchableOpacity
+                    onPress={() => {
+                      setIsEvent(true);
+                      handleClusterPress(cluster);
+                    }}
+                    style={{ padding: 5 }}
+                  >
+                    <EventMarker
+                      imageUrl={cluster.mainEvent.image_urls[0]}
+                      count={cluster.events.length}
+                      isSelected={cluster.events.some(
+                        (e) => e.id === selectedEvent?.id
+                      )}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </MapboxGL.MarkerView>
+            )
+          )}
+
+        {/* Fallback: Show all clusters if no specific timeframe clusters are available */}
+        {clustersNow.length === 0 &&
+          clustersToday.length === 0 &&
+          clustersTomorrow.length === 0 &&
+          clusters.length > 0 &&
+          clusters.map((cluster, index) =>
+            !cluster.mainEvent ||
+            !Array.isArray(cluster.mainEvent.image_urls) ||
+            !cluster.mainEvent.image_urls[0] ? null : (
+              <MapboxGL.MarkerView
+                key={`cluster-fallback-${cluster.location.latitude.toFixed(
+                  3
+                )}-${cluster.location.longitude.toFixed(3)}-${index}`}
+                id={`cluster-fallback-${cluster.location.latitude.toFixed(
+                  3
+                )}-${cluster.location.longitude.toFixed(3)}-${index}`}
+                coordinate={[
+                  cluster.location.longitude,
+                  cluster.location.latitude,
+                ]}
+                anchor={{ x: 0.5, y: 0.5 }}
+              >
+                <View
+                  style={{
+                    zIndex: cluster.events.some(
+                      (e) => e.id === selectedEvent?.id
+                    )
+                      ? 1000
+                      : 100,
+                  }}
+                >
+                  <TouchableOpacity
+                    onPress={() => {
+                      setIsEvent(true);
+                      handleClusterPress(cluster);
+                    }}
+                    style={{ padding: 5 }}
+                  >
+                    <EventMarker
+                      imageUrl={cluster.mainEvent.image_urls[0]}
+                      count={cluster.events.length}
+                      isSelected={cluster.events.some(
+                        (e) => e.id === selectedEvent?.id
+                      )}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </MapboxGL.MarkerView>
+            )
+          )}
+
+        {/* locations fetched from static_location table for (beach, club , park etc) */}
+        {clustersLocations.length > 0 &&
+          clustersLocations.map((cluster, index) =>
+            !cluster.mainEvent ||
+            !Array.isArray(cluster.mainEvent.image_urls) ||
+            !cluster.mainEvent.image_urls[0] ? null : (
+              <MapboxGL.MarkerView
+                key={`cluster-location-${cluster.location.latitude.toFixed(
+                  3
+                )}-${cluster.location.longitude.toFixed(3)}-${index}`}
+                id={`cluster-location-${cluster.location.latitude.toFixed(
+                  3
+                )}-${cluster.location.longitude.toFixed(3)}-${index}`}
+                coordinate={[
+                  cluster.location.longitude,
+                  cluster.location.latitude,
+                ]}
+                anchor={{ x: 0.5, y: 0.5 }}
+              >
+                <View
+                  style={{
+                    zIndex: cluster?.events?.some(
+                      (e) => e.id === selectedEvent?.id
+                    )
+                      ? 1000
+                      : 100,
+                  }}
+                >
+                  <TouchableOpacity
+                    onPress={() => {
+                      setIsEvent(false);
+                      handleLocationClusterPress(cluster);
+                    }}
+                    style={{ padding: 5 }}
+                  >
+                    <EventMarker
+                      imageUrl={cluster.mainEvent?.image_urls?.[0]}
+                      count={cluster?.events?.length}
+                      isSelected={cluster?.events?.some(
+                        (e) => e.id === selectedEvent?.id
+                      )}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </MapboxGL.MarkerView>
+            )
+          )}
 
         {/* User location marker */}
         {location && (
@@ -862,7 +870,7 @@ setHideCount(false);
             allowOverlap={true}
           >
             <View
-              className="items-center justify-center"
+              className="justify-center items-center"
               style={{ zIndex: 2000 }}
             >
               <UserMarker
@@ -874,40 +882,45 @@ setHideCount(false);
         )}
 
         {followerList.length > 0 &&
-  followerList.map((followerUser) => (
-    <MapboxGL.MarkerView
-      key={`followerUser-${followerUser?.userId}`}
-      id={`followerUser-${followerUser?.userId}`}
-      coordinate={[
-        followerUser?.live_location_longitude,
-        followerUser?.live_location_latitude,
-      ]}
-      anchor={{ x: 0.5, y: 0.5 }}
-    >
-      <View className="items-center justify-center">
-        <UserMarkerWithCount
-          avatarUrl={followerUser?.avatar_url}
-          showCount={hideCount}
-          count={followerUser.nearbyCount > 0 ? followerUser.nearbyCount + 1 : 0} // +1 to include the user
-        />
-      </View>
-    </MapboxGL.MarkerView>
-  ))}
+          followerList.map((followerUser) => (
+            <MapboxGL.MarkerView
+              key={`followerUser-${followerUser?.userId}`}
+              id={`followerUser-${followerUser?.userId}`}
+              coordinate={[
+                followerUser?.live_location_longitude,
+                followerUser?.live_location_latitude,
+              ]}
+              anchor={{ x: 0.5, y: 0.5 }}
+            >
+              <View className="justify-center items-center">
+                <UserMarkerWithCount
+                  avatarUrl={followerUser?.avatar_url}
+                  showCount={hideCount}
+                  count={
+                    followerUser.nearbyCount > 0
+                      ? followerUser.nearbyCount + 1
+                      : 0
+                  } // +1 to include the user
+                />
+              </View>
+            </MapboxGL.MarkerView>
+          ))}
       </MapboxGL.MapView>
 
-     { showControler && <MapControls
-        onSearch={() => setIsSearchOpen(true)}
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-        onRecenter={() => handleRecenter(location)}
-        isFollowingUser={isFollowingUser}
-        timeFrame={selectedTimeFrame}
-        onSelectedTimeFrame={(txt)=>{
-          console.log("txt>>",txt);
-        setSelectedTimeFrame(txt);
-        }}
-      />
-     }
+      {showControler && (
+        <MapControls
+          onSearch={() => setIsSearchOpen(true)}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onRecenter={() => handleRecenter(location)}
+          isFollowingUser={isFollowingUser}
+          timeFrame={selectedTimeFrame}
+          onSelectedTimeFrame={(txt) => {
+            console.log("txt>>", txt);
+            setSelectedTimeFrame(txt);
+          }}
+        />
+      )}
       {selectedEvent && isEvent && (
         <MapEventCard
           event={selectedEvent}
@@ -926,14 +939,14 @@ setHideCount(false);
           event={selectedEvent}
           nearbyEvents={locations}
           onClose={handleCloseModal}
-          onEventSelect={handleEventSelect}
+          onEventSelect={handleLocationSelect}
           onShowDetails={() => {
             setShowControler(false);
             setShowDetails(true);
           }}
         />
       )}
-  
+
       {selectedCluster && (
         <ClusterSheet
           events={selectedCluster}
@@ -941,11 +954,12 @@ setHideCount(false);
           onClose={handleClusterClose}
         />
       )}
-       <SearchSheet
+      <SearchSheet
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
         eventsList={events}
-        onShowControler={(value)  => setShowControler(value)}
+        locationsList={locations}
+        onShowControler={(value) => setShowControler(value)}
       />
       {showDetails && isEvent && (
         <EventDetailsSheet
@@ -953,7 +967,7 @@ setHideCount(false);
           isOpen={showDetails}
           onClose={() => setShowDetails(false)}
           nearbyEvents={events}
-          onShowControler={()  => setShowControler(true)}
+          onShowControler={() => setShowControler(true)}
         />
       )}
       {showDetails && !isEvent && (
@@ -962,10 +976,9 @@ setHideCount(false);
           isOpen={showDetails}
           onClose={() => setShowDetails(false)}
           nearbyEvents={events}
-          onShowControler={()  => setShowControler(true)}
+          onShowControler={() => setShowControler(true)}
         />
       )}
-      
     </View>
   );
 }

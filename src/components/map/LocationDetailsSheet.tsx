@@ -192,7 +192,7 @@ export function LocationDetailsSheet({
 
         {/* Header Section */}
         <View className="px-4 pt-4 pb-4 border-b border-border">
-          <View className="flex-row items-center justify-between mb-4">
+          <View className="flex-row justify-between items-center mb-4">
             <TouchableOpacity onPress={onClose}>
               {Platform.OS == "ios" ? (
                 <ArrowLeft size={24} className="text-foreground" />
@@ -206,12 +206,12 @@ export function LocationDetailsSheet({
               )}
             </TouchableOpacity>
           </View>
-          <View className="mb-2 flex-row items-center justify-between">
+          <View className="flex-row justify-between items-center mb-2">
             <Text className=" text-2xl font-bold w-[60%]">
               {eventDetail?.name}
             </Text>
             <Button
-              className=" bg-primary"
+              className="bg-primary"
               onPress={() => {
                 router.push({
                   pathname: "/(app)/(create)",
@@ -236,7 +236,7 @@ export function LocationDetailsSheet({
                 }, 300);
               }}
             >
-              <View className="flex-row items-center justify-center">
+              <View className="flex-row justify-center items-center">
                 <Text className="ml-1.5 font-semibold text-white">
                   Create Event
                 </Text>
@@ -244,17 +244,17 @@ export function LocationDetailsSheet({
             </Button>
           </View>
 
-          <View className="flex-row items-center justify-between">
+          <View className="flex-row justify-between items-center">
             {/* <View className="px-3 py-1 rounded-full bg-primary/10">
               <Text className="text-sm font-medium text-primary">
                 Starts: {formatTime(eventDetail?.start_datetime)}
               </Text>
             </View>*/}
 
-            {/*  <View className="flex-row items-center justify-between">
+            {/*  <View className="flex-row justify-between items-center">
               {!eventDetail?.join_status && eventDetail?.external_url && (
                 <TouchableOpacity
-                  className="px-5 py-3 rounded-full bg-purple-700"
+                  className="px-5 py-3 bg-purple-700 rounded-full"
                   onPress={() => {
                     console.log(" book click:");
                     router.push({
@@ -304,54 +304,59 @@ export function LocationDetailsSheet({
           </View>
 
           {/* Category prompts */}
-          {eventDetail?.category && (
-            <View className="mb-6">
-              <Text className="mb-3 text-lg font-semibold">Category</Text>
-              <View className="flex-row flex-wrap gap-2">
-                <View className="px-3 py-1 rounded-full bg-muted">
-                  <Text className="text-sm">{eventDetail?.category?.name}</Text>
+          {eventDetail?.category &&
+            Array.isArray(eventDetail.category.prompts) &&
+            eventDetail.category.prompts.length > 0 && (
+              <View className="mb-6">
+                <Text className="mb-3 text-lg font-semibold">Category</Text>
+                <View className="flex-row flex-wrap gap-2">
+                  <View className="px-3 py-1 rounded-full bg-muted">
+                    <Text className="text-sm">
+                      {eventDetail?.category?.name}
+                    </Text>
+                  </View>
+                </View>
+                <Text className="mt-4 mb-3 text-lg font-semibold">Prompt</Text>
+
+                <View className="flex-row flex-wrap gap-2">
+                  {eventDetail.category.prompts.map((prompt) => (
+                    <View
+                      key={prompt.id}
+                      className="px-3 py-1 rounded-full bg-muted"
+                    >
+                      <Text className="text-sm">{prompt.name}</Text>
+                    </View>
+                  ))}
                 </View>
               </View>
-              <Text className="mb-3 mt-4 text-lg font-semibold">Prompt</Text>
-
-              <View className="flex-row flex-wrap gap-2">
-                {eventDetail?.category?.prompts?.map((prompt) => (
-                  <View
-                    key={prompt.id}
-                    className="px-3 py-1 rounded-full bg-muted"
-                  >
-                    <Text className="text-sm">{prompt.name}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
+            )}
 
           {/* Image Gallery */}
-          {eventDetail?.image_urls?.length > 1 && (
-            <View className="mb-6">
-              <Text className="mb-3 text-lg font-semibold">
-                Location Photos
-              </Text>
-              <View className="flex-row flex-wrap gap-2">
-                {eventDetail?.image_urls.slice(1).map((imageUrl, index) => (
-                  <TouchableOpacity key={index} activeOpacity={0.8}>
-                    <Image
-                      source={{ uri: imageUrl }}
-                      style={{
-                        width: imageSize,
-                        height: imageSize,
-                        borderRadius: 12,
-                      }}
-                    />
-                  </TouchableOpacity>
-                ))}
+          {Array.isArray(eventDetail?.image_urls) &&
+            eventDetail.image_urls.length > 1 && (
+              <View className="mb-6">
+                <Text className="mb-3 text-lg font-semibold">
+                  Location Photos
+                </Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {eventDetail.image_urls.slice(1).map((imageUrl, index) => (
+                    <TouchableOpacity key={index} activeOpacity={0.8}>
+                      <Image
+                        source={{ uri: imageUrl }}
+                        style={{
+                          width: imageSize,
+                          height: imageSize,
+                          borderRadius: 12,
+                        }}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
-            </View>
-          )}
+            )}
 
           <View className="mb-6">
-            <View className="mb-6 flex-row items-center justify-between">
+            <View className="flex-row justify-between items-center mb-6">
               <View>
                 <Text className="text-lg font-semibold">Events</Text>
               </View>
@@ -361,7 +366,7 @@ export function LocationDetailsSheet({
                   console.log("See All Pressed");
                 }}
               >
-                <Text className="text-blue-500 font-medium">See All</Text>
+                <Text className="font-medium text-blue-500">See All</Text>
               </TouchableOpacity>
             </View>
             <FlatList
@@ -390,7 +395,7 @@ export function LocationDetailsSheet({
           </View>
 
           <Button
-            className=" m-10 bottom-0 left-0 right-0 bg-primary"
+            className="right-0 bottom-0 left-0 m-10 bg-primary"
             onPress={() => {
               router.push({
                 pathname: "/(app)/(create)",
@@ -415,7 +420,7 @@ export function LocationDetailsSheet({
               }, 300);
             }}
           >
-            <View className="flex-row items-center justify-center">
+            <View className="flex-row justify-center items-center">
               <Text className="ml-1.5 font-semibold text-white">
                 Create Event
               </Text>
@@ -436,7 +441,7 @@ export function LocationDetailsSheet({
       )}
 
       {showAllEvents && (
-        <View className="absolute top-0 bottom-0 right-0 left-0 justify-center bg-white">
+        <View className="absolute top-0 right-0 bottom-0 left-0 justify-center bg-white">
           <View className="w-[100%] h-[80%] justify-center  rounded-lg p-4">
             <TouchableOpacity
               onPress={() => {

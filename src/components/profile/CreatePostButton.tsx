@@ -7,10 +7,10 @@ import { router } from "expo-router";
 export default function CreatePostButton() {
   return (
     <TouchableOpacity
-      className="flex-row items-center justify-center p-4 mb-4 mx-4 bg-primary rounded-lg"
+      className="flex-row justify-center items-center p-4 mx-4 mb-4 rounded-lg bg-primary"
       onPress={() => router.push("/post/create")}
     >
-      <Plus size={20} className="text-primary-foreground mr-2" />
+      <Plus size={20} className="mr-2 text-primary-foreground" />
       <Text className="font-medium text-primary-foreground">
         Create New Post
       </Text>

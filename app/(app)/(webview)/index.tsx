@@ -7,7 +7,7 @@ import { useLocalSearchParams } from "expo-router";
 import { AlertDialogs } from "~/src/components/ui/alertdialogs";
 
 export default function Webview() {
-  const { isShowAlert, setIsShowAlert } = useState(false);
+  const [isShowAlert, setIsShowAlert] = useState(false);
   const { external_url } = useLocalSearchParams();
   console.log("external_url>>", external_url);
 

@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Button } from "~/src/components/ui/button";
-import { MapEvent } from "~/hooks/useMapEvents";
+import { MapEvent, Category, Prompt } from "~/hooks/useMapEvents";
 import { router } from "expo-router";
 import { Icon } from "react-native-elements";
 import {
@@ -28,7 +28,7 @@ import {
 import { format } from "date-fns";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import { useMapEvents  } from "~/hooks/useMapEvents";
+import { useMapEvents } from "~/hooks/useMapEvents";
 import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 
 interface EventDetailsSheetProps {
@@ -46,6 +46,13 @@ interface EventDetailsSheetProps {
   onShowControler: () => void;
 }
 
+// Extend MapEvent to include join_status and external_url for local use
+interface MapEventWithExtras extends MapEvent {
+  join_status?: boolean;
+  external_url?: string;
+  category?: Category;
+}
+
 export function EventDetailsSheet({
   event,
   isOpen,
@@ -54,29 +61,30 @@ export function EventDetailsSheet({
   onEventSelect,
   onShowControler,
 }: EventDetailsSheetProps) {
-    const [loading, setLoading] = useState(true);
-    const [eventDetail, setEventDetail] = useState<{}>();
+  const [loading, setLoading] = useState(true);
+  const [eventDetail, setEventDetail] = useState<
+    MapEventWithExtras | undefined
+  >(undefined);
   const width = Dimensions.get("window").width;
   const imageSize = (width - 32) / 3; // 3 images per row with padding
   const bannerHeight = width * 0.5; // 50% of screen width
-  const { UpdateEventStatus,fetchEventDetail } = useUpdateEvents();
+  const { UpdateEventStatus, fetchEventDetail } = useUpdateEvents() as {
+    UpdateEventStatus: (event: Partial<MapEvent>) => Promise<any>;
+    fetchEventDetail: (event: Partial<MapEvent>) => Promise<any>;
+  };
 
   const formatDate = (date: string) => {
-    try{
-    return format(new Date(date), "EEE, MMM d");
-    }
-    catch(error)
-    {
+    try {
+      return format(new Date(date), "EEE, MMM d");
+    } catch (error) {
       return "";
-    } 
+    }
   };
 
   const formatTime = (date: string) => {
-    try{
-    return format(new Date(date), "h:mm a");
-    }
-    catch(error)
-    {
+    try {
+      return format(new Date(date), "h:mm a");
+    } catch (error) {
       return "";
     }
   };
@@ -90,15 +98,15 @@ export function EventDetailsSheet({
       console.error("Error sharing event:", error);
     }
   };
-   useEffect(() => {
-    DeviceEventEmitter.addListener('refreshEventDetail', valueEvent => {
+  useEffect(() => {
+    DeviceEventEmitter.addListener("refreshEventDetail", (valueEvent) => {
       // console.log('event----notitifactionBage', value);
       hitEventDetail();
       handleCreateOrbit();
     });
   }, []);
 
-const handleCreateOrbit = () => {
+  const handleCreateOrbit = () => {
     router.push({
       pathname: "/new",
       params: {
@@ -108,36 +116,35 @@ const handleCreateOrbit = () => {
     });
   };
 
-    const hitUpdaeEventApi = async () => {
-      setLoading(true)
-      console.log("hitUpdaeEventApi");
-      let data = await UpdateEventStatus(event);
-       setTimeout(() => {
-        setLoading(false);
-        hitEventDetail();
-        if(data?.success){
+  const hitUpdaeEventApi = async () => {
+    setLoading(true);
+    console.log("hitUpdaeEventApi");
+    const data: any = await UpdateEventStatus(event);
+    setTimeout(() => {
+      setLoading(false);
+      if (data && typeof data === "object" && data.success) {
         handleCreateOrbit();
-       }
-        }
-        , 2000 );};
-   const hitEventDetail = async () => {
-      console.log("hitEventDetail");
-    const eventDetails = await fetchEventDetail(event);
+      }
+    }, 2000);
+  };
+  const hitEventDetail = async () => {
+    console.log("hitEventDetail");
+    const eventDetails: any = await fetchEventDetail(event);
     console.log("Returned event details:", eventDetails);
-     setEventDetail({});
-    setEventDetail(eventDetails);
-    setLoading(false)
+    if (eventDetails && typeof eventDetails === "object") {
+      setEventDetail(eventDetails as MapEventWithExtras);
+    }
+    setLoading(false);
   };
 
   if (!isOpen) return null;
 
   useEffect(() => {
-     setEventDetail({});
     setEventDetail(event);
     hitEventDetail();
     return () => {
       console.log("Hello");
-      onShowControler(true);
+      onShowControler();
     };
   }, []);
 
@@ -208,7 +215,7 @@ const handleCreateOrbit = () => {
           <View className="flex-row items-center justify-between">
             <View className="px-3 py-1 rounded-full bg-primary/10">
               <Text className="text-sm font-medium text-primary">
-                Starts: {formatTime(eventDetail?.start_datetime)}
+                Starts: {formatTime(eventDetail?.start_datetime || "")}
               </Text>
             </View>
 
@@ -220,8 +227,10 @@ const handleCreateOrbit = () => {
                     console.log(" book click:");
                     router.push({
                       pathname: "/(app)/(webview)",
-                      params: { external_url: eventDetail?.external_url 
-                      ,eventSelected:JSON.stringify(eventDetail)},
+                      params: {
+                        external_url: eventDetail?.external_url,
+                        eventSelected: JSON.stringify(eventDetail),
+                      },
                     });
                   }}
                 >
@@ -234,16 +243,23 @@ const handleCreateOrbit = () => {
               {/*event.is_ticketmaster && */}
               {
                 <TouchableOpacity
-                  className={`mx-2 px-5 py-3 rounded-full ${eventDetail?.join_status ? 'bg-gray-300' : 'bg-purple-700'}`}
+                  className={`mx-2 px-5 py-3 rounded-full ${
+                    eventDetail?.join_status ? "bg-gray-300" : "bg-purple-700"
+                  }`}
                   onPress={() => {
                     console.log(" book click:");
-                    {!eventDetail?.join_status ? hitUpdaeEventApi()
-                  : ""}
-                    
-                   
+                    {
+                      !eventDetail?.join_status ? hitUpdaeEventApi() : "";
+                    }
                   }}
                 >
-                  <Text className={`ml-1.5 font-semibold ${eventDetail?.join_status ? 'text-purple-700' : 'text-white'} text-base`}>
+                  <Text
+                    className={`ml-1.5 font-semibold ${
+                      eventDetail?.join_status
+                        ? "text-purple-700"
+                        : "text-white"
+                    } text-base`}
+                  >
                     {eventDetail?.join_status ? "Joined" : "Join Event"}
                   </Text>
                 </TouchableOpacity>
@@ -271,11 +287,11 @@ const handleCreateOrbit = () => {
               </View>
               <View>
                 <Text className="text-base font-medium">
-                  {formatDate(eventDetail?.start_datetime)}
+                  {formatDate(eventDetail?.start_datetime || "")}
                 </Text>
                 <Text className="text-sm text-muted-foreground">
-                  {formatTime(eventDetail?.start_datetime)} -{" "}
-                  {formatTime(eventDetail?.end_datetime)}
+                  {formatTime(eventDetail?.start_datetime || "")} -{" "}
+                  {formatTime(eventDetail?.end_datetime || "")}
                 </Text>
               </View>
             </View>
@@ -335,32 +351,37 @@ const handleCreateOrbit = () => {
           </View>
 
           {/* Image Gallery */}
-          {eventDetail?.image_urls?.length > 1 && (
-            <View className="mb-6">
-              <Text className="mb-3 text-lg font-semibold">Event Photos</Text>
-              <View className="flex-row flex-wrap gap-2">
-                {eventDetail?.image_urls.slice(1).map((imageUrl, index) => (
-                  <TouchableOpacity key={index} activeOpacity={0.8}>
-                    <Image
-                      source={{ uri: imageUrl }}
-                      style={{
-                        width: imageSize,
-                        height: imageSize,
-                        borderRadius: 12,
-                      }}
-                    />
-                  </TouchableOpacity>
-                ))}
+          {Array.isArray(eventDetail?.image_urls) &&
+            eventDetail.image_urls.length > 1 && (
+              <View className="mb-6">
+                <Text className="mb-3 text-lg font-semibold">Event Photos</Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {eventDetail.image_urls.slice(1).map((imageUrl, index) => (
+                    <TouchableOpacity key={index} activeOpacity={0.8}>
+                      <Image
+                        source={{ uri: imageUrl }}
+                        style={{
+                          width: imageSize,
+                          height: imageSize,
+                          borderRadius: 12,
+                        }}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
-            </View>
-          )}
+            )}
 
           {/* Attendees */}
           <View className="mb-6">
             <Text className="mb-3 text-lg font-semibold">Who's coming</Text>
             <View className="flex-row items-center">
               <View className="flex-row -space-x-2">
-                {eventDetail?.attendees?.profiles.slice(0, 5).map((attendee) => (
+                {(eventDetail?.attendees?.profiles &&
+                Array.isArray(eventDetail.attendees.profiles)
+                  ? eventDetail.attendees.profiles.slice(0, 5)
+                  : []
+                ).map((attendee) => (
                   <UserAvatar
                     key={attendee.id}
                     size={32}
@@ -373,56 +394,58 @@ const handleCreateOrbit = () => {
                 ))}
               </View>
               <Text className="ml-3 text-muted-foreground">
-                {eventDetail?.attendees?.count} people going
+                {eventDetail?.attendees?.count || 0} people going
               </Text>
             </View>
           </View>
 
-{/* Category prompts */}
-          {eventDetail?.category && (
-            <View className="mb-6">
-           {/*   <Text className="mb-3 text-lg font-semibold">Category</Text>
+          {/* Category prompts */}
+          {eventDetail?.category &&
+            Array.isArray(eventDetail.category.prompts) &&
+            eventDetail.category.prompts.length > 0 && (
+              <View className="mb-6">
+                {/*   <Text className="mb-3 text-lg font-semibold">Category</Text>
              <View className="flex-row flex-wrap gap-2">
               <View className="px-3 py-1 rounded-full bg-muted">
                     <Text className="text-sm">{eventDetail?.category?.name}</Text>
                   </View>
                   </View>*/}
-              <Text className="mb-3 mt-4 text-lg font-semibold">Prompt</Text>
+                <Text className="mb-3 mt-4 text-lg font-semibold">Prompt</Text>
 
-              <View className="flex-row flex-wrap gap-2">
-                {eventDetail?.category?.prompts?.map((prompt) => (
-                  <View
-                    key={prompt.id}
-                    className="px-3 py-1 rounded-full bg-muted"
-                  >
-                    <Text className="text-sm">{prompt.name}</Text>
-                  </View>
-                ))}
+                <View className="flex-row flex-wrap gap-2">
+                  {eventDetail.category.prompts.map((prompt: Prompt) => (
+                    <View
+                      key={prompt.id}
+                      className="px-3 py-1 rounded-full bg-muted"
+                    >
+                      <Text className="text-sm">{prompt.name}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
-            </View>
-          )}
+            )}
           {/* Categories */}
-          {eventDetail?.categories?.length > 0 && (
-            <View className="mb-6">
-              <Text className="mb-3 text-lg font-semibold">Categories</Text>
-              <View className="flex-row flex-wrap gap-2">
-                {eventDetail?.categories.map((category) => (
-                  <View
-                    key={category.id}
-                    className="px-3 py-1 rounded-full bg-muted"
-                  >
-                    <Text className="text-sm">{category.name}</Text>
-                  </View>
-                ))}
+          {Array.isArray(eventDetail?.categories) &&
+            eventDetail.categories.length > 0 && (
+              <View className="mb-6">
+                <Text className="mb-3 text-lg font-semibold">Categories</Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {eventDetail?.categories.map((category) => (
+                    <View
+                      key={category.id}
+                      className="px-3 py-1 rounded-full bg-muted"
+                    >
+                      <Text className="text-sm">{category.name}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
+            )}
+          {loading && (
+            <View className="absolute bottom-0 top-0 left-0 right-0">
+              <ActivityIndicator size="large" color="#6200ee" />
             </View>
           )}
-           {loading &&
-      (<View className="absolute bottom-0 top-0 left-0 right-0">
-        <ActivityIndicator size="large" color="#6200ee" />
-      </View>)
-   
-  }
         </View>
       </BottomSheetScrollView>
 
