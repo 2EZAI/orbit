@@ -379,7 +379,7 @@ setshowPrompts( parsedCategory === undefined ? false : true);
     if (
       !name ||
       !description ||
-      !selectedPrompts?.id ||
+      // !selectedPrompts?.id ||
       selectedTopics=== ''||
       images.length === 0 ) {
       Alert.alert(
@@ -517,13 +517,15 @@ setshowPrompts( parsedCategory === undefined ? false : true);
       locationType === 'googleApi')
       {
         let promtIds = []; // an empty array
+        if(selectedPrompts?.id!=undefined){
 promtIds.push(selectedPrompts?.id);
+        }
  eventData = {
         name,
         description,
         location_id:locationId,
-        prompt_ids:promtIds,
-        category_id:categoryList?.id,
+        prompt_ids:promtIds.length >0 ?promtIds :null,
+        category_id:categoryList?.id!= undefined ? categoryList?.id :null,
         type:locationType,
         latitude:latitude,
         longitude:longitude,

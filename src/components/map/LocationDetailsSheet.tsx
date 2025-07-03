@@ -12,6 +12,7 @@ import {
   DeviceEventEmitter,
   FlatList,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import { Button } from "~/src/components/ui/button";
 import { MapEvent } from "~/hooks/useMapEvents";
@@ -70,11 +71,11 @@ export function LocationDetailsSheet({
   const [showAllEvents, setShowAllEvents] = useState(false);
   const [loading, setLoading] = useState(false);
   const [onEndReached, setonEndReached] = useState(true);
-  const [eventDetail, setEventDetail] = useState<{}>();
+  const [locationDetail, setLocationDetail] = useState<{}>();
   const width = Dimensions.get("window").width;
   const imageSize = (width - 32) / 3; // 3 images per row with padding
   const bannerHeight = width * 0.5; // 50% of screen width
-  const { UpdateEventStatus, fetchEventDetail, fetchLocationEvents } =
+  const {  fetchLocationDetail, fetchLocationEvents } =
     useUpdateEvents();
 
   const formatDate = (date: string) => {
@@ -93,10 +94,18 @@ export function LocationDetailsSheet({
     }
   };
 
+ const hitLocationDetail = async () => {
+      console.log("hitLocationDetail");
+    const locationDetails = await fetchLocationDetail(event);
+    console.log("Returned location details:", locationDetails);
+     setLocationDetail({});
+    setLocationDetail(locationDetails);
+    setLoading(false)
+  };
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Check out ${eventDetail?.name} on Orbit!\n${eventDetail?.description}`,
+        message: `Check out ${locationDetail?.name} on Orbit!\n${locationDetail?.description}`,
       });
     } catch (error) {
       console.error("Error sharing event:", error);
@@ -107,32 +116,22 @@ export function LocationDetailsSheet({
     router.push({
       pathname: "/new",
       params: {
-        eventId: eventDetail?.id,
-        eventName: eventDetail?.name,
+        eventId: locationDetail?.id,
+        eventName: locationDetail?.name,
       },
     });
   };
 
-  const hitUpdaeEventApi = async () => {
-    setLoading(true);
-    console.log("hitUpdaeEventApi");
-    let data = await UpdateEventStatus(event);
-    setTimeout(() => {
-      setLoading(false);
 
-      if (data?.success) {
-        handleCreateOrbit();
-      }
-    }, 2000);
-  };
 
   if (!isOpen) return null;
 
   useEffect(() => {
-    setEventDetail({});
+    setLocationDetail({});
     console.log("event??", event);
     console.log("event.prompts??", event?.category?.prompts);
-    setEventDetail(event);
+    setLocationDetail(event);
+    hitLocationDetail();
     setPage(1);
     loadEvents();
 
@@ -180,10 +179,15 @@ export function LocationDetailsSheet({
     >
       <BottomSheetScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Banner Image */}
-        {eventDetail?.image_urls?.[0] && (
+           {loading && hasMore && (
+        <SafeAreaView className="absolute top-0 left-0 right-0 mb-[20%] bottom-0 items-center justify-center ">
+          <ActivityIndicator size="large" color="#000080" />
+        </SafeAreaView>
+      )}
+        {locationDetail?.image_urls?.[0] && (
           <View style={{ width, height: bannerHeight }}>
             <Image
-              source={{ uri: eventDetail?.image_urls[0] }}
+              source={{ uri: locationDetail?.image_urls[0] }}
               style={{ width, height: bannerHeight }}
               resizeMode="cover"
             />
@@ -208,7 +212,7 @@ export function LocationDetailsSheet({
           </View>
           <View className="mb-2 flex-row items-center justify-between">
             <Text className=" text-2xl font-bold w-[60%]">
-              {eventDetail?.name}
+              {locationDetail?.name}
             </Text>
             <Button
               className=" bg-primary"
@@ -216,22 +220,22 @@ export function LocationDetailsSheet({
                 router.push({
                   pathname: "/(app)/(create)",
                   params: {
-                    locationId: eventDetail?.id,
-                    locationType: eventDetail?.type,
-                    latitude: eventDetail?.location?.latitude,
-                    longitude: eventDetail?.location?.longitude,
-                    category: JSON.stringify(event?.category),
+                    locationId: locationDetail?.id,
+                    locationType: locationDetail?.type,
+                    latitude: locationDetail?.location?.latitude,
+                    longitude: locationDetail?.location?.longitude,
+                    category: JSON.stringify(locationDetail?.category),
                   },
                 });
 
                 setTimeout(() => {
                   DeviceEventEmitter.emit(
                     "passDataToCreateEvent",
-                    eventDetail?.id,
-                    eventDetail?.type,
-                    eventDetail?.location?.latitude,
-                    eventDetail?.location?.longitude,
-                    JSON.stringify(event?.category)
+                    locationDetail?.id,
+                    locationDetail?.type,
+                    locationDetail?.location?.latitude,
+                    locationDetail?.location?.longitude,
+                    JSON.stringify(locationDetail?.category)
                   );
                 }, 300);
               }}
@@ -245,49 +249,7 @@ export function LocationDetailsSheet({
           </View>
 
           <View className="flex-row items-center justify-between">
-            {/* <View className="px-3 py-1 rounded-full bg-primary/10">
-              <Text className="text-sm font-medium text-primary">
-                Starts: {formatTime(eventDetail?.start_datetime)}
-              </Text>
-            </View>*/}
-
-            {/*  <View className="flex-row items-center justify-between">
-              {!eventDetail?.join_status && eventDetail?.external_url && (
-                <TouchableOpacity
-                  className="px-5 py-3 rounded-full bg-purple-700"
-                  onPress={() => {
-                    console.log(" book click:");
-                    router.push({
-                      pathname: "/(app)/(webview)",
-                      params: { external_url: eventDetail?.external_url 
-                      ,eventSelected:JSON.stringify(eventDetail)},
-                    });
-                  }}
-                >
-                  <Text className="ml-1.5 font-semibold text-white text-base">
-                    Buy Tickets
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              
-              {
-                <TouchableOpacity
-                  className={`mx-2 px-5 py-3 rounded-full ${eventDetail?.join_status ? 'bg-gray-300' : 'bg-purple-700'}`}
-                  onPress={() => {
-                    console.log(" book click:");
-                    {!eventDetail?.join_status ? hitUpdaeEventApi()
-                  : ""}
-                    
-                   
-                  }}
-                >
-                  <Text className={`ml-1.5 font-semibold ${eventDetail?.join_status ? 'text-purple-700' : 'text-white'} text-base`}>
-                    {eventDetail?.join_status ? "Joined" : "Join Event"}
-                  </Text>
-                </TouchableOpacity>
-              }
-            </View> */}
+  
           </View>
         </View>
 
@@ -299,23 +261,23 @@ export function LocationDetailsSheet({
               About this Location
             </Text>
             <Text className="text-base leading-relaxed text-muted-foreground">
-              {eventDetail?.description}
+              {locationDetail?.description}
             </Text>
           </View>
 
           {/* Category prompts */}
-          {eventDetail?.category && (
+          {locationDetail?.category && (
             <View className="mb-6">
               <Text className="mb-3 text-lg font-semibold">Category</Text>
               <View className="flex-row flex-wrap gap-2">
                 <View className="px-3 py-1 rounded-full bg-muted">
-                  <Text className="text-sm">{eventDetail?.category?.name}</Text>
+                  <Text className="text-sm">{locationDetail?.category?.name}</Text>
                 </View>
               </View>
               <Text className="mb-3 mt-4 text-lg font-semibold">Prompt</Text>
 
               <View className="flex-row flex-wrap gap-2">
-                {eventDetail?.category?.prompts?.map((prompt) => (
+                {locationDetail?.category?.prompts?.map((prompt) => (
                   <View
                     key={prompt.id}
                     className="px-3 py-1 rounded-full bg-muted"
@@ -328,13 +290,13 @@ export function LocationDetailsSheet({
           )}
 
           {/* Image Gallery */}
-          {eventDetail?.image_urls?.length > 1 && (
+          {locationDetail?.image_urls?.length > 1 && (
             <View className="mb-6">
               <Text className="mb-3 text-lg font-semibold">
                 Location Photos
               </Text>
               <View className="flex-row flex-wrap gap-2">
-                {eventDetail?.image_urls.slice(1).map((imageUrl, index) => (
+                {locationDetail?.image_urls.slice(1).map((imageUrl, index) => (
                   <TouchableOpacity key={index} activeOpacity={0.8}>
                     <Image
                       source={{ uri: imageUrl }}
@@ -395,10 +357,10 @@ export function LocationDetailsSheet({
               router.push({
                 pathname: "/(app)/(create)",
                 params: {
-                  locationId: eventDetail?.id,
-                  locationType: eventDetail?.type,
-                  latitude: eventDetail?.location?.latitude,
-                  longitude: eventDetail?.location?.longitude,
+                  locationId: locationDetail?.id,
+                  locationType: locationDetail?.type,
+                  latitude: locationDetail?.location?.latitude,
+                  longitude: locationDetail?.location?.longitude,
                   category: JSON.stringify(event?.category),
                 },
               });
@@ -406,10 +368,10 @@ export function LocationDetailsSheet({
               setTimeout(() => {
                 DeviceEventEmitter.emit(
                   "passDataToCreateEvent",
-                  eventDetail?.id,
-                  eventDetail?.type,
-                  eventDetail?.location?.latitude,
-                  eventDetail?.location?.longitude,
+                  locationDetail?.id,
+                  locationDetail?.type,
+                  locationDetail?.location?.latitude,
+                  locationDetail?.location?.longitude,
                   JSON.stringify(event?.category)
                 );
               }, 300);
@@ -454,6 +416,7 @@ export function LocationDetailsSheet({
             <FlatList
               className="w-full h-full bg-white"
               data={eventsList}
+             
               keyExtractor={(item, index) => item.id ?? index.toString()}
               renderItem={({ item }) => (
                 <FeedEventCard
@@ -477,6 +440,7 @@ export function LocationDetailsSheet({
               onEndReachedThreshold={0.5}
               ListFooterComponent={loading && hasMore && <ActivityIndicator />}
             />
+          
           </View>
         </View>
       )}

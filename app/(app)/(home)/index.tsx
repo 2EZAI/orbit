@@ -99,7 +99,7 @@ catch(eee)
       // setEvents(prevEvents => [...prevEvents, ...data]);
      
     } catch (error) {
-      console.error('Error fetching eventshmmm:', error);
+      console.error('Error fetching eventshome:', error);
       return []; // return empty list on error
     }
   }
@@ -358,18 +358,19 @@ keyExtractor={(event) => event.id.toString()}
   />
 )}
 
-          
-          {filteredEvents.length <=0 &&
-          <View className="mt-[50%] items-center justify-center"> 
-          <Text className="text-primary" >No events found</Text>  
-          </View> }
-         
-          {isLoading && hasMore &&
+   {isLoading && hasMore &&
             <SafeAreaView className="absolute left-0 right-0 mb-[20%] bottom-0 items-center justify-center ">
         <ActivityIndicator size="large" color="#8B0000"/>
       </SafeAreaView>
   
   }
+          
+          {!isLoading && filteredEvents.length <=0 &&
+          <View className="mt-[50%] items-center justify-center"> 
+          <Text className="text-primary" >No events found</Text>  
+          </View> }
+         
+       
         
       </View>
     );

@@ -34,11 +34,11 @@ export function FeedEventCard({
         }}
       >
         <View className="relative">
-          <Image
+        {event?.image_urls?.[0] &&   <Image
             source={{ uri: event?.image_urls[0] }}
             className="w-full h-48"
             style={{ resizeMode: "cover" }}
-          />
+          />}
           <View className="absolute px-3 py-1 rounded-lg left-4 top-4 bg-white/90">
             <Text className="font-medium">{format(startTime, "MMM d")}</Text>
             <Text className="text-xs text-center text-muted-foreground">

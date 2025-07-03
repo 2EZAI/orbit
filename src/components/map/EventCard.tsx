@@ -202,11 +202,11 @@ useEffect(() => {
           </TouchableOpacity>
 
           <View className="overflow-hidden rounded-2xl">
-            <Image
+          {event?.image_urls?.[0] &&   <Image
               source={{ uri: event?.image_urls[0] }}
               className="absolute w-full h-full"
               blurRadius={3}
-            />
+            />}
             {/* Dark overlay */}
             <View className="absolute w-full h-full bg-black/40" />
 

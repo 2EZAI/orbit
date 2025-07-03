@@ -47,7 +47,7 @@ export function MapLocationCard({
   nearbyEvents,
   onShowDetails,
 }: LocationCardProps) {
-  const { UpdateEventStatus,fetchEventDetail } = useUpdateEvents();
+  const { UpdateEventStatus,fetchLocationDetail } = useUpdateEvents();
   const router = useRouter();
   const { user } = useUser();
   const [showDetails, setShowDetails] = useState(false);
@@ -67,8 +67,17 @@ useEffect(() => {
      setEventDetail({});
      console.log("event//",event);
     setEventDetail(event);
-    hitEventDetail();
+    hitLocationDetail();
   }, []);
+
+   const hitLocationDetail = async () => {
+      console.log("hitLocationDetail");
+    const locationDetails = await fetchLocationDetail(event);
+    console.log("Returned location details:", locationDetails);
+     setEventDetail({});
+    setEventDetail(locationDetails);
+    setLoading(false)
+  };
   const handleSwipeComplete = (direction: "left" | "right") => {
     "worklet";
     const newIndex = direction === "left" ? currentIndex + 1 : currentIndex - 1;
@@ -132,14 +141,7 @@ useEffect(() => {
        }
         }
         , 2000 );};
-   const hitEventDetail = async () => {
-      console.log("hitEventDetail");
-    const eventDetails = await fetchEventDetail(event);
-    console.log("Returned event details:", eventDetails);
-     setEventDetail({});
-    setEventDetail(eventDetails);
-    setLoading(false)
-  };
+
 
   const handleCreateEvent = () => {
 
@@ -150,7 +152,7 @@ useEffect(() => {
                   locationType: eventDetail?.type,
                   latitude:eventDetail?.location?.latitude,
                   longitude:eventDetail?.location?.longitude,
-                  category: JSON.stringify(event?.category),
+                  category: JSON.stringify(eventDetail?.category),
                  },
               });
               setTimeout(() => {
@@ -159,7 +161,7 @@ useEffect(() => {
                    eventDetail?.type,
                  eventDetail?.location?.latitude,
                   eventDetail?.location?.longitude,
-                  JSON.stringify(event?.category),);
+                  JSON.stringify(eventDetail?.category),);
               },300);
                  
   };

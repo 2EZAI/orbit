@@ -417,7 +417,7 @@ try {
     }
   }
     catch (err) {
-      console.error("[Events] Error fetching events Pagination:", err);
+      console.log("[Events] Error fetching events Pagination:", err);
       if (!isMountedRef.current) return;
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -464,7 +464,7 @@ try {
 
       setError(null);
     } catch (err) {
-      console.error("[categories] Error fetching categories:", err);
+      console.log("[categories] Error fetching categories:", err);
       if (!isMountedRef.current) return;
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -562,62 +562,63 @@ try {
 
 ////fetch locations
 
-const responseLocations = await fetch(
-  `${process.env.BACKEND_MAP_URL}/api/locations/all`,
-  {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify(eventData),
-  }
-);
-console.log("session.access_token>>",
-session.access_token);
-console.log("dataLocations",
-eventData);
+// const responseLocations = await fetch(
+//   `${process.env.BACKEND_MAP_URL}/api/locations/all`,
+//   {
+//     method: "POST",
+//     headers: {
+//       "Content-Type": "application/json",
+//       Authorization: `Bearer ${session.access_token}`,
+//     },
+//     body: JSON.stringify(eventData),
+//   }
+// );
+// console.log("session.access_token>>",
+// session.access_token);
+// console.log("dataLocations",
+// eventData);
 
-if (!responseLocations.ok) {
-  throw new Error(await responseLocations.text());
-}
+// if (!responseLocations.ok) {
+//   throw new Error(await responseLocations.text());
+// }
 
-const dataLocations = await responseLocations.json();
-console.log("dataLocations", dataLocations);
-console.log("[Events] Locations", dataLocations.length, "Locations from API");
+// const dataLocations = await responseLocations.json();
+// console.log("dataLocations", dataLocations);
+// console.log("[Events] Locations", dataLocations.length, "Locations from API");
 
-// Validate event data
-const validLocations = dataLocations.filter((event: any) => {
-  const isValid =
-    event.location &&
-    typeof event.location.latitude === "number" &&
-    typeof event.location.longitude === "number" &&
-    !isNaN(event.location.latitude) &&
-    !isNaN(event.location.longitude) &&
-    Math.abs(event.location.latitude) <= 90 &&
-    Math.abs(event.location.longitude) <= 180;
-  if (!isValid) {
-    console.warn(
-      "[Events] Invalid event data:",
-      event.id,
-      JSON.stringify(event.location)
-    );
-  }
-  return isValid;
-});
+// // Validate event data
+// const validLocations = dataLocations.filter((event: any) => {
+//   const isValid =
+//     event.location &&
+//     typeof event.location.latitude === "number" &&
+//     typeof event.location.longitude === "number" &&
+//     !isNaN(event.location.latitude) &&
+//     !isNaN(event.location.longitude) &&
+//     Math.abs(event.location.latitude) <= 90 &&
+//     Math.abs(event.location.longitude) <= 180;
+//   if (!isValid) {
+//     console.warn(
+//       "[Events] Invalid event data:",
+//       event.id,
+//       JSON.stringify(event.location)
+//     );
+//   }
+//   return isValid;
+// });
 
-setLocations(validLocations);
-setClustersLocations([]);
-      // Create initial clusters
-      const newClustersLocations = clusterLocations(validLocations);
-      console.log("validLocations>", validLocations);
-      // console.log("validLocationscategory.prompts>", validLocations[1].category.prompts);
-      // console.log("[Events] Setting", newClusters.length, "clusters");
-      setClustersLocations(newClustersLocations);
+// setLocations(validLocations);
+// setClustersLocations([]);
+//       // Create initial clusters
+//       const newClustersLocations = clusterLocations(validLocations);
+//       console.log("validLocations>", validLocations);
+//       // console.log("validLocationscategory.prompts>", validLocations[1].category.prompts);
+//       // console.log("[Events] Setting", newClusters.length, "clusters");
+//       setClustersLocations(newClustersLocations);
 
 ///fetch events
       const response = await fetch(
-        `${process.env.BACKEND_MAP_URL}/api/events/all`,
+        // `${process.env.BACKEND_MAP_URL}/api/events/all`,
+        `${process.env.BACKEND_MAP_URL}/api/events/all/map`,
         {
           method: "POST",
           headers: {
@@ -637,6 +638,44 @@ setClustersLocations([]);
       }
 
       const data_ = await response.json();
+      console.log("data_>", data_);
+      
+      ///locations
+      
+      const dataLocations = data_.locations;
+      console.log("dataLocations", dataLocations);
+      console.log("[Events] Locations", dataLocations.length, "Locations from API");
+      
+      // Validate event data
+      const validLocations = dataLocations.filter((event: any) => {
+        const isValid =
+          event.location &&
+          typeof event.location.latitude === "number" &&
+          typeof event.location.longitude === "number" &&
+          !isNaN(event.location.latitude) &&
+          !isNaN(event.location.longitude) &&
+          Math.abs(event.location.latitude) <= 90 &&
+          Math.abs(event.location.longitude) <= 180;
+        if (!isValid) {
+          console.warn(
+            "[Events] Invalid event data:",
+            event.id,
+            JSON.stringify(event.location)
+          );
+        }
+        return isValid;
+      });
+      
+      setLocations(validLocations);
+      setClustersLocations([]);
+            // Create initial clusters
+            const newClustersLocations = clusterLocations(validLocations);
+            console.log("validLocations>", validLocations);
+            // console.log("validLocationscategory.prompts>", validLocations[1].category.prompts);
+            // console.log("[Events] Setting", newClusters.length, "clusters");
+            setClustersLocations(newClustersLocations);
+      ////
+      
       const data = data_.events;
       // console.log("event data", data);
       console.log("[Events] Fetched", data.length, "events from API");
@@ -794,7 +833,7 @@ setEventsTomorrow(tomorrowList);
 
       setError(null);
     } catch (err) {
-      console.error("[Events] Error fetching events:", err);
+      console.log("[Events] Error fetching events:", err);
       if (!isMountedRef.current) return;
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
