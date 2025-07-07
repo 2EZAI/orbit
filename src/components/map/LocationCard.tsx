@@ -54,19 +54,21 @@ export function MapLocationCard({
   const translateX = useSharedValue(0);
   const currentIndex = nearbyEvents.findIndex((e) => e.id === event.id);
 const [loading, setLoading] = useState(true);
-    const [eventDetail, setEventDetail] = useState<{}>();
+    const [locationDetail, setLocationDetail] = useState<
+    any | undefined
+  >(undefined);
 
 useEffect(() => {
-    DeviceEventEmitter.addListener('refreshEventDetail', valueEvent => {
+    DeviceEventEmitter.addListener('refreshlocationDetail', valueEvent => {
       // console.log('event----notitifactionBage', value);
-      hitEventDetail();
+      hitLocationDetail();
     });
     console.log("location card");
   }, []);
 useEffect(() => {
-     setEventDetail({});
+     setLocationDetail({});
      console.log("event//",event);
-    setEventDetail(event);
+    setLocationDetail(event);
     hitLocationDetail();
   }, []);
 
@@ -74,8 +76,9 @@ useEffect(() => {
       console.log("hitLocationDetail");
     const locationDetails = await fetchLocationDetail(event);
     console.log("Returned location details:", locationDetails);
-     setEventDetail({});
-    setEventDetail(locationDetails);
+    if (locationDetails && typeof locationDetails === "object") {
+    setLocationDetail(locationDetails);
+    }
     setLoading(false)
   };
   const handleSwipeComplete = (direction: "left" | "right") => {
@@ -116,7 +119,7 @@ useEffect(() => {
   const handleJoinOrbit = async () => {
     try {
       const { error } = await supabase.from("event_attendees").insert({
-        event_id: eventDetail?.id,
+        event_id: locationDetail?.id,
         user_id: user?.id,
         status: "going",
         role: "attendee",
@@ -135,7 +138,7 @@ useEffect(() => {
     let data = await UpdateEventStatus(event);
        setTimeout(() => {
         setLoading(false);
-          hitEventDetail();
+          hitLocationDetail();
        if(data?.success){
         handleCreateOrbit();
        }
@@ -148,27 +151,27 @@ useEffect(() => {
      router.push({
                 pathname: "/(app)/(create)",
                 params: { 
-                  locationId: eventDetail?.id,
-                  locationType: eventDetail?.type,
-                  latitude:eventDetail?.location?.latitude,
-                  longitude:eventDetail?.location?.longitude,
-                  category: JSON.stringify(eventDetail?.category),
+                  locationId: locationDetail?.id,
+                  locationType: locationDetail?.type,
+                  latitude:locationDetail?.location?.latitude,
+                  longitude:locationDetail?.location?.longitude,
+                  category: JSON.stringify(locationDetail?.category),
                  },
               });
               setTimeout(() => {
  DeviceEventEmitter.emit('passDataToCreateEvent', 
-    eventDetail?.id,
-                   eventDetail?.type,
-                 eventDetail?.location?.latitude,
-                  eventDetail?.location?.longitude,
-                  JSON.stringify(eventDetail?.category),);
+    locationDetail?.id,
+                   locationDetail?.type,
+                 locationDetail?.location?.latitude,
+                  locationDetail?.location?.longitude,
+                  JSON.stringify(locationDetail?.category),);
               },300);
                  
   };
 
   const handleGetDirections = () => {
-    const { latitude, longitude } = eventDetail?.location;
-    const address = encodeURIComponent(eventDetail?.address);
+    const { latitude, longitude } = locationDetail?.location;
+    const address = encodeURIComponent(locationDetail?.address);
 
     if (Platform.OS === "ios") {
       Linking.openURL(`maps://app?daddr=${latitude},${longitude}`);
@@ -231,7 +234,7 @@ useEffect(() => {
               {/* Event Title and Time */}
               <View className="mb-2">
                 <Text className="text-2xl font-semibold text-white">
-                  {eventDetail?.name}
+                  {locationDetail?.name}
                 </Text>
                {/* <Text className="mt-1 text-white/90">
                   {formatDate(event?.start_datetime)} •{" "}
@@ -242,10 +245,10 @@ useEffect(() => {
               {/* Location */}
               <View className="mb-4">
                 <Text className="text-white/90" numberOfLines={1}>
-                  {eventDetail?.venue_name}
+                  {locationDetail?.venue_name}
                 </Text>
                 <Text className="text-white/70" numberOfLines={1}>
-                  {eventDetail?.address}
+                  {locationDetail?.address}
                 </Text>
                 <TouchableOpacity
                   className="items-center justify-center w-10 h-10 bg-white rounded-full"

@@ -35,11 +35,11 @@ export default function AppLayout() {
           );
           // Show tab bar everywhere except onboarding and specific chat messages
           const isSpecificChatRoute =
-          currentRoute.name === "(webview)"||
-            currentRoute.name === "(chat)" &&
-            typeof currentRoute.params === "object" &&
-            currentRoute.params !== null &&
-            "id" in currentRoute.params;
+            currentRoute.name === "(webview)" ||
+            (currentRoute.name === "(chat)" &&
+              typeof currentRoute.params === "object" &&
+              currentRoute.params !== null &&
+              "id" in currentRoute.params);
           return currentRoute.name === "onboarding" ||
             isSpecificChatRoute ? null : (
             <TabBar />
@@ -57,6 +57,14 @@ export default function AppLayout() {
         />
         <Tabs.Screen name="(create)" />
         <Tabs.Screen name="(home)" />
+        <Tabs.Screen
+          name="(social)"
+          options={{
+            href: {
+              pathname: "(social)/index",
+            },
+          }}
+        />
         <Tabs.Screen name="(profile)" />
         <Tabs.Screen name="onboarding" />
       </Tabs>

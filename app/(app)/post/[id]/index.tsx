@@ -23,13 +23,15 @@ import {
   MoreHorizontal,
   ArrowLeft,
   MapPin,
+  Share2,
+  Users,
 } from "lucide-react-native";
 import { format } from "date-fns";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "react-native-elements";
 import { MapEvent } from "~/hooks/useMapEvents";
 import { EventDetailsSheet } from "~/src/components/map/EventDetailsSheet";
-
+import { LocationDetailsSheet } from "~/src/components/map/LocationDetailsSheet";
 
 interface Post {
   id: string;
@@ -44,7 +46,7 @@ interface Post {
   };
   like_count: number;
   comment_count: number;
-  event:MapEvent;
+  event: MapEvent;
 }
 
 interface Comment {
@@ -64,7 +66,7 @@ export default function PostView() {
   const { session } = useAuth();
   const insets = useSafeAreaInsets();
   const [post, setPost] = useState<Post | null>(null);
-  const [likeCount, setLikeCount] = useState("0");
+  const [likeCount, setLikeCount] = useState(0);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState(false);
@@ -89,24 +91,23 @@ export default function PostView() {
 
   useEffect(() => {
     DeviceEventEmitter.addListener("refreshPost", (valueEvent) => {
-      console.log('event----refreshPost');
+      console.log("event----refreshPost");
       getLikeCount();
       checkIfLiked();
       fetchComments();
     });
   }, []);
 
-
-   const { event } = useLocalSearchParams();
+  const { event } = useLocalSearchParams();
   const [eventObj, setEventObj] = useState(null);
 
   useEffect(() => {
     if (event) {
       try {
-        const parsed = typeof event === 'string' ? JSON.parse(event) : event;
+        const parsed = typeof event === "string" ? JSON.parse(event) : event;
         setEventObj(parsed);
       } catch (e) {
-        console.error('Failed to parse event:', e);
+        console.error("Failed to parse event:", e);
       }
     }
   }, [event]);
@@ -188,10 +189,21 @@ export default function PostView() {
     created_at,
     like_count,
     comment_count,
+    event_id,
     user:users!posts_user_id_fkey (
       id,
       username,
       avatar_url
+    ),
+    event:events!posts_event_id_fkey (
+      id,
+      name,
+      start_datetime,
+      end_datetime,
+      venue_name,
+      address,
+      city,
+      state
     )
   `
         )
@@ -217,7 +229,7 @@ export default function PostView() {
           username: userData?.username || null,
           avatar_url: userData?.avatar_url || null,
         },
-         event:rawData?.event || null,
+        event: rawData?.event || null,
       };
 
       setPost(transformedPost);
@@ -259,7 +271,7 @@ export default function PostView() {
       if (error) throw error;
 
       console.log("Like count:", count);
-      setLikeCount(count); // if you have a state to store it
+      setLikeCount(count || 0); // if you have a state to store it
     } catch (error) {
       console.error("Error fetching like count:", error);
     }
@@ -304,7 +316,7 @@ export default function PostView() {
 
         if (error) throw error;
         setLiked(false);
-        setLikeCount(likeCount - 1);
+        setLikeCount((prev) => prev - 1);
         setPost((post) =>
           post ? { ...post, like_count: post.like_count - 1 } : null
         );
@@ -315,7 +327,7 @@ export default function PostView() {
 
         if (error) throw error;
         setLiked(true);
-        setLikeCount(likeCount + 1);
+        setLikeCount((prev) => prev + 1);
         setPost((post) =>
           post ? { ...post, like_count: post.like_count + 1 } : null
         );
@@ -356,7 +368,7 @@ export default function PostView() {
 
   return (
     <View
-      className="flex-1 bg-background "
+      className="flex-1 bg-background"
       style={{ paddingBottom: insets.bottom, marginBottom: marginBottom_ }}
     >
       <Stack.Screen
@@ -381,15 +393,15 @@ export default function PostView() {
       />
 
       {loading ? (
-        <View className="items-center justify-center flex-1">
+        <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" />
         </View>
       ) : error ? (
-        <View className="items-center justify-center flex-1">
+        <View className="flex-1 justify-center items-center">
           <Text className="text-foreground">{error}</Text>
         </View>
       ) : !post ? (
-        <View className="items-center justify-center flex-1">
+        <View className="flex-1 justify-center items-center">
           <Text className="text-foreground">Post not found</Text>
         </View>
       ) : (
@@ -399,7 +411,7 @@ export default function PostView() {
           keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
           style={{ paddingBottom: insets.bottom + 60 }}
         >
-          <ScrollView className="flex-1 ">
+          <ScrollView className="flex-1">
             {/* Post Header */}
             {session.user.id !== post.user.id && (
               <View className="flex-row items-center p-4">
@@ -407,7 +419,7 @@ export default function PostView() {
                   onPress={() => {
                     router.push(`/profile/${post.user.id}`);
                   }}
-                  className="flex-row items-center flex-1"
+                  className="flex-row flex-1 items-center"
                 >
                   <Image
                     source={
@@ -434,12 +446,12 @@ export default function PostView() {
             )}
 
             {/* Post Content */}
-            <View className="p-4 mt-6 pt-0">
+            <View className="p-4 pt-0 mt-6">
               <Text className="text-foreground">{post.content}</Text>
             </View>
 
             {/* Post address */}
-            <View className="p-3 pt-0 flex-row items-center">
+            <View className="flex-row items-center p-3 pt-0">
               {Platform.OS == "ios" ? (
                 <MapPin size={20} className="text-primary" />
               ) : (
@@ -456,24 +468,20 @@ export default function PostView() {
               </Text>
             </View>
 
-             {/* event */}
-         { eventObj!=null && 
-            <View className="flex-row items-center mb-3 justify-between px-4">
-               <Text className="text-sm text-primary">
-                  {eventObj?.name}
-                </Text>
-             <TouchableOpacity
-             onPress={()=>{
-              setIsShowEvent(!isShowEvent);
-             }}
-             className=" bg-primary rounded-full px-4 py-2">
-                <Text className="text-sm text-white">
-                View Event
-                </Text>
-               </TouchableOpacity>
-            </View>
-         
-         }
+            {/* event */}
+            {eventObj != null && (
+              <View className="flex-row justify-between items-center px-4 mb-3">
+                <Text className="text-sm text-primary">{eventObj?.name}</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setIsShowEvent(!isShowEvent);
+                  }}
+                  className="px-4 py-2 rounded-full bg-primary"
+                >
+                  <Text className="text-sm text-white">View Event</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Post Media */}
             {post.media_urls && post.media_urls.length > 0 && (
@@ -493,7 +501,6 @@ export default function PostView() {
                 ))}
               </ScrollView>
             )}
-             
 
             {/* Post Actions */}
             <View className="flex-row items-center p-4 border-t border-border">
@@ -535,7 +542,7 @@ export default function PostView() {
             </View>
 
             {/* Comments */}
-            <View className="p-4 border-t border-border ">
+            <View className="p-4 border-t border-border">
               <Text className="mb-4 font-medium">Comments</Text>
               {comments.map((comment) => (
                 <View key={comment.id} className="flex-row mb-4">
@@ -591,19 +598,19 @@ export default function PostView() {
             </View>
           </View>
 
-           {eventObj!=null && isShowEvent  && (
-        <EventDetailsSheet
-          event={eventObj}
-          isOpen={!!isShowEvent}
-          onClose={() => setIsShowEvent(false)}
-          // nearbyEvents={events}
-          // onEventSelect={setSelectedEvent}
-          onShowControler={() => {}}
-        />
-      )}
+          {eventObj != null && isShowEvent && (
+            <EventDetailsSheet
+              nearbyEvents={[]}
+              onEventSelect={() => {}}
+              event={eventObj}
+              isOpen={!!isShowEvent}
+              onClose={() => setIsShowEvent(false)}
+              // nearbyEvents={events}
+              // onEventSelect={setSelectedEvent}
+              onShowControler={() => {}}
+            />
+          )}
         </KeyboardAvoidingView>
-
-       
       )}
     </View>
   );

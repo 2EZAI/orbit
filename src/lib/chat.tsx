@@ -51,7 +51,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       try {
         setIsConnecting(true);
         setConnectionError(null);
-
         // Get Stream token from backend
         console.log("Requesting Stream token from backend...");
         const response = await fetch(`${BACKEND_URL}/chat/token`, {

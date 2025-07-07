@@ -1,4 +1,4 @@
-import React, { useState , useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   ScrollView,
@@ -9,7 +9,7 @@ import {
   DeviceEventEmitter,
 } from "react-native";
 import { Category } from "~/hooks/useMapEvents";
-import { Icon } from 'react-native-elements';
+import { Icon } from "react-native-elements";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
@@ -67,7 +67,6 @@ interface LocationDetails {
   coordinates: [number, number];
 }
 
-
 // Function to convert base64 to Uint8Array for Supabase storage
 function decode(base64: string): Uint8Array {
   const binaryString = atob(base64);
@@ -79,35 +78,31 @@ function decode(base64: string): Uint8Array {
 }
 
 export default function CreateEvent() {
-// const { locationid,locationtype,Latitude,Longitude,category} = useLocalSearchParams();
-//   console.log("locationType>>", locationtype);
-//   console.log("latitude>>", Latitude);
-//    console.log("longitude>>", Longitude);
-//    const [locationId, setlocationId] = useState(locationid ? locationid : undefined);
-//    const [locationType, setlocationType] = useState(locationtype ? locationtype : undefined);
-//    const [latitude, setlatitude] = useState(Latitude ? Latitude : undefined);
-//    const [longitude, setlongitude] = useState(Longitude ? Longitude : undefined);
+  // const { locationid,locationtype,Latitude,Longitude,category} = useLocalSearchParams();
+  //   console.log("locationType>>", locationtype);
+  //   console.log("latitude>>", Latitude);
+  //    console.log("longitude>>", Longitude);
+  //    const [locationId, setlocationId] = useState(locationid ? locationid : undefined);
+  //    const [locationType, setlocationType] = useState(locationtype ? locationtype : undefined);
+  //    const [latitude, setlatitude] = useState(Latitude ? Latitude : undefined);
+  //    const [longitude, setlongitude] = useState(Longitude ? Longitude : undefined);
 
+  //    const parsedCategory = category ? JSON.parse(category as string) : [];
+  // console.log("parsedCategory>>", parsedCategory);
+  // const [categoryList, setCategoryList] = useState<Category>(parsedCategory === undefined ? {} : parsedCategory);
+  // const [selectedPrompts, setSelectedPrompts] = useState<Prompts>({});
+  // const [showPrompts, setshowPrompts] = useState( categoryList?.prompts === undefined ? false : true);
 
-//    const parsedCategory = category ? JSON.parse(category as string) : [];
-// console.log("parsedCategory>>", parsedCategory);
-// const [categoryList, setCategoryList] = useState<Category>(parsedCategory === undefined ? {} : parsedCategory);
-// const [selectedPrompts, setSelectedPrompts] = useState<Prompts>({});
-// const [showPrompts, setshowPrompts] = useState( categoryList?.prompts === undefined ? false : true);
-  
-    const [locationId, setlocationId] = useState(undefined);
-   const [locationType, setlocationType] = useState(undefined);
-   const [latitude, setlatitude] = useState(undefined);
-   const [longitude, setlongitude] = useState(undefined);
-  const [selectedTopics, setSelectedTopics] = useState<string>('');
+  const [locationId, setlocationId] = useState(undefined);
+  const [locationType, setlocationType] = useState(undefined);
+  const [latitude, setlatitude] = useState(undefined);
+  const [longitude, setlongitude] = useState(undefined);
+  const [selectedTopics, setSelectedTopics] = useState<string>("");
 
+  const [categoryList, setCategoryList] = useState<Category>({});
+  const [selectedPrompts, setSelectedPrompts] = useState<Prompts>({});
+  const [showPrompts, setshowPrompts] = useState(false);
 
-
-const [categoryList, setCategoryList] = useState<Category>( {} );
-const [selectedPrompts, setSelectedPrompts] = useState<Prompts>({});
-const [showPrompts, setshowPrompts] = useState( false );
-
-  
   const { showActionSheetWithOptions } = useActionSheet();
   const { user } = useUser();
   const [name, setName] = useState("");
@@ -131,36 +126,29 @@ const [showPrompts, setshowPrompts] = useState( false );
   const [isLoading, setIsLoading] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
 
+  useEffect(() => {
+    console.log("createevent_useEffect");
+    DeviceEventEmitter.addListener(
+      "passDataToCreateEvent",
+      (locationid, locationtype, Latitude, Longitude, category) => {
+        console.log("event----passDataToCreateEvent");
 
-useEffect(()=>{
-console.log("createevent_useEffect");
- DeviceEventEmitter.addListener("passDataToCreateEvent", (locationid,
-                  locationtype,
-                  Latitude,
-                  Longitude,
-                  category) => {
-      console.log('event----passDataToCreateEvent');
+        console.log("locationType>>", locationtype);
+        console.log("latitude>>", Latitude);
+        console.log("longitude>>", Longitude);
+        setlocationId(locationid ? locationid : undefined);
+        setlocationType(locationtype ? locationtype : undefined);
+        setlatitude(Latitude ? Latitude : undefined);
+        setlongitude(Longitude ? Longitude : undefined);
 
-console.log("locationType>>", locationtype);
-  console.log("latitude>>", Latitude);
-   console.log("longitude>>", Longitude);
-   setlocationId(locationid ? locationid : undefined);
-   setlocationType(locationtype ? locationtype : undefined);
-   setlatitude(Latitude ? Latitude : undefined);
-   setlongitude(Longitude ? Longitude : undefined);
-
-
-   const parsedCategory = category ? JSON.parse(category as string) : [];
-console.log("parsedCategory>>", parsedCategory);
-setCategoryList(parsedCategory === undefined ? {} : parsedCategory);
-// setshowPrompts( categoryList?.prompts === undefined ? false : true);
-setshowPrompts( parsedCategory === undefined ? false : true);
-
-
-     
-    });
-},[]);
-
+        const parsedCategory = category ? JSON.parse(category as string) : [];
+        console.log("parsedCategory>>", parsedCategory);
+        setCategoryList(parsedCategory === undefined ? {} : parsedCategory);
+        // setshowPrompts( categoryList?.prompts === undefined ? false : true);
+        setshowPrompts(parsedCategory === undefined ? false : true);
+      }
+    );
+  }, []);
 
   const showDatePicker = (isStart: boolean) => {
     const currentDate = isStart ? startDate : endDate;
@@ -372,41 +360,38 @@ setshowPrompts( parsedCategory === undefined ? false : true);
       return;
     }
 
-    if(locationType === 'static' || 
-      locationType === 'googleApi')
-      {
-
-    if (
-      !name ||
-      !description ||
-      // !selectedPrompts?.id ||
-      selectedTopics=== ''||
-      images.length === 0 ) {
-      Alert.alert(
-        "Error",
-        "Please fill in all required fields and add at least one image"
-      );
-      return;
-    }
+    if (locationType === "static" || locationType === "googleApi") {
+      if (
+        !name ||
+        !description ||
+        // !selectedPrompts?.id ||
+        selectedTopics === "" ||
+        images.length === 0
+      ) {
+        Alert.alert(
+          "Error",
+          "Please fill in all required fields and add at least one image"
+        );
+        return;
       }
-      else{
-        if (
-      !name ||
-      !description ||
-      selectedTopics=== ''||
-      images.length === 0 ||
-      !locationDetails.address1 ||
-      !locationDetails.city ||
-      !locationDetails.state ||
-      !locationDetails.zip
-    ) {
-      Alert.alert(
-        "Error",
-        "Please fill in all required fields and add at least one image"
-      );
-      return;
-    }
+    } else {
+      if (
+        !name ||
+        !description ||
+        selectedTopics === "" ||
+        images.length === 0 ||
+        !locationDetails.address1 ||
+        !locationDetails.city ||
+        !locationDetails.state ||
+        !locationDetails.zip
+      ) {
+        Alert.alert(
+          "Error",
+          "Please fill in all required fields and add at least one image"
+        );
+        return;
       }
+    }
 
     setIsLoading(true);
 
@@ -425,26 +410,25 @@ setshowPrompts( parsedCategory === undefined ? false : true);
             const filePath = `${
               FileSystem.documentDirectory
             }temp_${Date.now()}-${index}.${fileExt}`;
-            
-          var base64='';
+
+            var base64 = "";
             // Download the image first (needed for expo-file-system)
-          if (Platform.OS === 'ios') {
-            await FileSystem.downloadAsync(image.uri, filePath);
-            base64 = await FileSystem.readAsStringAsync(filePath, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-          }
-          else{
-           const uri = image.uri; // Assuming this is a local file URI like 'file:///path/to/file'
-           const fileUri = `${
-              FileSystem.documentDirectory
-            }temp_${Date.now()}-${index}.${fileExt}`;
-           await FileSystem.copyAsync({ from: uri, to: fileUri });
-            // Read the file as base64
-           base64 = await FileSystem.readAsStringAsync(fileUri, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-          }
+            if (Platform.OS === "ios") {
+              await FileSystem.downloadAsync(image.uri, filePath);
+              base64 = await FileSystem.readAsStringAsync(filePath, {
+                encoding: FileSystem.EncodingType.Base64,
+              });
+            } else {
+              const uri = image.uri; // Assuming this is a local file URI like 'file:///path/to/file'
+              const fileUri = `${
+                FileSystem.documentDirectory
+              }temp_${Date.now()}-${index}.${fileExt}`;
+              await FileSystem.copyAsync({ from: uri, to: fileUri });
+              // Read the file as base64
+              base64 = await FileSystem.readAsStringAsync(fileUri, {
+                encoding: FileSystem.EncodingType.Base64,
+              });
+            }
 
             // Upload to Supabase Storage
             const { error: uploadError } = await supabase.storage
@@ -496,11 +480,11 @@ setshowPrompts( parsedCategory === undefined ? false : true);
       }
 
       // 2. Create event using our API
-      
+
       let eventData = {
         name,
         description,
-        type:'Default',
+        type: "Default",
         address: locationDetails.address1,
         address_line2: locationDetails.address2,
         city: locationDetails.city,
@@ -511,33 +495,31 @@ setshowPrompts( parsedCategory === undefined ? false : true);
         external_url: externalUrl || null,
         image_urls: imageUrls,
         is_private: isPrivate,
-        topic_id:selectedTopics,
+        topic_id: selectedTopics,
       };
-      if(locationType === 'static' || 
-      locationType === 'googleApi')
-      {
+      if (locationType === "static" || locationType === "googleApi") {
         let promtIds = []; // an empty array
-        if(selectedPrompts?.id!=undefined){
-promtIds.push(selectedPrompts?.id);
+        if (selectedPrompts?.id != undefined) {
+          promtIds.push(selectedPrompts?.id);
         }
- eventData = {
-        name,
-        description,
-        location_id:locationId,
-        prompt_ids:promtIds.length >0 ?promtIds :null,
-        category_id:categoryList?.id!= undefined ? categoryList?.id :null,
-        type:locationType,
-        latitude:latitude,
-        longitude:longitude,
-        start_datetime: startDate.toISOString(),
-        end_datetime: endDate.toISOString(),
-        external_url: externalUrl || null,
-        image_urls: imageUrls,
-        is_private: isPrivate,
-        topic_id:selectedTopics,
-      };
+        eventData = {
+          name,
+          description,
+          location_id: locationId,
+          prompt_ids: promtIds.length > 0 ? promtIds : null,
+          category_id: categoryList?.id != undefined ? categoryList?.id : null,
+          type: locationType,
+          latitude: latitude,
+          longitude: longitude,
+          start_datetime: startDate.toISOString(),
+          end_datetime: endDate.toISOString(),
+          external_url: externalUrl || null,
+          image_urls: imageUrls,
+          is_private: isPrivate,
+          topic_id: selectedTopics,
+        };
       }
-      console.log("eventData>>",eventData);
+      // console.log("eventData>>",eventData);
 
       const response = await fetch(
         `${process.env.BACKEND_MAP_URL}/api/events`,
@@ -557,7 +539,7 @@ promtIds.push(selectedPrompts?.id);
       }
 
       const event = await response.json();
-console.log("event>>",event);
+      console.log("event>>", event);
       Toast.show({
         type: "success",
         text1: "Event Created!",
@@ -573,9 +555,7 @@ console.log("event>>",event);
           zoom: 15, // Close enough to see the event clearly
         },
       });
-      DeviceEventEmitter.emit('mapReload', true);
-
-
+      DeviceEventEmitter.emit("mapReload", true);
     } catch (error: any) {
       console.error("Event creation error:", error);
       Alert.alert(
@@ -640,23 +620,26 @@ console.log("event>>",event);
                     }`}
                   >
                     <View className="items-center">
-                      {Platform.OS == 'ios' ?
+                      {Platform.OS == "ios" ? (
                         <Globe
-                        size={24}
-                        className={
-                          !isPrivate ? "text-primary" : "text-muted-foreground"
-                        }
-                      />
-                      : <Icon 
-                          name="web" 
-                          type="material-community" 
-                          size={24} 
-                          color="#239ED0" 
-                           className={
-                          isPrivate ? "text-primary" : "text-muted-foreground"
-                        }
-                         />
-                      }
+                          size={24}
+                          className={
+                            !isPrivate
+                              ? "text-primary"
+                              : "text-muted-foreground"
+                          }
+                        />
+                      ) : (
+                        <Icon
+                          name="web"
+                          type="material-community"
+                          size={24}
+                          color="#239ED0"
+                          className={
+                            isPrivate ? "text-primary" : "text-muted-foreground"
+                          }
+                        />
+                      )}
                       <Text className="mt-2 mb-1 font-semibold">Public</Text>
                       <Text className="text-xs text-center text-muted-foreground">
                         Everyone can see and join
@@ -673,23 +656,24 @@ console.log("event>>",event);
                     }`}
                   >
                     <View className="items-center">
-                    { Platform.OS == 'ios' ?
-                      <Lock
-                        size={24}
-                        className={
-                          isPrivate ? "text-primary" : "text-muted-foreground"
-                        }
-                      />
-                      :  <Icon 
-                          name="lock-outline" 
-                          type="material-community" 
-                          size={24} 
-                          color="#239ED0" 
-                           className={
-                          isPrivate ? "text-primary" : "text-muted-foreground"
-                        }
-                         />
-                    }
+                      {Platform.OS == "ios" ? (
+                        <Lock
+                          size={24}
+                          className={
+                            isPrivate ? "text-primary" : "text-muted-foreground"
+                          }
+                        />
+                      ) : (
+                        <Icon
+                          name="lock-outline"
+                          type="material-community"
+                          size={24}
+                          color="#239ED0"
+                          className={
+                            isPrivate ? "text-primary" : "text-muted-foreground"
+                          }
+                        />
+                      )}
                       <Text className="mt-2 mb-1 font-semibold">Private</Text>
                       <Text className="text-xs text-center text-muted-foreground">
                         Followers only
@@ -723,46 +707,50 @@ console.log("event>>",event);
             </View>
           </View>
 
-   {/* Prompts Section */}
-          {showPrompts && categoryList?.prompts.length>0 && (<View className="p-4 mb-6 rounded-lg bg-card">
-           <Text className="mb-1.5 font-medium">Prompts *</Text>
+          {/* Prompts Section */}
+          {showPrompts && categoryList?.prompts.length > 0 && (
+            <View className="p-4 mb-6 rounded-lg bg-card">
+              <Text className="mb-1.5 font-medium">Prompts *</Text>
 
-            <View className="m-4 flex-row flex-wrap gap-2">
-      {categoryList?.prompts?.map((prompt) => {
-        const isSelected = selectedPrompts?.id === prompt?.id ? true :false;
-        return (
-          <TouchableOpacity
-            key={prompt.id}
-            onPress={() => {
-            setSelectedPrompts(prompt);
-            }
-            }
-            className={`px-4 py-2 rounded-full border ${
-              isSelected
-                ? "bg-primary border-primary"
-                : "bg-transparent border-border"
-            }`}
-          >
-            <Text
-              className={
-                isSelected ? "text-primary-foreground" : "text-foreground"
-              }
-            >
-              {prompt.name}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-    </View>)}
+              <View className="m-4 flex-row flex-wrap gap-2">
+                {categoryList?.prompts?.map((prompt) => {
+                  const isSelected =
+                    selectedPrompts?.id === prompt?.id ? true : false;
+                  return (
+                    <TouchableOpacity
+                      key={prompt.id}
+                      onPress={() => {
+                        setSelectedPrompts(prompt);
+                      }}
+                      className={`px-4 py-2 rounded-full border ${
+                        isSelected
+                          ? "bg-primary border-primary"
+                          : "bg-transparent border-border"
+                      }`}
+                    >
+                      <Text
+                        className={
+                          isSelected
+                            ? "text-primary-foreground"
+                            : "text-foreground"
+                        }
+                      >
+                        {prompt.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
 
-<View className="p-4 mb-6 rounded-lg bg-card">
-           <Text className="mb-1.5 font-medium">Category *</Text>
-    <TopicListSingleSelection
-          selectedTopics={selectedTopics}
-          onSelectTopic={setSelectedTopics}
-        />
-        </View>
+          <View className="p-4 mb-6 rounded-lg bg-card">
+            <Text className="mb-1.5 font-medium">Category *</Text>
+            <TopicListSingleSelection
+              selectedTopics={selectedTopics}
+              onSelectTopic={setSelectedTopics}
+            />
+          </View>
 
           {/* Images Section */}
           <View className="p-4 mb-6 rounded-lg bg-card">
@@ -800,67 +788,68 @@ console.log("event>>",event);
           </View>
 
           {/* Location Section */}
-         { locationType === undefined && <View className="p-4 mb-6 rounded-lg bg-card">
-            <View className="mb-4">
-              <Text className="mb-1 text-lg font-semibold">Location</Text>
-              <Text className="text-sm text-muted-foreground">
-                Where will your event take place?
-              </Text>
-            </View>
-
-            <View className="space-y-4">
-              {/* Address Search Input Container */}
-              <View>
-                <Input
-                  value={address1}
-                  onChangeText={(text) => {
-                    setAddress1(text);
-                    debouncedSearch(text);
-                  }}
-                  placeholder="Search address..."
-                  className="pr-10 bg-background"
-                />
+          {locationType === undefined && (
+            <View className="p-4 mb-6 rounded-lg bg-card">
+              <View className="mb-4">
+                <Text className="mb-1 text-lg font-semibold">Location</Text>
+                <Text className="text-sm text-muted-foreground">
+                  Where will your event take place?
+                </Text>
               </View>
 
-              {/* Search Results Dropdown */}
-              {showResults && searchResults.length > 0 && (
-                <View className="border rounded-lg border-border bg-background">
-                  {searchResults.slice(0, 5).map((result) => (
-                    <TouchableOpacity
-                      key={result.id}
-                      onPress={() => handleAddressSelect(result)}
-                      className="p-3 border-b border-border"
-                    >
-                      <Text className="font-medium">{result.text}</Text>
-                      <Text className="text-sm text-muted-foreground">
-                        {result.place_name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+              <View className="space-y-4">
+                {/* Address Search Input Container */}
+                <View>
+                  <Input
+                    value={address1}
+                    onChangeText={(text) => {
+                      setAddress1(text);
+                      debouncedSearch(text);
+                    }}
+                    placeholder="Search address..."
+                    className="pr-10 bg-background"
+                  />
                 </View>
-              )}
 
-              {/* Address Line 2 Input */}
-              <Input
-                value={address2}
-                onChangeText={setAddress2}
-                placeholder="Apt, Suite, etc. (optional)"
-                className="bg-background"
-              />
+                {/* Search Results Dropdown */}
+                {showResults && searchResults.length > 0 && (
+                  <View className="border rounded-lg border-border bg-background">
+                    {searchResults.slice(0, 5).map((result) => (
+                      <TouchableOpacity
+                        key={result.id}
+                        onPress={() => handleAddressSelect(result)}
+                        className="p-3 border-b border-border"
+                      >
+                        <Text className="font-medium">{result.text}</Text>
+                        <Text className="text-sm text-muted-foreground">
+                          {result.place_name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
 
-              {/* Location Summary */}
-              {locationDetails.city && (
-                <View className="flex-row items-center p-3 mt-2 space-x-2 rounded-lg bg-muted">
-                  <MapPin size={16} className="text-muted-foreground" />
-                  <Text className="text-sm text-muted-foreground">
-                    {locationDetails.city}, {locationDetails.state}{" "}
-                    {locationDetails.zip}
-                  </Text>
-                </View>
-              )}
+                {/* Address Line 2 Input */}
+                <Input
+                  value={address2}
+                  onChangeText={setAddress2}
+                  placeholder="Apt, Suite, etc. (optional)"
+                  className="bg-background"
+                />
+
+                {/* Location Summary */}
+                {locationDetails.city && (
+                  <View className="flex-row items-center p-3 mt-2 space-x-2 rounded-lg bg-muted">
+                    <MapPin size={16} className="text-muted-foreground" />
+                    <Text className="text-sm text-muted-foreground">
+                      {locationDetails.city}, {locationDetails.state}{" "}
+                      {locationDetails.zip}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
-          </View>
-         }
+          )}
 
           {/* Date & Time Section */}
           <View className="p-4 mb-6 rounded-lg bg-card">
@@ -882,14 +871,16 @@ console.log("event>>",event);
                     </Text>
                   </View>
                   <View className="items-center justify-center w-8 h-8 rounded-full bg-primary/10">
-                    {Platform.OS == 'ios' ?
-                    <Clock size={18} className="text-primary" />
-                    : (<Icon 
-                          name="clock-outline" 
-                          type="material-community" 
-                          size={24} 
-                          color="#239ED0" 
-                         />)}
+                    {Platform.OS == "ios" ? (
+                      <Clock size={18} className="text-primary" />
+                    ) : (
+                      <Icon
+                        name="clock-outline"
+                        type="material-community"
+                        size={24}
+                        color="#239ED0"
+                      />
+                    )}
                   </View>
                 </View>
 
@@ -899,18 +890,19 @@ console.log("event>>",event);
                     className="flex-row items-center justify-between p-3 border rounded-lg bg-background border-border"
                   >
                     <View className="flex-row items-center">
-                      {Platform.OS == 'ios' ?
-                      (<Calendar
-                        size={20}
-                        className="mr-3 text-muted-foreground"
-                      />)
-                      : (<Icon 
-                          name="calendar-outline" 
-                          type="material-community" 
-                          size={24} 
-                          color="#239ED0" 
-                         />)
-                      }
+                      {Platform.OS == "ios" ? (
+                        <Calendar
+                          size={20}
+                          className="mr-3 text-muted-foreground"
+                        />
+                      ) : (
+                        <Icon
+                          name="calendar-outline"
+                          type="material-community"
+                          size={24}
+                          color="#239ED0"
+                        />
+                      )}
                       <Text>Date</Text>
                     </View>
                     <Text className="text-primary">
@@ -923,13 +915,19 @@ console.log("event>>",event);
                     className="flex-row items-center justify-between p-3 border rounded-lg bg-background border-border"
                   >
                     <View className="flex-row items-center">
-                     {Platform.OS == 'ios'? <Clock size={20} className="mr-3 text-muted-foreground" />
-                     : (<Icon 
-                          name="clock-outline" 
-                          type="material-community" 
-                          size={24} 
-                          color="#239ED0" 
-                         />)}
+                      {Platform.OS == "ios" ? (
+                        <Clock
+                          size={20}
+                          className="mr-3 text-muted-foreground"
+                        />
+                      ) : (
+                        <Icon
+                          name="clock-outline"
+                          type="material-community"
+                          size={24}
+                          color="#239ED0"
+                        />
+                      )}
                       <Text>Time</Text>
                     </View>
                     <Text className="text-primary">
@@ -952,15 +950,16 @@ console.log("event>>",event);
                     </Text>
                   </View>
                   <View className="items-center justify-center w-8 h-8 rounded-full bg-primary/10">
-                    {Platform.OS == 'ios' ?
-                      (<Clock size={18} className="text-primary" />)
-                    : (<Icon 
-                          name="clock-outline" 
-                          type="material-community" 
-                          size={24} 
-                          color="#239ED0" 
-                         />)
-                    }
+                    {Platform.OS == "ios" ? (
+                      <Clock size={18} className="text-primary" />
+                    ) : (
+                      <Icon
+                        name="clock-outline"
+                        type="material-community"
+                        size={24}
+                        color="#239ED0"
+                      />
+                    )}
                   </View>
                 </View>
 
@@ -970,20 +969,19 @@ console.log("event>>",event);
                     className="flex-row items-center justify-between p-3 border rounded-lg bg-background border-border"
                   >
                     <View className="flex-row items-center">
-                     {Platform.OS == 'ios'?
-                     ( <Calendar
-                        size={20}
-                        className="mr-3 text-muted-foreground"
-                      />)
-                      :(
-                        (<Icon 
-                          name="calendar-outline" 
-                          type="material-community" 
-                          size={24} 
-                          color="#239ED0" 
-                         />)
-                      )
-                     }
+                      {Platform.OS == "ios" ? (
+                        <Calendar
+                          size={20}
+                          className="mr-3 text-muted-foreground"
+                        />
+                      ) : (
+                        <Icon
+                          name="calendar-outline"
+                          type="material-community"
+                          size={24}
+                          color="#239ED0"
+                        />
+                      )}
                       <Text>Date</Text>
                     </View>
                     <Text className="text-primary">
@@ -996,15 +994,19 @@ console.log("event>>",event);
                     className="flex-row items-center justify-between p-3 border rounded-lg bg-background border-border"
                   >
                     <View className="flex-row items-center">
-                      {Platform.OS == 'ios' ?
-                        <Clock size={20} className="mr-3 text-muted-foreground" />
-                      : (<Icon 
-                          name="clock-outline" 
-                          type="material-community" 
-                          size={24} 
-                          color="#239ED0" 
-                         />)
-                      }
+                      {Platform.OS == "ios" ? (
+                        <Clock
+                          size={20}
+                          className="mr-3 text-muted-foreground"
+                        />
+                      ) : (
+                        <Icon
+                          name="clock-outline"
+                          type="material-community"
+                          size={24}
+                          color="#239ED0"
+                        />
+                      )}
                       <Text>Time</Text>
                     </View>
                     <Text className="text-primary">

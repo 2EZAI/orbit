@@ -15,6 +15,7 @@ import { Input } from "~/src/components/ui/input";
 import { Button } from "~/src/components/ui/button";
 import { Text } from "~/src/components/ui/text";
 import { Camera, Lock, Mail, Phone, UserCircle } from "lucide-react-native";
+import { Icon } from 'react-native-elements';
 import Toast from "react-native-toast-message";
 import * as ImagePicker from "expo-image-picker";
 import { MotiView } from "moti";
@@ -183,18 +184,47 @@ export default function SignUp() {
 
       
     } catch (error) {
-      console.error("Sign up error:", error);
+      // console.error("Sign up error:", error);
+      if (error.name === "AuthWeakPasswordError") {
+        Toast.show({
+         type: 'customError',
+  text1: 'Password Requirements',
+   });
+
+    } else {
       Toast.show({
         type: "error",
         text1: "Error",
         text2:
           error instanceof Error ? error.message : "Failed to create account",
       });
+      }
     } finally {
       setLoading(false);
       console.log("Sign up process completed");
     }
   }
+  const toastConfig = {
+   customError: (props) => {return (
+    <View
+      style={{
+        padding: 16,
+        backgroundColor: '#f8d7da',
+        borderLeftWidth: 5,
+        borderLeftColor: '#dc3545',
+        borderRadius: 6,
+      }}
+    >
+      <Text style={{ fontWeight: 'bold', color: '#721c24' }}>{props.text1}</Text>
+      <Text style={{ color: '#721c24', marginTop: 4 }}>
+        • Uppercase letters{'\n'}
+        • Numbers{'\n'}
+        • Special characters
+      </Text>
+    </View>
+  );
+   }
+};
 
   async function pickImage() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -245,12 +275,23 @@ export default function SignUp() {
                 />
               ) : (
                 <View className="items-center justify-center rounded-full w-28 h-28 bg-primary/5">
-                  <UserCircle size={44} className="text-primary" />
+                  {Platform.OS === 'ios'?
+              <UserCircle size={44} className="text-primary" />
+               :<Icon name="account-circle-outline" type="material-community"
+                      size={44}
+                      color="#239ED0"/>
+              }
+                  
                 </View>
               )}
             </BlurView>
             <View className="absolute bottom-0 right-0 p-3 rounded-full bg-primary">
-              <Camera size={18} className="text-primary-foreground" />
+              {Platform.OS === 'ios'?
+              <Camera size={22} className="text-primary" />
+               :<Icon name="camera-outline" type="material-community"
+                      size={22}
+                      color="#239ED0"/>
+              }
             </View>
           </TouchableOpacity>
         </MotiView>
@@ -297,7 +338,12 @@ export default function SignUp() {
                 <Text className="mb-1 text-lg font-medium">Email Address</Text>
                 <View className="flex-row items-center h-14 bg-input rounded-xl">
                   <View className="px-4">
+                   {Platform.OS === 'ios'?
                     <Mail size={22} className="text-primary" />
+                    :<Icon name="email-outline" type="material-community"
+                      size={22}
+                      color="#6495ED"/>
+                    }
                   </View>
                   <Input
                     placeholder="you@example.com"
@@ -314,7 +360,12 @@ export default function SignUp() {
                 <Text className="mb-1 text-lg font-medium">Phone Number</Text>
                 <View className="flex-row items-center h-14 bg-input rounded-xl">
                   <View className="px-4">
+                   {Platform.OS === 'ios'?
                     <Phone size={22} className="text-primary" />
+                    :<Icon name="phone-outline" type="material-community"
+                      size={22}
+                      color="#6495ED"/>
+                    }
                   </View>
                   <Input
                     placeholder="+1 (555) 000-0000"
@@ -330,7 +381,13 @@ export default function SignUp() {
                 <Text className="mb-1 text-lg font-medium">Password</Text>
                 <View className="flex-row items-center h-14 bg-input rounded-xl">
                   <View className="px-4">
-                    <Lock size={22} className="text-primary" />
+                     {Platform.OS === 'ios'?
+        <Lock size={22} className="text-primary" />
+        :
+                     <Icon name="lock-outline" type="material-community"
+                      size={22}
+                      color="#6495ED"/>
+                     }
                   </View>
                   <Input
                     placeholder="••••••••"
@@ -374,6 +431,9 @@ export default function SignUp() {
           </View>
         </MotiView>
       </ScrollView>
+       {/* Toast Component */}
+      <Toast />
+      <Toast config={toastConfig} />
     </SafeAreaView>
   );
 }

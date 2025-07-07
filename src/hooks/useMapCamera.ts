@@ -9,7 +9,7 @@ interface UseMapCameraProps {
 
 export const useMapCamera = ({
   initialZoom = 11,
-  minZoom = 9,
+  minZoom = 3,
   maxZoom = 16,
 }: UseMapCameraProps = {}) => {
   const cameraRef = useRef<MapboxGL.Camera>(null);

@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { Text } from "../ui/text";
 import { Sheet } from "../ui/sheet";
-import { Icon } from 'react-native-elements';
+import { Icon } from "react-native-elements";
 import { Search, X, MapPin, Users } from "lucide-react-native";
 import { Input } from "../ui/input";
 import { useRouter } from "expo-router";
@@ -17,12 +17,13 @@ import { supabase } from "~/src/lib/supabase";
 import { formatTime, formatDate } from "~/src/lib/date";
 import { UserAvatar } from "../ui/user-avatar";
 import { EventDetailsSheet } from "../map/EventDetailsSheet";
-import { MapEvent } from "~/hooks/useMapEvents";
+import { MapEvent, MapLocation } from "~/hooks/useMapEvents";
 
 interface SearchSheetProps {
   isOpen: boolean;
   onClose: () => void;
-  eventsList:any;
+  eventsList: any;
+  locationsList?: any;
   onShowControler: () => void;
 }
 
@@ -37,6 +38,7 @@ type User = {
 type SearchResults = {
   events: MapEvent[];
   users: User[];
+  locations: MapLocation[];
 };
 
 const processEvent = (event: any, user?: User): MapEvent => {
@@ -52,19 +54,48 @@ const processEvent = (event: any, user?: User): MapEvent => {
     created_by: event.created_by,
     location: event.location,
     is_ticketmaster: event.is_ticketmaster || false,
-    external_url: event.external_url || '',
+    external_url: event.external_url || "",
     distance: 0,
     attendees: { count: 0, profiles: [] },
     categories: [],
   };
 };
 
-export function SearchSheet({ isOpen, onClose ,eventsList,onShowControler}: SearchSheetProps) {
+const processLocation = (location: any): MapLocation => {
+  return {
+    id: location.id,
+    name: location.name,
+    description: location.description,
+    address: location.address,
+    image_urls: location.image_urls || [],
+    location: location.location,
+    type: location.type,
+    distance: 0,
+    category: location.category || {
+      id: "",
+      name: "",
+      icon: null,
+      created_at: "",
+      updated_at: "",
+      source: "",
+      prompts: [],
+    },
+  };
+};
+
+export function SearchSheet({
+  isOpen,
+  onClose,
+  eventsList,
+  locationsList = [],
+  onShowControler,
+}: SearchSheetProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState<SearchResults>({
     events: [],
     users: [],
+    locations: [],
   });
   const [isLoading, setIsLoading] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<MapEvent | null>(null);
@@ -72,60 +103,95 @@ export function SearchSheet({ isOpen, onClose ,eventsList,onShowControler}: Sear
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
     if (query.length < 2) {
-      setResults({ events: [], users: [] });
+      setResults({ events: [], users: [], locations: [] });
       return;
     }
 
     setIsLoading(true);
     try {
-      // Fetch events
-      // const { data: events, error: eventsError } = await supabase
-      //   .from("events")
-      //   .select(
-      //     `
-      //     id,
-      //     name,
-      //     description,
-      //     venue_name,
-      //     address,
-      //     start_datetime,
-      //     end_datetime,
-      //     image_urls,
-      //     created_by,
-      //     location,
-      //     event_topics (
-      //       topics (
-      //         id,
-      //         name
-      //       )
-      //     )
-      //   `
-      //   )
-      //   .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
-      //   .order("start_datetime", { ascending: true })
-      //   .limit(5);
+      const searchQ = query.toLowerCase();
 
-      // if (eventsError) throw eventsError;
+      // Search events - including topic-based search
+      const events = eventsList
+        .filter((event) => {
+          const nameMatch = event.name.toLowerCase().includes(searchQ);
+          const descriptionMatch = event.description
+            ?.toLowerCase()
+            .includes(searchQ);
+          const venueMatch = event.venue_name?.toLowerCase().includes(searchQ);
 
-const searchQ = query.toLowerCase();
+          // Topic-based search for events
+          const topicMatch =
+            event.categories?.some((category: any) =>
+              category.name.toLowerCase().includes(searchQ)
+            ) ||
+            event.topics?.some(
+              (topic: any) =>
+                topic.name?.toLowerCase().includes(searchQ) ||
+                topic.topic?.toLowerCase().includes(searchQ)
+            );
 
-      const events = eventsList.filter(event =>  
-      event.name.toLowerCase().includes(searchQ) )
-      .sort((a, b) => {
-    const aName = a.name.toLowerCase();
-    const bName = b.name.toLowerCase();
-    const aStarts = aName.startsWith(searchQ);
-    const bStarts = bName.startsWith(searchQ);
-    
-    // Prioritize startsWith
-    if (aStarts && !bStarts) return -1;
-    if (!aStarts && bStarts) return 1;
-    
-    // If both or neither start with the term, sort alphabetically
-    return aName.localeCompare(bName);
-  });
+          return nameMatch || descriptionMatch || venueMatch || topicMatch;
+        })
+        .sort((a, b) => {
+          const aName = a.name.toLowerCase();
+          const bName = b.name.toLowerCase();
+          const aStarts = aName.startsWith(searchQ);
+          const bStarts = bName.startsWith(searchQ);
 
-      console.log(events);
+          // Prioritize startsWith
+          if (aStarts && !bStarts) return -1;
+          if (!aStarts && bStarts) return 1;
+
+          // If both or neither start with the term, sort alphabetically
+          return aName.localeCompare(bName);
+        });
+
+      // Search locations - including topic-based search
+      const locations = locationsList
+        .filter((location) => {
+          const nameMatch = location.name.toLowerCase().includes(searchQ);
+          const descriptionMatch = location.description
+            ?.toLowerCase()
+            .includes(searchQ);
+          const addressMatch = location.address
+            ?.toLowerCase()
+            .includes(searchQ);
+
+          // Topic-based search for locations
+          const categoryMatch = location.category?.name
+            ?.toLowerCase()
+            .includes(searchQ);
+          const topicMatch = location.topics?.some(
+            (topic: any) =>
+              topic.name?.toLowerCase().includes(searchQ) ||
+              topic.topic?.toLowerCase().includes(searchQ)
+          );
+
+          return (
+            nameMatch ||
+            descriptionMatch ||
+            addressMatch ||
+            categoryMatch ||
+            topicMatch
+          );
+        })
+        .sort((a, b) => {
+          const aName = a.name.toLowerCase();
+          const bName = b.name.toLowerCase();
+          const aStarts = aName.startsWith(searchQ);
+          const bStarts = bName.startsWith(searchQ);
+
+          // Prioritize startsWith
+          if (aStarts && !bStarts) return -1;
+          if (!aStarts && bStarts) return 1;
+
+          // If both or neither start with the term, sort alphabetically
+          return aName.localeCompare(bName);
+        });
+
+      console.log("Events found:", events.length);
+      console.log("Locations found:", locations.length);
 
       let processedEvents: MapEvent[] = [];
       if (events?.length > 0) {
@@ -145,6 +211,11 @@ const searchQ = query.toLowerCase();
           processEvent(event, usersMap?.[event.created_by])
         );
       }
+
+      // Process locations
+      const processedLocations: MapLocation[] = locations.map((location) =>
+        processLocation(location)
+      );
 
       // Fetch users
       console.log("Searching for users with query:", query);
@@ -169,6 +240,7 @@ const searchQ = query.toLowerCase();
       setResults({
         events: processedEvents,
         users: users || [],
+        locations: processedLocations,
       });
     } catch (error) {
       console.error("Search error:", error);
@@ -177,7 +249,10 @@ const searchQ = query.toLowerCase();
     }
   };
 
-  const handleSelectResult = (type: "event" | "user", data: any) => {
+  const handleSelectResult = (
+    type: "event" | "user" | "location",
+    data: any
+  ) => {
     onShowControler(false);
     if (type === "user" && data?.username) {
       router.push({
@@ -188,7 +263,18 @@ const searchQ = query.toLowerCase();
     } else if (type === "event" && data?.id) {
       setSelectedEvent(data);
       onClose();
-      setSearchQuery('');
+      setSearchQuery("");
+    } else if (type === "location" && data?.id) {
+      router.push({
+        pathname: "/(app)/(map)",
+        params: {
+          locationId: data.id,
+          latitude: data.location?.latitude,
+          longitude: data.location?.longitude,
+        },
+      });
+      onClose();
+      setSearchQuery("");
     }
   };
 
@@ -204,35 +290,41 @@ const searchQ = query.toLowerCase();
             {/* Search Header */}
             <View className="p-4 border-b border-border">
               <View className="flex-row items-center">
-                <View className="flex-row items-center flex-1 px-4 py-2 rounded-full bg-muted">
-                  {Platform.OS == 'ios'?
-                  <Search size={20} className="mr-2 text-muted-foreground" />
-                  : <Icon 
-              name="magnify"
-               type="material-community" 
-              size={20}
-              color="#239ED0"
-              />}
+                <View className="flex-row flex-1 items-center px-4 py-2 rounded-full bg-muted">
+                  {Platform.OS == "ios" ? (
+                    <Search size={20} className="mr-2 text-muted-foreground" />
+                  ) : (
+                    <Icon
+                      name="magnify"
+                      type="material-community"
+                      size={20}
+                      color="#239ED0"
+                    />
+                  )}
                   <Input
-                    placeholder="Search events and people..."
+                    placeholder="Search events, places, and people..."
                     value={searchQuery}
                     onChangeText={handleSearch}
                     className="flex-1 p-0 text-base bg-transparent border-0"
                   />
                 </View>
-                <TouchableOpacity className="p-2 ml-2" onPress={() => {
-                  setSearchQuery('');
-                  onClose();
-                }}>
-                {Platform.OS == 'ios' ?
-                  <X size={24} />
-                  :  <Icon 
-              name="close"
-               type="material-community" 
-              size={24}
-              color="#239ED0"
-              />
-                }
+                <TouchableOpacity
+                  className="p-2 ml-2"
+                  onPress={() => {
+                    setSearchQuery("");
+                    onClose();
+                  }}
+                >
+                  {Platform.OS == "ios" ? (
+                    <X size={24} />
+                  ) : (
+                    <Icon
+                      name="close"
+                      type="material-community"
+                      size={24}
+                      color="#239ED0"
+                    />
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
@@ -261,7 +353,7 @@ const searchQ = query.toLowerCase();
                         >
                           <Image
                             source={{ uri: event.image_urls?.[0] }}
-                            className="w-12 h-12 mr-3 rounded-lg"
+                            className="mr-3 w-12 h-12 rounded-lg"
                           />
                           <View className="flex-1">
                             <Text className="mb-1 font-medium">
@@ -274,6 +366,43 @@ const searchQ = query.toLowerCase();
                               />
                               <Text className="text-sm text-muted-foreground">
                                 {event.venue_name}
+                              </Text>
+                            </View>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Locations Section */}
+                  {results.locations.length > 0 && (
+                    <View>
+                      <Text className="px-4 py-2 text-sm font-medium text-muted-foreground bg-muted/50">
+                        Places
+                      </Text>
+                      {results.locations.map((location) => (
+                        <TouchableOpacity
+                          key={location.id}
+                          className="flex-row items-center p-4 border-b border-border"
+                          onPress={() =>
+                            handleSelectResult("location", location)
+                          }
+                        >
+                          <Image
+                            source={{ uri: location.image_urls?.[0] }}
+                            className="mr-3 w-12 h-12 rounded-lg"
+                          />
+                          <View className="flex-1">
+                            <Text className="mb-1 font-medium">
+                              {location.name}
+                            </Text>
+                            <View className="flex-row items-center">
+                              <MapPin
+                                size={14}
+                                className="mr-1 text-muted-foreground"
+                              />
+                              <Text className="text-sm text-muted-foreground">
+                                {location.address}
                               </Text>
                             </View>
                           </View>
@@ -316,6 +445,7 @@ const searchQ = query.toLowerCase();
                   )}
 
                   {results.events.length === 0 &&
+                    results.locations.length === 0 &&
                     results.users.length === 0 && (
                       <View className="p-4">
                         <Text className="text-center text-muted-foreground">
@@ -340,7 +470,7 @@ const searchQ = query.toLowerCase();
           }}
           nearbyEvents={results.events}
           onEventSelect={(event) => setSelectedEvent(event)}
-          onShowControler={()  => onShowControler(true)}
+          onShowControler={() => onShowControler(true)}
         />
       )}
     </>

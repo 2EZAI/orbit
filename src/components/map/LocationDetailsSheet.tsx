@@ -62,16 +62,17 @@ export function LocationDetailsSheet({
   onEventSelect,
   onShowControler,
 }: LocationDetailsSheetProps) {
+  console.log("event///", event);
   const PAGE_SIZE = 40;
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
 
   const [page, setPage] = useState(1);
-  const [eventsList, setEventsList] = useState([]);
+  const [eventsList, setEventsList] = useState<any[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [showAllEvents, setShowAllEvents] = useState(false);
   const [loading, setLoading] = useState(false);
   const [onEndReached, setonEndReached] = useState(true);
-  const [locationDetail, setLocationDetail] = useState<{}>();
+  const [locationDetail, setLocationDetail] = useState<any>(event ? event :undefined);
   const width = Dimensions.get("window").width;
   const imageSize = (width - 32) / 3; // 3 images per row with padding
   const bannerHeight = width * 0.5; // 50% of screen width
@@ -98,8 +99,9 @@ export function LocationDetailsSheet({
       console.log("hitLocationDetail");
     const locationDetails = await fetchLocationDetail(event);
     console.log("Returned location details:", locationDetails);
-     setLocationDetail({});
+ if (locationDetails && typeof locationDetails === "object") {
     setLocationDetail(locationDetails);
+ }
     setLoading(false)
   };
   const handleShare = async () => {
@@ -122,14 +124,30 @@ export function LocationDetailsSheet({
     });
   };
 
+  const hitUpdaeEventApi = async () => {
+    setLoading(true);
+    console.log("hitUpdaeEventApi");
+    try {
+      const data = await UpdateEventStatus(event);
+      setTimeout(() => {
+        setLoading(false);
 
+        if (data?.success) {
+          handleCreateOrbit();
+        }
+      }, 2000);
+    } catch (error) {
+      console.error("Error updating event status:", error);
+      setLoading(false);
+    }
+  };
 
   if (!isOpen) return null;
 
   useEffect(() => {
-    setLocationDetail({});
-    console.log("event??", event);
-    console.log("event.prompts??", event?.category?.prompts);
+    // setLocationDetail({});
+    // console.log("event??", event);
+    // console.log("event.prompts??", event?.category?.prompts);
     setLocationDetail(event);
     hitLocationDetail();
     setPage(1);
@@ -147,16 +165,21 @@ export function LocationDetailsSheet({
     setLoading(true);
 
     console.log("loadEvents:", event);
-    const data = await fetchLocationEvents(event, page, PAGE_SIZE);
-    console.log("data>:", data);
-    if (data.length === 0) {
+    try {
+      const data = await fetchLocationEvents(event, page, PAGE_SIZE);
+      console.log("data>:", data);
+      if (data.length === 0) {
+        setLoading(false);
+        setHasMore(false);
+      } else {
+        setEventsList((prev) => [...prev, ...data]);
+        setPage((prev) => prev + 1);
+        // if (data.length < PAGE_SIZE) setHasMore(false); // stop if no more
+      }
+    } catch (error) {
+      console.error("Fetch error:", error);
       setLoading(false);
       setHasMore(false);
-      console.error("Fetch error:", error);
-    } else {
-      setEventsList((prev) => [...prev, ...data]);
-      setPage((prev) => prev + 1);
-      // if (data.length < PAGE_SIZE) setHasMore(false); // stop if no more
     }
 
     setLoading(false);
@@ -196,7 +219,7 @@ export function LocationDetailsSheet({
 
         {/* Header Section */}
         <View className="px-4 pt-4 pb-4 border-b border-border">
-          <View className="flex-row items-center justify-between mb-4">
+          <View className="flex-row justify-between items-center mb-4">
             <TouchableOpacity onPress={onClose}>
               {Platform.OS == "ios" ? (
                 <ArrowLeft size={24} className="text-foreground" />
@@ -210,12 +233,12 @@ export function LocationDetailsSheet({
               )}
             </TouchableOpacity>
           </View>
-          <View className="mb-2 flex-row items-center justify-between">
+          <View className="flex-row justify-between items-center mb-2">
             <Text className=" text-2xl font-bold w-[60%]">
               {locationDetail?.name}
             </Text>
             <Button
-              className=" bg-primary"
+              className="bg-primary"
               onPress={() => {
                 router.push({
                   pathname: "/(app)/(create)",
@@ -240,16 +263,12 @@ export function LocationDetailsSheet({
                 }, 300);
               }}
             >
-              <View className="flex-row items-center justify-center">
+              <View className="flex-row justify-center items-center">
                 <Text className="ml-1.5 font-semibold text-white">
                   Create Event
                 </Text>
               </View>
             </Button>
-          </View>
-
-          <View className="flex-row items-center justify-between">
-  
           </View>
         </View>
 
@@ -266,54 +285,59 @@ export function LocationDetailsSheet({
           </View>
 
           {/* Category prompts */}
-          {locationDetail?.category && (
-            <View className="mb-6">
-              <Text className="mb-3 text-lg font-semibold">Category</Text>
-              <View className="flex-row flex-wrap gap-2">
-                <View className="px-3 py-1 rounded-full bg-muted">
-                  <Text className="text-sm">{locationDetail?.category?.name}</Text>
+          {locationDetail?.category &&
+            Array.isArray(locationDetail?.category.prompts) &&
+            locationDetail?.category?.prompts?.length > 0 && (
+              <View className="mb-6">
+                <Text className="mb-3 text-lg font-semibold">Category</Text>
+                <View className="flex-row flex-wrap gap-2">
+                  <View className="px-3 py-1 rounded-full bg-muted">
+                    <Text className="text-sm">
+                      {locationDetail?.category?.name}
+                    </Text>
+                  </View>
+                </View>
+                <Text className="mt-4 mb-3 text-lg font-semibold">Prompt</Text>
+
+                <View className="flex-row flex-wrap gap-2">
+                  {locationDetail?.category.prompts.map((prompt: any) => (
+                    <View
+                      key={prompt.id}
+                      className="px-3 py-1 rounded-full bg-muted"
+                    >
+                      <Text className="text-sm">{prompt.name}</Text>
+                    </View>
+                  ))}
                 </View>
               </View>
-              <Text className="mb-3 mt-4 text-lg font-semibold">Prompt</Text>
-
-              <View className="flex-row flex-wrap gap-2">
-                {locationDetail?.category?.prompts?.map((prompt) => (
-                  <View
-                    key={prompt.id}
-                    className="px-3 py-1 rounded-full bg-muted"
-                  >
-                    <Text className="text-sm">{prompt.name}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
+            )}
 
           {/* Image Gallery */}
-          {locationDetail?.image_urls?.length > 1 && (
-            <View className="mb-6">
-              <Text className="mb-3 text-lg font-semibold">
-                Location Photos
-              </Text>
-              <View className="flex-row flex-wrap gap-2">
-                {locationDetail?.image_urls.slice(1).map((imageUrl, index) => (
-                  <TouchableOpacity key={index} activeOpacity={0.8}>
-                    <Image
-                      source={{ uri: imageUrl }}
-                      style={{
-                        width: imageSize,
-                        height: imageSize,
-                        borderRadius: 12,
-                      }}
-                    />
-                  </TouchableOpacity>
-                ))}
+          {Array.isArray(locationDetail?.image_urls) &&
+            locationDetail.image_urls.length > 1 && (
+              <View className="mb-6">
+                <Text className="mb-3 text-lg font-semibold">
+                  Location Photos
+                </Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {locationDetail?.image_urls.slice(1).map((imageUrl, index) => (
+                    <TouchableOpacity key={index} activeOpacity={0.8}>
+                      <Image
+                        source={{ uri: imageUrl }}
+                        style={{
+                          width: imageSize,
+                          height: imageSize,
+                          borderRadius: 12,
+                        }}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
-            </View>
-          )}
+            )}
 
           <View className="mb-6">
-            <View className="mb-6 flex-row items-center justify-between">
+            <View className="flex-row justify-between items-center mb-6">
               <View>
                 <Text className="text-lg font-semibold">Events</Text>
               </View>
@@ -323,7 +347,7 @@ export function LocationDetailsSheet({
                   console.log("See All Pressed");
                 }}
               >
-                <Text className="text-blue-500 font-medium">See All</Text>
+                <Text className="font-medium text-blue-500">See All</Text>
               </TouchableOpacity>
             </View>
             <FlatList
@@ -352,7 +376,7 @@ export function LocationDetailsSheet({
           </View>
 
           <Button
-            className=" m-10 bottom-0 left-0 right-0 bg-primary"
+            className="right-0 bottom-0 left-0 m-10 bg-primary"
             onPress={() => {
               router.push({
                 pathname: "/(app)/(create)",
@@ -377,7 +401,7 @@ export function LocationDetailsSheet({
               }, 300);
             }}
           >
-            <View className="flex-row items-center justify-center">
+            <View className="flex-row justify-center items-center">
               <Text className="ml-1.5 font-semibold text-white">
                 Create Event
               </Text>
@@ -398,7 +422,7 @@ export function LocationDetailsSheet({
       )}
 
       {showAllEvents && (
-        <View className="absolute top-0 bottom-0 right-0 left-0 justify-center bg-white">
+        <View className="absolute top-0 right-0 bottom-0 left-0 justify-center bg-white">
           <View className="w-[100%] h-[80%] justify-center  rounded-lg p-4">
             <TouchableOpacity
               onPress={() => {
