@@ -519,7 +519,7 @@ export default function CreateEvent() {
           topic_id: selectedTopics,
         };
       }
-      // console.log("eventData>>",eventData);
+      console.log("eventData>>",eventData);
 
       const response = await fetch(
         `${process.env.BACKEND_MAP_URL}/api/events`,

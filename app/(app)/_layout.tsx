@@ -6,6 +6,7 @@ import { useTheme } from "~/src/components/ThemeProvider";
 import TabBar from "~/src/components/shared/TabBar";
 import { Redirect } from "expo-router";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import useNotifications from '~/hooks/useNotifications';
 
 export default function AppLayout() {
   const { theme } = useTheme();
@@ -18,7 +19,7 @@ export default function AppLayout() {
   if (!session) {
     return <Redirect href="/(auth)/sign-in" />;
   }
-
+useNotifications();
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Tabs

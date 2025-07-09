@@ -413,9 +413,9 @@ export function EventDetailsSheet({
                 <Text className="mb-3 mt-4 text-lg font-semibold">Prompt</Text>
 
                 <View className="flex-row flex-wrap gap-2">
-                  {eventDetail.category.prompts.map((prompt: Prompt) => (
+                  {eventDetail.category.prompts.map((prompt: Prompt,index) => (
                     <View
-                      key={prompt.id}
+                      key={`${prompt.id}-${index}`}
                       className="px-3 py-1 rounded-full bg-muted"
                     >
                       <Text className="text-sm">{prompt.name}</Text>
@@ -430,9 +430,9 @@ export function EventDetailsSheet({
               <View className="mb-6">
                 <Text className="mb-3 text-lg font-semibold">Categories</Text>
                 <View className="flex-row flex-wrap gap-2">
-                  {eventDetail?.categories.map((category) => (
+                  {eventDetail?.categories.map((category,index) => (
                     <View
-                      key={category.id}
+                      key={`${category.id}-${index}`}
                       className="px-3 py-1 rounded-full bg-muted"
                     >
                       <Text className="text-sm">{category.name}</Text>

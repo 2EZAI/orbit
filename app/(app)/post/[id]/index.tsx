@@ -194,16 +194,6 @@ export default function PostView() {
       id,
       username,
       avatar_url
-    ),
-    event:events!posts_event_id_fkey (
-      id,
-      name,
-      start_datetime,
-      end_datetime,
-      venue_name,
-      address,
-      city,
-      state
     )
   `
         )
@@ -229,7 +219,7 @@ export default function PostView() {
           username: userData?.username || null,
           avatar_url: userData?.avatar_url || null,
         },
-        event: rawData?.event || null,
+        event:  null,
       };
 
       setPost(transformedPost);
@@ -358,6 +348,7 @@ export default function PostView() {
       setPost((post) =>
         post ? { ...post, comment_count: post.comment_count + 1 } : null
       );
+      hitNoificationApi();
     } catch (error) {
       console.error("Error submitting comment:", error);
       Alert.alert("Error", "Failed to submit comment");
@@ -365,6 +356,47 @@ export default function PostView() {
       setSubmittingComment(false);
     }
   };
+
+  const hitNoificationApi= async () => {
+    if (!session?.user.id || !newComment.trim()) return;
+    try{
+      const reuestData= {
+  userId: post?.user?.id,  
+  senderId: session?.user?.id,
+  type: "comment",                   
+  title: "New Comment",   
+  body: "New comment on your post", 
+  data: {     
+    post_id: id
+  }
+}
+    ///fetch events
+        const response = await fetch(
+          `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.user.id}`,
+            },
+            body: JSON.stringify(reuestData),
+          }
+        );
+        console.log("eventData", reuestData);
+
+        if (!response.ok) {
+          console.log("error>",response);
+          throw new Error(await response.text());
+        }
+
+        const data_ = await response.json();
+        console.log("response>",data_);
+    }
+    catch(e)
+    {
+console.log("error_catch>",e);
+    }
+  }
 
   return (
     <View

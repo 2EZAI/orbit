@@ -6,10 +6,10 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
-  SafeAreaView,
   StatusBar,
   Dimensions,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import { supabase } from "~/src/lib/supabase";
 import { useAuth } from "~/src/lib/auth";
@@ -163,62 +163,89 @@ export default function SocialFeed() {
     console.log("Starting to fetch posts...");
 
     try {
-      const from = (currentPage - 1) * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
+      // const from = (currentPage - 1) * PAGE_SIZE;
+      // const to = from + PAGE_SIZE - 1;
 
-      console.log(
-        "Querying posts from",
-        from,
-        "to",
-        to,
+      // console.log(
+      //   "Querying posts from",
+      //   from,
+      //   "to",
+      //   to,
+      //   "for page:",
+      //   currentPage
+      // );
+
+      // const { data: postsData, error } = await supabase
+      //   .from("posts")
+      //   .select(
+      //     `
+      //     id,
+      //     content,
+      //     media_urls,
+      //     created_at,
+      //     address,
+      //     city,
+      //     state,
+      //     like_count,
+      //     comment_count,
+      //     event_id,
+      //     user:users!posts_user_id_fkey (
+      //       id,
+      //       username,
+      //       avatar_url
+      //     ),
+      //     event:events!posts_event_id_fkey (
+      //       id,
+      //       name,
+      //       description,
+      //       start_datetime,
+      //       end_datetime,
+      //       venue_name,
+      //       address,
+      //       city,
+      //       state
+      //     )
+      //   `
+      //   )
+      //   .order("created_at", { ascending: false })
+      //   .range(from, to);
+ console.log(
         "for page:",
         currentPage
       );
+const response = await fetch(
+        `${process.env.BACKEND_MAP_URL}/api/posts/all?page=${currentPage}&limit=${PAGE_SIZE}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
+      );
+     
 
-      const { data: postsData, error } = await supabase
-        .from("posts")
-        .select(
-          `
-          id,
-          content,
-          media_urls,
-          created_at,
-          address,
-          city,
-          state,
-          like_count,
-          comment_count,
-          event_id,
-          user:users!posts_user_id_fkey (
-            id,
-            username,
-            avatar_url
-          ),
-          event:events!posts_event_id_fkey (
-            id,
-            name,
-            description,
-            start_datetime,
-            end_datetime,
-            venue_name,
-            address,
-            city,
-            state
-          )
-        `
-        )
-        .order("created_at", { ascending: false })
-        .range(from, to);
-
-      console.log("Supabase response:", { postsData, error });
-
-      if (error) {
-        console.error("Error fetching posts:", error);
+      if (!response.ok) {
         setLoading(false);
         setRefreshing(false);
         setHasMore(false);
+        throw new Error(await response.text());
         return;
+   
       }
+
+      const response_ = await response.json();
+       
+     const postsData = response_?.data;
+      console.log("api response:", { postsData });
+
+      // if (error) {
+      //   console.error("Error fetching posts:", error);
+      //   setLoading(false);
+      //   setRefreshing(false);
+      //   setHasMore(false);
+      //   return;
+      // }
 
       console.log("Raw postsData:", postsData);
       if (postsData && postsData.length > 0) {
@@ -241,10 +268,10 @@ export default function SocialFeed() {
           state: post.state,
           like_count: Math.max(0, post.like_count || 0),
           comment_count: Math.max(0, post.comment_count || 0),
-          user: post.user || {
-            id: post.user_id,
-            username: "Unknown User",
-            avatar_url: null,
+          user: post.created_by || {
+            id: post.id,
+            username: post.username,
+            avatar_url: post.avatar_url,
           },
           event: post.event,
           isLiked: false, // We'll check this separately
