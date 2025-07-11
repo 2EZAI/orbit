@@ -9,6 +9,7 @@ import { Input } from "~/src/components/ui/input";
 import { Button } from "~/src/components/ui/button";
 import { Text } from "~/src/components/ui/text";
 import { Card, CardContent } from "~/src/components/ui/card";
+import { useAuth } from "~/src/lib/auth";
 import {
   Avatar,
   AvatarFallback,
@@ -39,6 +40,7 @@ export default function NewChatScreen() {
   const [chatName, setChatName] = useState("");
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+const { session } = useAuth();
 
   const isGroupChat = selectedUsers.length > 1;
 
@@ -239,6 +241,22 @@ export default function NewChatScreen() {
       }
 
       console.log("All member records created successfully");
+    if (selectedUsers.length > 0) {
+       console.log("selectedUsers");
+  if (selectedUsers.length === 1) {
+    console.log("selectedUsers1");
+    hitNoificationApi('addedToChat', selectedUsers[0].id);
+  } else {
+    const uIds = [...selectedUsers.map((u) => u.id)];
+      console.log("uIds IDs:", uIds);
+    console.log("selectedUserselse");
+    hitNoificationApi('addedToChatGroup',uIds);
+    // selectedUsers.forEach((user) => {
+    //   hitNoificationApi('addedToChatGroup', user?.id);
+    // });
+  }
+}
+
 
       console.log("Navigating to chat screen");
       // First dismiss the modal
@@ -270,6 +288,43 @@ export default function NewChatScreen() {
       );
     }
   };
+
+  const hitNoificationApi= async (typee:string,userIDs:any) => {
+    if (!session) return;
+    try{
+      const reuestData= {
+  userId: userIDs,  
+  senderId: session.user.id,
+  type: typee,                   
+}
+    ///send notification
+        const response = await fetch(
+          `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.user.id}`,
+            },
+            body: JSON.stringify(reuestData),
+          }
+        );
+        console.log("requestData", reuestData);
+
+        if (!response.ok) {
+          console.log("error>",response);
+          throw new Error(await response.text());
+        }
+
+        const data_ = await response.json();
+        console.log("response>",data_);
+        
+    }
+    catch(e)
+    {
+console.log("error_catch>",e);
+    }
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-background">

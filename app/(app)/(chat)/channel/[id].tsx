@@ -596,6 +596,43 @@ export default function ChannelScreen() {
     }
   }, [channel, handleCommand]);
 
+    const hitNoificationApi= async (typee:string,userIDs:any) => {
+    if (!session) return;
+    try{
+      const reuestData= {
+  userId: userIDs,  
+  senderId: session.user.id,
+  type: typee,                   
+}
+    ///send notification
+        const response = await fetch(
+          `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.user.id}`,
+            },
+            body: JSON.stringify(reuestData),
+          }
+        );
+        console.log("requestData", reuestData);
+
+        if (!response.ok) {
+          console.log("error>",response);
+          throw new Error(await response.text());
+        }
+
+        const data_ = await response.json();
+        console.log("response>",data_);
+        
+    }
+    catch(e)
+    {
+console.log("error_catch>",e);
+    }
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <Stack.Screen
@@ -744,6 +781,7 @@ export default function ChannelScreen() {
                 return new Promise(() => {});
               }
             }
+            // hitNoificationApi('ChatMessage',);
             return channel?.sendMessage(message);
           }}
         >

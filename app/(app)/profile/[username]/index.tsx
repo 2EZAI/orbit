@@ -47,6 +47,7 @@ export default function ProfilePage() {
   const [userEvents, setUserEvents] = useState<MapEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFollowed, setIsFollowed] = useState(false);
+    const [isFollowBack, setIsFollowBack] = useState(false);
 
   useEffect(() => {
     fetchUserProfile();
@@ -63,6 +64,19 @@ export default function ProfilePage() {
     if (error) throw error;
     console.log("data>>", !!data);
     setIsFollowed(!!data);
+    return !!data; // returns true if relationship exists
+  };
+   const isUserFollowBack = async (followerId: string, followingId: string) => {
+    const { data, error } = await supabase
+      .from("follows")
+      .select("id") // or any minimal field
+      .eq("follower_id", followingId)
+      .eq("following_id", followerId )
+      .maybeSingle();
+
+    if (error) throw error;
+    console.log("dataisfoloower>>", !!data);
+    setIsFollowBack(!!data);
     return !!data; // returns true if relationship exists
   };
 
@@ -158,6 +172,7 @@ export default function ProfilePage() {
         orbits_count: orbitsCount || 0,
       });
 
+      isUserFollowBack(session.user.id, userData.id);
       let existing = isUserFollowing(session.user.id, userData.id);
 
       // Fetch user's events
@@ -241,12 +256,49 @@ export default function ProfilePage() {
       </View>
     );
   }
+ const hitNoificationApi= async (typee:string) => {
+    if (!session?.user.id || !profile?.id) return;
+    try{
+      const reuestData= {
+  userId: profile?.id,  
+  senderId: session?.user.id,
+  type: typee,                   
+ 
+}
+    ///follow
+        const response = await fetch(
+          `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.user.id}`,
+            },
+            body: JSON.stringify(reuestData),
+          }
+        );
+        console.log("requestData", reuestData);
 
+        if (!response.ok) {
+          console.log("error>",response);
+          throw new Error(await response.text());
+        }
+
+        const data_ = await response.json();
+        console.log("response>",data_);
+        
+    }
+    catch(e)
+    {
+console.log("error_catch>",e);
+    }
+  }
   const updateFollowStatus = async () => {
     if (!session?.user.id || !profile?.id) return;
 
     try {
       if (isFollowed) {
+    
         // Step 2a: If relationship exists, delete it (unfollow)
         const { error: deleteError } = await supabase
           .from("follows")
@@ -261,7 +313,26 @@ export default function ProfilePage() {
           type: "info",
           text1: "User unfollowed",
         });
+        
       } else {
+         if(isFollowBack){ //follow back user
+ // Step 2b: If relationship does not exist, insert it (follow)
+        const { error: insertError } = await supabase.from("follows").insert([
+          {
+            follower_id: session.user.id,
+            following_id: profile.id,
+          },
+        ]);
+        console.log("insert>", session.user.id + " " + profile.id);
+        if (insertError) throw insertError;
+
+        Toast.show({
+          type: "success",
+          text1: "User followed successfully",
+        });
+         hitNoificationApi('friend_request_back');
+        }
+        else{
         // Step 2b: If relationship does not exist, insert it (follow)
         const { error: insertError } = await supabase.from("follows").insert([
           {
@@ -276,9 +347,12 @@ export default function ProfilePage() {
           type: "success",
           text1: "User followed successfully",
         });
+         hitNoificationApi('friend_request');
+        }
       }
       let existing = isUserFollowing(session.user.id, profile.id);
       fetchUserProfile();
+     
     } catch (err) {
       console.error("Error updating follow status:", err);
       Toast.show({
@@ -351,7 +425,7 @@ export default function ProfilePage() {
             onPress={() => updateFollowStatus()}
           >
             <Text className="text-white text-center p-1">
-              {isFollowed ? "UnFollow" : "Follow"}
+              {isFollowed ? "UnFollow" : isFollowBack ?"Follow Back" : "Follow"}
             </Text>
           </TouchableOpacity>
         </View>

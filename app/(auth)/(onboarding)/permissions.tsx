@@ -12,6 +12,7 @@ import {
   CheckCircle2,
 } from "lucide-react-native";
 import { MotiView } from "moti";
+import { useAuth } from "~/src/lib/auth";
 import { supabase } from "~/src/lib/supabase";
 import { useUser } from "~/hooks/useUserData";
 import Toast from "react-native-toast-message";
@@ -25,6 +26,7 @@ interface PermissionState {
 
 export default function PermissionsScreen() {
   const { user } = useUser();
+   const { session } = useAuth();
   const [permissions, setPermissions] = useState<
     Record<Permission, PermissionState>
   >({
@@ -96,6 +98,43 @@ export default function PermissionsScreen() {
     (p) => p.granted
   );
 
+  const hitNoificationApi= async (typee:string) => {
+    if (!user) return;
+    try{
+      const reuestData= {
+  userId: user.id,  
+  type: typee,                   
+ 
+}
+    ///fetch events
+        const response = await fetch(
+          `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.user.id}`,
+            },
+            body: JSON.stringify(reuestData),
+          }
+        );
+        console.log("requestData", reuestData);
+
+        if (!response.ok) {
+          console.log("error>",response);
+          throw new Error(await response.text());
+        }
+
+        const data_ = await response.json();
+        console.log("response>",data_);
+        
+    }
+    catch(e)
+    {
+console.log("error_catch>",e);
+    }
+  }
+
   const handleContinue = async () => {
     if (!user) return;
 
@@ -112,7 +151,9 @@ export default function PermissionsScreen() {
       console.log("Permissions saved, navigating to topics");
       // router.replace("/(auth)/(onboarding)/topics");
       // After completing all onboarding steps, go to the app
-      router.replace("/(app)/");
+       hitNoificationApi('welcome');
+       router.replace("/(app)/");
+      
     } catch (error) {
       console.error("Error saving permissions state:", error);
       Toast.show({

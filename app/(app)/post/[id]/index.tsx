@@ -321,6 +321,8 @@ export default function PostView() {
         setPost((post) =>
           post ? { ...post, like_count: post.like_count + 1 } : null
         );
+      hitNoificationApi("like");
+
       }
     } catch (error) {
       console.error("Error toggling like:", error);
@@ -348,7 +350,7 @@ export default function PostView() {
       setPost((post) =>
         post ? { ...post, comment_count: post.comment_count + 1 } : null
       );
-      hitNoificationApi();
+      hitNoificationApi("comment" );
     } catch (error) {
       console.error("Error submitting comment:", error);
       Alert.alert("Error", "Failed to submit comment");
@@ -357,15 +359,16 @@ export default function PostView() {
     }
   };
 
-  const hitNoificationApi= async () => {
-    if (!session?.user.id || !newComment.trim()) return;
+  const hitNoificationApi= async (typee:string) => {
+
+    if (!session?.user.id) return;
     try{
       const reuestData= {
   userId: post?.user?.id,  
   senderId: session?.user?.id,
-  type: "comment",                   
-  title: "New Comment",   
-  body: "New comment on your post", 
+  type: typee,                   
+  // title: titlee,   
+  // body: bodyy, 
   data: {     
     post_id: id
   }

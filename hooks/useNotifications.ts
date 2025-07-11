@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import {Platform} from 'react-native';
+import {Platform,DeviceEventEmitter} from 'react-native';
 import * as Notifications from 'expo-notifications';
 import type { EventSubscription } from 'expo-modules-core';
 import registerForPushNotificationsAsync from "~/app/notificationHelper";
 import { supabase } from "~/src/lib/supabase";
 import { useAuth } from "~/src/lib/auth";
 import { platform } from 'os';
+import { useRouter } from "expo-router";
+import { MapEvent } from "~/hooks/useMapEvents";
 
 export default function useNotifications() {
   const notificationListener = useRef<EventSubscription | undefined>(undefined);
   const responseListener = useRef<EventSubscription | undefined>(undefined);
   const { session } = useAuth();
-
+  const router = useRouter();
   useEffect(() => {
     hitPushToken();
     setNotifHandler();
@@ -36,7 +38,37 @@ export default function useNotifications() {
     });
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('📲 Notification tapped:', response);
+      console.log('Notification tapped:', response);
+      const content=response.notification.request.content;
+      console.log("content>",content);
+      if(content?.data?.type === 'comment' || content?.data?.type === 'like'){
+        console.log("post_id>",content?.data.post_id);
+        hitApiPostDetail(content?.data.post_id);
+      }
+      if(content?.data?.type === 'event_reminder_60' || 
+      content?.data?.type === 'event_reminder_5' ||
+      content?.data?.type === 'event_started'){
+        const  eventId=content?.data.event_id;
+        const  isTicketmaster=content?.data.is_ticketmaster;
+        console.log("eventId>",eventId);
+        console.log("is_ticketmaster>",isTicketmaster);
+        fetchEventDetail(eventId,isTicketmaster);
+        // fetchEventDetail("88f252e9-bc5a-4746-857e-859322cdd225"
+        // ,false);
+      }
+      if(content?.data?.type === 'friend_request' || content?.data?.type === 'friend_request_back'  ){
+        // fetchEventDetail("88f252e9-bc5a-4746-857e-859322cdd225"
+        // ,false);
+        
+        console.log("user_id>",content?.data?.user_id);
+        router.push({
+          pathname: "/(app)/profile/[username]",
+          params: { username: content?.data?.user_id },
+        });
+      }
+
+
+
     });
     Notifications.getLastNotificationResponseAsync().then(response => {
       if (response) {
@@ -51,6 +83,97 @@ export default function useNotifications() {
       responseListener.current?.remove();
     };
   }, []);
+
+
+  // fetch event detail
+  const fetchEventDetail = async (eventId:string,isTicketmaster:boolean) => {
+    try {
+      if (!session) throw new Error("No user logged in");
+
+      const requestData = {
+                source: isTicketmaster ? "ticketmaster" : "supabase",
+              };
+            const response = await fetch(
+              `${process.env.BACKEND_MAP_URL}/api/events/${eventId}`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify(requestData),
+              }
+            );
+            // console.log("session.access_token>>",
+            // session.access_token);
+            console.log("requestData>fetchEvent",
+            requestData);
+            if (!response.ok) {
+              throw new Error(await response.text());
+            }
+            const data = await response.json();
+            console.log("event data", data);
+            router.replace("/(app)/(map)");
+            const mapEvent = {
+              id: data?.id,
+              name: data?.name,
+              description: data?.description,
+              start_datetime: data?.start_datetime,
+              end_datetime: data?.end_datetime,
+              venue_name: data?.venue_name,
+              location: data?.location, // Assuming it's already a Location object
+              address: data?.address,
+              image_urls: data?.image_urls,
+              distance: data?.distance,
+              attendees: {
+                count: data?.attendees?.count,
+                profiles: data?.attendees?.profiles,
+              },
+              categories: data?.categories,
+              type: data?.type,
+              created_by: data?.created_by,
+              static_location: data?.static_location,
+            };
+      
+
+        DeviceEventEmitter.emit("eventNotification", mapEvent);
+            
+    } catch (e) {
+      console.log(e instanceof Error ? e : new Error("An error occurred"));
+      throw e;
+    }
+  };
+
+  const hitApiPostDetail  = async (postId:string) => {
+    try {
+      if (!session) return ;
+    const response = await fetch(
+      `${process.env.BACKEND_MAP_URL}/api/posts/detail/${postId}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        // body: JSON.stringify(eventData),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+
+    const postDetail = await response.json();
+    console.log("postDetail>",postDetail);
+    router.push({
+      pathname: `/post/${postId}`,
+      params: { event: postDetail?.data?.event ? JSON.stringify(postDetail?.data?.event) : "" },
+    });
+  }
+  catch (error) {
+    console.error('Error fetching post details:', error);
+  }
+  }
 
   async function showLocalNotification(remoteNotification:any) {
     await Notifications.scheduleNotificationAsync({

@@ -17,6 +17,7 @@ import { supabase } from "~/src/lib/supabase";
 import { formatTime, formatDate } from "~/src/lib/date";
 import { UserAvatar } from "../ui/user-avatar";
 import { EventDetailsSheet } from "../map/EventDetailsSheet";
+import { LocationDetailsSheet } from "../map/LocationDetailsSheet";
 import { MapEvent, MapLocation } from "~/hooks/useMapEvents";
 
 interface SearchSheetProps {
@@ -99,7 +100,7 @@ export function SearchSheet({
   });
   const [isLoading, setIsLoading] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<MapEvent | null>(null);
-
+ const [isEvent, setIsEvent] = useState(false);
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
     if (query.length < 2) {
@@ -261,18 +262,21 @@ export function SearchSheet({
       });
       onClose();
     } else if (type === "event" && data?.id) {
+      setIsEvent(true);
       setSelectedEvent(data);
       onClose();
       setSearchQuery("");
     } else if (type === "location" && data?.id) {
-      router.push({
-        pathname: "/(app)/(map)",
-        params: {
-          locationId: data.id,
-          latitude: data.location?.latitude,
-          longitude: data.location?.longitude,
-        },
-      });
+      setIsEvent(false);
+      setSelectedEvent(data);
+      // router.push({
+      //   pathname: "/(app)/(map)",
+      //   params: {
+      //     locationId: data.id,
+      //     latitude: data.location?.latitude,
+      //     longitude: data.location?.longitude,
+      //   },
+      // });
       onClose();
       setSearchQuery("");
     }
@@ -460,7 +464,7 @@ export function SearchSheet({
         </KeyboardAvoidingView>
       </Sheet>
 
-      {selectedEvent && (
+      {selectedEvent && isEvent && (
         <EventDetailsSheet
           event={selectedEvent}
           isOpen={!!selectedEvent}
@@ -470,6 +474,18 @@ export function SearchSheet({
           }}
           nearbyEvents={results.events}
           onEventSelect={(event) => setSelectedEvent(event)}
+          onShowControler={() => onShowControler(true)}
+        />
+      )}
+      {selectedEvent && !isEvent && (
+        <LocationDetailsSheet
+          event={selectedEvent}
+          isOpen={!!selectedEvent}
+          onClose={() => {
+            setSelectedEvent(null);
+            onClose();
+          }}
+          nearbyEvents={results.location}
           onShowControler={() => onShowControler(true)}
         />
       )}

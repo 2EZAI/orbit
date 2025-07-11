@@ -11,6 +11,7 @@ import {
   Platform,
   Linking,
   Alert,
+  DeviceEventEmitter,
 } from "react-native";
 
 type TimeFrame = "Today" | "Week" | "Weekend";
@@ -186,6 +187,12 @@ export default function Map() {
   //set zoom enabled by default
   useEffect(() => {
  setIsFollowingUser(false);
+  DeviceEventEmitter.addListener("eventNotification", (event:Partial<MapEvent>) => {
+      console.log("event----eventNotification", event);
+     setIsEvent(true);
+    //  setShowDetails(true);
+     handleEventClick(event);
+    });
   },[])
 
   // Update mapCenter when location becomes available
