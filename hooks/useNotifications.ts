@@ -66,8 +66,21 @@ export default function useNotifications() {
           params: { username: content?.data?.user_id },
         });
       }
-
-
+      if(content?.data?.type === 'new_chat' || content?.data?.type === 'new_group_chat'  ){
+        // fetchEventDetail("88f252e9-bc5a-4746-857e-859322cdd225"
+        // ,false);
+        
+       const groupName= content?.data?.group_name;
+       const chatId= content?.data?.chat_id;
+       router.push({
+        pathname: "/(app)/(chat)/channel/[id]",
+        params: {
+          id: chatId,
+          name: groupName,
+        },
+      });
+      }
+     
 
     });
     Notifications.getLastNotificationResponseAsync().then(response => {

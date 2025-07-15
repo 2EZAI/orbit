@@ -56,6 +56,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       config: {
         usesNonExemptEncryption: false,
       },
+      infoPlist: {
+        UIBackgroundModes: [
+          "remote-notification"
+        ],
+        NSUserTrackingUsageDescription: "This identifier will be used to deliver personalized ads to you.",
+        NSUserNotificationUsageDescription: "This app uses notifications to keep you informed."
+      },
     },
     android: {
       package: "com.dovydmcnugget.orbit",

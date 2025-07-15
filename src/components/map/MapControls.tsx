@@ -75,6 +75,18 @@ export function MapControls({
     <>
       {/* Top Controls */}
       <View className="absolute left-0 right-0 z-50 top-10">
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+  <Icon
+    name="bell"
+    type="material-community"
+    size={36}
+    color="#239ED0"
+    className="mt-4 mr-4" 
+  />
+  <View className="absolute top-1 right-1 bg-red-600 rounded-full w-8 h-8 items-center justify-center">
+    <Text className="text-white text-xs font-bold">34+</Text>
+  </View>
+</View>
         {/* Time Frame Tabs */}
         <View className="px-4 pb-2 pt-14">
           <View className="flex-row p-1 border rounded-md bg-background/80 backdrop-blur-2xl border-border">

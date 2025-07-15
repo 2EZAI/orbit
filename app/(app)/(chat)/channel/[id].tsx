@@ -600,7 +600,7 @@ export default function ChannelScreen() {
     if (!session) return;
     try{
       const reuestData= {
-  userId: userIDs,  
+  channel_id:channel?.id,
   senderId: session.user.id,
   type: typee,                   
 }
@@ -781,8 +781,16 @@ console.log("error_catch>",e);
                 return new Promise(() => {});
               }
             }
-            // hitNoificationApi('ChatMessage',);
+            
             return channel?.sendMessage(message);
+            if(channel?.member_count > 2){
+              //group
+               hitNoificationApi('new_group_message',);
+            }
+            else{
+               hitNoificationApi('new_message',);
+            }
+          
           }}
         >
           {thread ? (

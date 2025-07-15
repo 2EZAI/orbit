@@ -12,6 +12,7 @@ import {
   StatusBar,
   Animated,
 } from "react-native";
+import { Icon } from 'react-native-elements';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import { supabase } from "~/src/lib/supabase";
@@ -485,6 +486,18 @@ export default function Home() {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       <SafeAreaView style={styles.safeArea}>
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+  <Icon
+    name="bell"
+    type="material-community"
+    size={36}
+    color="#239ED0"
+    className="mt-4 mr-4" 
+  />
+  <View className="absolute top-1 right-1 bg-red-600 rounded-full w-8 h-8 items-center justify-center">
+    <Text className="text-white text-xs font-bold">34+</Text>
+  </View>
+</View>
         <View style={styles.searchBarRow}>
           <Search size={20} color="#bbb" style={styles.searchIcon} />
           <TextInput
