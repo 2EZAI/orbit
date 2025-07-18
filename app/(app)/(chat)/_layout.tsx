@@ -85,7 +85,7 @@ export default function ChatLayout() {
                   headerShown: true,
                   headerTitleAlign: "center",
                   headerBackTitle: "Chats",
-                  headerBackVisible: true,
+                  headerBackVisible: false,
                 }}
               />
               <Stack.Screen

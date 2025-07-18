@@ -21,6 +21,7 @@ import {
   AutoCompleteSuggestionList,
   Card,
 } from "stream-chat-expo";
+import { useAuth } from "~/src/lib/auth";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { useChat } from "~/src/lib/chat";
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -53,6 +54,7 @@ import type {
 } from "stream-chat";
 import type { MessageType } from "stream-chat-expo";
 import { useTheme } from "~/src/components/ThemeProvider";
+import { ArrowLeft } from "lucide-react-native";
 
 interface Event {
   id: string;
@@ -272,6 +274,7 @@ const EnhancedMessage = (props: any) => {
 };
 
 export default function ChannelScreen() {
+    const { session } = useAuth();
   const { id } = useLocalSearchParams();
   const { client } = useChat();
   const router = useRouter();
@@ -596,14 +599,18 @@ export default function ChannelScreen() {
     }
   }, [channel, handleCommand]);
 
-    const hitNoificationApi= async (typee:string,userIDs:any) => {
+    const hitNoificationApi= async (typee:string,chatId:string,name:string) => {
     if (!session) return;
     try{
-      const reuestData= {
-  channel_id:channel?.id,
-  senderId: session.user.id,
-  type: typee,                   
-}
+ console.log("vcvc");
+ const reuestData = {
+        senderId: session.user.id,
+        type: typee,
+        data: {
+              chat_id: chatId,
+              group_name: name,
+            },
+      };
     ///send notification
         const response = await fetch(
           `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
@@ -658,6 +665,26 @@ console.log("error_catch>",e);
               )}
             </View>
           ),
+          headerLeft: () => (
+              <TouchableOpacity
+                style={{ marginLeft: 10 }}
+                onPress={()=>{
+                      router.back();
+                }}
+              >
+                {/* You can use an icon here instead of text */}
+                {Platform.OS === "ios" ? (
+                  <ArrowLeft size={24} className="text-foreground" />
+                ) : (
+                  <Icon
+                    name="arrow-back"
+                    type="material"
+                    size={24}
+                    color="#239ED0"
+                  />
+                )}
+              </TouchableOpacity>
+            ),
           headerRight: () =>
             channel?.data?.name !== "Orbit App" ? (
               <TouchableOpacity
@@ -782,14 +809,19 @@ console.log("error_catch>",e);
               }
             }
             
-            return channel?.sendMessage(message);
-            if(channel?.member_count > 2){
+            console.log("LKL>>",channel?.data?.member_count);
+           const name = channel?.data?.name;
+           const chnlId=channel?.data?.id;
+             if(channel?.data?.member_count > 2){
               //group
-               hitNoificationApi('new_group_message',);
+              console.log("LKLchannelId>>",chnlId);
+               hitNoificationApi('new_group_message',chnlId,name);
             }
             else{
-               hitNoificationApi('new_message',);
+               hitNoificationApi('new_message',chnlId,name);
             }
+            return channel?.sendMessage(message);
+           
           
           }}
         >

@@ -26,6 +26,9 @@
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease" 
       },
+      "ios": {
+        "simulator": false
+      },
       "env": {
         "STREAM_API_KEY":"bz7a6w7sfmy3",
         "STREAM_APP_ID":"1357436",

@@ -12,7 +12,9 @@ import {
   StatusBar,
   Animated,
 } from "react-native";
-import { Icon } from 'react-native-elements';
+import { useRouter } from "expo-router";
+import { Icon } from "react-native-elements";
+import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import { supabase } from "~/src/lib/supabase";
@@ -216,7 +218,8 @@ export default function Home() {
   const [isSelectedItemLocation, setIsSelectedItemLocation] = useState(false);
   const [featuredEvent, setFeaturedEvent] = useState<any | null>(null);
   const [allData, setAllData] = useState<any[]>([]);
-
+  const { fetchAllNoifications, unReadCount } = useNotificationsApi();
+  const router = useRouter();
   // Animated header
   const scrollY = useRef(new Animated.Value(0)).current;
   const HEADER_MAX_HEIGHT = 110;
@@ -421,6 +424,14 @@ export default function Home() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    hitNotificationCount();
+  }, []);
+
+  const hitNotificationCount = async () => {
+    await fetchAllNoifications(1, 20);
+  };
+
   const renderItem = ({ item }: { item: any }) => {
     if (item.type === "featured") {
       return (
@@ -486,18 +497,6 @@ export default function Home() {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       <SafeAreaView style={styles.safeArea}>
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-  <Icon
-    name="bell"
-    type="material-community"
-    size={36}
-    color="#239ED0"
-    className="mt-4 mr-4" 
-  />
-  <View className="absolute top-1 right-1 bg-red-600 rounded-full w-8 h-8 items-center justify-center">
-    <Text className="text-white text-xs font-bold">34+</Text>
-  </View>
-</View>
         <View style={styles.searchBarRow}>
           <Search size={20} color="#bbb" style={styles.searchIcon} />
           <TextInput
@@ -511,6 +510,28 @@ export default function Home() {
             <Filter size={20} color="#fff" />
           </TouchableOpacity>
         </View>
+        <TouchableOpacity
+          onPress={() => {
+            router.push({
+              pathname: "/(app)/(notification)",
+            });
+          }}
+        >
+          <Icon
+            name="bell"
+            type="material-community"
+            size={36}
+            color="#239ED0"
+            className="mt-4 mr-2"
+          />
+          {unReadCount != null && unReadCount !== 0 && (
+            <View className="absolute top-1 right-0 bg-red-600 rounded-full w-8 h-8 items-center justify-center">
+              <Text className="text-white text-xs font-bold">
+                {unReadCount}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </SafeAreaView>
       <FlatList
         data={allData}
@@ -869,6 +890,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: Platform.OS === "android" ? 16 : 0,
     paddingBottom: 8,
+    flexDirection: "row",
   },
   loadingContainer: {
     flex: 1,
@@ -895,6 +917,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 10,
+    width: "86%",
   },
   searchIcon: {
     marginRight: 12,

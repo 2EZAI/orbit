@@ -11,6 +11,7 @@ import {
   Platform,
   SafeAreaView,
   DeviceEventEmitter,
+  RefreshControl,
 } from "react-native";
 import Toast from "react-native-toast-message";
 import { Text } from "~/src/components/ui/text";
@@ -74,6 +75,7 @@ export default function PostView() {
   const [submittingComment, setSubmittingComment] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isShowEvent, setIsShowEvent] = useState(false);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
 
   useEffect(() => {
     console.log("[PostView] Received post ID:", id);
@@ -97,6 +99,12 @@ export default function PostView() {
       fetchComments();
     });
   }, []);
+
+  const onRefresh = async () => {
+    getLikeCount();
+      checkIfLiked();
+      fetchComments();
+  }
 
   const { event } = useLocalSearchParams();
   const [eventObj, setEventObj] = useState(null);
@@ -446,7 +454,9 @@ console.log("error_catch>",e);
           keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
           style={{ paddingBottom: insets.bottom + 60 }}
         >
-          <ScrollView className="flex-1">
+          <ScrollView className="flex-1"
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+>
             {/* Post Header */}
             {session.user.id !== post.user.id && (
               <View className="flex-row items-center p-4">
@@ -606,7 +616,7 @@ console.log("error_catch>",e);
           </ScrollView>
 
           {/* Comment Input */}
-          <View className="p-4 border-t border-border bg-background">
+          <View className="p-4 mb-14 border-t border-border bg-background">
             <View className="flex-row items-center px-4 rounded-full bg-muted">
               <TextInput
                 className="flex-1 py-2 text-foreground"

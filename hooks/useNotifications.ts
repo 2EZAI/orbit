@@ -8,12 +8,26 @@ import { useAuth } from "~/src/lib/auth";
 import { platform } from 'os';
 import { useRouter } from "expo-router";
 import { MapEvent } from "~/hooks/useMapEvents";
+import { useChat } from "~/src/lib/chat";
+import { DefaultGenerics, StreamChat } from "stream-chat";
+let clientLocal: StreamChat<DefaultGenerics> | null =null;
+import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 
 export default function useNotifications() {
   const notificationListener = useRef<EventSubscription | undefined>(undefined);
   const responseListener = useRef<EventSubscription | undefined>(undefined);
   const { session } = useAuth();
   const router = useRouter();
+  const { client } = useChat();
+  const { fetchAllNoifications ,readNoifications} = useNotificationsApi();
+
+useEffect(() => {
+  if (client && client.userID) {
+    console.log("client.userID >", client.userID);
+    clientLocal=client;
+    console.log("clientL.userID >", clientLocal.userID);
+  }
+}, [client]);
   useEffect(() => {
     hitPushToken();
     setNotifHandler();
@@ -31,16 +45,18 @@ export default function useNotifications() {
       console.log('📩 Remote notification received in foreground:', notification);
   
       // Show as a local notification
-      if (Platform.OS === 'ios') {
-      showLocalNotification(notification);
-      }
-   
+      // if (Platform.OS === 'ios') {
+      // showLocalNotification(notification);
+      // }
+      hitNotificationCount();
     });
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
       console.log('Notification tapped:', response);
       const content=response.notification.request.content;
+      const notificationId=content?.data?.notification_id;
       console.log("content>",content);
+      readNoificationsApi(notificationId);
       if(content?.data?.type === 'comment' || content?.data?.type === 'like'){
         console.log("post_id>",content?.data.post_id);
         hitApiPostDetail(content?.data.post_id);
@@ -66,19 +82,22 @@ export default function useNotifications() {
           params: { username: content?.data?.user_id },
         });
       }
-      if(content?.data?.type === 'new_chat' || content?.data?.type === 'new_group_chat'  ){
+      if(content?.data?.type === 'new_chat' || 
+      content?.data?.type === 'new_group_chat'  ||
+      content?.data?.type === 'new_group_message' ||
+      content?.data?.type === 'new_message'){
         // fetchEventDetail("88f252e9-bc5a-4746-857e-859322cdd225"
         // ,false);
-        
+       
+
        const groupName= content?.data?.group_name;
        const chatId= content?.data?.chat_id;
-       router.push({
-        pathname: "/(app)/(chat)/channel/[id]",
-        params: {
-          id: chatId,
-          name: groupName,
-        },
-      });
+       const streamChanneld= content?.data?.stream_channel_id;
+       const ids= content?.data?.member_ids;
+       const senderId= content?.data?.sender_id;
+       
+       prepareChanel(groupName,chatId,ids,senderId,streamChanneld);
+
       }
      
 
@@ -97,6 +116,47 @@ export default function useNotifications() {
     };
   }, []);
 
+  const prepareChanel = async (groupName: string, chatId: string, ids: string[], senderId: string
+    ,streamChannelId: string) =>{
+      console.log("clientL.userID prepareChanel>", clientLocal?.userID);
+    if (!clientLocal?.userID || ids.length === 0) {
+      console.log("Prerequisites not met, returning early");
+      return;
+    }
+     const memberIds = [senderId, ...ids.map((u) => u)];
+     console.log("Member IDs:", memberIds);
+     
+
+    const channel = clientLocal.channel("messaging", streamChannelId, {
+      members: memberIds,
+      name: groupName,
+    });
+
+    // This both creates the channel and subscribes to it
+    console.log("[NewChat] Watching channel...");
+    await channel.watch();
+
+    setTimeout(() => {
+      router.push({
+        pathname: "/(app)/(chat)/channel/[id]",
+        params: {
+          id: streamChannelId,
+          name: groupName,
+        },
+      });
+    }, 200);
+    
+  }
+
+  const readNoificationsApi = async (notifId: string) => {
+    console.log("readNoificationsApi:>");
+    try {
+      if (!session) return;
+      const response = await readNoifications(notifId);
+    } catch (error) {
+      console.error("Error fetching read notification:", error);
+    }
+  };
 
   // fetch event detail
   const fetchEventDetail = async (eventId:string,isTicketmaster:boolean) => {
@@ -245,4 +305,10 @@ await supabase
 
   }
   
+  const   hitNotificationCount = async () => {
+    await fetchAllNoifications(1,20 );
+  }
+
 }
+
+
