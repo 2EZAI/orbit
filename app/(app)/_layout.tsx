@@ -7,11 +7,13 @@ import TabBar from "~/src/components/shared/TabBar";
 import { Redirect } from "expo-router";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import useNotifications from '~/hooks/useNotifications';
+import { Walkthrough } from 'react-native-wlkt';
+import { useEffect, useState } from "react";
+
 
 export default function AppLayout() {
   const { theme } = useTheme();
   const { session, loading } = useAuth();
-
   if (loading) {
     return null;
   }
@@ -21,6 +23,7 @@ export default function AppLayout() {
   }
 useNotifications();
   return (
+  
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Tabs
         screenOptions={{
@@ -69,6 +72,9 @@ useNotifications();
         <Tabs.Screen name="(profile)" />
         <Tabs.Screen name="onboarding" />
       </Tabs>
+       <Walkthrough/>
     </View>
+
+  
   );
 }

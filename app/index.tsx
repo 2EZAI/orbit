@@ -103,8 +103,10 @@ export default function Intro() {
   const handleGoogleSignIn = async () => {
     console.log("Google sign in pressed");
   };
+  
 
   return (
+    
     <View style={styles.container}>
       {/* Static Diagonal Gradient */}
       <LinearGradient

@@ -37,6 +37,7 @@ import {
 } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
+import { WalkthroughComponent, startWalkthrough } from "react-native-wlkt";
 
 import type { ChannelPreviewMessengerProps } from "stream-chat-expo";
 import type { ChannelMemberResponse } from "stream-chat";
@@ -70,6 +71,9 @@ const FLAT_LIST_PROPS = {
   removeClippedSubviews: true,
   updateCellsBatchingPeriod: 150,
 };
+
+let myAmazingScenario =[];
+
 
 const SearchInput = ({
   value,
@@ -327,6 +331,64 @@ export default function ChatListScreen() {
     };
   }, [client?.userID, searchText]);
 
+ myAmazingScenario = [
+  {
+    component: "textRnwlkt",
+    tooltipOptions: {
+      tooltipComponent: ({ tooltipcntx }) => (
+        <View
+          style={{
+            position: "absolute",
+            bottom: 0,
+            right: 0,
+            left: 0,
+            marginBottom: "10%",
+            marginHorizontal: 40, // replaces margingLeft + marginRight
+            backgroundColor: "white",
+            padding: 20,
+            borderRadius: 12,
+          }}
+        >
+          <Text style={{ color: "black", fontSize: 16, marginBottom: 12 }}>
+ 💬 To start a new chat or group chat:{"\n"}
+  Click on the ➕ (plus) icon.{"\n"}
+  Select the users you want to chat with.
+          </Text>
+
+          {/* Buttons Row */}
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              marginTop: 10,
+            }}
+          >
+            <Text onPress={tooltipcntx.onSkip} style={{ color: "gray" }}>
+              Skip
+            </Text>
+            <Text
+              onPress={() => {
+                tooltipcntx.onNext();
+                handleNewChat();
+              }}
+              style={{ color: "blue", fontWeight: "bold" }}
+            >
+              Next
+            </Text>
+          </View>
+        </View>
+      ),
+    },
+    spotlightOptions: {
+      borderColor: "orange",
+      borderWidth: 2,
+    },
+  },
+];
+useEffect(() => {
+    // startWalkthrough({ scenario: myAmazingScenario });
+  }, []);
+
   // Handle initial loading state
   useEffect(() => {
     if (!client?.userID || !isConnected) {
@@ -481,6 +543,10 @@ export default function ChatListScreen() {
                       color="#239ED0"/>
             }
             </TouchableOpacity>
+             <WalkthroughComponent
+              id="textRnwlkt"
+              key={`walkthrough`}
+            >
             <TouchableOpacity onPress={handleNewChat}>
             { Platform.OS === 'ios' ?
               <Plus size={24} className="text-foreground" />
@@ -490,6 +556,7 @@ export default function ChatListScreen() {
                       color="#239ED0"/>
             }
             </TouchableOpacity>
+            </WalkthroughComponent>
           </View>
         </View>
 
