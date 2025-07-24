@@ -65,7 +65,7 @@ useEffect(() => {
 useEffect(() => {
      setEventDetail({});
     setEventDetail(event);
-    console.log("event>",event)
+    // console.log("event>",event)
     hitEventDetail();
   }, []);
   const handleSwipeComplete = (direction: "left" | "right") => {
@@ -134,7 +134,7 @@ useEffect(() => {
    const hitEventDetail = async () => {
       console.log("hitEventDetail");
     const eventDetails = await fetchEventDetail(event);
-    console.log("Returned event details:", eventDetails);
+    // console.log("Returned event details:", eventDetails);
      setEventDetail({});
     setEventDetail(eventDetails);
     setLoading(false)

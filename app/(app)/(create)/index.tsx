@@ -133,16 +133,16 @@ export default function CreateEvent() {
       (locationid, locationtype, Latitude, Longitude, category) => {
         console.log("event----passDataToCreateEvent");
 
-        console.log("locationType>>", locationtype);
-        console.log("latitude>>", Latitude);
-        console.log("longitude>>", Longitude);
+        // console.log("locationType>>", locationtype);
+        // console.log("latitude>>", Latitude);
+        // console.log("longitude>>", Longitude);
         setlocationId(locationid ? locationid : undefined);
         setlocationType(locationtype ? locationtype : undefined);
         setlatitude(Latitude ? Latitude : undefined);
         setlongitude(Longitude ? Longitude : undefined);
 
         const parsedCategory = category ? JSON.parse(category as string) : [];
-        console.log("parsedCategory>>", parsedCategory);
+        // console.log("parsedCategory>>", parsedCategory);
         setCategoryList(parsedCategory === undefined ? {} : parsedCategory);
         // setshowPrompts( categoryList?.prompts === undefined ? false : true);
         setshowPrompts(parsedCategory === undefined ? false : true);
@@ -519,7 +519,7 @@ export default function CreateEvent() {
           topic_id: selectedTopics,
         };
       }
-      console.log("eventData>>",eventData);
+      // console.log("eventData>>",eventData);
 
       const response = await fetch(
         `${process.env.BACKEND_MAP_URL}/api/events`,
@@ -539,7 +539,7 @@ export default function CreateEvent() {
       }
 
       const event = await response.json();
-      console.log("event>>", event);
+      // console.log("event>>", event);
       Toast.show({
         type: "success",
         text1: "Event Created!",

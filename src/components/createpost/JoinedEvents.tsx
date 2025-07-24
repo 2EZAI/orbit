@@ -49,7 +49,7 @@ let filterText='';
 
     console.log("fetchEvent:");
     const data = await filterEvents(text, 1, PAGE_SIZE);
-    console.log("data>:", data);
+    // console.log("data>:", data);
     setEvents([]);
     if (data.length === 0) {
        
@@ -72,7 +72,7 @@ let filterText='';
 
     console.log("loadEvents:");
     const data = await filterEvents(filterText, page, PAGE_SIZE);
-    console.log("data>:", data);
+    // console.log("data>:", data);
     if (data.length === 0) {
       setLoading(false);
        setHasMore(false);
@@ -100,7 +100,7 @@ let filterText='';
     <TextInput
                  
                   onChangeText={(text) => {
-                    console.log("text>",text);
+                    // console.log("text>",text);
                     if(text.length >2){
                     filterText=text;
                     setHasMore(true);

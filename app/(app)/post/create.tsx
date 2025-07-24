@@ -227,7 +227,7 @@ if(selectedEvent != null)
       };
 }
 
-      console.log("postData>>",postData);
+      // console.log("postData>>",postData);
 
       const response = await fetch(
         `${process.env.BACKEND_MAP_URL}/api/posts/create`,

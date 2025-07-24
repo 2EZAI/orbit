@@ -6,6 +6,7 @@ import { Text } from "~/src/components/ui/text";
 import { Button } from "~/src/components/ui/button";
 import { useUser } from "~/hooks/useUserData";
 import { TopicList } from "~/src/components/topics/TopicList";
+import { SafeAreaView} from "react-native-safe-area-context";
 
 export default function TopicsScreen() {
   const { user,fetchUserNew } = useUser();
@@ -20,7 +21,7 @@ export default function TopicsScreen() {
 
   const checkUse =async()=>{
 const userData= await fetchUserNew();
-    console.log('data>',userData);
+    // console.log('data>',userData);
     if (!userData) {
           router.replace("/(auth)/sign-in");
     }
@@ -50,7 +51,7 @@ const userData= await fetchUserNew();
   if (!user) return null;
 
   return (
-    <View className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-background">
       <ScrollView className="flex-1 px-4">
         <View className="py-8">
           <Text className="text-2xl font-bold">Welcome to Orbit!</Text>
@@ -72,6 +73,6 @@ const userData= await fetchUserNew();
           </Text>
         </Button>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }

@@ -14,11 +14,11 @@ export function EventMarker({
   isSelected = false,
 }: EventMarkerProps) {
   useEffect(() => {
-    console.log("[EventMarker] Rendering marker:", {
-      imageUrl,
-      count,
-      isSelected,
-    });
+    // console.log("[EventMarker] Rendering marker:", {
+    //   imageUrl,
+    //   count,
+    //   isSelected,
+    // });
   }, [imageUrl, count, isSelected]);
 
   return (

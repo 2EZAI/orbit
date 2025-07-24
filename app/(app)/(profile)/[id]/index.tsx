@@ -9,6 +9,7 @@ import {
   TextInput,
   useWindowDimensions,
   Switch,
+  Pressable,
 } from "react-native";
 import { debounce } from "lodash";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -25,6 +26,7 @@ import { MapPin } from "lucide-react-native";
 import { Icon } from "react-native-elements";
 import { Sheet } from "../../../../src/components/ui/sheet";
 import { TopicList } from "~/src/components/topics/TopicList";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function EditProfile() {
   const [genderList, setGenderList] = useState<any>([
@@ -109,7 +111,7 @@ export default function EditProfile() {
     city: userlocation?.city || "",
     state: userlocation?.state || "",
     zip: userlocation?.postal_code || "",
-    coordinates: [userlocation?.longitude || 0, userlocation?.latitude|| 0],
+    coordinates: [userlocation?.longitude || 0, userlocation?.latitude || 0],
   });
 
   const [addressHomeTown1, setAddressHomeTown1] = useState("");
@@ -261,7 +263,7 @@ export default function EditProfile() {
       zip: contextMap.get("postcode") || "",
       coordinates: feature.center,
     };
-    console.log("coordinates>>", feature.center);
+    // console.log("coordinates>>", feature.center);
 
     setLocationDetails(newLocationDetails);
     setAddress1(newLocationDetails.address1);
@@ -284,7 +286,7 @@ export default function EditProfile() {
       zip: contextMap.get("postcode") || "",
       coordinates: feature.center,
     };
-    console.log("coordinates>>", feature.center);
+    // console.log("coordinates>>", feature.center);
 
     setLocationHomeTownDetails(newLocationDetails);
     setAddressHomeTown1(newLocationDetails.address1);
@@ -295,11 +297,11 @@ export default function EditProfile() {
 
   const GenderListView = () => {
     return (
-      <View className="flex-1 bg-background border rounded-2xl  border-gray-300">
+      <View className="flex-1 bg-white border rounded  border-gray-300">
         <ScrollView className="flex-1">
-          {genderList.map((gender,index) => (
+          {genderList.map((gender, index) => (
             <TouchableOpacity
-            key={index}
+              key={index}
               onPress={() => {
                 setSelectedGender(gender);
                 setIsGenderShow(false);
@@ -352,7 +354,14 @@ export default function EditProfile() {
       console.error("Error saving topics:", error);
     }
   };
-
+  const clearStorage = async () => {
+    try {
+      await AsyncStorage.removeItem("tutorial_finished");
+      console.log("AsyncStorage cleared");
+    } catch (error) {
+      console.error("Error clearing AsyncStorage:", error);
+    }
+  };
   const handleSave = async () => {
     if (firstName == "") {
       Toast.show({
@@ -401,7 +410,7 @@ export default function EditProfile() {
       if (selectedTopics.length > 0) {
         handleUpdateInterests();
       }
-      console.log("locationDetails?.address1>",locationDetails?.address1)
+      // console.log("locationDetails?.address1>",locationDetails?.address1)
       if (locationDetails?.address1 !== "") {
         await updateUserLocations({
           city: locationDetails.city,
@@ -486,7 +495,7 @@ export default function EditProfile() {
           const file = result.assets[0].uri;
           const response = await fetch(file);
           const blob = await response.blob();
-          console.log("blob>>", blob);
+          // console.log("blob>>", blob);
           // const fileExt = file.uri.split(".").pop();
           const fileExt = file.split(".").pop();
 
@@ -568,11 +577,11 @@ export default function EditProfile() {
 
   const EventLocationOptionsListView = () => {
     return (
-      <View className="flex-1 bg-background">
+      <View className="flex-1 bg-white">
         <ScrollView className="flex-1">
-          {locationOptions.map((option,index) => (
+          {locationOptions.map((option, index) => (
             <TouchableOpacity
-            key={index}
+              key={index}
               onPress={() => {
                 if (
                   selectedLocation?.id == 1 &&
@@ -612,7 +621,10 @@ export default function EditProfile() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        className={`flex-1 ${Platform.OS === "android" ? "mb-20" : ""}`}
+        showsVerticalScrollIndicator={false}
+      >
         <View className="items-center mt-4">
           <TouchableOpacity onPress={pickImage} className="relative">
             <Image
@@ -690,9 +702,12 @@ export default function EditProfile() {
           </View>
 
           {isGenderShow && (
-            <View className="absolute justify-center items-center left-0 right-0  overflow-hidden ">
+            <Pressable
+              className="absolute flex-1 justify-center items-center left-0 right-0  overflow-hidden "
+              onPress={() => setIsGenderShow(false)}
+            >
               <GenderListView />
-            </View>
+            </Pressable>
           )}
 
           <View>
@@ -850,14 +865,11 @@ export default function EditProfile() {
               </TouchableOpacity>
             </View>
           }
-          {isEventLocationShow && (
-            <View className="absolute bottom-[18%]  right-0 mr-4 z-10 bg-white  w-[100%] mx-4 mb-4 overflow-hidden border rounded-2xl  border-gray-300">
-              <EventLocationOptionsListView />
-            </View>
-          )}
 
           <View className="mt-4 mb-6 rounded-lg bg-card">
-            <Text className="text-sm text-muted-foreground mb-1.5 mt-2">Interests </Text>
+            <Text className="text-sm text-muted-foreground mb-1.5 mt-2">
+              Interests{" "}
+            </Text>
             <TouchableOpacity
               onPress={() => {
                 setIsTopicsShow(true);
@@ -906,6 +918,7 @@ export default function EditProfile() {
             <TouchableOpacity
               onPress={async () => {
                 await supabase.auth.signOut();
+                clearStorage();
                 router.replace("/(auth)/sign-in");
               }}
               className="py-4 border rounded-xl border-destructive"
@@ -915,6 +928,17 @@ export default function EditProfile() {
               </Text>
             </TouchableOpacity>
           </View>
+
+          {isEventLocationShow && (
+            <Pressable
+              className=" absolute bg-black/40  left-0 right-0 top-0 bottom-0 overflow-hidden"
+              onPress={() => SetIsEventLocationShow(false)}
+            >
+              <View className="absolute bottom-[22%] right-0 left-0 mx-4 mb-4  bg-white w-[92%] overflow-hidden border rounded-2xl border-gray-300 self-center">
+                <EventLocationOptionsListView />
+              </View>
+            </Pressable>
+          )}
 
           {/* Bottom Spacing */}
           <View className="h-20" />
@@ -1046,7 +1070,7 @@ export default function EditProfile() {
             <ScrollView className="flex-1">
               {occupationListShow.map((occupation, index) => (
                 <TouchableOpacity
-                key={index}
+                  key={index}
                   onPress={() => {
                     setSelectedOcupation(occupation);
                     setIsOcupationShow(false);

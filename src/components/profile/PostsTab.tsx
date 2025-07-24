@@ -68,9 +68,9 @@ export default function PostsTab({ userId, selectedItem }: PostsTabProps) {
           body: JSON.stringify(eventData),
         }
       );
-      console.log("session.access_token>>", session.access_token);
-      console.log("page>", page);
-      console.log("session.access_token>>", session.access_token);
+      // console.log("session.access_token>>", session.access_token);
+      // console.log("page>", page);
+      // console.log("session.access_token>>", session.access_token);
 
       if (!response.ok) {
         throw new Error(await response.text());

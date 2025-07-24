@@ -191,8 +191,8 @@ export function SearchSheet({
           return aName.localeCompare(bName);
         });
 
-      console.log("Events found:", events.length);
-      console.log("Locations found:", locations.length);
+      // console.log("Events found:", events.length);
+      // console.log("Locations found:", locations.length);
 
       let processedEvents: MapEvent[] = [];
       if (events?.length > 0) {
@@ -219,11 +219,11 @@ export function SearchSheet({
       );
 
       // Fetch users
-      console.log("Searching for users with query:", query);
+      // console.log("Searching for users with query:", query);
 
       // Debug query - get all users first
       const { data: allUsers } = await supabase.from("users").select("*");
-      console.log("All users in database:", allUsers);
+      // console.log("All users in database:", allUsers);
 
       // Try the actual search
       const { data: users, error: usersError } = await supabase
@@ -231,7 +231,7 @@ export function SearchSheet({
         .select("*")
         .filter("first_name", "ilike", `%${query}%`);
 
-      console.log("Search query results:", users);
+      // console.log("Search query results:", users);
 
       if (usersError) {
         console.error("Users search error:", usersError);

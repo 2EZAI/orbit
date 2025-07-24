@@ -89,7 +89,7 @@ export default function Map() {
   const lastCenterRef = useRef<[number, number] | null>(null);
 
   const handleRegionChange = useCallback((region: any) => {
-    console.log("[Map] Region changed:", region);
+    // console.log("[Map] Region changed:", region);
 
     // Clear existing timeout
     if (regionChangeTimeoutRef.current) {
@@ -112,11 +112,11 @@ export default function Map() {
           Math.abs(newCenter[0] - lastCenter[0]) > 0.01 ||
           Math.abs(newCenter[1] - lastCenter[1]) > 0.01
         ) {
-          console.log("[Map] Fetching events for new region:", {
-            lat: centerLat,
-            lng: centerLng,
-            zoom: zoomLevel,
-          });
+          // console.log("[Map] Fetching events for new region:", {
+          //   lat: centerLat,
+          //   lng: centerLng,
+          //   zoom: zoomLevel,
+          // });
 
           // Update the map center to trigger new data fetch
           setMapCenter(newCenter);
@@ -176,11 +176,11 @@ export default function Map() {
   // Add logging for event selection
   useEffect(() => {
     if (selectedEvent) {
-      console.log("Selected event:", {
-        id: selectedEvent.id,
-        name: selectedEvent.name,
-        venue: selectedEvent.venue_name,
-      });
+      // console.log("Selected event:", {
+      //   id: selectedEvent.id,
+      //   name: selectedEvent.name,
+      //   venue: selectedEvent.venue_name,
+      // });
     }
   }, [selectedEvent]);
 
@@ -188,7 +188,7 @@ export default function Map() {
   useEffect(() => {
  setIsFollowingUser(false);
   DeviceEventEmitter.addListener("eventNotification", (event:Partial<MapEvent>) => {
-      console.log("event----eventNotification", event);
+      // console.log("event----eventNotification", event);
      setIsEvent(true);
     //  setShowDetails(true);
      handleEventClick(event);
@@ -199,16 +199,16 @@ export default function Map() {
   useEffect(() => {
     
     if (location?.latitude && location?.longitude && !mapCenter) {
-      console.log("[Map] Setting initial map center to user location:", {
-        lat: location.latitude,
-        lng: location.longitude,
-      });
+      // console.log("[Map] Setting initial map center to user location:", {
+      //   lat: location.latitude,
+      //   lng: location.longitude,
+      // });
       setMapCenter([location.latitude, location.longitude]);
     }
   }, [location, mapCenter]);
 
   useEffect(() => {
-    console.log("followerList updated >>>>", followerList);
+    // console.log("followerList updated >>>>", followerList);
   }, [followerList]);
 
   const haversine = (lat1, lon1, lat2, lon2) => {
@@ -301,7 +301,7 @@ export default function Map() {
 
     if (error) throw error;
 
-    console.log("Matched followings:", data);
+    // console.log("Matched followings:", data);
     return data; // list of all following relationships for the given follower
   };
 
@@ -316,7 +316,7 @@ export default function Map() {
     if (!follows || follows.length === 0) return [];
 
     const followingIds = follows.map((f) => f.following_id);
-    console.log("followingIds:", followingIds);
+    // console.log("followingIds:", followingIds);
 
     // Step 2: Check which of them also follow the session user
     const { data: mutuals, error: mutualError } = await supabase
@@ -329,7 +329,7 @@ export default function Map() {
 
     const mutualFollowerIds = mutuals.map((m) => m.follower_id);
 
-    console.log("Mutual followers:", mutualFollowerIds);
+    // console.log("Mutual followers:", mutualFollowerIds);
 
     // Step 2: Fetch user data in batch
     const { data: users, error: usersError } = await supabase
@@ -339,7 +339,7 @@ export default function Map() {
       .eq("is_live_location_shared", 1);
 
     if (usersError) throw usersError;
-    console.log("Followed user", users);
+    // console.log("Followed user", users);
 
     const live_usersIds = users.map((m) => m.id);
     // Step 3: Fetch location data in batch
@@ -347,7 +347,7 @@ export default function Map() {
       .from("user_locations")
       .select("user_id, live_location_latitude, live_location_longitude")
       .in("user_id", live_usersIds);
-    console.log("Followed locations", locations);
+    // console.log("Followed locations", locations);
     if (locationError) throw locationError;
 
     // Step 4: Combine all data
@@ -372,10 +372,10 @@ export default function Map() {
       };
     });
 
-    console.log("Followed user details:", result);
+    // console.log("Followed user details:", result);
     // setFollowerList(result);
     const updatedFollowerList = getNearbyFollowerCounts(result);
-    console.log("updatedFollowerList:", updatedFollowerList);
+    // console.log("updatedFollowerList:", updatedFollowerList);
     setFollowerList([]);
     setFollowerList(updatedFollowerList);
     return result;
@@ -397,11 +397,11 @@ export default function Map() {
           accuracy: Location.Accuracy.BestForNavigation,
         });
 
-        console.log("[Map] Initial user location:", {
-          latitude: initialLocation.coords.latitude,
-          longitude: initialLocation.coords.longitude,
-          heading: initialLocation.coords.heading,
-        });
+        // console.log("[Map] Initial user location:", {
+        //   latitude: initialLocation.coords.latitude,
+        //   longitude: initialLocation.coords.longitude,
+        //   heading: initialLocation.coords.heading,
+        // });
 
         setLocation({
           latitude: initialLocation.coords.latitude,
@@ -429,11 +429,11 @@ export default function Map() {
             timeInterval: 5000, // Or every 5 seconds
           },
           (newLocation) => {
-            console.log("[Map] User location updated:", {
-              latitude: newLocation.coords.latitude,
-              longitude: newLocation.coords.longitude,
-              heading: newLocation.coords.heading,
-            });
+            // console.log("[Map] User location updated:", {
+            //   latitude: newLocation.coords.latitude,
+            //   longitude: newLocation.coords.longitude,
+            //   heading: newLocation.coords.heading,
+            // });
 
             setLocation({
               latitude: newLocation.coords.latitude,
@@ -534,10 +534,10 @@ export default function Map() {
 
   const handleLocationClusterPress = useCallback(
     (cluster: { events: MapLocation[] }) => {
-      console.log("[Map] Location cluster pressed:", {
-        locationCount: cluster?.events?.length,
-        firstLocationId: cluster?.events[0]?.id,
-      });
+      // console.log("[Map] Location cluster pressed:", {
+      //   locationCount: cluster?.events?.length,
+      //   firstLocationId: cluster?.events[0]?.id,
+      // });
 
       if (cluster.events?.length === 1) {
         // Center map on selected location
@@ -929,10 +929,10 @@ export default function Map() {
           isFollowingUser={isFollowingUser}
           timeFrame={selectedTimeFrame}
           onSelectedTimeFrame={(txt) => {
-            console.log("txt>>", txt);
-            console.log("clustersNow.length>",clustersNow.length)
-              console.log("clustersToday.length>",clustersToday.length)
-                console.log("clustersTomorrow.length>",clustersTomorrow.length)
+            // console.log("txt>>", txt);
+            // console.log("clustersNow.length>",clustersNow.length)
+            //   console.log("clustersToday.length>",clustersToday.length)
+            //     console.log("clustersTomorrow.length>",clustersTomorrow.length)
             
             setSelectedTimeFrame(txt);
           }}

@@ -36,7 +36,7 @@ export const useMapCamera = ({
     console.log("Zoom Out pressed. Current zoom:", zoomLevel);
     if (cameraRef.current) {
       const newZoom = Math.max(zoomLevel - 1, minZoom);
-      console.log("Setting new zoom level:", newZoom);
+      // console.log("Setting new zoom level:", newZoom);
 
       cameraRef.current.setCamera({
         zoomLevel: newZoom,

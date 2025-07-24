@@ -70,7 +70,7 @@ const ImageCarousel = ({
   };
 
   const handleImagePress = () => {
-    console.log("Image pressed, navigating to post:", postId);
+    // console.log("Image pressed, navigating to post:", postId);
     router.push({
       pathname: `/post/${postId}`,
       params: { event: event ? JSON.stringify(event) : "" },
@@ -135,16 +135,16 @@ export default function SocialFeed() {
   const PAGE_SIZE = 20;
 
   const loadPosts = async (isRefresh = false) => {
-    console.log(
-      "loadPosts called, loading:",
-      loading,
-      "hasMore:",
-      hasMore,
-      "isRefresh:",
-      isRefresh,
-      "current page:",
-      page
-    );
+    // console.log(
+    //   "loadPosts called, loading:",
+    //   loading,
+    //   "hasMore:",
+    //   hasMore,
+    //   "isRefresh:",
+    //   isRefresh,
+    //   "current page:",
+    //   page
+    // );
 
     if (loading || (!hasMore && !isRefresh)) {
       console.log("Early return from loadPosts");
@@ -237,7 +237,7 @@ const response = await fetch(
       const response_ = await response.json();
        
      const postsData = response_?.data;
-      console.log("api response:", { postsData });
+      // console.log("api response:", { postsData });
 
       // if (error) {
       //   console.error("Error fetching posts:", error);
@@ -247,13 +247,13 @@ const response = await fetch(
       //   return;
       // }
 
-      console.log("Raw postsData:", postsData);
+      // console.log("Raw postsData:", postsData);
       if (postsData && postsData.length > 0) {
-        console.log("First post date:", postsData[0].created_at);
-        console.log(
-          "Last post date:",
-          postsData[postsData.length - 1].created_at
-        );
+        // console.log("First post date:", postsData[0].created_at);
+        // console.log(
+        //   "Last post date:",
+        //   postsData[postsData.length - 1].created_at
+        // );
       }
 
       // Transform the data to match our Post interface
@@ -277,7 +277,7 @@ const response = await fetch(
           isLiked: false, // We'll check this separately
         })) || [];
 
-      console.log("Transformed posts:", transformedPosts);
+      // console.log("Transformed posts:", transformedPosts);
 
       // Check which posts are liked by the current user
       if (session?.user?.id) {
@@ -296,8 +296,8 @@ const response = await fetch(
         }
       }
 
-      console.log("Final transformed posts length:", transformedPosts.length);
-      console.log("Sample post data:", transformedPosts[0]);
+      // console.log("Final transformed posts length:", transformedPosts.length);
+      // console.log("Sample post data:", transformedPosts[0]);
 
       if (transformedPosts.length === 0) {
         console.log("No posts found, setting hasMore to false");

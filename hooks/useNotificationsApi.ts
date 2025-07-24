@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "~/src/lib/auth";
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface NotificationData {
   type: string;
@@ -46,14 +45,7 @@ interface useNotificationsReturn {
   readNoifications: (notifId: Partial<string>) => Promise<void>;
   unReadCount: number | null;
 }
-const saveUnReadNotifCount = async (count: string) => {
-  try {
-    await AsyncStorage.setItem('unread_notification', JSON.stringify(count));
-    console.log('Saved successfully');
-  } catch (error) {
-    console.error('Error saving notification:', error);
-  }
-};
+
 export function useNotificationsApi(): useNotificationsReturn {
   const { session } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -81,11 +73,10 @@ export function useNotificationsApi(): useNotificationsReturn {
           }
     
           const data = await response.json();
-          console.log("notifications>", data);
+          // console.log("notifications>", data);
           const meta= data?.meta?.unreadCount;
-          console.log("meta>",meta);
+          // console.log("meta>",meta);
           setUnReadCount(meta);
-          saveUnReadNotifCount(meta);
   
     return data; 
           
@@ -116,7 +107,7 @@ const readNoifications = async (notifId: string) => {
     }
 
     const notifDetail = await response.json();
-    console.log("notifDetail>", notifDetail);
+    // console.log("notifDetail>", notifDetail);
    return notifDetail;
   } catch (error) {
     console.error("Error fetching read notification:", error);

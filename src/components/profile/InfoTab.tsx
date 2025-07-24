@@ -55,7 +55,7 @@ export default function InfoTab({ userId_, selectedItem_ }: InfoTabProps) {
 
 const callApi= async()=>{
 const data =await fetchOherUserTopics(userId_);
-console.log("data>",data);
+// console.log("data>",data);
 }
 useEffect(() => {
   if(userId_){
@@ -125,7 +125,7 @@ useEffect(() => {
             />
           </TouchableOpacity>
           <ScrollView>
-            <View className=" flex-row flex-wrap gap-2  bg-white border rounded-2xl p-2  mb-12 mx-4 border-gray-300">
+            <View className=" flex-row flex-wrap gap-2  bg-white border rounded-2xl p-2  mb-20 mx-4 border-gray-300">
               {selectedTopics.map((topic) => {
                 const isSelected = selectedTopics.includes(topic);
                 return (

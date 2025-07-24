@@ -78,7 +78,7 @@ export default function PostView() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
   useEffect(() => {
-    console.log("[PostView] Received post ID:", id);
+    // console.log("[PostView] Received post ID:", id);
     if (!id) {
       setError("Invalid post ID");
       setLoading(false);
@@ -268,7 +268,7 @@ export default function PostView() {
 
       if (error) throw error;
 
-      console.log("Like count:", count);
+      // console.log("Like count:", count);
       setLikeCount(count || 0); // if you have a state to store it
     } catch (error) {
       console.error("Error fetching like count:", error);
@@ -393,15 +393,15 @@ export default function PostView() {
             body: JSON.stringify(reuestData),
           }
         );
-        console.log("eventData", reuestData);
+        // console.log("eventData", reuestData);
 
         if (!response.ok) {
-          console.log("error>",response);
+          // console.log("error>",response);
           throw new Error(await response.text());
         }
 
         const data_ = await response.json();
-        console.log("response>",data_);
+        // console.log("response>",data_);
     }
     catch(e)
     {

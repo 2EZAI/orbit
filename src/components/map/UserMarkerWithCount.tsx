@@ -12,7 +12,7 @@ export const UserMarkerWithCount = ({ avatarUrl, heading,count,showCount }: User
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
-    console.log("[UserMarker] Rendering with avatar URL:", avatarUrl);
+    // console.log("[UserMarker] Rendering with avatar URL:", avatarUrl);
     setImageError(false); // Reset error state when URL changes
   }, [avatarUrl]);
 

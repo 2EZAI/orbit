@@ -67,7 +67,7 @@ useEffect(() => {
   }, []);
 useEffect(() => {
      setLocationDetail({});
-     console.log("event//",event);
+    //  console.log("event//",event);
     setLocationDetail(event);
     hitLocationDetail();
   }, []);
@@ -75,7 +75,7 @@ useEffect(() => {
    const hitLocationDetail = async () => {
       console.log("hitLocationDetail");
     const locationDetails = await fetchLocationDetail(event);
-    console.log("Returned location details:", locationDetails);
+    // console.log("Returned location details:", locationDetails);
     if (locationDetails && typeof locationDetails === "object") {
     setLocationDetail(locationDetails);
     }

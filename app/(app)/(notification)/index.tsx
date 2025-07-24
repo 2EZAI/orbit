@@ -39,9 +39,9 @@ export default function NotificationView() {
   }, []);
   useEffect(() => {
     if (client && client.userID) {
-      console.log("client.userID >", client.userID);
+      // console.log("client.userID >", client.userID);
       clientLocal = client;
-      console.log("clientL.userID >", clientLocal.userID);
+      // console.log("clientL.userID >", clientLocal.userID);
     }
   }, [client]);
 
@@ -76,7 +76,7 @@ export default function NotificationView() {
         PAGE_SIZE
       );
       const data = response.notifications;
-      console.log("data>:", data);
+      // console.log("data>:", data);
       if (data.length < PAGE_SIZE) setHasMore(false); // stop if no more
 
       if (data.length === 0) {
@@ -109,7 +109,7 @@ export default function NotificationView() {
       PAGE_SIZE
     );
     const data = response.notifications;
-    console.log("data>:", data);
+    // console.log("data>:", data);
     if (data.length < PAGE_SIZE) setHasMore(false); // stop if no more
 
     if (data.length === 0) {
@@ -127,10 +127,10 @@ export default function NotificationView() {
   const updateEndReached = () => {};
 
   const handleNotificationClick = (item: NotificationResponse) => {
-    console.log("item>", item);
+    // console.log("item>", item);
     readNoificationsApi(item?.id);
     if (item?.data?.type === "comment" || item?.data?.type === "like") {
-      console.log("post_id>", item?.data.post_id);
+      // console.log("post_id>", item?.data.post_id);
       hitApiPostDetail(item?.data.post_id);
     }
     if (
@@ -140,8 +140,8 @@ export default function NotificationView() {
     ) {
       const eventId = item?.data.event_id;
       const isTicketmaster = item?.data.is_ticketmaster;
-      console.log("eventId>", eventId);
-      console.log("is_ticketmaster>", isTicketmaster);
+      // console.log("eventId>", eventId);
+      // console.log("is_ticketmaster>", isTicketmaster);
       fetchEventDetail(eventId, isTicketmaster);
       // fetchEventDetail("88f252e9-bc5a-4746-857e-859322cdd225"
       // ,false);
@@ -153,7 +153,7 @@ export default function NotificationView() {
       // fetchEventDetail("88f252e9-bc5a-4746-857e-859322cdd225"
       // ,false);
 
-      console.log("user_id>", item?.data?.user_id);
+      // console.log("user_id>", item?.data?.user_id);
       router.push({
         pathname: "/(app)/profile/[username]",
         params: { username: item?.data?.user_id },
@@ -196,13 +196,13 @@ export default function NotificationView() {
     senderId: string,
     streamChannelId: string
   ) => {
-    console.log("clientL.userID prepareChanel>", clientLocal?.userID);
+    // console.log("clientL.userID prepareChanel>", clientLocal?.userID);
     if (!clientLocal?.userID || ids.length === 0) {
       console.log("Prerequisites not met, returning early");
       return;
     }
     const memberIds = [senderId, ...ids.map((u) => u)];
-    console.log("Member IDs:", memberIds);
+    // console.log("Member IDs:", memberIds);
 
     const channel = clientLocal.channel("messaging", streamChannelId, {
       members: memberIds,
@@ -245,12 +245,12 @@ export default function NotificationView() {
       );
       // console.log("session.access_token>>",
       // session.access_token);
-      console.log("requestData>fetchEvent", requestData);
+      // console.log("requestData>fetchEvent", requestData);
       if (!response.ok) {
         throw new Error(await response.text());
       }
       const data = await response.json();
-      console.log("event data", data);
+      // console.log("event data", data);
       router.replace("/(app)/(map)");
       const mapEvent = {
         id: data?.id,
@@ -300,7 +300,7 @@ export default function NotificationView() {
       }
 
       const postDetail = await response.json();
-      console.log("postDetail>", postDetail);
+      // console.log("postDetail>", postDetail);
       router.push({
         pathname: `/post/${postId}`,
         params: {

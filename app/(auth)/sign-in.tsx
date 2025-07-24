@@ -13,6 +13,7 @@ import { Text } from "~/src/components/ui/text";
 import Toast from "react-native-toast-message";
 import { Lock, Mail, AlertTriangle } from "lucide-react-native";
 import { MotiView, AnimatePresence } from "moti";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function SignIn(): JSX.Element {
   const [email, setEmail] = useState<string>("");
@@ -32,7 +33,9 @@ export default function SignIn(): JSX.Element {
     }
 
     setLoading(true);
+     
     try {
+      await saveTutorialFinished();
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -56,9 +59,10 @@ export default function SignIn(): JSX.Element {
         text1: "Success",
         text2: "Signed in successfully",
       });
+      
+        router.replace('/(app)/home'); // Navigate only after saving
 
-      // Navigate to the home screen or another screen after successful login
-      router.replace("/(app)/home");
+    
     } catch (error) {
       if (error instanceof Error) {
         setError(error.message || "An unexpected error occurred.");
@@ -72,6 +76,16 @@ export default function SignIn(): JSX.Element {
       setLoading(false);
     }
   }
+
+
+  const saveTutorialFinished = async () => {
+  try {
+    await AsyncStorage.setItem("tutorial_finished", JSON.stringify("1"));
+    console.log("Saved successfully");
+  } catch (error) {
+    console.error("Error saving tutorial_finished:", error);
+  }
+};
 
   return (
     <SafeAreaView className="flex-1 bg-background">

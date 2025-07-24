@@ -62,7 +62,7 @@ export default function ProfilePage() {
       .maybeSingle();
 
     if (error) throw error;
-    console.log("data>>", !!data);
+    // console.log("data>>", !!data);
     setIsFollowed(!!data);
     return !!data; // returns true if relationship exists
   };
@@ -75,7 +75,7 @@ export default function ProfilePage() {
       .maybeSingle();
 
     if (error) throw error;
-    console.log("dataisfoloower>>", !!data);
+    // console.log("dataisfoloower>>", !!data);
     setIsFollowBack(!!data);
     return !!data; // returns true if relationship exists
   };
@@ -176,7 +176,7 @@ export default function ProfilePage() {
       let existing = isUserFollowing(session.user.id, userData.id);
 
       // Fetch user's events
-      console.log("userData.id>", userData.id);
+      // console.log("userData.id>", userData.id);
       const { data: events } = await supabase
         .from("events")
         .select(
@@ -234,7 +234,7 @@ export default function ProfilePage() {
           }))
         );
       }
-      console.log("events>>>", events);
+      // console.log("events>>>", events);
     } catch (error) {
       console.error("Error fetching profile:", error);
       setProfile({
@@ -277,15 +277,15 @@ export default function ProfilePage() {
             body: JSON.stringify(reuestData),
           }
         );
-        console.log("requestData", reuestData);
+        // console.log("requestData", reuestData);
 
         if (!response.ok) {
-          console.log("error>",response);
+          // console.log("error>",response);
           throw new Error(await response.text());
         }
 
         const data_ = await response.json();
-        console.log("response>",data_);
+        // console.log("response>",data_);
         
     }
     catch(e)
@@ -306,7 +306,7 @@ console.log("error_catch>",e);
           .eq("follower_id", session.user.id)
           .eq("following_id", profile.id);
 
-        console.log("delete>", session.user.id + " " + profile.id);
+        // console.log("delete>", session.user.id + " " + profile.id);
         if (deleteError) throw deleteError;
 
         Toast.show({
@@ -323,7 +323,7 @@ console.log("error_catch>",e);
             following_id: profile.id,
           },
         ]);
-        console.log("insert>", session.user.id + " " + profile.id);
+        // console.log("insert>", session.user.id + " " + profile.id);
         if (insertError) throw insertError;
 
         Toast.show({
@@ -340,7 +340,7 @@ console.log("error_catch>",e);
             following_id: profile.id,
           },
         ]);
-        console.log("insert>", session.user.id + " " + profile.id);
+        // console.log("insert>", session.user.id + " " + profile.id);
         if (insertError) throw insertError;
 
         Toast.show({

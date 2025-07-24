@@ -59,7 +59,7 @@ export default function CreatedEventList({
 
     console.log("loadEvents:");
     const data = await fetchCreatedEvents("created", page, PAGE_SIZE,userid);
-    console.log("data>:", data);
+    // console.log("data>:", data);
     if (data.length === 0) {
       setLoading(false);
       setHasMore(false);

@@ -62,7 +62,7 @@ export function LocationDetailsSheet({
   onEventSelect,
   onShowControler,
 }: LocationDetailsSheetProps) {
-  console.log("event///", event);
+  // console.log("event///", event);
   const PAGE_SIZE = 40;
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
 
@@ -98,7 +98,7 @@ export function LocationDetailsSheet({
  const hitLocationDetail = async () => {
       console.log("hitLocationDetail");
     const locationDetails = await fetchLocationDetail(event);
-    console.log("Returned location details:", locationDetails);
+    // console.log("Returned location details:", locationDetails);
  if (locationDetails && typeof locationDetails === "object") {
     setLocationDetail(locationDetails);
  }
@@ -164,10 +164,10 @@ export function LocationDetailsSheet({
     if (loading || !hasMore) return; // 👈 prevent infinite
     setLoading(true);
 
-    console.log("loadEvents:", event);
+    // console.log("loadEvents:", event);
     try {
       const data = await fetchLocationEvents(event, page, PAGE_SIZE);
-      console.log("data>:", data);
+      // console.log("data>:", data);
       if (data.length === 0) {
         setLoading(false);
         setHasMore(false);

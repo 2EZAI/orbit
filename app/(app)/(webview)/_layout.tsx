@@ -20,8 +20,8 @@ export default function WebviewLayout() {
   const { eventSelected, external_url } = useLocalSearchParams();
   const event = JSON.parse(eventSelected);
 
-  console.log("eventSelected>>", event);
-  console.log("external_url>>", external_url);
+  // console.log("eventSelected>>", event);
+  // console.log("external_url>>", external_url);
 
   const router = useRouter();
   const { UpdateEventStatus } = useUpdateEvents();

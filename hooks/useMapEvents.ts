@@ -197,7 +197,7 @@ export function useMapEvents({
   const { session } = useAuth();
   // Function to group events by location with a smaller precision for better clustering
   const clusterEvents = (events: MapEvent[]) => {
-    console.log("[Events] Clustering", events.length, "events");
+    // console.log("[Events] Clustering", events.length, "events");
     const locationMap = new Map<string, EventCluster>();
 
     events.forEach((event) => {
@@ -212,7 +212,7 @@ export function useMapEvents({
       }
 
       // Log the actual coordinates for debugging
-      console.log(`[Events] Event ${event.id} location:`, event.location);
+      // console.log(`[Events] Event ${event.id} location:`, event.location);
 
       // Use 3 decimal places for clustering (roughly 100m precision)
       const key = `${event.location.latitude.toFixed(
@@ -236,15 +236,15 @@ export function useMapEvents({
     });
 
     const clusters = Array.from(locationMap.values());
-    console.log(
-      "[Events] Created clusters at locations:",
-      clusters.map((c) => `${c.location.latitude},${c.location.longitude}`)
-    );
+    // console.log(
+    //   "[Events] Created clusters at locations:",
+    //   clusters.map((c) => `${c.location.latitude},${c.location.longitude}`)
+    // );
     return clusters;
   };
 
   const clusterLocations = (events: MapLocation[]) => {
-    console.log("[Events] Clustering", events.length, "events");
+    // console.log("[Events] Clustering", events.length, "events");
     const locationMap = new Map<string, LocationCluster>();
 
     events.forEach((event) => {
@@ -259,7 +259,7 @@ export function useMapEvents({
       }
 
       // Log the actual coordinates for debugging
-      console.log(`[Events] Event ${event.id} location:`, event.location);
+      // console.log(`[Events] Event ${event.id} location:`, event.location);
 
       // Use 3 decimal places for clustering (roughly 100m precision)
       const key = `${event.location.latitude.toFixed(
@@ -283,10 +283,10 @@ export function useMapEvents({
     });
 
     const clusters = Array.from(locationMap.values());
-    console.log(
-      "[Events] Created clusters at locations:",
-      clusters.map((c) => `${c.location.latitude},${c.location.longitude}`)
-    );
+    // console.log(
+    //   "[Events] Created clusters at locations:",
+    //   clusters.map((c) => `${c.location.latitude},${c.location.longitude}`)
+    // );
     return clusters;
   };
 
@@ -296,7 +296,7 @@ export function useMapEvents({
     selectedCat: string,
     currentDeviceLocation?: { latitude: number; longitude: number } | null
   ): Promise<MapEvent[]> => {
-    console.log("apihitt", page, " ", pageSize, " ", selectedCat);
+    // console.log("apihitt", page, " ", pageSize, " ", selectedCat);
 
     setIsLoading(true);
 
@@ -313,7 +313,7 @@ export function useMapEvents({
         .single();
 
       if (supabaseError) throw supabaseError;
-      console.log("fetch_user>?>>", data);
+      // console.log("fetch_user>?>>", data);
       user = data;
     } catch (e) {
     } finally {
@@ -332,7 +332,7 @@ export function useMapEvents({
         .single();
 
       if (supabaseError) throw supabaseError;
-      console.log("fetch_location>?>>", data);
+      // console.log("fetch_location>?>>", data);
       userLocation = data;
     } catch (e) {
     } finally {
@@ -348,11 +348,11 @@ export function useMapEvents({
         throw new Error("No valid auth session");
       }
 
-      console.log(
-        "user?.event_location_preference>",
-        user?.event_location_preference
-      );
-      console.log("userlocation?.latitude>", userLocation?.latitude);
+      // console.log(
+      //   "user?.event_location_preference>",
+      //   user?.event_location_preference
+      // );
+      // console.log("userlocation?.latitude>", userLocation?.latitude);
 
       // 2. get event using our API
       const eventData = {
@@ -392,15 +392,15 @@ export function useMapEvents({
         return [] as MapEvent[];
       }
 
-      console.log("[Events] Using coordinates for API call:", {
-        latitude: eventData.latitude,
-        longitude: eventData.longitude,
-        source: currentDeviceLocation
-          ? "device"
-          : userLocation
-          ? "saved"
-          : "center",
-      });
+      // console.log("[Events] Using coordinates for API call:", {
+      //   latitude: eventData.latitude,
+      //   longitude: eventData.longitude,
+      //   source: currentDeviceLocation
+      //     ? "device"
+      //     : userLocation
+      //     ? "saved"
+      //     : "center",
+      // });
 
       try {
         if (!session?.user?.id) {
@@ -418,8 +418,8 @@ export function useMapEvents({
             body: JSON.stringify(eventData),
           }
         );
-        console.log("session.access_token>>", session.access_token);
-        console.log("eventData", eventData);
+        // console.log("session.access_token>>", session.access_token);
+        // console.log("eventData", eventData);
 
         if (!response.ok) {
           throw new Error(await response.text());
@@ -428,11 +428,11 @@ export function useMapEvents({
         const data_ = await response.json();
         const data = data_.events;
         // console.log("event data", data);
-        console.log(
-          "[Events] Fetched HOMEevents>:",
-          data.length,
-          "events from API"
-        );
+        // console.log(
+        //   "[Events] Fetched HOMEevents>:",
+        //   data.length,
+        //   "events from API"
+        // );
 
         // Validate event data
         const validEvents = (data || []).filter((event: any) => {
@@ -462,15 +462,15 @@ export function useMapEvents({
               }
             );
           } else {
-            console.log(
-              `[Events] Valid event data: ${event.id}`,
-              event.location
-            );
+            // console.log(
+            //   `[Events] Valid event data: ${event.id}`,
+            //   event.location
+            // );
           }
           return isValid;
         });
 
-        console.log("[Events] Valid HOMEevents>:", validEvents);
+        // console.log("[Events] Valid HOMEevents>:", validEvents);
 
         if (!isMountedRef.current) return [] as MapEvent[];
 
@@ -518,7 +518,7 @@ export function useMapEvents({
           //body: JSON.stringify(eventData),
         }
       );
-      console.log("session.access_token>>", session.access_token);
+      // console.log("session.access_token>>", session.access_token);
 
       if (!response.ok) {
         throw new Error(await response.text());
@@ -572,7 +572,7 @@ export function useMapEvents({
           .single();
 
         if (supabaseError) throw supabaseError;
-        console.log("fetch_user>?>>", data);
+        // console.log("fetch_user>?>>", data);
         user = data;
       } catch (e) {
       } finally {
@@ -591,7 +591,7 @@ export function useMapEvents({
           .single();
 
         if (supabaseError) throw supabaseError;
-        console.log("fetch_location>?>>", data);
+        // console.log("fetch_location>?>>", data);
         userLocation = data;
       } catch (e) {
       } finally {
@@ -607,11 +607,11 @@ export function useMapEvents({
           throw new Error("No valid auth session");
         }
 
-        console.log(
-          "user?.event_location_preference>",
-          user?.event_location_preference
-        );
-        console.log("userlocation?.latitude>", userLocation?.latitude);
+        // console.log(
+        //   "user?.event_location_preference>",
+        //   user?.event_location_preference
+        // );
+        // console.log("userlocation?.latitude>", userLocation?.latitude);
 
         // 2. get event using our API
         const eventData = {
@@ -650,18 +650,18 @@ export function useMapEvents({
             body: JSON.stringify(eventData),
           }
         );
-        console.log("session.access_token>>", session.access_token);
+        // console.log("session.access_token>>", session.access_token);
 
         if (!responseLocations.ok) {
           throw new Error(await responseLocations.text());
         }
 
         const dataLocations = await responseLocations.json();
-        console.log(
-          "[Events] Locations",
-          dataLocations.length,
-          "Locations from API"
-        );
+        // console.log(
+        //   "[Events] Locations",
+        //   dataLocations.length,
+        //   "Locations from API"
+        // );
 
         // Validate event data
         const validLocations = dataLocations.filter((event: any) => {
@@ -700,8 +700,8 @@ export function useMapEvents({
             body: JSON.stringify(eventData),
           }
         );
-        console.log("session.access_token>>", session.access_token);
-        console.log("eventData", eventData);
+        // console.log("session.access_token>>", session.access_token);
+        // console.log("eventData", eventData);
 
         if (!response.ok) {
           throw new Error(await response.text());
@@ -709,8 +709,8 @@ export function useMapEvents({
 
         const data_ = await response.json();
         const data = data_.events;
-        console.log("event data>", data);
-        console.log("[Events] Fetched", data.length, "events from API");
+        // console.log("event data>", data);
+        // console.log("[Events] Fetched", data.length, "events from API");
 
         // Validate event data
         const validEvents = (data || []).filter((event: any) => {
@@ -735,7 +735,7 @@ export function useMapEvents({
           return isValid;
         });
 
-        console.log("[Events] Valid events:", validEvents.length);
+        // console.log("[Events] Valid events:", validEvents.length);
 
         if (!isMountedRef.current) return;
 
@@ -771,7 +771,7 @@ export function useMapEvents({
           }
           return isValid;
         });
-        console.log("validEventsHome>", validEventsHome.length);
+        // console.log("validEventsHome>", validEventsHome.length);
         setEventsHome(validEventsHome);
 
         // "Now" = within the next 4 hours
@@ -824,7 +824,7 @@ export function useMapEvents({
           );
         });
         setEventsTomorrow(tomorrowList);
-        console.log("[Events] Tomorrow events count:", tomorrowList.length);
+        // console.log("[Events] Tomorrow events count:", tomorrowList.length);
         const newClustersTomorrow = clusterEvents(tomorrowList);
         setClustersTomorrow(newClustersTomorrow);
         setError(null);
@@ -847,7 +847,7 @@ export function useMapEvents({
       events.length > 0 &&
       JSON.stringify(events) !== JSON.stringify(lastEventsRef.current)
     ) {
-      console.log("[Events] Creating clusters for", events.length, "events");
+      // console.log("[Events] Creating clusters for", events.length, "events");
       lastEventsRef.current = events;
 
       // Create initial clusters
@@ -860,7 +860,7 @@ export function useMapEvents({
         const isInRange = true; // Show all events
         return isInRange;
       });
-      console.log("[Events] Now events count:", nowListt.length);
+      // console.log("[Events] Now events count:", nowListt.length);
       const newClustersNow = clusterEvents(nowListt);
       setClustersNow(newClustersNow);
 
@@ -877,7 +877,7 @@ export function useMapEvents({
         const isInRange = true; // Show all events
         return isInRange;
       });
-      console.log("[Events] Today events count:", todayListt.length);
+      // console.log("[Events] Today events count:", todayListt.length);
       const newClustersToday = clusterEvents(todayListt);
       setClustersToday(newClustersToday);
 
@@ -894,7 +894,7 @@ export function useMapEvents({
         const isInRange = true; // Show all events
         return isInRange;
       });
-      console.log("[Events] Tomorrow events count:", tomorrowListt.length);
+      // console.log("[Events] Tomorrow events count:", tomorrowListt.length);
       const newClustersTomorrow = clusterEvents(tomorrowListt);
       setClustersTomorrow(newClustersTomorrow);
     }
@@ -906,11 +906,11 @@ export function useMapEvents({
       locations.length > 0 &&
       JSON.stringify(locations) !== JSON.stringify(lastLocationsRef.current)
     ) {
-      console.log(
-        "[Events] Creating location clusters for",
-        locations.length,
-        "locations"
-      );
+      // console.log(
+      //   "[Events] Creating location clusters for",
+      //   locations.length,
+      //   "locations"
+      // );
       lastLocationsRef.current = locations;
       const newClustersLocations = clusterLocations(locations);
       setClustersLocations(newClustersLocations);
@@ -921,7 +921,7 @@ export function useMapEvents({
   useEffect(() => {
     isMountedRef.current = true;
     if (center && center[0] !== 0 && center[1] !== 0) {
-      console.log("[Events] Initial fetch for center:", center);
+      // console.log("[Events] Initial fetch for center:", center);
       fetchAllEvents(center);
     }
     return () => {
@@ -1022,7 +1022,7 @@ export function useMapEvents({
   const memoizedCenter = useMemo(() => center, [center[0], center[1]]);
 
   const handleEventClick = useCallback((event: MapEvent) => {
-    console.log("[Events] Selected event:", event.id);
+    // console.log("[Events] Selected event:", event.id);
     setSelectedEvent(event);
   }, []);
 

@@ -23,11 +23,11 @@ import { BlurView } from "expo-blur";
 import Constants from "expo-constants";
 import * as FileSystem from "expo-file-system";
 
-console.log("Supabase URL:", Constants.expoConfig?.extra?.supabaseUrl);
-console.log(
-  "Supabase Key:",
-  Constants.expoConfig?.extra?.supabaseAnonKey?.slice(0, 5) + "..."
-);
+// console.log("Supabase URL:", Constants.expoConfig?.extra?.supabaseUrl);
+// console.log(
+//   "Supabase Key:",
+//   Constants.expoConfig?.extra?.supabaseAnonKey?.slice(0, 5) + "..."
+// );
 
 // Function to convert base64 to Uint8Array for Supabase storage
 function decode(base64: string): Uint8Array {
@@ -56,7 +56,7 @@ export default function SignUp() {
       const fileName = `${userId}/profile.${fileExt}`;
       const filePath = `${FileSystem.documentDirectory}profile.${fileExt}`;
 
-      console.log("uri>",uri);
+      // console.log("uri>",uri);
       var base64='';
             // Download the image first (needed for expo-file-system)
       if (Platform.OS === 'ios') {
@@ -131,7 +131,7 @@ export default function SignUp() {
       });
 
       if (error) throw error;
-      console.log("User account created:", data.user?.id);
+      // console.log("User account created:", data.user?.id);
 
       if (!data?.user) {
         throw new Error("Failed to create account");
@@ -140,7 +140,7 @@ export default function SignUp() {
       console.log("Uploading profile picture...");
       // 2. Upload the profile picture
       const publicUrl = await uploadProfilePicture(data.user.id, profileImage);
-      console.log("Profile picture uploaded:", publicUrl);
+      // console.log("Profile picture uploaded:", publicUrl);
 
       console.log("Updating user avatar...");
       // 3. Update the user's avatar_url

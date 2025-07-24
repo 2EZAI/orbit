@@ -12,16 +12,16 @@ export default function ChatLayout() {
   const pathname = usePathname();
 
   useEffect(() => {
-    console.log("[ChatLayout] Route changed:", { pathname });
+    // console.log("[ChatLayout] Route changed:", { pathname });
   }, [pathname]);
 
   useEffect(() => {
-    console.log("[ChatLayout] Mounting with state:", {
-      hasClient: !!client,
-      clientState: client?.state,
-      clientWsConnection: client?.wsConnection?.isHealthy,
-      isConnecting,
-    });
+    // console.log("[ChatLayout] Mounting with state:", {
+    //   hasClient: !!client,
+    //   clientState: client?.state,
+    //   clientWsConnection: client?.wsConnection?.isHealthy,
+    //   isConnecting,
+    // });
 
     // Only try to reconnect if we have a client but no healthy connection
     if (client && !client.wsConnection?.isHealthy && !isConnecting) {
@@ -46,11 +46,11 @@ export default function ChatLayout() {
     );
   }
 
-  console.log("[ChatLayout] Rendering chat layout with client:", {
-    userId: client.userID,
-    wsConnection: client.wsConnection?.isHealthy,
-    activeChannels: Object.keys(client.activeChannels || {}).length,
-  });
+  // console.log("[ChatLayout] Rendering chat layout with client:", {
+  //   userId: client.userID,
+  //   wsConnection: client.wsConnection?.isHealthy,
+  //   activeChannels: Object.keys(client.activeChannels || {}).length,
+  // });
 
   return (
          <SafeAreaView className="flex-1 bg-background">

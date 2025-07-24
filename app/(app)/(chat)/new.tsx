@@ -74,7 +74,7 @@ export default function NewChatScreen() {
           return;
         }
 
-        console.log("Fetching users for client ID:", client.userID);
+        // console.log("Fetching users for client ID:", client.userID);
 
         const excludeEmails = ["orbit@gmail.com"];
         const formatted = `(${excludeEmails
@@ -93,7 +93,7 @@ export default function NewChatScreen() {
           throw error;
         }
 
-        console.log("Users:", users);
+        // console.log("Users:", users);
 
         // Format users for the UI
         const formattedUsers = (users || []).map((user) => ({
@@ -110,7 +110,7 @@ export default function NewChatScreen() {
           updated_at: "",
         }));
 
-        console.log("Formatted users:", formattedUsers);
+        // console.log("Formatted users:", formattedUsers);
         setAllUsers(formattedUsers);
       } catch (error) {
         console.error("Error fetching users:", error);
@@ -142,10 +142,10 @@ export default function NewChatScreen() {
 
   const createChat = async () => {
     console.log("Starting createChat function");
-    console.log("Checking prerequisites:", {
-      hasClientId: Boolean(client?.userID),
-      selectedUsersCount: selectedUsers.length,
-    });
+    // console.log("Checking prerequisites:", {
+    //   hasClientId: Boolean(client?.userID),
+    //   selectedUsersCount: selectedUsers.length,
+    // });
 
     if (!client?.userID || selectedUsers.length === 0) {
       console.log("Prerequisites not met, returning early");
@@ -155,7 +155,7 @@ export default function NewChatScreen() {
     try {
       // Get all member IDs including the current user
       const memberIds = [client.userID, ...selectedUsers.map((u) => u.id)];
-      console.log("Member IDs:", memberIds);
+      // console.log("Member IDs:", memberIds);
 
       // Generate a unique channel ID using timestamp and random string
       const timestamp = Date.now();
@@ -163,10 +163,10 @@ export default function NewChatScreen() {
       const uniqueChannelId = `${timestamp}-${randomStr}`;
 
       // Create the channel with members list and name
-      console.log("[NewChat] Creating Stream channel with config:", {
-        members: memberIds,
-        name: chatName,
-      });
+      // console.log("[NewChat] Creating Stream channel with config:", {
+      //   members: memberIds,
+      //   name: chatName,
+      // });
       const channel = client.channel("messaging", uniqueChannelId, {
         members: memberIds,
         name: chatName,
@@ -175,12 +175,12 @@ export default function NewChatScreen() {
       // This both creates the channel and subscribes to it
       console.log("[NewChat] Watching channel...");
       await channel.watch();
-      console.log("[NewChat] Channel created and watching:", {
-        channelId: channel.id,
-        channelType: channel.type,
-        channelData: channel.data,
-        memberCount: channel.state.members?.size,
-      });
+      // console.log("[NewChat] Channel created and watching:", {
+      //   channelId: channel.id,
+      //   channelType: channel.type,
+      //   channelData: channel.data,
+      //   memberCount: channel.state.members?.size,
+      // });
 
       // Create channel record in Supabase
       console.log("[NewChat] Creating chat channel in Supabase");
@@ -200,7 +200,7 @@ export default function NewChatScreen() {
         throw channelError;
       }
 
-      console.log("Chat channel created:", chatChannel);
+      // console.log("Chat channel created:", chatChannel);
 
       // Create your own member record first
       console.log("Creating own member record");
@@ -308,15 +308,15 @@ export default function NewChatScreen() {
           body: JSON.stringify(reuestData),
         }
       );
-      console.log("requestData", reuestData);
+      // console.log("requestData", reuestData);
 
       if (!response.ok) {
-        console.log("error>", response);
+        // console.log("error>", response);
         throw new Error(await response.text());
       }
 
       const data_ = await response.json();
-      console.log("response>", data_);
+      // console.log("response>", data_);
     } catch (e) {
       console.log("error_catch>", e);
     }

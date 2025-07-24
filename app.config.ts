@@ -9,8 +9,8 @@ const DEFAULT_BACKEND_URL =
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   const backendUrl = process.env.BACKEND_CHAT_URL || DEFAULT_BACKEND_URL;
-  console.log("Configuring app with backend URL:", backendUrl);
-  console.log("Environment:", process.env.NODE_ENV || "development");
+  // console.log("Configuring app with backend URL:", backendUrl);
+  // console.log("Environment:", process.env.NODE_ENV || "development");
 
   // Validate required environment variables
   if (!process.env.STREAM_API_KEY) {
@@ -52,6 +52,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ],
     ios: {
       bundleIdentifier: "com.dovydmcnugget.orbit",
+      buildNumber: "1.0.1",
       supportsTablet: true,
       config: {
         usesNonExemptEncryption: false,

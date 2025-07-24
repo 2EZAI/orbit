@@ -12,6 +12,7 @@ import Toast from "react-native-toast-message";
 import { useAuth } from "~/src/lib/auth";
 import Constants from "expo-constants";
 import { useChat } from "~/src/lib/chat";
+import { SafeAreaView} from "react-native-safe-area-context";
 
 export default function UsernameScreen() {
   // const senderId="f2cb0eea-edef-4d9a-9d6e-8a6023cc1055";
@@ -25,18 +26,18 @@ export default function UsernameScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { session } = useAuth();
-  
 
-  console.log("session??", session?.user?.id);
+
+  // console.log("session??", session?.user?.id);
   // Prevent navigation away from this screen until username is set
   useEffect(() => {
-    console.log("user>", user);
+    // console.log("user>", user);
     checkUse();
   }, [user]);
 
   const checkUse = async () => {
     const data = await fetchUserNew();
-    console.log("data>", data);
+    // console.log("data>", data);
     // if (!user) {
     //   console.log('user>>','not found>>???');
     // }
@@ -80,10 +81,10 @@ export default function UsernameScreen() {
 
   ////
   const createChat = async () => {
-    console.log("Starting createChat function signup",client);
-    console.log("Checking prerequisites:", {
-      hasClientId: Boolean(client?.userID),
-    });
+    // console.log("Starting createChat function signup",client);
+    // console.log("Checking prerequisites:", {
+    //   hasClientId: Boolean(client?.userID),
+    // });
 
     if (!client?.userID) {
       console.log("Prerequisites not met, returning early");
@@ -93,7 +94,7 @@ export default function UsernameScreen() {
     try {
       // Get all member IDs including the current user
       const memberIds = [senderId, client.userID];
-      console.log("Member IDs:", memberIds);
+      // console.log("Member IDs:", memberIds);
 
       // Generate a unique channel ID using timestamp and random string
       const timestamp = Date.now();
@@ -101,10 +102,10 @@ export default function UsernameScreen() {
       const uniqueChannelId = `${timestamp}-${randomStr}`;
 
       // Create the channel with members list and name
-      console.log("[NewChat] Creating Stream channel with config:", {
-        members: memberIds,
-        name: "Orbit",
-      });
+      // console.log("[NewChat] Creating Stream channel with config:", {
+      //   members: memberIds,
+      //   name: "Orbit",
+      // });
       const channel = client.channel("messaging", uniqueChannelId, {
         members: memberIds,
         name: "Orbit App",
@@ -113,12 +114,12 @@ export default function UsernameScreen() {
       // This both creates the channel and subscribes to it
       console.log("[NewChat] Watching channel...");
       await channel.watch();
-      console.log("[NewChat] Channel created and watching:", {
-        channelId: channel.id,
-        channelType: channel.type,
-        channelData: channel.data,
-        memberCount: channel.state.members?.size,
-      });
+      // console.log("[NewChat] Channel created and watching:", {
+      //   channelId: channel.id,
+      //   channelType: channel.type,
+      //   channelData: channel.data,
+      //   memberCount: channel.state.members?.size,
+      // });
 
       // Create channel record in Supabase
       console.log("[NewChat] Creating chat channel in Supabase");
@@ -138,7 +139,7 @@ export default function UsernameScreen() {
         throw channelError;
       }
 
-      console.log("Chat channel created:", chatChannel);
+      // console.log("Chat channel created:", chatChannel);
 
       // Create your own member record first
       console.log("Creating own member record");
@@ -186,7 +187,7 @@ export default function UsernameScreen() {
 
       if (fetchError) throw fetchError;
 
-      console.log("Fetched user data:", userData);
+      // console.log("Fetched user data:", userData);
 
       let welcomeMessage = `👋 Hey ${userData?.first_name} ${userData?.last_name}, welcome to Orbit! We're excited to have you.
 This platform helps you discover and join amazing events near you. Let's get started!`;
@@ -246,7 +247,7 @@ This platform helps you discover and join amazing events near you. Let's get sta
   };
 
   return (
-    <View className="flex-1 px-4 bg-background">
+    <SafeAreaView className="flex-1 px-4 bg-background">
       <View className="py-12">
         <Text className="text-4xl font-bold">Choose your username</Text>
         <Text className="mt-3 text-base text-muted-foreground">
@@ -289,7 +290,7 @@ This platform helps you discover and join amazing events near you. Let's get sta
         <Button
           onPress={handleContinue}
           disabled={!username || !isAvailable || isChecking || isSubmitting}
-          className="h-14"
+          className="h-14 mt-2 "
         >
           {isSubmitting ? (
             <ActivityIndicator color="white" />
@@ -300,6 +301,6 @@ This platform helps you discover and join amazing events near you. Let's get sta
           )}
         </Button>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }

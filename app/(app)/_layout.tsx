@@ -32,11 +32,11 @@ useNotifications();
         initialRouteName="(map)"
         tabBar={(props: BottomTabBarProps) => {
           const currentRoute = props.state.routes[props.state.index];
-          console.log(
-            "[TabBar] Current route:",
-            currentRoute.name,
-            currentRoute.path
-          );
+          // console.log(
+          //   "[TabBar] Current route:",
+          //   currentRoute.name,
+          //   currentRoute.path
+          // );
           // Show tab bar everywhere except onboarding and specific chat messages
           const isSpecificChatRoute =
             currentRoute.name === "(webview)" ||

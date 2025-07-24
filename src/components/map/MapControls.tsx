@@ -22,7 +22,6 @@ import {
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { Icon } from "react-native-elements";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 
 // Enable LayoutAnimation for Android
@@ -80,7 +79,7 @@ export function MapControls({
   }, []);
 
   useEffect(() => {
-    console.log("unReadCounta>>", unReadCount);
+    // console.log("unReadCounta>>", unReadCount);
   }, [unReadCount]);
 
   const hitNotificationCount = async () => {

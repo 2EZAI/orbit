@@ -95,7 +95,7 @@ export function useUser(): UseUserReturn {
         setUserLocation(null);
         return;
       }
-      console.log("fetchUserLocation>>",session?.user?.id);
+      // console.log("fetchUserLocation>>",session?.user?.id);
       const { data, error: supabaseError } = await supabase
         .from("user_locations")
         .select("*")
@@ -103,7 +103,7 @@ export function useUser(): UseUserReturn {
         .single();
 
       if (supabaseError) throw supabaseError;
-      console.log("fetch_location>>",data);
+      // console.log("fetch_location>>",data);
       setUserLocation(data);
     } catch (e) {
       setError(e instanceof Error ? e : new Error("An error occurred"));
@@ -126,7 +126,7 @@ export function useUser(): UseUserReturn {
         .single();
 
       if (supabaseError) throw supabaseError;
-      console.log("fetchUserHomeTownLocation>>",data);
+      // console.log("fetchUserHomeTownLocation>>",data);
       setUserHomeTownLocation(data);
     } catch (e) {
       setError(e instanceof Error ? e : new Error("An error occurred"));
@@ -168,7 +168,7 @@ export function useUser(): UseUserReturn {
   
       if (error) throw error;
   
-      console.log("User topics:", data);
+      // console.log("User topics:", data);
       const topics = data?.map(item => item.topic) || [];
       if(topics.length>0){
       setUserTopicsList(topics);
@@ -204,7 +204,7 @@ export function useUser(): UseUserReturn {
 
   const fetchOherUserTopics = async (userId:any) => {
     if (!userId) return;
-    console.log("userId>",userId);
+    // console.log("userId>",userId);
     try {
       const { data, error } = await supabase
         .from("user_topics")
@@ -213,7 +213,7 @@ export function useUser(): UseUserReturn {
   
       if (error) throw error;
   
-      console.log("userId topics:", data);
+      // console.log("userId topics:", data);
       const topics = data?.map(item => item.topic) || [];
       if(topics.length>0){
         setOtherUserTopicsList(topics);
@@ -242,7 +242,7 @@ export function useUser(): UseUserReturn {
         .single();
 
       if (supabaseError) throw supabaseError;
-      console.log("fetchOtherUserHomeTownLocation>>",data);
+      // console.log("fetchOtherUserHomeTownLocation>>",data);
       setOtherUserHomeTownlocation(data);
     } catch (e) {
       setError(e instanceof Error ? e : new Error("An error occurred"));
@@ -322,8 +322,8 @@ export function useUser(): UseUserReturn {
       console.error('Error fetching user location:', fetchError)
       return { error: fetchError }
     }      
-    console.log("session.user.id>>>",session.user.id);
-    console.log("existingUser:>>>",existingUser);
+    // console.log("session.user.id>>>",session.user.id);
+    // console.log("existingUser:>>>",existingUser);
     let result
   if (existingUser) {
     console.log("existingUser>>");
@@ -336,8 +336,8 @@ export function useUser(): UseUserReturn {
       .eq('user_id', session.user.id)
 
     result = { data, error }
-    console.log("data>>",data);
-    console.log("error>>",error);
+    // console.log("data>>",data);
+    // console.log("error>>",error);
   } else {
     // Insert new record
     const { data, error } = await supabase
@@ -390,8 +390,8 @@ export function useUser(): UseUserReturn {
       .eq('user_id', session.user.id)
 
     result = { data, error }
-    console.log("data>>",data);
-    console.log("error>>",error);
+    // console.log("data>>",data);
+    // console.log("error>>",error);
   } else {
     // Insert new record
     const { data, error } = await supabase

@@ -37,14 +37,12 @@ import {
 } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
-import { WalkthroughComponent, startWalkthrough } from "react-native-wlkt";
-
 import type { ChannelPreviewMessengerProps } from "stream-chat-expo";
 import type { ChannelMemberResponse } from "stream-chat";
 import { Icon } from 'react-native-elements';
 
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl;
-console.log("[ChatList] Configured Backend URL:", BACKEND_URL);
+// console.log("[ChatList] Configured Backend URL:", BACKEND_URL);
 
 if (!BACKEND_URL) {
   console.error("[ChatList] Backend URL is not configured in Constants!");
@@ -71,9 +69,6 @@ const FLAT_LIST_PROPS = {
   removeClippedSubviews: true,
   updateCellsBatchingPeriod: 150,
 };
-
-let myAmazingScenario =[];
-
 
 const SearchInput = ({
   value,
@@ -128,10 +123,10 @@ const EnhancedChannelPreview = (
   const { channel, onSelect } = props;
   const { theme } = useTheme();
 
-  console.log("[ChatList] Rendering channel preview:", {
-    channelId: channel.id,
-    hasOnSelect: !!onSelect,
-  });
+  // console.log("[ChatList] Rendering channel preview:", {
+  //   channelId: channel.id,
+  //   hasOnSelect: !!onSelect,
+  // });
 
   // Use the default ChannelPreviewMessenger with our custom UI
   return (
@@ -147,7 +142,7 @@ const EnhancedChannelPreview = (
       )}
       PreviewTitle={(titleProps) => (
         <Text
-          className="text-base font-semibold text-foreground"
+          className="text-base font-semibold text-black"
           numberOfLines={1}
         >
           {channel.data?.name ||
@@ -168,7 +163,7 @@ const EnhancedChannelPreview = (
           channel.state.messages[channel.state.messages.length - 1];
         const isTyping = Object.keys(channel.state.typing || {}).length > 0;
         return (
-          <Text className="text-sm text-muted-foreground" numberOfLines={1}>
+          <Text className="text-sm text-muted-foreground w-60" numberOfLines={1}>
             {isTyping
               ? "Someone is typing..."
               : lastMessage?.text || "No messages yet"}
@@ -314,11 +309,11 @@ export default function ChatListScreen() {
 
   // Memoize filters
   const filters = useMemo<ChannelFilters>(() => {
-    console.log("[ChatList] Creating filters:", {
-      hasUserId: !!client?.userID,
-      searchText: searchText || "none",
-      userId: client?.userID,
-    });
+    // console.log("[ChatList] Creating filters:", {
+    //   hasUserId: !!client?.userID,
+    //   searchText: searchText || "none",
+    //   userId: client?.userID,
+    // });
     if (!client?.userID) return { type: "messaging" };
     return {
       type: "messaging",
@@ -330,64 +325,6 @@ export default function ChatListScreen() {
         : {}),
     };
   }, [client?.userID, searchText]);
-
- myAmazingScenario = [
-  {
-    component: "textRnwlkt",
-    tooltipOptions: {
-      tooltipComponent: ({ tooltipcntx }) => (
-        <View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            right: 0,
-            left: 0,
-            marginBottom: "10%",
-            marginHorizontal: 40, // replaces margingLeft + marginRight
-            backgroundColor: "white",
-            padding: 20,
-            borderRadius: 12,
-          }}
-        >
-          <Text style={{ color: "black", fontSize: 16, marginBottom: 12 }}>
- 💬 To start a new chat or group chat:{"\n"}
-  Click on the ➕ (plus) icon.{"\n"}
-  Select the users you want to chat with.
-          </Text>
-
-          {/* Buttons Row */}
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              marginTop: 10,
-            }}
-          >
-            <Text onPress={tooltipcntx.onSkip} style={{ color: "gray" }}>
-              Skip
-            </Text>
-            <Text
-              onPress={() => {
-                tooltipcntx.onNext();
-                handleNewChat();
-              }}
-              style={{ color: "blue", fontWeight: "bold" }}
-            >
-              Next
-            </Text>
-          </View>
-        </View>
-      ),
-    },
-    spotlightOptions: {
-      borderColor: "orange",
-      borderWidth: 2,
-    },
-  },
-];
-useEffect(() => {
-    // startWalkthrough({ scenario: myAmazingScenario });
-  }, []);
 
   // Handle initial loading state
   useEffect(() => {
@@ -415,19 +352,19 @@ useEffect(() => {
       }
 
       // Detailed logging before navigation
-      console.log("[ChatList] Channel select triggered:", {
-        channelId: channel.id,
-        channelType: channel.type,
-        memberCount: channel.state.members?.length,
-        channelData: channel.data,
-      });
+      // console.log("[ChatList] Channel select triggered:", {
+      //   channelId: channel.id,
+      //   channelType: channel.type,
+      //   memberCount: channel.state.members?.length,
+      //   channelData: channel.data,
+      // });
 
       const route = {
         pathname: "/channel/[id]",
         params: { id: channel.id },
       };
 
-      console.log("[ChatList] Attempting navigation with route:", route);
+      // console.log("[ChatList] Attempting navigation with route:", route);
 
       try {
         router.push(route);
@@ -543,10 +480,7 @@ useEffect(() => {
                       color="#239ED0"/>
             }
             </TouchableOpacity>
-             <WalkthroughComponent
-              id="textRnwlkt"
-              key={`walkthrough`}
-            >
+            
             <TouchableOpacity onPress={handleNewChat}>
             { Platform.OS === 'ios' ?
               <Plus size={24} className="text-foreground" />
@@ -556,7 +490,7 @@ useEffect(() => {
                       color="#239ED0"/>
             }
             </TouchableOpacity>
-            </WalkthroughComponent>
+            
           </View>
         </View>
 

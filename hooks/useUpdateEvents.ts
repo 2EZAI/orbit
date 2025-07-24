@@ -118,10 +118,10 @@ export function useUpdateEvents(): UseUserReturn {
                 body: JSON.stringify(eventData),
               }
             );
-            console.log("session.access_token>>",
-            session.access_token);
-            console.log("eventData>UpdateEventStatus",
-            eventData);
+            // console.log("session.access_token>>",
+            // session.access_token);
+            // console.log("eventData>UpdateEventStatus",
+            // eventData);
 
             if (!response.ok) {
               throw new Error(await response.text());
@@ -129,7 +129,7 @@ export function useUpdateEvents(): UseUserReturn {
       
             const data = await response.json();
             // console.log("event data", data);
-            console.log("[Events] Updated", data, "events from API");
+            // console.log("[Events] Updated", data, "events from API");
       Toast.show({
         type: "success",
         text1: "Event Updated"
@@ -161,10 +161,10 @@ export function useUpdateEvents(): UseUserReturn {
                 body: JSON.stringify(eventData),
               }
             );
-            console.log("session.access_token>>",
-            session.access_token);
-            console.log("eventData>fetchEvent",
-            eventData);
+            // console.log("session.access_token>>",
+            // session.access_token);
+            // console.log("eventData>fetchEvent",
+            // eventData);
 
             if (!response.ok) {
               throw new Error(await response.text());
@@ -172,7 +172,7 @@ export function useUpdateEvents(): UseUserReturn {
       
             const data = await response.json();
             // console.log("event data", data);
-            console.log("[Events] Fetched", data, "events from API");
+            // console.log("[Events] Fetched", data, "events from API");
       // Toast.show({
       //   type: "success",
       //   text1: "Event fetched"
@@ -202,8 +202,8 @@ export function useUpdateEvents(): UseUserReturn {
                 // body: JSON.stringify(eventData),
               }
             );
-            console.log("session.access_token>>",
-            session.access_token);
+            // console.log("session.access_token>>",
+            // session.access_token);
             
 
             if (!response.ok) {
@@ -212,7 +212,7 @@ export function useUpdateEvents(): UseUserReturn {
       
             const data = await response.json();
             // console.log("event data", data);
-            console.log("location Fetched", data, "location from API");
+            // console.log("location Fetched", data, "location from API");
       // Toast.show({
       //   type: "success",
       //   text1: "Event fetched"
@@ -245,10 +245,10 @@ export function useUpdateEvents(): UseUserReturn {
                 body: JSON.stringify(eventData),
               }
             );
-            console.log("session.access_token>>",
-            session.access_token);
-            console.log("fetchLocationEvents>fetchEvent",
-            eventData);
+            // console.log("session.access_token>>",
+            // session.access_token);
+            // console.log("fetchLocationEvents>fetchEvent",
+            // eventData);
 
             if (!response.ok) {
               throw new Error(await response.text());
@@ -256,7 +256,7 @@ export function useUpdateEvents(): UseUserReturn {
       
             const data = await response.json();
             // console.log("event data", data);
-            console.log("[Events] fetchLocationEvents", data, "events from API");
+            // console.log("[Events] fetchLocationEvents", data, "events from API");
       // Toast.show({
       //   type: "success",
       //   text1: "Event fetched"
@@ -292,10 +292,10 @@ export function useUpdateEvents(): UseUserReturn {
               body: JSON.stringify(eventData),
             }
           );
-          console.log("session.access_token>>",
-          session.access_token);
-          console.log("fetchCreatedEvents>fetchEvent",
-          eventData);
+          // console.log("session.access_token>>",
+          // session.access_token);
+          // console.log("fetchCreatedEvents>fetchEvent",
+          // eventData);
 
           if (!response.ok) {
             throw new Error(await response.text());
@@ -303,7 +303,7 @@ export function useUpdateEvents(): UseUserReturn {
     
           const data = await response.json();
           // console.log("event data", data);
-          console.log("[Events] fetchCreatedEvents", data, "events from API");
+          // console.log("[Events] fetchCreatedEvents", data, "events from API");
     // Toast.show({
     //   type: "success",
     //   text1: "Event fetched"
@@ -339,10 +339,10 @@ const filterEvents = async (eventName: Partial<any>,pagee: Partial<any>,pageSize
               body: JSON.stringify(eventData),
             }
           );
-          console.log("session.access_token>>",
-          session.access_token);
-          console.log("filterEvents>fetchEvent",
-          eventData);
+          // console.log("session.access_token>>",
+          // session.access_token);
+          // console.log("filterEvents>fetchEvent",
+          // eventData);
 
           if (!response.ok) {
             throw new Error(await response.text());
@@ -350,7 +350,7 @@ const filterEvents = async (eventName: Partial<any>,pagee: Partial<any>,pageSize
     
           const data = await response.json();
           // console.log("event data", data);
-          console.log("[Events] filterEvents", data, "events from API");
+          // console.log("[Events] filterEvents", data, "events from API");
     // Toast.show({
     //   type: "success",
     //   text1: "Event fetched"

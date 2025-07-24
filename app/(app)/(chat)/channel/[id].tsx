@@ -131,7 +131,7 @@ const EventMessage = (props: any) => {
   // Handle event selection
   const handleEventSelect = async (eventData: Event) => {
     try {
-      console.log("[EventMessage] Sending event message:", eventData);
+      // console.log("[EventMessage] Sending event message:", eventData);
       const message = {
         text: `Shared event: ${eventData.name}`,
         attachments: [
@@ -145,9 +145,9 @@ const EventMessage = (props: any) => {
           },
         ],
       };
-      console.log("[EventMessage] Sending message:", message);
+      // console.log("[EventMessage] Sending message:", message);
       const response = await channel?.sendMessage(message);
-      console.log("[EventMessage] Message sent:", response);
+      // console.log("[EventMessage] Message sent:", response);
     } catch (error) {
       console.error("[EventMessage] Error sharing event:", error);
       Alert.alert("Error", "Failed to share event");
@@ -205,7 +205,7 @@ const EventMessage = (props: any) => {
         MessageContent={() => (
           <TouchableOpacity
             onPress={() => {
-              console.log("[EventMessage] Navigating to event:", eventData);
+              // console.log("[EventMessage] Navigating to event:", eventData);
               router.push({
                 pathname: "/(app)/(map)",
                 params: { eventId: eventData.id },
@@ -235,12 +235,12 @@ const EventMessage = (props: any) => {
 // Enhanced message component with proper typing
 const EnhancedMessage = (props: any) => {
   const messageContext = useMessageContext();
-  console.log("[ChatMessage] Message context:", {
-    hasContext: !!messageContext,
-    hasMessage: !!messageContext?.message,
-    messageId: messageContext?.message?.id,
-    text: messageContext?.message?.text,
-  });
+  // console.log("[ChatMessage] Message context:", {
+  //   hasContext: !!messageContext,
+  //   hasMessage: !!messageContext?.message,
+  //   messageId: messageContext?.message?.id,
+  //   text: messageContext?.message?.text,
+  // });
 
   // Return null if message context is not available
   if (!messageContext || !messageContext.message) {
@@ -290,7 +290,7 @@ export default function ChannelScreen() {
   const [isSearching, setIsSearching] = useState(false);
   const [orbitMsg, setorbitMsg] = useState("yess");
 
-  console.log("chanell???", channel?.data);
+  // console.log("chanell???", channel?.data);
   // if (channel?.data?.name === "Orbit App") {
   //   console.log("messages???", channel?.state.messages);
   //   setorbitMsg(channel?.state.messages);
@@ -437,7 +437,7 @@ export default function ChannelScreen() {
     let mounted = true;
     const loadChannel = async () => {
       try {
-        console.log("[ChatChannel] Loading channel:", id);
+        // console.log("[ChatChannel] Loading channel:", id);
         const newChannel = client.channel("messaging", id as string);
         console.log("[ChatChannel] Created channel instance");
 
@@ -449,17 +449,17 @@ export default function ChannelScreen() {
           watch: true,
         });
 
-        console.log("[ChatChannel] Channel loaded with query:", {
-          id: newChannel.id,
-          type: newChannel.type,
-          memberCount: Object.keys(newChannel.state.members || {}).length,
-          messageCount: messages.messages?.length || 0,
-          messages: messages.messages?.map((m) => ({
-            id: m.id,
-            text: m.text,
-            user: m.user?.id,
-          })),
-        });
+        // console.log("[ChatChannel] Channel loaded with query:", {
+        //   id: newChannel.id,
+        //   type: newChannel.type,
+        //   memberCount: Object.keys(newChannel.state.members || {}).length,
+        //   messageCount: messages.messages?.length || 0,
+        //   messages: messages.messages?.map((m) => ({
+        //     id: m.id,
+        //     text: m.text,
+        //     user: m.user?.id,
+        //   })),
+        // });
 
         if (mounted) {
           channelRef.current = newChannel;
@@ -509,7 +509,7 @@ export default function ChannelScreen() {
       );
 
       if (channel?.data?.name === "Orbit App") {
-    console.log("messages???", channel?.state?.messages);
+    // console.log("messages???", channel?.state?.messages);
     setorbitMsg(channel?.state?.messages[0]);
   }
 
@@ -529,11 +529,11 @@ export default function ChannelScreen() {
       if (name === "event" && value) {
         setIsSearching(true);
         try {
-          console.log("[EventSearch] Searching with query:", value);
-          console.log(
-            "[EventSearch] Backend URL:",
-            process.env.BACKEND_CHAT_URL
-          );
+          // console.log("[EventSearch] Searching with query:", value);
+          // console.log(
+          //   "[EventSearch] Backend URL:",
+          //   process.env.BACKEND_CHAT_URL
+          // );
           const response = await fetch(
             `${process.env.BACKEND_CHAT_URL}/commands`,
             {
@@ -566,7 +566,7 @@ export default function ChannelScreen() {
           }
 
           const data = await response.json();
-          console.log("[EventSearch] Response:", data);
+          // console.log("[EventSearch] Response:", data);
 
           if (data.message?.attachments) {
             const eventMessage = {
@@ -623,15 +623,15 @@ export default function ChannelScreen() {
             body: JSON.stringify(reuestData),
           }
         );
-        console.log("requestData", reuestData);
+        // console.log("requestData", reuestData);
 
         if (!response.ok) {
-          console.log("error>",response);
+          // console.log("error>",response);
           throw new Error(await response.text());
         }
 
         const data_ = await response.json();
-        console.log("response>",data_);
+        // console.log("response>",data_);
         
     }
     catch(e)
@@ -648,7 +648,7 @@ console.log("error_catch>",e);
             <View>
               <Text
                 style={{ fontSize: 17, fontWeight: "600", textAlign: "center" }}
-                className="text-foreground"
+                className="text-black"
               >
                 {channel?.data?.name || "Chat"}
               </Text>
@@ -674,7 +674,7 @@ console.log("error_catch>",e);
               >
                 {/* You can use an icon here instead of text */}
                 {Platform.OS === "ios" ? (
-                  <ArrowLeft size={24} className="text-foreground" />
+                  <ArrowLeft size={24} className="text-black" />
                 ) : (
                   <Icon
                     name="arrow-back"
@@ -734,7 +734,7 @@ console.log("error_catch>",e);
           }) => {
             const handleEventSelect = async (eventData: Event) => {
               try {
-                console.log("[EventMessage] Sending event message:", eventData);
+                // console.log("[EventMessage] Sending event message:", eventData);
                 const message = {
                   text: `Shared event: ${eventData.name}`,
                   attachments: [
@@ -750,21 +750,21 @@ console.log("error_catch>",e);
                     },
                   ],
                 };
-                console.log("[EventMessage] Sending message:", message);
+                // console.log("[EventMessage] Sending message:", message);
                 const response = await channel?.sendMessage(message);
-                console.log("[EventMessage] Message sent:", response);
+                // console.log("[EventMessage] Message sent:", response);
               } catch (error) {
                 console.error("[EventMessage] Error sharing event:", error);
                 Alert.alert("Error", "Failed to share event");
               }
             };
 
-            console.log("[Channel] Message pressed:", {
-              additionalInfo,
-              emitter,
-              messageType: message?.type,
-              attachments: message?.attachments,
-            });
+            // console.log("[Channel] Message pressed:", {
+            //   additionalInfo,
+            //   emitter,
+            //   messageType: message?.type,
+            //   attachments: message?.attachments,
+            // });
 
             // Check if this is an event message
             const eventAttachment = message?.attachments?.find(
@@ -772,10 +772,10 @@ console.log("error_catch>",e);
             ) as EventAttachment | undefined;
 
             if (eventAttachment?.event_data) {
-              console.log(
-                "[Channel] Found event data:",
-                eventAttachment.event_data
-              );
+              // console.log(
+              //   "[Channel] Found event data:",
+              //   eventAttachment.event_data
+              // );
               router.push({
                 pathname: "/(app)/(map)",
                 params: { eventId: eventAttachment.event_data.id },
@@ -809,12 +809,12 @@ console.log("error_catch>",e);
               }
             }
             
-            console.log("LKL>>",channel?.data?.member_count);
+            // console.log("LKL>>",channel?.data?.member_count);
            const name = channel?.data?.name;
            const chnlId=channel?.data?.id;
              if(channel?.data?.member_count > 2){
               //group
-              console.log("LKLchannelId>>",chnlId);
+              // console.log("LKLchannelId>>",chnlId);
                hitNoificationApi('new_group_message',chnlId,name);
             }
             else{

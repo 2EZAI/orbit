@@ -17,7 +17,7 @@ export function ClusterSheet({
   onEventSelect,
   onClose,
 }: ClusterSheetProps) {
-  console.log("event???", events);
+  // console.log("event???", events);
   return (
     <Sheet isOpen onClose={onClose}>
       <View className="flex-1 bg-background">

@@ -16,6 +16,8 @@ import { useAuth } from "~/src/lib/auth";
 import { supabase } from "~/src/lib/supabase";
 import { useUser } from "~/hooks/useUserData";
 import Toast from "react-native-toast-message";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Icon } from "react-native-elements";
 
 type Permission = "location" | "camera" | "photos";
 
@@ -26,7 +28,7 @@ interface PermissionState {
 
 export default function PermissionsScreen() {
   const { user } = useUser();
-   const { session } = useAuth();
+  const { session } = useAuth();
   const [permissions, setPermissions] = useState<
     Record<Permission, PermissionState>
   >({
@@ -44,7 +46,7 @@ export default function PermissionsScreen() {
     permission: Permission,
     update: Partial<PermissionState>
   ) => {
-    console.log(`Updating ${permission} permission:`, update);
+    // console.log(`Updating ${permission} permission:`, update);
     setPermissions((prev) => ({
       ...prev,
       [permission]: { ...prev[permission], ...update },
@@ -56,7 +58,7 @@ export default function PermissionsScreen() {
     updatePermissionState("location", { loading: true });
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      console.log("Location permission status:", status);
+      // console.log("Location permission status:", status);
       updatePermissionState("location", { granted: status === "granted" });
     } catch (error) {
       console.error("Error requesting location permission:", error);
@@ -70,7 +72,7 @@ export default function PermissionsScreen() {
     updatePermissionState("camera", { loading: true });
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      console.log("Camera permission status:", status);
+      // console.log("Camera permission status:", status);
       updatePermissionState("camera", { granted: status === "granted" });
     } catch (error) {
       console.error("Error requesting camera permission:", error);
@@ -85,7 +87,7 @@ export default function PermissionsScreen() {
     try {
       const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
-      console.log("Photos permission status:", status);
+      // console.log("Photos permission status:", status);
       updatePermissionState("photos", { granted: status === "granted" });
     } catch (error) {
       console.error("Error requesting photos permission:", error);
@@ -98,42 +100,38 @@ export default function PermissionsScreen() {
     (p) => p.granted
   );
 
-  const hitNoificationApi= async (typee:string) => {
+  const hitNoificationApi = async (typee: string) => {
     if (!user) return;
-    try{
-      const reuestData= {
-  userId: user.id,  
-  type: typee,                   
- 
-}
-    ///fetch events
-        const response = await fetch(
-          `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session.user.id}`,
-            },
-            body: JSON.stringify(reuestData),
-          }
-        );
-        console.log("requestData", reuestData);
-
-        if (!response.ok) {
-          console.log("error>",response);
-          throw new Error(await response.text());
+    try {
+      const reuestData = {
+        userId: user.id,
+        type: typee,
+      };
+      ///fetch events
+      const response = await fetch(
+        `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.user.id}`,
+          },
+          body: JSON.stringify(reuestData),
         }
+      );
+      // console.log("requestData", reuestData);
 
-        const data_ = await response.json();
-        console.log("response>",data_);
-        
+      if (!response.ok) {
+        console.log("error>", response);
+        throw new Error(await response.text());
+      }
+
+      const data_ = await response.json();
+      // console.log("response>",data_);
+    } catch (e) {
+      console.log("error_catch>", e);
     }
-    catch(e)
-    {
-console.log("error_catch>",e);
-    }
-  }
+  };
 
   const handleContinue = async () => {
     if (!user) return;
@@ -151,9 +149,8 @@ console.log("error_catch>",e);
       console.log("Permissions saved, navigating to topics");
       // router.replace("/(auth)/(onboarding)/topics");
       // After completing all onboarding steps, go to the app
-       hitNoificationApi('welcome');
-       router.replace("/(app)/");
-      
+      hitNoificationApi("welcome");
+      router.replace("/(app)/");
     } catch (error) {
       console.error("Error saving permissions state:", error);
       Toast.show({
@@ -165,7 +162,7 @@ console.log("error_catch>",e);
   };
 
   return (
-    <View className="flex-1 px-4 bg-background">
+    <SafeAreaView className="flex-1 px-4 bg-background">
       <View className="py-12">
         <Text className="text-4xl font-bold">App Permissions</Text>
         <Text className="mt-3 text-base text-muted-foreground">
@@ -190,9 +187,25 @@ console.log("error_catch>",e);
           >
             <View className="flex-row items-center space-x-4">
               {permissions.location.granted ? (
-                <CheckCircle2 size={24} className="text-green-500" />
-              ) : (
+                Platform.OS === "ios" ? (
+                  <CheckCircle2 size={24} className="text-green-500" />
+                ) : (
+                  <Icon
+                    name="check-circle-outline"
+                    type="material-community"
+                    size={24}
+                    color="#22c55e"
+                  />
+                )
+              ) : Platform === "ios" ? (
                 <MapPin size={24} className="text-primary-foreground" />
+              ) : (
+                <Icon
+                  name="map-marker-outline"
+                  type="material-community"
+                  size={24}
+                  color="#239ED0"
+                />
               )}
               <View>
                 <Text
@@ -222,13 +235,29 @@ console.log("error_catch>",e);
             onPress={requestCameraPermission}
             disabled={permissions.camera.loading || permissions.camera.granted}
             variant={permissions.camera.granted ? "secondary" : "default"}
-            className="h-20"
+            className="h-20 mt-2"
           >
             <View className="flex-row items-center space-x-4">
               {permissions.camera.granted ? (
-                <CheckCircle2 size={24} className="text-green-500" />
-              ) : (
+                Platform.OS === "ios" ? (
+                  <CheckCircle2 size={24} className="text-green-500" />
+                ) : (
+                  <Icon
+                    name="check-circle-outline"
+                    type="material-community"
+                    size={24}
+                    color="#22c55e"
+                  />
+                )
+              ) : Platform.OS === "ios" ? (
                 <Camera size={24} className="text-primary-foreground" />
+              ) : (
+                <Icon
+                  name="camera-outline"
+                  type="material-community"
+                  size={24}
+                  color="#239ED0"
+                />
               )}
               <View>
                 <Text
@@ -258,13 +287,29 @@ console.log("error_catch>",e);
             onPress={requestPhotosPermission}
             disabled={permissions.photos.loading || permissions.photos.granted}
             variant={permissions.photos.granted ? "secondary" : "default"}
-            className="h-20"
+            className="h-20 mt-2"
           >
             <View className="flex-row items-center space-x-4">
               {permissions.photos.granted ? (
-                <CheckCircle2 size={24} className="text-green-500" />
-              ) : (
+                Platform.OS === "ios" ? (
+                  <CheckCircle2 size={24} className="text-green-500" />
+                ) : (
+                  <Icon
+                    name="check-circle-outline"
+                    type="material-community"
+                    size={24}
+                    color="#22c55e"
+                  />
+                )
+              ) : Platform.OS === "ios" ? (
                 <ImageIcon size={24} className="text-primary-foreground" />
+              ) : (
+                <Icon
+                  name="image-outline"
+                  type="material-community"
+                  size={24}
+                  color="#239ED0"
+                />
               )}
               <View>
                 <Text
@@ -294,6 +339,6 @@ console.log("error_catch>",e);
           </Text>
         </Button>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }

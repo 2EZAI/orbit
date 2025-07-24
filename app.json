@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Orbit",
+    "name": "Orbit Social App",
     "slug": "orbit",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -41,21 +41,21 @@
       [
         "expo-av",
         {
-          "microphonePermission": "Allow Orbit to use your microphone for voice messages."
+          "microphonePermission": "Allow Orbit Social App to use your microphone for voice messages."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Orbit to access your photos to share images.",
-          "cameraPermission": "Allow Orbit to use your camera to take photos."
+          "photosPermission": "Allow Orbit Social App to access your photos to share images.",
+          "cameraPermission": "Allow Orbit Social App to use your camera to take photos."
         }
       ],
       [
         "expo-media-library",
         {
-          "photosPermission": "Allow Orbit to access your photo gallery to share images.",
-          "savePhotosPermission": "Allow Orbit to save photos from messages to your gallery."
+          "photosPermission": "Allow Orbit Social App to access your photo gallery to share images.",
+          "savePhotosPermission": "Allow Orbit Social App to save photos from messages to your gallery."
         }
       ]
     ]

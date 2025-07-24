@@ -40,11 +40,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     const initChat = async () => {
       if (!session?.user?.id || !STREAM_API_KEY || !session?.access_token) {
-        console.log("Missing required data, skipping chat initialization", {
-          hasUserId: !!session?.user?.id,
-          hasApiKey: !!STREAM_API_KEY,
-          hasAccessToken: !!session?.access_token,
-        });
+        // console.log("Missing required data, skipping chat initialization", {
+        //   hasUserId: !!session?.user?.id,
+        //   hasApiKey: !!STREAM_API_KEY,
+        //   hasAccessToken: !!session?.access_token,
+        // });
         return;
       }
 
@@ -82,10 +82,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           token
         );
 
-        console.log("Connection state changed:", {
-          online: currentClient.wsConnection?.isHealthy,
-          userId: session.user.id,
-        });
+        // console.log("Connection state changed:", {
+        //   online: currentClient.wsConnection?.isHealthy,
+        //   userId: session.user.id,
+        // });
 
         setClient(currentClient);
         setIsConnected(true);

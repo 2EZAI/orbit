@@ -67,7 +67,7 @@ export default function JoinedEventsList({
 
     console.log("loadEvents:");
     const data = await fetchCreatedEvents("joined", page, PAGE_SIZE,userid);
-    console.log("data>:", data);
+    // console.log("data>:", data);
     if (data.length === 0) {
       setLoading(false);
        setHasMore(false);

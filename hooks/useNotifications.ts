@@ -23,9 +23,9 @@ export default function useNotifications() {
 
 useEffect(() => {
   if (client && client.userID) {
-    console.log("client.userID >", client.userID);
+    // console.log("client.userID >", client.userID);
     clientLocal=client;
-    console.log("clientL.userID >", clientLocal.userID);
+    // console.log("clientL.userID >", clientLocal.userID);
   }
 }, [client]);
   useEffect(() => {
@@ -42,7 +42,7 @@ useEffect(() => {
       const isLocal = notification.request.content.data?.localEcho;
       if (isLocal) return; // 🛡 prevent infinite loop
   
-      console.log('📩 Remote notification received in foreground:', notification);
+      // console.log('📩 Remote notification received in foreground:', notification);
   
       // Show as a local notification
       // if (Platform.OS === 'ios') {
@@ -52,13 +52,13 @@ useEffect(() => {
     });
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('Notification tapped:', response);
+      // console.log('Notification tapped:', response);
       const content=response.notification.request.content;
       const notificationId=content?.data?.notification_id;
-      console.log("content>",content);
+      // console.log("content>",content);
       readNoificationsApi(notificationId);
       if(content?.data?.type === 'comment' || content?.data?.type === 'like'){
-        console.log("post_id>",content?.data.post_id);
+        // console.log("post_id>",content?.data.post_id);
         hitApiPostDetail(content?.data.post_id);
       }
       if(content?.data?.type === 'event_reminder_60' || 
@@ -66,8 +66,8 @@ useEffect(() => {
       content?.data?.type === 'event_started'){
         const  eventId=content?.data.event_id;
         const  isTicketmaster=content?.data.is_ticketmaster;
-        console.log("eventId>",eventId);
-        console.log("is_ticketmaster>",isTicketmaster);
+        // console.log("eventId>",eventId);
+        // console.log("is_ticketmaster>",isTicketmaster);
         fetchEventDetail(eventId,isTicketmaster);
         // fetchEventDetail("88f252e9-bc5a-4746-857e-859322cdd225"
         // ,false);
@@ -76,7 +76,7 @@ useEffect(() => {
         // fetchEventDetail("88f252e9-bc5a-4746-857e-859322cdd225"
         // ,false);
         
-        console.log("user_id>",content?.data?.user_id);
+        // console.log("user_id>",content?.data?.user_id);
         router.push({
           pathname: "/(app)/profile/[username]",
           params: { username: content?.data?.user_id },
@@ -105,7 +105,7 @@ useEffect(() => {
     Notifications.getLastNotificationResponseAsync().then(response => {
       if (response) {
         // App was launched from a notification tap
-        console.log('Notification tap caused app launch:', response);
+        // console.log('Notification tap caused app launch:', response);
         // Handle navigation or logic here
       }
     });
@@ -118,13 +118,13 @@ useEffect(() => {
 
   const prepareChanel = async (groupName: string, chatId: string, ids: string[], senderId: string
     ,streamChannelId: string) =>{
-      console.log("clientL.userID prepareChanel>", clientLocal?.userID);
+      // console.log("clientL.userID prepareChanel>", clientLocal?.userID);
     if (!clientLocal?.userID || ids.length === 0) {
       console.log("Prerequisites not met, returning early");
       return;
     }
      const memberIds = [senderId, ...ids.map((u) => u)];
-     console.log("Member IDs:", memberIds);
+    //  console.log("Member IDs:", memberIds);
      
 
     const channel = clientLocal.channel("messaging", streamChannelId, {
@@ -179,13 +179,13 @@ useEffect(() => {
             );
             // console.log("session.access_token>>",
             // session.access_token);
-            console.log("requestData>fetchEvent",
-            requestData);
+            // console.log("requestData>fetchEvent",
+            // requestData);
             if (!response.ok) {
               throw new Error(await response.text());
             }
             const data = await response.json();
-            console.log("event data", data);
+            // console.log("event data", data);
             router.replace("/(app)/(map)");
             const mapEvent = {
               id: data?.id,
@@ -237,7 +237,7 @@ useEffect(() => {
     }
 
     const postDetail = await response.json();
-    console.log("postDetail>",postDetail);
+    // console.log("postDetail>",postDetail);
     router.push({
       pathname: `/post/${postId}`,
       params: { event: postDetail?.data?.event ? JSON.stringify(postDetail?.data?.event) : "" },

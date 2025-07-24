@@ -130,7 +130,7 @@ export function EventDetailsSheet({
   const hitEventDetail = async () => {
     console.log("hitEventDetail");
     const eventDetails: any = await fetchEventDetail(event);
-    console.log("Returned event details:", eventDetails);
+    // console.log("Returned event details:", eventDetails);
     if (eventDetails && typeof eventDetails === "object") {
       setEventDetail(eventDetails as MapEventWithExtras);
     }
