@@ -162,8 +162,8 @@ export default function Intro() {
               </View>
             </View>
 
-            <Text className="mb-5 text-4xl font-bold text-white">
-              Welcome to Orbit
+            <Text className="text-center mb-5 text-4xl font-bold text-white">
+              Welcome to Orbit Social App
             </Text>
             <Text className="mb-8 text-[17px] text-gray-200 text-center">
               Connect with friends around the world in real-time

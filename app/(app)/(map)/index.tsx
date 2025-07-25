@@ -66,7 +66,7 @@ export default function Map() {
   const [showControler, setShowControler] = useState(true);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { theme, isDarkMode } = useTheme();
-  const { user, userlocation, updateUserLocations } = useUser();
+  const { user, userlocation,getUserData ,updateUserLocations } = useUser();
   const mapRef = useRef<MapboxGL.MapView>(null);
   const { session } = useAuth();
   const [location, setLocation] = useState<{
@@ -98,6 +98,7 @@ export default function Map() {
 
     // Debounce the region change to avoid too many API calls
     regionChangeTimeoutRef.current = setTimeout(() => {
+    
       const centerLat = region?.properties?.center?.[1];
       const centerLng = region?.properties?.center?.[0];
       const zoomLevel = region?.properties?.zoomLevel;
@@ -123,6 +124,7 @@ export default function Map() {
           lastCenterRef.current = newCenter;
         }
       }
+       
     }, 2000); // Increased to 2 seconds to reduce API calls
 
     // Handle zoom level for follower count visibility
@@ -193,6 +195,7 @@ export default function Map() {
     //  setShowDetails(true);
      handleEventClick(event);
     });
+  
   },[])
 
   // Update mapCenter when location becomes available
@@ -207,9 +210,31 @@ export default function Map() {
     }
   }, [location, mapCenter]);
 
+
   useEffect(() => {
     // console.log("followerList updated >>>>", followerList);
   }, [followerList]);
+
+const setMpaToUserLocation= async()=>{
+  const uData = await getUserData('userData');
+  const uLocation = await getUserData('userLocation');
+console.log(uData?.event_location_preference); // 77.5946
+  console.log("setMpaToUserLocation",uLocation);
+ if(uData?.event_location_preference === 1  ){
+    if (uLocation?.latitude && uLocation?.longitude ) {
+      
+// Center map on userlocation
+      if (cameraRef.current) {
+        cameraRef.current.setCamera({
+          centerCoordinate: [parseInt(uLocation?.longitude), parseInt(uLocation?.latitude)],
+          zoomLevel: 14,
+          animationDuration: 500,
+          animationMode: "flyTo",
+        });
+      }   
+       }
+    }
+}
 
   const haversine = (lat1, lon1, lat2, lon2) => {
     const toRad = (value) => (value * Math.PI) / 180;
@@ -403,13 +428,18 @@ export default function Map() {
         //   heading: initialLocation.coords.heading,
         // });
 
-        setLocation({
+      setLocation({
           latitude: initialLocation.coords.latitude,
           longitude: initialLocation.coords.longitude,
           heading: initialLocation.coords.heading || undefined,
         });
 
         // Set initial camera position smoothly
+         const uData = await getUserData('userData');
+         if(uData?.event_location_preference === 1  ){
+      setMpaToUserLocation();
+       }
+       else{
         if (cameraRef.current) {
           cameraRef.current.setCamera({
             centerCoordinate: [
@@ -421,6 +451,7 @@ export default function Map() {
             animationMode: "flyTo",
           });
         }
+       }
 
         locationSubscription = await Location.watchPositionAsync(
           {
@@ -608,6 +639,7 @@ export default function Map() {
         logoEnabled={false}
         onDidFinishLoadingMap={() => {
           console.log("[Map] Map finished loading");
+          
         }}
         onRegionDidChange={handleRegionChange}
       >

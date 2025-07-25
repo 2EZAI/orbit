@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "~/src/lib/supabase";
 import { useAuth } from "~/src/lib/auth";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface User {
   id: string;
@@ -82,10 +83,31 @@ export function useUser(): UseUserReturn {
 
       if (supabaseError) throw supabaseError;
       setUser(data);
+      storeData('userData',data);
     } catch (e) {
       setError(e instanceof Error ? e : new Error("An error occurred"));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const storeData = async (key:string,data:any) => {
+    try {
+      const jsonValue = JSON.stringify(data);
+      await AsyncStorage.setItem(key, jsonValue);
+      console.log('User data saved');
+    } catch (e) {
+      console.error('Error saving location', e);
+    }
+  };
+
+  const getUserData = async (key:string) => {
+    try {
+      const jsonValue = await AsyncStorage.getItem(key);
+      return jsonValue != null ? JSON.parse(jsonValue) : null;
+    } catch (e) {
+      console.error('Error reading data', e);
+      return null;
     }
   };
 
@@ -105,6 +127,7 @@ export function useUser(): UseUserReturn {
       if (supabaseError) throw supabaseError;
       // console.log("fetch_location>>",data);
       setUserLocation(data);
+      storeData('userLocation',data);
     } catch (e) {
       setError(e instanceof Error ? e : new Error("An error occurred"));
     } finally {
@@ -352,7 +375,8 @@ export function useUser(): UseUserReturn {
 
     result = { data, error }
   }
-
+  await fetchUser();
+  await fetchUserLocation();
   return result
 
     } catch (e) {
@@ -469,5 +493,6 @@ export function useUser(): UseUserReturn {
     fetchOherUserTopics,
     fetchOtherUserHomeTownLocation,
     fetchOtherUser,
+    getUserData,
   };
 }

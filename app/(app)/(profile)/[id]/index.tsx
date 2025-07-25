@@ -10,6 +10,7 @@ import {
   useWindowDimensions,
   Switch,
   Pressable,
+  DeviceEventEmitter,
 } from "react-native";
 import { debounce } from "lodash";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -463,6 +464,7 @@ export default function EditProfile() {
             selectedOcupation != null ? selectedOcupation?.id : null,
         });
       }
+      
 
       Toast.show({
         type: "success",

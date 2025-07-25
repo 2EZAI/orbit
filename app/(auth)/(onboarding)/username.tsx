@@ -108,7 +108,7 @@ export default function UsernameScreen() {
       // });
       const channel = client.channel("messaging", uniqueChannelId, {
         members: memberIds,
-        name: "Orbit App",
+        name: "Orbit Social App",
       });
 
       // This both creates the channel and subscribes to it
@@ -189,7 +189,7 @@ export default function UsernameScreen() {
 
       // console.log("Fetched user data:", userData);
 
-      let welcomeMessage = `👋 Hey ${userData?.first_name} ${userData?.last_name}, welcome to Orbit! We're excited to have you.
+      let welcomeMessage = `👋 Hey ${userData?.first_name} ${userData?.last_name}, welcome to Orbit Social App! We're excited to have you.
 This platform helps you discover and join amazing events near you. Let's get started!`;
 
       await channel.sendMessage({

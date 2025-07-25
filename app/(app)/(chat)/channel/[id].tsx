@@ -508,7 +508,7 @@ export default function ChannelScreen() {
         channel.on(event, updateMemberCount)
       );
 
-      if (channel?.data?.name === "Orbit App") {
+      if (channel?.data?.name === "Orbit Social App") {
     // console.log("messages???", channel?.state?.messages);
     setorbitMsg(channel?.state?.messages[0]);
   }
@@ -686,7 +686,7 @@ console.log("error_catch>",e);
               </TouchableOpacity>
             ),
           headerRight: () =>
-            channel?.data?.name !== "Orbit App" ? (
+            channel?.data?.name !== "Orbit Social App" ? (
               <TouchableOpacity
                 onPress={handleInfoPress}
                 style={{ marginRight: 8 }}
@@ -829,7 +829,7 @@ console.log("error_catch>",e);
             <Thread />
           ) : (
             <>
-  {channel?.data?.name === 'Orbit App' ? (
+  {channel?.data?.name === 'Orbit Social App' ? (
    <View 
 
    style={{

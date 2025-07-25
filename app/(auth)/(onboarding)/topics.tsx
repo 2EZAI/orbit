@@ -54,7 +54,7 @@ const userData= await fetchUserNew();
     <SafeAreaView className="flex-1 bg-background">
       <ScrollView className="flex-1 px-4">
         <View className="py-8">
-          <Text className="text-2xl font-bold">Welcome to Orbit!</Text>
+          <Text className="text-2xl font-bold">Welcome to Orbit Social App!</Text>
           <Text className="mt-2 text-base text-muted-foreground">
             Select topics you're interested in to personalize your experience.
           </Text>
