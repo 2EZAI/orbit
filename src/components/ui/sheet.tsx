@@ -9,14 +9,22 @@ import {
   ScrollView,
 } from "react-native";
 import { BlurView } from "expo-blur";
+import { useTheme } from "../ThemeProvider";
 
 interface SheetProps {
   isOpen: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  fullScreen?: boolean;
 }
 
-export const Sheet: React.FC<SheetProps> = ({ isOpen, onClose, children }) => {
+export const Sheet: React.FC<SheetProps> = ({
+  isOpen,
+  onClose,
+  children,
+  fullScreen = false,
+}) => {
+  const { theme, isDarkMode } = useTheme();
   const [modalVisible, setModalVisible] = React.useState(false);
   const slideAnim = React.useRef(new Animated.Value(0)).current;
 
@@ -45,8 +53,22 @@ export const Sheet: React.FC<SheetProps> = ({ isOpen, onClose, children }) => {
 
   const translateY = slideAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [Dimensions.get("window").height, 0],
+    outputRange: [Dimensions.get("window").height, fullScreen ? 0 : 0],
   });
+
+  const dynamicStyles = {
+    content: {
+      backgroundColor: theme.colors.background,
+      borderTopLeftRadius: fullScreen ? 0 : 24,
+      borderTopRightRadius: fullScreen ? 0 : 24,
+      paddingTop: fullScreen ? 0 : 8,
+      maxHeight: fullScreen ? "100%" : "90%",
+      minHeight: fullScreen ? "100%" : "50%",
+    },
+    handle: {
+      backgroundColor: theme.colors.border,
+    },
+  };
 
   return (
     <Modal
@@ -56,25 +78,37 @@ export const Sheet: React.FC<SheetProps> = ({ isOpen, onClose, children }) => {
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <TouchableWithoutFeedback onPress={onClose}>
-          <View style={StyleSheet.absoluteFill}>
-            <BlurView intensity={20} style={StyleSheet.absoluteFill} />
-          </View>
-        </TouchableWithoutFeedback>
+        {!fullScreen && (
+          <TouchableWithoutFeedback onPress={onClose}>
+            <View style={StyleSheet.absoluteFill}>
+              <BlurView
+                intensity={isDarkMode ? 10 : 20}
+                style={StyleSheet.absoluteFill}
+              />
+            </View>
+          </TouchableWithoutFeedback>
+        )}
 
         <Animated.View
           style={[
             styles.content,
+            dynamicStyles.content,
             {
               transform: [{ translateY }],
             },
           ]}
         >
-          <View style={styles.handle} />
+          {!fullScreen && (
+            <View style={[styles.handle, dynamicStyles.handle]} />
+          )}
           <ScrollView
-            style={styles.scrollView}
+            style={[
+              styles.scrollView,
+              { backgroundColor: theme.colors.background },
+            ]}
             bounces={false}
             showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ backgroundColor: theme.colors.background }}
           >
             {children}
           </ScrollView>
@@ -91,17 +125,11 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.4)",
   },
   content: {
-    backgroundColor: "white",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
     paddingTop: 8,
-    maxHeight: "90%",
-    minHeight: "50%",
   },
   handle: {
     width: 32,
     height: 4,
-    backgroundColor: "#E5E5E5",
     borderRadius: 2,
     marginVertical: 8,
     alignSelf: "center",

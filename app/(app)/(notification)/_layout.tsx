@@ -22,38 +22,14 @@ export default function NotificationViewLayout() {
     router.back();
     // setShowOverlay(true); // show full screen view
   };
- 
+
   return (
     <>
       <Stack>
         <Stack.Screen
           name="index"
           options={{
-            headerShown: true,
-            headerTitleAlign: "center",
-            headerTitle: () => (
-              <Text style={{ fontSize: 18, fontWeight: "bold" }}>
-                Notifications
-              </Text>
-            ),
-            headerLeft: () => (
-              <TouchableOpacity
-                style={{ marginLeft: 10 }}
-                onPress={handleBackPress}
-              >
-                {/* You can use an icon here instead of text */}
-                {Platform.OS === "ios" ? (
-                  <ArrowLeft size={24} className="text-foreground" />
-                ) : (
-                  <Icon
-                    name="arrow-back"
-                    type="material"
-                    size={24}
-                    color="#239ED0"
-                  />
-                )}
-              </TouchableOpacity>
-            ),
+            headerShown: false,
           }}
         />
       </Stack>

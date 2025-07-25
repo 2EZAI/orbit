@@ -31,8 +31,9 @@ import { format } from "date-fns";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "react-native-elements";
 import { MapEvent } from "~/hooks/useMapEvents";
-import { EventDetailsSheet } from "~/src/components/map/EventDetailsSheet";
-import { LocationDetailsSheet } from "~/src/components/map/LocationDetailsSheet";
+import { UnifiedDetailsSheet } from "~/src/components/map/UnifiedDetailsSheet";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { SocialEventCard } from "~/src/components/social/SocialEventCard";
 
 interface Post {
   id: string;
@@ -47,7 +48,7 @@ interface Post {
   };
   like_count: number;
   comment_count: number;
-  event: MapEvent;
+  event?: MapEvent | null; // Make event optional
 }
 
 interface Comment {
@@ -60,7 +61,22 @@ interface Comment {
   };
 }
 
+// Define eventObj type based on MapEvent
+interface EventObject {
+  id: string;
+  name: string;
+  description?: string;
+  start_datetime?: string;
+  end_datetime?: string;
+  venue_name?: string;
+  location?: any;
+  address?: string;
+  image_urls?: string[];
+  [key: string]: any; // Allow additional properties
+}
+
 export default function PostView() {
+  const { theme } = useTheme();
   const marginBottom_ = Platform.OS === "android" ? "2%" : "8%";
   const params = useLocalSearchParams();
   const id = typeof params.id === "string" ? params.id : null;
@@ -102,85 +118,23 @@ export default function PostView() {
 
   const onRefresh = async () => {
     getLikeCount();
-      checkIfLiked();
-      fetchComments();
-  }
+    checkIfLiked();
+    fetchComments();
+  };
 
   const { event } = useLocalSearchParams();
-  const [eventObj, setEventObj] = useState(null);
+  const [eventObj, setEventObj] = useState<EventObject | null>(null);
 
   useEffect(() => {
     if (event) {
       try {
         const parsed = typeof event === "string" ? JSON.parse(event) : event;
-        setEventObj(parsed);
+        setEventObj(parsed as EventObject);
       } catch (e) {
         console.error("Failed to parse event:", e);
       }
     }
   }, [event]);
-
-  //   const fetchPost = async () => {
-  //     if (!id) return;
-
-  //     try {
-  //       console.log("[PostView] Fetching post with ID:", id);
-  //       const { data: rawData, error } = await supabase
-  //         .from("posts")
-  //         .select(
-  //           `
-  //           id,
-  //           content,
-  //           address,
-  //           media_urls,
-  //           created_at,
-  //           like_count,
-  //           comment_count,
-  //           user:users!inner (
-  //             id,
-  //             username,
-  //             avatar_url
-  //           )
-  //         `
-  //         )
-  //         .eq("id", id)
-  //         .single();
-
-  //       console.log("[PostView] Fetch resulttt:", { data: rawData, error });
-  //       if (error) throw error;
-  //       if (!rawData) throw new Error("Post not found");
-
-  //       // Extract user data from the array
-  //       const userData = Array.isArray(rawData.user)
-  //         ? rawData.user[0]
-  //         : rawData.user;
-
-  //       // Transform the data to match the Post type
-  //       const transformedPost: Post = {
-  //         id: rawData.id,
-  //         content: rawData.content,
-  //         address:rawData.address,
-  //         media_urls: rawData.media_urls || [],
-  //         created_at: rawData.created_at,
-  //         like_count: rawData.like_count || 0,
-  //         comment_count: rawData.comment_count || 0,
-  //         user: {
-  //           id: userData?.id || "",
-  //           username: userData?.username || null,
-  //           avatar_url: userData?.avatar_url || null,
-  //         },
-  //       };
-  // console.log("transformedPost>",transformedPost);
-  //       setPost(transformedPost);
-  //       setError(null);
-  //     } catch (error) {
-  //       console.error("[PostView] Error fetching post:", error);
-  //       setError("Failed to load post");
-  //       setPost(null);
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
 
   const fetchPost = async () => {
     if (!id) return;
@@ -211,8 +165,10 @@ export default function PostView() {
       if (error) throw error;
       if (!rawData) throw new Error("Post not found");
 
-      // user is an object (not array)
-      const userData = rawData.user;
+      // Handle both array and object cases from Supabase query
+      const userData = Array.isArray(rawData.user)
+        ? rawData.user[0]
+        : rawData.user;
 
       const transformedPost: Post = {
         id: rawData.id,
@@ -227,7 +183,7 @@ export default function PostView() {
           username: userData?.username || null,
           avatar_url: userData?.avatar_url || null,
         },
-        event:  null,
+        event: null, // Set to null by default, can be populated later if needed
       };
 
       setPost(transformedPost);
@@ -269,7 +225,7 @@ export default function PostView() {
       if (error) throw error;
 
       console.log("Like count:", count);
-      setLikeCount(count || 0); // if you have a state to store it
+      setLikeCount(count || 0);
     } catch (error) {
       console.error("Error fetching like count:", error);
     }
@@ -329,8 +285,7 @@ export default function PostView() {
         setPost((post) =>
           post ? { ...post, like_count: post.like_count + 1 } : null
         );
-      hitNoificationApi("like");
-
+        hitNoificationApi("like");
       }
     } catch (error) {
       console.error("Error toggling like:", error);
@@ -358,7 +313,7 @@ export default function PostView() {
       setPost((post) =>
         post ? { ...post, comment_count: post.comment_count + 1 } : null
       );
-      hitNoificationApi("comment" );
+      hitNoificationApi("comment");
     } catch (error) {
       console.error("Error submitting comment:", error);
       Alert.alert("Error", "Failed to submit comment");
@@ -367,164 +322,237 @@ export default function PostView() {
     }
   };
 
-  const hitNoificationApi= async (typee:string) => {
-
+  const hitNoificationApi = async (typee: string) => {
     if (!session?.user.id) return;
-    try{
-      const reuestData= {
-  userId: post?.user?.id,  
-  senderId: session?.user?.id,
-  type: typee,                   
-  // title: titlee,   
-  // body: bodyy, 
-  data: {     
-    post_id: id
-  }
-}
-    ///fetch events
-        const response = await fetch(
-          `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session.user.id}`,
-            },
-            body: JSON.stringify(reuestData),
-          }
-        );
-        console.log("eventData", reuestData);
+    try {
+      const reuestData = {
+        userId: post?.user?.id,
+        senderId: session?.user?.id,
+        type: typee,
+        data: {
+          post_id: id,
+        },
+      };
 
-        if (!response.ok) {
-          console.log("error>",response);
-          throw new Error(await response.text());
+      const response = await fetch(
+        `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.user.id}`,
+          },
+          body: JSON.stringify(reuestData),
         }
+      );
+      console.log("eventData", reuestData);
 
-        const data_ = await response.json();
-        console.log("response>",data_);
+      if (!response.ok) {
+        console.log("error>", response);
+        throw new Error(await response.text());
+      }
+
+      const data_ = await response.json();
+      console.log("response>", data_);
+    } catch (e) {
+      console.log("error_catch>", e);
     }
-    catch(e)
-    {
-console.log("error_catch>",e);
-    }
-  }
+  };
 
   return (
     <View
-      className="flex-1 bg-background"
-      style={{ paddingBottom: insets.bottom, marginBottom: marginBottom_ }}
+      style={{
+        flex: 1,
+        backgroundColor: theme.colors.background,
+        paddingBottom: insets.bottom + parseInt(marginBottom_.replace("%", "")),
+      }}
     >
       <Stack.Screen
         options={{
           headerShown: true,
           headerTitle: "Post",
+          headerStyle: {
+            backgroundColor: theme.colors.card,
+          },
+          headerTitleStyle: {
+            color: theme.colors.text,
+            fontSize: 18,
+            fontWeight: "600",
+          },
+          headerTintColor: theme.colors.text,
           headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()}>
-              {Platform.OS == "ios" ? (
-                <ArrowLeft size={24} className="text-foreground" />
+            <TouchableOpacity onPress={() => router.push("/(app)/(social)")}>
+              {Platform.OS === "ios" ? (
+                <ArrowLeft size={24} color={theme.colors.text} />
               ) : (
                 <Icon
                   name="arrow-left"
                   type="material-community"
                   size={24}
-                  color="#239ED0"
+                  color={theme.colors.primary || "#239ED0"}
                 />
               )}
             </TouchableOpacity>
           ),
+          headerShadowVisible: false,
         }}
       />
 
       {loading ? (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" />
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       ) : error ? (
-        <View className="flex-1 justify-center items-center">
-          <Text className="text-foreground">{error}</Text>
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <Text style={{ color: theme.colors.text }}>{error}</Text>
         </View>
       ) : !post ? (
-        <View className="flex-1 justify-center items-center">
-          <Text className="text-foreground">Post not found</Text>
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <Text style={{ color: theme.colors.text }}>Post not found</Text>
         </View>
       ) : (
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          className="flex-1"
+          style={{ flex: 1 }}
           keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
-          style={{ paddingBottom: insets.bottom + 60 }}
         >
-          <ScrollView className="flex-1"
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
->
-            {/* Post Header */}
-            {session.user.id !== post.user.id && (
-              <View className="flex-row items-center p-4">
-                <TouchableOpacity
-                  onPress={() => {
-                    router.push(`/profile/${post.user.id}`);
+          <ScrollView
+            style={{ flex: 1 }}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+          >
+            {/* Post Header - Always show who posted */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                padding: 16,
+                backgroundColor: theme.colors.card,
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => {
+                  router.push(`/(app)/profile/${post.user.id}`);
+                }}
+                style={{
+                  flexDirection: "row",
+                  flex: 1,
+                  alignItems: "center",
+                }}
+              >
+                <Image
+                  source={
+                    post.user.avatar_url
+                      ? { uri: post.user.avatar_url }
+                      : require("~/assets/favicon.png")
+                  }
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 24,
+                    backgroundColor: theme.colors.border,
                   }}
-                  className="flex-row flex-1 items-center"
-                >
-                  <Image
-                    source={
-                      post.user.avatar_url
-                        ? { uri: post.user.avatar_url }
-                        : require("~/assets/favicon.png")
-                    }
-                    className="w-10 h-10 rounded-full bg-muted"
-                  />
-                  <View className="ml-3">
-                    <Text className="font-medium">
-                      {post.user.username ? `@${post.user.username}` : "User"}
-                    </Text>
-                    <Text className="text-sm text-muted-foreground">
-                      {format(new Date(post.created_at), "MMM d, yyyy")}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+                />
+                <View style={{ marginLeft: 12 }}>
+                  <Text
+                    style={{
+                      fontWeight: "600",
+                      color: theme.colors.text,
+                      fontSize: 16,
+                    }}
+                  >
+                    {post.user.username ? `@${post.user.username}` : "User"}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      color: theme.colors.text + "80",
+                    }}
+                  >
+                    {format(
+                      new Date(post.created_at),
+                      "MMM d, yyyy 'at' h:mm a"
+                    )}
+                  </Text>
+                </View>
+              </TouchableOpacity>
 
-                <TouchableOpacity>
-                  <MoreHorizontal size={24} className="text-foreground" />
-                </TouchableOpacity>
-              </View>
-            )}
+              <TouchableOpacity>
+                <MoreHorizontal size={24} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
 
             {/* Post Content */}
-            <View className="p-4 pt-0 mt-6">
-              <Text className="text-foreground">{post.content}</Text>
+            <View
+              style={{
+                padding: 16,
+                paddingTop: 0,
+                backgroundColor: theme.colors.card,
+              }}
+            >
+              <Text
+                style={{
+                  color: theme.colors.text,
+                  fontSize: 16,
+                  lineHeight: 24,
+                }}
+              >
+                {post.content}
+              </Text>
             </View>
 
             {/* Post address */}
-            <View className="flex-row items-center p-3 pt-0">
-              {Platform.OS == "ios" ? (
-                <MapPin size={20} className="text-primary" />
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                paddingHorizontal: 16,
+                paddingBottom: 12,
+                backgroundColor: theme.colors.card,
+              }}
+            >
+              {Platform.OS === "ios" ? (
+                <MapPin size={20} color={theme.colors.primary || "#239ED0"} />
               ) : (
                 <Icon
                   name="map-marker"
                   type="material-community"
                   size={20}
-                  color="#239ED0"
+                  color={theme.colors.primary || "#239ED0"}
                 />
               )}
 
-              <Text className="ml-2 text-sm text-muted-foreground">
+              <Text
+                style={{
+                  marginLeft: 8,
+                  fontSize: 14,
+                  color: theme.colors.text + "80",
+                }}
+              >
                 {post?.address}
               </Text>
             </View>
 
-            {/* event */}
+            {/* Event Card */}
             {eventObj != null && (
-              <View className="flex-row justify-between items-center px-4 mb-3">
-                <Text className="text-sm text-primary">{eventObj?.name}</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    setIsShowEvent(!isShowEvent);
+              <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+                <SocialEventCard
+                  data={eventObj as any}
+                  onDataSelect={(data) => {
+                    setIsShowEvent(true);
                   }}
-                  className="px-4 py-2 rounded-full bg-primary"
-                >
-                  <Text className="text-sm text-white">View Event</Text>
-                </TouchableOpacity>
+                  onShowDetails={() => {
+                    setIsShowEvent(true);
+                  }}
+                  treatAsEvent={true}
+                />
               </View>
             )}
 
@@ -534,13 +562,20 @@ console.log("error_catch>",e);
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
-                className="w-full"
+                style={{ width: "100%" }}
               >
                 {post.media_urls.map((url, index) => (
                   <Image
                     key={index}
                     source={{ uri: url }}
-                    className="w-screen aspect-square"
+                    style={{
+                      width:
+                        Platform.OS === "web"
+                          ? 400
+                          : require("react-native").Dimensions.get("window")
+                              .width,
+                      aspectRatio: 1,
+                    }}
                     resizeMode="cover"
                   />
                 ))}
@@ -548,15 +583,28 @@ console.log("error_catch>",e);
             )}
 
             {/* Post Actions */}
-            <View className="flex-row items-center p-4 border-t border-border">
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                padding: 16,
+                borderTopWidth: 1,
+                borderTopColor: theme.colors.border,
+                backgroundColor: theme.colors.card,
+              }}
+            >
               <TouchableOpacity
                 onPress={toggleLike}
-                className="flex-row items-center mr-6"
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginRight: 24,
+                }}
               >
                 {Platform.OS === "ios" ? (
                   <Heart
                     size={24}
-                    className={liked ? "text-red-500" : "text-foreground"}
+                    color={liked ? "#ef4444" : theme.colors.text}
                     fill={liked ? "#ef4444" : "none"}
                   />
                 ) : (
@@ -564,49 +612,90 @@ console.log("error_catch>",e);
                     name={liked ? "heart" : "heart-outline"}
                     type="material-community"
                     size={24}
-                    color={liked ? "#ef4444" : "#239ED0"}
+                    color={
+                      liked ? "#ef4444" : theme.colors.primary || "#239ED0"
+                    }
                   />
                 )}
-                <Text className="ml-2">{likeCount}</Text>
+                <Text style={{ marginLeft: 8, color: theme.colors.text }}>
+                  {likeCount}
+                </Text>
               </TouchableOpacity>
 
-              <View className="flex-row items-center">
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
                 {Platform.OS === "ios" ? (
-                  <MessageCircle size={24} className="text-foreground" />
+                  <MessageCircle size={24} color={theme.colors.text} />
                 ) : (
                   <Icon
                     name="chat-outline"
                     type="material-community"
                     size={24}
-                    color="#239ED0"
+                    color={theme.colors.primary || "#239ED0"}
                   />
                 )}
-                {/*  <Text className="ml-2">{post.comment_count}</Text>*/}
-                <Text className="ml-2">{comments?.length}</Text>
+                <Text style={{ marginLeft: 8, color: theme.colors.text }}>
+                  {comments?.length}
+                </Text>
               </View>
             </View>
 
             {/* Comments */}
-            <View className="p-4 border-t border-border">
-              <Text className="mb-4 font-medium">Comments</Text>
+            <View
+              style={{
+                padding: 16,
+                borderTopWidth: 1,
+                borderTopColor: theme.colors.border,
+                backgroundColor: theme.colors.card,
+              }}
+            >
+              <Text
+                style={{
+                  marginBottom: 16,
+                  fontWeight: "500",
+                  color: theme.colors.text,
+                }}
+              >
+                Comments
+              </Text>
               {comments.map((comment) => (
-                <View key={comment.id} className="flex-row mb-4">
+                <View
+                  key={comment.id}
+                  style={{ flexDirection: "row", marginBottom: 16 }}
+                >
                   <Image
                     source={
                       comment.user.avatar_url
                         ? { uri: comment.user.avatar_url }
                         : require("~/assets/favicon.png")
                     }
-                    className="w-8 h-8 rounded-full bg-muted"
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      backgroundColor: theme.colors.border,
+                    }}
                   />
-                  <View className="flex-1 ml-3">
-                    <Text className="font-medium">
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text
+                      style={{
+                        fontWeight: "500",
+                        color: theme.colors.text,
+                      }}
+                    >
                       {comment.user.username
                         ? `@${comment.user.username}`
                         : "User"}
                     </Text>
-                    <Text className="text-foreground">{comment.content}</Text>
-                    <Text className="text-sm text-muted-foreground">
+                    <Text style={{ color: theme.colors.text, marginTop: 2 }}>
+                      {comment.content}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        color: theme.colors.text + "80",
+                        marginTop: 4,
+                      }}
+                    >
                       {format(new Date(comment.created_at), "MMM d, yyyy")}
                     </Text>
                   </View>
@@ -616,12 +705,33 @@ console.log("error_catch>",e);
           </ScrollView>
 
           {/* Comment Input */}
-          <View className="p-4 mb-14 border-t border-border bg-background">
-            <View className="flex-row items-center px-4 rounded-full bg-muted">
+          <View
+            style={{
+              padding: 16,
+              marginBottom: 56,
+              borderTopWidth: 1,
+              borderTopColor: theme.colors.border,
+              backgroundColor: theme.colors.card,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                paddingHorizontal: 16,
+                borderRadius: 25,
+                backgroundColor: theme.colors.background,
+              }}
+            >
               <TextInput
-                className="flex-1 py-2 text-foreground"
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  color: theme.colors.text,
+                  fontSize: 16,
+                }}
                 placeholder="Add a comment..."
-                placeholderTextColor="#666"
+                placeholderTextColor={theme.colors.text + "60"}
                 value={newComment}
                 onChangeText={setNewComment}
                 multiline
@@ -631,11 +741,13 @@ console.log("error_catch>",e);
                 disabled={!newComment.trim() || submittingComment}
               >
                 <Text
-                  className={`font-medium ${
-                    !newComment.trim() || submittingComment
-                      ? "text-muted-foreground"
-                      : "text-primary"
-                  }`}
+                  style={{
+                    fontWeight: "500",
+                    color:
+                      !newComment.trim() || submittingComment
+                        ? theme.colors.text + "60"
+                        : theme.colors.primary || "#239ED0",
+                  }}
                 >
                   {submittingComment ? "Sending..." : "Send"}
                 </Text>
@@ -644,15 +756,14 @@ console.log("error_catch>",e);
           </View>
 
           {eventObj != null && isShowEvent && (
-            <EventDetailsSheet
-              nearbyEvents={[]}
-              onEventSelect={() => {}}
-              event={eventObj}
+            <UnifiedDetailsSheet
+              nearbyData={[]}
+              onDataSelect={() => {}}
+              data={eventObj as any}
               isOpen={!!isShowEvent}
               onClose={() => setIsShowEvent(false)}
-              // nearbyEvents={events}
-              // onEventSelect={setSelectedEvent}
               onShowControler={() => {}}
+              isEvent={true}
             />
           )}
         </KeyboardAvoidingView>

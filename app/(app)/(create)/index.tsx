@@ -8,7 +8,7 @@ import {
   Platform,
   DeviceEventEmitter,
 } from "react-native";
-import { Category } from "~/hooks/useMapEvents";
+import { Category, Prompt } from "~/hooks/useMapEvents";
 import { Icon } from "react-native-elements";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
@@ -40,8 +40,6 @@ interface EventImage {
   type: string;
   name: string;
 }
-
-type DateTimePickerType = "date" | "time";
 
 interface MapboxFeature {
   id: string;
@@ -78,7 +76,7 @@ function decode(base64: string): Uint8Array {
 }
 
 export default function CreateEvent() {
-  // const { locationid,locationtype,Latitude,Longitude,category} = useLocalSearchParams();
+  const params = useLocalSearchParams();
   //   console.log("locationType>>", locationtype);
   //   console.log("latitude>>", Latitude);
   //    console.log("longitude>>", Longitude);
@@ -93,15 +91,17 @@ export default function CreateEvent() {
   // const [selectedPrompts, setSelectedPrompts] = useState<Prompts>({});
   // const [showPrompts, setshowPrompts] = useState( categoryList?.prompts === undefined ? false : true);
 
-  const [locationId, setlocationId] = useState(undefined);
-  const [locationType, setlocationType] = useState(undefined);
-  const [latitude, setlatitude] = useState(undefined);
-  const [longitude, setlongitude] = useState(undefined);
+  const [locationId, setlocationId] = useState<string | undefined>(undefined);
+  const [locationType, setlocationType] = useState<string | undefined>(
+    undefined
+  );
+  const [latitude, setlatitude] = useState<number | undefined>(undefined);
+  const [longitude, setlongitude] = useState<number | undefined>(undefined);
   const [selectedTopics, setSelectedTopics] = useState<string>("");
 
-  const [categoryList, setCategoryList] = useState<Category>({});
-  const [selectedPrompts, setSelectedPrompts] = useState<Prompts>({});
-  const [showPrompts, setshowPrompts] = useState(false);
+  const [categoryList, setCategoryList] = useState<Partial<Category>>({});
+  const [selectedPrompts, setSelectedPrompts] = useState<Partial<Prompt>>({});
+  const [showPrompts, setshowPrompts] = useState<boolean>(false);
 
   const { showActionSheetWithOptions } = useActionSheet();
   const { user } = useUser();
@@ -119,7 +119,7 @@ export default function CreateEvent() {
     coordinates: [0, 0],
   });
   const [searchResults, setSearchResults] = useState<MapboxFeature[]>([]);
-  const [showResults, setShowResults] = useState();
+  const [showResults, setShowResults] = useState<boolean>(false);
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
   const [externalUrl, setExternalUrl] = useState("");
@@ -128,24 +128,73 @@ export default function CreateEvent() {
 
   useEffect(() => {
     console.log("createevent_useEffect");
+
+    // Handle router params
+    if (params.categoryId && params.categoryName) {
+      const simpleCategory = {
+        id: params.categoryId as string,
+        name: params.categoryName as string,
+      };
+      console.log("🔍 Router params category:", simpleCategory);
+      setCategoryList(simpleCategory as Category);
+      setshowPrompts(true);
+    }
+
+    if (params.locationId) setlocationId(params.locationId as string);
+    if (params.locationType) setlocationType(params.locationType as string);
+    if (params.latitude) setlatitude(parseFloat(params.latitude as string));
+    if (params.longitude) setlongitude(parseFloat(params.longitude as string));
+    if (params.address) setAddress1(params.address as string);
+
     DeviceEventEmitter.addListener(
       "passDataToCreateEvent",
-      (locationid, locationtype, Latitude, Longitude, category) => {
-        console.log("event----passDataToCreateEvent");
+      (...args: any[]) => {
+        const [
+          locationid,
+          locationtype,
+          Latitude,
+          Longitude,
+          address,
+          categoryId,
+          categoryName,
+        ] = args;
+        const callId = Math.random().toString(36).substr(2, 9);
+        console.log(`🎯 [${callId}] event----passDataToCreateEvent STARTED`);
+        console.log(`🔍 [${callId}] Raw parameters received:`, {
+          locationid,
+          locationtype,
+          Latitude,
+          Longitude,
+          address,
+          categoryId,
+          categoryName,
+        });
 
-        console.log("locationType>>", locationtype);
-        console.log("latitude>>", Latitude);
-        console.log("longitude>>", Longitude);
         setlocationId(locationid ? locationid : undefined);
         setlocationType(locationtype ? locationtype : undefined);
         setlatitude(Latitude ? Latitude : undefined);
         setlongitude(Longitude ? Longitude : undefined);
+        setAddress1(address ? address : "");
 
-        const parsedCategory = category ? JSON.parse(category as string) : [];
-        console.log("parsedCategory>>", parsedCategory);
-        setCategoryList(parsedCategory === undefined ? {} : parsedCategory);
-        // setshowPrompts( categoryList?.prompts === undefined ? false : true);
-        setshowPrompts(parsedCategory === undefined ? false : true);
+        // Create simple category object from id and name
+        if (categoryId && categoryName) {
+          const simpleCategory = {
+            id: categoryId,
+            name: categoryName,
+          };
+          console.log(
+            `🔍 [${callId}] Created simple category:`,
+            simpleCategory
+          );
+          setCategoryList(simpleCategory as Partial<Category>);
+          setshowPrompts(true);
+        } else {
+          console.log(`🔍 [${callId}] No category data, using empty object`);
+          setCategoryList({} as Partial<Category>);
+          setshowPrompts(false);
+        }
+
+        console.log(`🎯 [${callId}] passDataToCreateEvent COMPLETED`);
       }
     );
   }, []);
@@ -481,7 +530,7 @@ export default function CreateEvent() {
 
       // 2. Create event using our API
 
-      let eventData = {
+      let eventData: any = {
         name,
         description,
         type: "Default",
@@ -498,7 +547,7 @@ export default function CreateEvent() {
         topic_id: selectedTopics,
       };
       if (locationType === "static" || locationType === "googleApi") {
-        let promtIds = []; // an empty array
+        let promtIds: string[] = []; // an empty array
         if (selectedPrompts?.id != undefined) {
           promtIds.push(selectedPrompts?.id);
         }
@@ -519,7 +568,7 @@ export default function CreateEvent() {
           topic_id: selectedTopics,
         };
       }
-      console.log("eventData>>",eventData);
+      console.log("eventData>>", eventData);
 
       const response = await fetch(
         `${process.env.BACKEND_MAP_URL}/api/events`,
@@ -708,41 +757,43 @@ export default function CreateEvent() {
           </View>
 
           {/* Prompts Section */}
-          {showPrompts && categoryList?.prompts.length > 0 && (
-            <View className="p-4 mb-6 rounded-lg bg-card">
-              <Text className="mb-1.5 font-medium">Prompts *</Text>
+          {showPrompts &&
+            categoryList?.prompts &&
+            categoryList.prompts.length > 0 && (
+              <View className="p-4 mb-6 rounded-lg bg-card">
+                <Text className="mb-1.5 font-medium">Prompts *</Text>
 
-              <View className="m-4 flex-row flex-wrap gap-2">
-                {categoryList?.prompts?.map((prompt) => {
-                  const isSelected =
-                    selectedPrompts?.id === prompt?.id ? true : false;
-                  return (
-                    <TouchableOpacity
-                      key={prompt.id}
-                      onPress={() => {
-                        setSelectedPrompts(prompt);
-                      }}
-                      className={`px-4 py-2 rounded-full border ${
-                        isSelected
-                          ? "bg-primary border-primary"
-                          : "bg-transparent border-border"
-                      }`}
-                    >
-                      <Text
-                        className={
+                <View className="flex-row flex-wrap gap-2 m-4">
+                  {categoryList?.prompts?.map((prompt) => {
+                    const isSelected =
+                      selectedPrompts?.id === prompt?.id ? true : false;
+                    return (
+                      <TouchableOpacity
+                        key={prompt.id}
+                        onPress={() => {
+                          setSelectedPrompts(prompt);
+                        }}
+                        className={`px-4 py-2 rounded-full border ${
                           isSelected
-                            ? "text-primary-foreground"
-                            : "text-foreground"
-                        }
+                            ? "bg-primary border-primary"
+                            : "bg-transparent border-border"
+                        }`}
                       >
-                        {prompt.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                        <Text
+                          className={
+                            isSelected
+                              ? "text-primary-foreground"
+                              : "text-foreground"
+                          }
+                        >
+                          {prompt.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
-            </View>
-          )}
+            )}
 
           <View className="p-4 mb-6 rounded-lg bg-card">
             <Text className="mb-1.5 font-medium">Category *</Text>
@@ -770,7 +821,7 @@ export default function CreateEvent() {
                   />
                   <TouchableOpacity
                     onPress={() => removeImage(index)}
-                    className="absolute items-center justify-center w-6 h-6 rounded-full -top-2 -right-2 bg-destructive"
+                    className="absolute -top-2 -right-2 justify-center items-center w-6 h-6 rounded-full bg-destructive"
                   >
                     <X size={16} color="white" />
                   </TouchableOpacity>
@@ -813,7 +864,7 @@ export default function CreateEvent() {
 
                 {/* Search Results Dropdown */}
                 {showResults && searchResults.length > 0 && (
-                  <View className="border rounded-lg border-border bg-background">
+                  <View className="rounded-lg border border-border bg-background">
                     {searchResults.slice(0, 5).map((result) => (
                       <TouchableOpacity
                         key={result.id}
@@ -863,14 +914,14 @@ export default function CreateEvent() {
             <View className="space-y-6">
               {/* Start Time */}
               <View className="p-4 rounded-lg bg-muted/30">
-                <View className="flex-row items-center justify-between mb-4">
+                <View className="flex-row justify-between items-center mb-4">
                   <View>
                     <Text className="text-base font-semibold">Start Time</Text>
                     <Text className="text-sm text-muted-foreground">
                       When does your event begin?
                     </Text>
                   </View>
-                  <View className="items-center justify-center w-8 h-8 rounded-full bg-primary/10">
+                  <View className="justify-center items-center w-8 h-8 rounded-full bg-primary/10">
                     {Platform.OS == "ios" ? (
                       <Clock size={18} className="text-primary" />
                     ) : (
@@ -887,7 +938,7 @@ export default function CreateEvent() {
                 <View className="space-y-3">
                   <TouchableOpacity
                     onPress={() => showDatePicker(true)}
-                    className="flex-row items-center justify-between p-3 border rounded-lg bg-background border-border"
+                    className="flex-row justify-between items-center p-3 rounded-lg border bg-background border-border"
                   >
                     <View className="flex-row items-center">
                       {Platform.OS == "ios" ? (
@@ -912,7 +963,7 @@ export default function CreateEvent() {
 
                   <TouchableOpacity
                     onPress={() => showTimePicker(true)}
-                    className="flex-row items-center justify-between p-3 border rounded-lg bg-background border-border"
+                    className="flex-row justify-between items-center p-3 rounded-lg border bg-background border-border"
                   >
                     <View className="flex-row items-center">
                       {Platform.OS == "ios" ? (
@@ -942,14 +993,14 @@ export default function CreateEvent() {
 
               {/* End Time */}
               <View className="p-4 rounded-lg bg-muted/30">
-                <View className="flex-row items-center justify-between mb-4">
+                <View className="flex-row justify-between items-center mb-4">
                   <View>
                     <Text className="text-base font-semibold">End Time</Text>
                     <Text className="text-sm text-muted-foreground">
                       When does your event end?
                     </Text>
                   </View>
-                  <View className="items-center justify-center w-8 h-8 rounded-full bg-primary/10">
+                  <View className="justify-center items-center w-8 h-8 rounded-full bg-primary/10">
                     {Platform.OS == "ios" ? (
                       <Clock size={18} className="text-primary" />
                     ) : (
@@ -966,7 +1017,7 @@ export default function CreateEvent() {
                 <View className="space-y-3">
                   <TouchableOpacity
                     onPress={() => showDatePicker(false)}
-                    className="flex-row items-center justify-between p-3 border rounded-lg bg-background border-border"
+                    className="flex-row justify-between items-center p-3 rounded-lg border bg-background border-border"
                   >
                     <View className="flex-row items-center">
                       {Platform.OS == "ios" ? (
@@ -991,7 +1042,7 @@ export default function CreateEvent() {
 
                   <TouchableOpacity
                     onPress={() => showTimePicker(false)}
-                    className="flex-row items-center justify-between p-3 border rounded-lg bg-background border-border"
+                    className="flex-row justify-between items-center p-3 rounded-lg border bg-background border-border"
                   >
                     <View className="flex-row items-center">
                       {Platform.OS == "ios" ? (
@@ -1044,7 +1095,7 @@ export default function CreateEvent() {
           </View>
 
           {/* Submit Button */}
-          <View className="px-4 py-4 mb-4 -mx-4 border-t border-border">
+          <View className="px-4 py-4 -mx-4 mb-4 border-t border-border">
             <Button
               onPress={handleCreateEvent}
               disabled={isLoading}

@@ -29,7 +29,6 @@ interface UserLoation {
   postal_code: string | null;
 }
 
-
 interface Location {
   latitude: number;
   longitude: number;
@@ -79,10 +78,23 @@ interface UseUserReturn {
   UpdateEventStatus: (updates: Partial<MapEvent>) => Promise<void>;
   fetchEventDetail: (updates: Partial<MapEvent>) => Promise<void>;
   fetchLocationDetail: (updates: Partial<MapEvent>) => Promise<void>;
-  fetchLocationEvents: (updates: Partial<any>,page: Partial<any>,pageSize:Partial<any>) => Promise<void>;
-  fetchCreatedEvents: (type: String,updates: Partial<any>,page: Partial<any>,pageSize:Partial<any>) => Promise<void>;
-  filterEvents: (type: String,updates: Partial<any>,page: Partial<any>,pageSize:Partial<any>) => Promise<void>;
-  
+  fetchLocationEvents: (
+    updates: Partial<any>,
+    page: Partial<any>,
+    pageSize: Partial<any>
+  ) => Promise<void>;
+  fetchCreatedEvents: (
+    type: String,
+    updates: Partial<any>,
+    page: Partial<any>,
+    pageSize: Partial<any>
+  ) => Promise<void>;
+  filterEvents: (
+    type: String,
+    updates: Partial<any>,
+    page: Partial<any>,
+    pageSize: Partial<any>
+  ) => Promise<void>;
 }
 
 export function useUpdateEvents(): UseUserReturn {
@@ -107,35 +119,32 @@ export function useUpdateEvents(): UseUserReturn {
         source: event.is_ticketmaster ? "ticketmaster" : "supabase",
         joined_at: new Date().toISOString(),
       };
-            const response = await fetch(
-              `${process.env.BACKEND_MAP_URL}/api/events/join/${event.id}`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${session.access_token}`,
-                },
-                body: JSON.stringify(eventData),
-              }
-            );
-            console.log("session.access_token>>",
-            session.access_token);
-            console.log("eventData>UpdateEventStatus",
-            eventData);
+      const response = await fetch(
+        `${process.env.BACKEND_MAP_URL}/api/events/join/${event.id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(eventData),
+        }
+      );
+      console.log("session.access_token>>", session.access_token);
+      console.log("eventData>UpdateEventStatus", eventData);
 
-            if (!response.ok) {
-              throw new Error(await response.text());
-            }
-      
-            const data = await response.json();
-            // console.log("event data", data);
-            console.log("[Events] Updated", data, "events from API");
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      const data = await response.json();
+      // console.log("event data", data);
+      console.log("[Events] Updated", data, "events from API");
       Toast.show({
         type: "success",
-        text1: "Event Updated"
+        text1: "Event Updated",
       });
-      return data; 
-            
+      return data;
     } catch (e) {
       setError(e instanceof Error ? e : new Error("An error occurred"));
       throw e;
@@ -148,37 +157,34 @@ export function useUpdateEvents(): UseUserReturn {
       if (!session?.user?.id) throw new Error("No user logged in");
 
       const eventData = {
-                source: event.is_ticketmaster ? "ticketmaster" : "supabase",
+        source: event.is_ticketmaster ? "ticketmaster" : "supabase",
       };
-            const response = await fetch(
-              `${process.env.BACKEND_MAP_URL}/api/events/${event.id}`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${session.access_token}`,
-                },
-                body: JSON.stringify(eventData),
-              }
-            );
-            console.log("session.access_token>>",
-            session.access_token);
-            console.log("eventData>fetchEvent",
-            eventData);
+      const response = await fetch(
+        `${process.env.BACKEND_MAP_URL}/api/events/${event.id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(eventData),
+        }
+      );
+      console.log("session.access_token>>", session.access_token);
+      console.log("eventData>fetchEvent", eventData);
 
-            if (!response.ok) {
-              throw new Error(await response.text());
-            }
-      
-            const data = await response.json();
-            // console.log("event data", data);
-            console.log("[Events] Fetched", data, "events from API");
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      const data = await response.json();
+      // console.log("event data", data);
+      console.log("[Events] Fetched", data, "events from API");
       // Toast.show({
       //   type: "success",
       //   text1: "Event fetched"
       // });
-      return data; 
-            
+      return data;
     } catch (e) {
       setError(e instanceof Error ? e : new Error("An error occurred"));
       throw e;
@@ -190,179 +196,194 @@ export function useUpdateEvents(): UseUserReturn {
     try {
       if (!session?.user?.id) throw new Error("No user logged in");
 
-     
-            const response = await fetch(
-              `${process.env.BACKEND_MAP_URL}/api/locations/${location?.id}`,
-              {
-                method: "GET",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${session.access_token}`,
-                },
-                // body: JSON.stringify(eventData),
-              }
-            );
-            console.log("session.access_token>>",
-            session.access_token);
-            
+      const response = await fetch(
+        `${process.env.BACKEND_MAP_URL}/api/locations/${location?.id}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          // body: JSON.stringify(eventData),
+        }
+      );
+      console.log("session.access_token>>", session.access_token);
 
-            if (!response.ok) {
-              throw new Error(await response.text());
-            }
-      
-            const data = await response.json();
-            // console.log("event data", data);
-            console.log("location Fetched", data, "location from API");
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      const data = await response.json();
+      // console.log("event data", data);
+      console.log("location Fetched", data, "location from API");
       // Toast.show({
       //   type: "success",
       //   text1: "Event fetched"
       // });
-      return data; 
-            
+      return data;
     } catch (e) {
       setError(e instanceof Error ? e : new Error("An error occurred"));
       throw e;
     }
   };
 
-   // fetch location events
-   const fetchLocationEvents = async (location: Partial<any>,pagee: Partial<any>,pageSize: Partial<any>) => {
+  // fetch location events
+  const fetchLocationEvents = async (
+    location: Partial<any>,
+    pagee: Partial<any>,
+    pageSize: Partial<any>
+  ) => {
     try {
       if (!session?.user?.id) throw new Error("No user logged in");
 
       const eventData = {
-                page: pagee,
-                limit: pageSize
+        page: pagee,
+        limit: pageSize,
       };
-            const response = await fetch(
-              `${process.env.BACKEND_MAP_URL}/api/events/location/${location.id}`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${session.access_token}`,
-                },
-                body: JSON.stringify(eventData),
-              }
-            );
-            console.log("session.access_token>>",
-            session.access_token);
-            console.log("fetchLocationEvents>fetchEvent",
-            eventData);
 
-            if (!response.ok) {
-              throw new Error(await response.text());
-            }
-      
-            const data = await response.json();
-            // console.log("event data", data);
-            console.log("[Events] fetchLocationEvents", data, "events from API");
+      const apiUrl = `${process.env.BACKEND_MAP_URL}/api/events/location/${location.id}`;
+
+      console.log("🔍 [fetchLocationEvents] Making API call:", {
+        url: apiUrl,
+        locationId: location.id,
+        locationData: location,
+        requestBody: eventData,
+      });
+
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(eventData),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ [fetchLocationEvents] API Error:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorText,
+          locationId: location.id,
+        });
+        throw new Error(errorText);
+      }
+
+      const data = await response.json();
+      console.log("📍 [fetchLocationEvents] API Response:", {
+        locationId: location.id,
+        responseData: data,
+        eventsCount: data?.events?.length || 0,
+        events: data?.events,
+      });
+
+      return data.events;
+    } catch (e) {
+      console.error("❌ [fetchLocationEvents] Exception:", {
+        error: e,
+        locationId: location?.id,
+        message: e instanceof Error ? e.message : "Unknown error",
+      });
+      setError(e instanceof Error ? e : new Error("An error occurred"));
+      throw e;
+    }
+  };
+
+  // fetch location events
+  const fetchCreatedEvents = async (
+    type_: String,
+    pagee: Partial<any>,
+    pageSize: Partial<any>,
+    userid: string
+  ) => {
+    try {
+      if (!session?.user?.id) throw new Error("No user logged in");
+
+      const eventData = {
+        page: pagee,
+        limit: pageSize,
+        type: type_,
+        user_id: userid,
+      };
+      const response = await fetch(
+        `${process.env.BACKEND_MAP_URL}/api/events/my-events?page=${pagee}&limit=${pageSize}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(eventData),
+        }
+      );
+      console.log("session.access_token>>", session.access_token);
+      console.log("fetchCreatedEvents>fetchEvent", eventData);
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      const data = await response.json();
+      // console.log("event data", data);
+      console.log("[Events] fetchCreatedEvents", data, "events from API");
       // Toast.show({
       //   type: "success",
       //   text1: "Event fetched"
       // });
-      return data.events; 
-            
+      return data.events;
     } catch (e) {
       setError(e instanceof Error ? e : new Error("An error occurred"));
       throw e;
     }
   };
 
- // fetch location events
- const fetchCreatedEvents = async (type_: String,pagee: Partial<any>,pageSize: Partial<any>,userid:string) => {
-  try {
-    if (!session?.user?.id) throw new Error("No user logged in");
+  // search events
+  const filterEvents = async (
+    eventName: Partial<any>,
+    pagee: Partial<any>,
+    pageSize: Partial<any>,
+    userid: string
+  ) => {
+    try {
+      if (!session?.user?.id) throw new Error("No user logged in");
 
-    const eventData = {
-              page: pagee,
-              limit: pageSize,
-              type:type_,
-              user_id:userid,
-    };
-          const response = await fetch(
-            
-            `${process.env.BACKEND_MAP_URL}/api/events/my-events?page=${pagee}&limit=${pageSize}`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              body: JSON.stringify(eventData),
-            }
-          );
-          console.log("session.access_token>>",
-          session.access_token);
-          console.log("fetchCreatedEvents>fetchEvent",
-          eventData);
+      const eventData = {
+        // page: pagee,
+        // limit: pageSize,
+        filter: eventName,
+      };
+      const response = await fetch(
+        `${process.env.BACKEND_MAP_URL}/api/events/filter?page=${pagee}&limit=${pageSize}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(eventData),
+        }
+      );
+      console.log("session.access_token>>", session.access_token);
+      console.log("filterEvents>fetchEvent", eventData);
 
-          if (!response.ok) {
-            throw new Error(await response.text());
-          }
-    
-          const data = await response.json();
-          // console.log("event data", data);
-          console.log("[Events] fetchCreatedEvents", data, "events from API");
-    // Toast.show({
-    //   type: "success",
-    //   text1: "Event fetched"
-    // });
-    return data.events; 
-          
-  } catch (e) {
-    setError(e instanceof Error ? e : new Error("An error occurred"));
-    throw e;
-  }
-};
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
 
-// search events
-const filterEvents = async (eventName: Partial<any>,pagee: Partial<any>,pageSize: Partial<any>,userid:string) => {
-  try {
-    if (!session?.user?.id) throw new Error("No user logged in");
-
-    const eventData = {
-              // page: pagee,
-              // limit: pageSize,
-              filter:eventName,
-             
-    };
-          const response = await fetch(
-            
-            `${process.env.BACKEND_MAP_URL}/api/events/filter?page=${pagee}&limit=${pageSize}`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              body: JSON.stringify(eventData),
-            }
-          );
-          console.log("session.access_token>>",
-          session.access_token);
-          console.log("filterEvents>fetchEvent",
-          eventData);
-
-          if (!response.ok) {
-            throw new Error(await response.text());
-          }
-    
-          const data = await response.json();
-          // console.log("event data", data);
-          console.log("[Events] filterEvents", data, "events from API");
-    // Toast.show({
-    //   type: "success",
-    //   text1: "Event fetched"
-    // });
-    return data.events; 
-          
-  } catch (e) {
-    setError(e instanceof Error ? e : new Error("An error occurred"));
-    throw e;
-  }
-};
-
+      const data = await response.json();
+      // console.log("event data", data);
+      console.log("[Events] filterEvents", data, "events from API");
+      // Toast.show({
+      //   type: "success",
+      //   text1: "Event fetched"
+      // });
+      return data.events;
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error("An error occurred"));
+      throw e;
+    }
+  };
 
   // Subscribe to realtime changes
   useEffect(() => {
@@ -392,11 +413,9 @@ const filterEvents = async (eventName: Partial<any>,pagee: Partial<any>,pageSize
   }, [session?.user?.id]);
 
   // Initial fetch
-  useEffect(() => {
-  }, [session?.user?.id]);
+  useEffect(() => {}, [session?.user?.id]);
 
   return {
-
     loading,
     error,
     refreshUser,

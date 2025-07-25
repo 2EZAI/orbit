@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   FlatList,
@@ -6,33 +6,24 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
-  StatusBar,
-  Dimensions,
   ScrollView,
+  Dimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import { supabase } from "~/src/lib/supabase";
 import { useAuth } from "~/src/lib/auth";
-import { useUser } from "~/hooks/useUserData";
 import { format } from "date-fns";
-import { Icon } from "react-native-elements";
 import {
   Heart,
   MessageCircle,
   Share2,
   MapPin,
   MoreHorizontal,
-  Bell,
-  Plus,
 } from "lucide-react-native";
 import { router } from "expo-router";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
-import { UnifiedDetailsSheet } from "~/src/components/map/UnifiedDetailsSheet";
 import { SocialEventCard } from "~/src/components/social/SocialEventCard";
-import { ScreenHeader } from "~/src/components/ui/screen-header";
 import { useTheme } from "~/src/components/ThemeProvider";
-import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 
 interface Post {
   id: string;
@@ -53,6 +44,13 @@ interface Post {
   };
   event?: any;
   isLiked?: boolean;
+}
+
+interface UnifiedPostsTabProps {
+  userId: string;
+  isCurrentUser: boolean;
+  onScroll?: any;
+  refreshControl?: any;
 }
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -107,25 +105,25 @@ const ImageGallery = ({
   );
 };
 
-export default function SocialFeed() {
+export default function UnifiedPostsTab({
+  userId,
+  isCurrentUser,
+  onScroll,
+  refreshControl,
+}: UnifiedPostsTabProps) {
   const { session } = useAuth();
-  const { user } = useUser();
   const { theme, isDarkMode } = useTheme();
-  const { fetchAllNoifications, unReadCount } = useNotificationsApi();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
-  const [isSelectedItemLocation, setIsSelectedItemLocation] = useState(false);
-  const [showUnifiedCard, setShowUnifiedCard] = useState(false);
 
   const PAGE_SIZE = 20;
 
   useEffect(() => {
-    fetchAllNoifications(1, 20);
-  }, []);
+    loadPosts(true);
+  }, [userId]);
 
   const loadPosts = async (isRefresh = false) => {
     if (loading || (!hasMore && !isRefresh)) {
@@ -142,48 +140,57 @@ export default function SocialFeed() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `${process.env.BACKEND_MAP_URL}/api/posts/all?page=${currentPage}&limit=${PAGE_SIZE}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token}`,
-          },
-        }
-      );
+      // Fetch posts for specific user
+      const { data: postsData, error } = await supabase
+        .from("posts")
+        .select(
+          `
+          id,
+          content,
+          media_urls,
+          created_at,
+          address,
+          city,
+          state,
+          like_count,
+          comment_count,
+          event_id,
+          user_id,
+          users!user_id (
+            id,
+            username,
+            avatar_url,
+            first_name,
+            last_name
+          )
+        `
+        )
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .range((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE - 1);
 
-      if (!response.ok) {
-        setLoading(false);
-        setRefreshing(false);
-        setHasMore(false);
-        throw new Error(await response.text());
-      }
+      if (error) throw error;
 
-      const response_ = await response.json();
-      const postsData = response_?.data;
-
-      const transformedPosts =
-        postsData?.map((post: any) => ({
-          id: post.id,
-          content: post.content,
-          media_urls: post.media_urls || [],
-          created_at: post.created_at,
-          address: post.address,
-          city: post.city,
-          state: post.state,
-          like_count: Math.max(0, post.like_count || 0),
-          comment_count: Math.max(0, post.comment_count || 0),
-          user: post.created_by || {
-            id: post.id,
-            username: post.username,
-            avatar_url: post.avatar_url,
-            first_name: post.first_name,
-            last_name: post.last_name,
-          },
-          event: post.event,
-          isLiked: false,
-        })) || [];
+      const transformedPosts: Post[] = (postsData || []).map((post: any) => ({
+        id: post.id,
+        content: post.content,
+        media_urls: post.media_urls || [],
+        created_at: post.created_at,
+        address: post.address,
+        city: post.city,
+        state: post.state,
+        like_count: Math.max(0, post.like_count || 0),
+        comment_count: Math.max(0, post.comment_count || 0),
+        user: post.users || {
+          id: post.user_id,
+          username: null,
+          avatar_url: null,
+          first_name: null,
+          last_name: null,
+        },
+        event: null, // Set to null for now, since we only have event_id
+        isLiked: false,
+      }));
 
       // Check which posts are liked by the current user
       if (session?.user?.id) {
@@ -219,10 +226,6 @@ export default function SocialFeed() {
       setRefreshing(false);
     }
   };
-
-  useEffect(() => {
-    loadPosts(true);
-  }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -383,14 +386,10 @@ export default function SocialFeed() {
             <SocialEventCard
               data={post.event}
               onDataSelect={(data) => {
-                setSelectedEvent(data);
-                setIsSelectedItemLocation(false);
-                setShowUnifiedCard(true);
+                // Handle event selection if needed
               }}
               onShowDetails={() => {
-                setSelectedEvent(post.event);
-                setIsSelectedItemLocation(false);
-                setShowUnifiedCard(true);
+                // Handle show details if needed
               }}
               treatAsEvent={true}
             />
@@ -494,156 +493,48 @@ export default function SocialFeed() {
 
   if (loading && posts.length === 0) {
     return (
-      <SafeAreaView
-        className="flex-1"
-        style={{ backgroundColor: theme.colors.card }}
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          paddingVertical: 40,
+          backgroundColor: theme.colors.card,
+        }}
       >
-        <StatusBar
-          barStyle={isDarkMode ? "light-content" : "dark-content"}
-          backgroundColor={theme.colors.card}
-        />
-
-        <ScreenHeader
-          title="Social Feed"
-          actions={[
-            {
-              icon: <Bell size={18} color="white" strokeWidth={2.5} />,
-              onPress: () => router.push("/(app)/(notification)"),
-              backgroundColor: theme.colors.primary,
-              badge: !!(unReadCount && unReadCount > 0) ? (
-                <View
-                  style={{
-                    position: "absolute",
-                    top: -4,
-                    right: -4,
-                    backgroundColor: "#ff3b30",
-                    borderRadius: 10,
-                    minWidth: 20,
-                    height: 20,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    borderWidth: 2,
-                    borderColor: "white",
-                  }}
-                >
-                  <Text
-                    style={{ color: "white", fontSize: 12, fontWeight: "bold" }}
-                  >
-                    {unReadCount > 99 ? "99+" : String(unReadCount)}
-                  </Text>
-                </View>
-              ) : undefined,
-            },
-            {
-              icon: (
-                <Image
-                  source={
-                    user?.avatar_url
-                      ? { uri: user.avatar_url }
-                      : require("~/assets/favicon.png")
-                  }
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    borderWidth: 2,
-                    borderColor: theme.colors.primary,
-                  }}
-                />
-              ),
-              onPress: () => router.push("/(app)/(profile)"),
-            },
-          ]}
-        />
-
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#3B82F6" />
-          <Text
-            className="mt-4"
-            style={{ color: isDarkMode ? "#9CA3AF" : "#6B7280" }}
-          >
-            Loading posts...
-          </Text>
-        </View>
-      </SafeAreaView>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text
+          style={{
+            marginTop: 16,
+            color: theme.colors.text + "80",
+          }}
+        >
+          Loading posts...
+        </Text>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView
-      className="flex-1"
-      style={{ backgroundColor: theme.colors.card }}
-    >
-      <StatusBar
-        barStyle={isDarkMode ? "light-content" : "dark-content"}
-        backgroundColor={theme.colors.card}
-      />
-
-      <ScreenHeader
-        title="Social Feed"
-        actions={[
-          {
-            icon: <Bell size={18} color="white" strokeWidth={2.5} />,
-            onPress: () => router.push("/(app)/(notification)"),
-            backgroundColor: theme.colors.primary,
-            badge: !!(unReadCount && unReadCount > 0) ? (
-              <View
-                style={{
-                  position: "absolute",
-                  top: -4,
-                  right: -4,
-                  backgroundColor: "#ff3b30",
-                  borderRadius: 10,
-                  minWidth: 20,
-                  height: 20,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  borderWidth: 2,
-                  borderColor: "white",
-                }}
-              >
-                <Text
-                  style={{ color: "white", fontSize: 12, fontWeight: "bold" }}
-                >
-                  {unReadCount > 99 ? "99+" : String(unReadCount)}
-                </Text>
-              </View>
-            ) : undefined,
-          },
-          {
-            icon: (
-              <Image
-                source={
-                  user?.avatar_url
-                    ? { uri: user.avatar_url }
-                    : require("~/assets/favicon.png")
-                }
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  borderWidth: 2,
-                  borderColor: theme.colors.primary,
-                }}
-              />
-            ),
-            onPress: () => router.push("/(app)/(profile)"),
-          },
-        ]}
-      />
-
+    <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
       <FlatList
         data={posts}
         renderItem={renderPost}
         keyExtractor={(item) => item.id}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={["#3B82F6"]}
-            tintColor="#3B82F6"
-          />
+          refreshControl || (
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[theme.colors.primary]}
+              tintColor={theme.colors.primary}
+            />
+          )
         }
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        bounces={true}
+        overScrollMode="always"
         onEndReached={() => {
           if (hasMore && !loading) {
             loadPosts();
@@ -653,77 +544,46 @@ export default function SocialFeed() {
         ListFooterComponent={
           loading && hasMore ? (
             <View className="py-8">
-              <ActivityIndicator size="small" color="#3B82F6" />
+              <ActivityIndicator size="small" color={theme.colors.primary} />
             </View>
           ) : null
         }
         ListEmptyComponent={
           !loading ? (
-            <View className="flex-1 justify-center items-center py-20">
+            <View
+              style={{
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+                paddingVertical: 60,
+              }}
+            >
               <Text
-                className="text-xl font-medium"
-                style={{ color: theme.colors.text }}
+                style={{
+                  fontSize: 18,
+                  fontWeight: "600",
+                  color: theme.colors.text,
+                }}
               >
                 No posts yet
               </Text>
               <Text
-                className="mt-2 text-base text-center"
-                style={{ color: isDarkMode ? "#9CA3AF" : "#6B7280" }}
+                style={{
+                  marginTop: 8,
+                  fontSize: 14,
+                  color: theme.colors.text + "80",
+                  textAlign: "center",
+                }}
               >
-                Follow people to see their posts here
+                {isCurrentUser
+                  ? "Share your thoughts and experiences"
+                  : "This user hasn't posted anything yet"}
               </Text>
             </View>
           ) : null
         }
         showsVerticalScrollIndicator={false}
       />
-
-      {/* Event Details Sheet */}
-      {selectedEvent && showUnifiedCard && (
-        <UnifiedDetailsSheet
-          data={selectedEvent as any}
-          isOpen={!!selectedEvent && showUnifiedCard}
-          onClose={() => {
-            setSelectedEvent(null);
-            setIsSelectedItemLocation(false);
-            setShowUnifiedCard(false);
-          }}
-          nearbyData={[]}
-          onDataSelect={(data) => {
-            setSelectedEvent(data as any);
-            setIsSelectedItemLocation(false);
-          }}
-          onShowControler={() => {}}
-          isEvent={!isSelectedItemLocation}
-        />
-      )}
-
-      {/* Floating Action Button */}
-      <TouchableOpacity
-        onPress={() => router.push("/(app)/post/create")}
-        accessibilityLabel="Create new post"
-        accessibilityHint="Navigate to create a new post"
-        accessibilityRole="button"
-        style={{
-          position: "absolute",
-          bottom: 120, // Above the tab bar
-          right: 20,
-          width: 60,
-          height: 60,
-          borderRadius: 40,
-          backgroundColor: theme.colors.primary || "#3B82F6",
-          justifyContent: "center",
-          alignItems: "center",
-          shadowColor: isDarkMode ? theme.colors.primary : "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: isDarkMode ? 0.4 : 0.25,
-          shadowRadius: 8,
-          elevation: 8,
-          zIndex: 1000,
-        }}
-      >
-        <Plus size={24} color="white" strokeWidth={2.5} />
-      </TouchableOpacity>
-    </SafeAreaView>
+    </View>
   );
 }

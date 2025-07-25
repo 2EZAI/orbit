@@ -6,7 +6,7 @@ import { useTheme } from "~/src/components/ThemeProvider";
 import TabBar from "~/src/components/shared/TabBar";
 import { Redirect } from "expo-router";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import useNotifications from '~/hooks/useNotifications';
+import useNotifications from "~/hooks/useNotifications";
 
 export default function AppLayout() {
   const { theme } = useTheme();
@@ -19,7 +19,7 @@ export default function AppLayout() {
   if (!session) {
     return <Redirect href="/(auth)/sign-in" />;
   }
-useNotifications();
+  useNotifications();
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Tabs
@@ -34,17 +34,21 @@ useNotifications();
             currentRoute.name,
             currentRoute.path
           );
-          // Show tab bar everywhere except onboarding and specific chat messages
+          // Show tab bar everywhere except onboarding, notifications, and specific chat messages
           const isSpecificChatRoute =
             currentRoute.name === "(webview)" ||
             (currentRoute.name === "(chat)" &&
               typeof currentRoute.params === "object" &&
               currentRoute.params !== null &&
               "id" in currentRoute.params);
-          return currentRoute.name === "onboarding" ||
-            isSpecificChatRoute ? null : (
-            <TabBar />
-          );
+
+          const hideTabBar =
+            currentRoute.name === "onboarding" ||
+            currentRoute.name === "(notification)" ||
+            currentRoute.name === "(profile)" ||
+            isSpecificChatRoute;
+
+          return hideTabBar ? null : <TabBar />;
         }}
       >
         <Tabs.Screen name="(map)" />

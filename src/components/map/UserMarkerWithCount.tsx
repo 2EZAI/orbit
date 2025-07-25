@@ -1,14 +1,19 @@
-import { View, Image ,Text} from "react-native";
+import { View, Image, Text } from "react-native";
 import { useEffect, useState } from "react";
 
 interface UserMarkerWithCountProps {
   avatarUrl?: string | null;
   heading?: number;
   count?: number;
-  showCount?:boolean;
+  showCount?: boolean;
 }
 
-export const UserMarkerWithCount = ({ avatarUrl, heading,count,showCount }: UserMarkerWithCountProps) => {
+export const UserMarkerWithCount = ({
+  avatarUrl,
+  heading,
+  count,
+  showCount,
+}: UserMarkerWithCountProps) => {
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
@@ -45,15 +50,17 @@ export const UserMarkerWithCount = ({ avatarUrl, heading,count,showCount }: User
             setImageError(true);
           }}
         />
-       <View className="absolute items-center justify-center mt-2 w-4 h-4 border rounded-full -top-1 -left-1 bg-green-400">
-  <View className="w-2 h-2 rounded-full bg-white" />
-</View>
-
-         {showCount && count > 8 && (
-        <View className="absolute w-12 h-12 justify-center rounded-full bg-muted border-2 border-white">
-          <Text className="text-xs text-center font-bold text-black">{count+"+"}</Text>
+        <View className="absolute items-center justify-center mt-2 w-4 h-4 border rounded-full -top-1 -left-1 bg-green-400">
+          <View className="w-2 h-2 rounded-full bg-white" />
         </View>
-      )}
+
+        {showCount && count && count > 8 && (
+          <View className="absolute w-12 h-12 justify-center rounded-full bg-muted border-2 border-white">
+            <Text className="text-xs text-center font-bold text-black">
+              {String(count || 0) + "+"}
+            </Text>
+          </View>
+        )}
       </View>
       <View className="w-2 h-2 -mt-1 rounded-full bg-black/20" />
     </View>

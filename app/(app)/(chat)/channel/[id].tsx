@@ -20,6 +20,7 @@ import {
   AutoCompleteSuggestionItem,
   AutoCompleteSuggestionList,
   Card,
+  AutoCompleteInput,
 } from "stream-chat-expo";
 import { useAuth } from "~/src/lib/auth";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
@@ -34,6 +35,7 @@ import {
   TextInput,
   FlatList,
   Platform,
+  StyleSheet,
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import {
@@ -274,7 +276,7 @@ const EnhancedMessage = (props: any) => {
 };
 
 export default function ChannelScreen() {
-    const { session } = useAuth();
+  const { session } = useAuth();
   const { id } = useLocalSearchParams();
   const { client } = useChat();
   const router = useRouter();
@@ -288,12 +290,12 @@ export default function ChannelScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Event[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [orbitMsg, setorbitMsg] = useState("yess");
+  const [orbitMsg, setorbitMsg] = useState<any>(null);
 
   console.log("chanell???", channel?.data);
   // if (channel?.data?.name === "Orbit App") {
   //   console.log("messages???", channel?.state.messages);
-  //   setorbitMsg(channel?.state.messages);
+  //   setorbitMsg(channel?.state?.messages);
   // }
 
   const handleInfoPress = useCallback(() => {
@@ -509,9 +511,9 @@ export default function ChannelScreen() {
       );
 
       if (channel?.data?.name === "Orbit App") {
-    console.log("messages???", channel?.state?.messages);
-    setorbitMsg(channel?.state?.messages[0]);
-  }
+        console.log("messages???", channel?.state?.messages);
+        setorbitMsg(channel?.state?.messages[0]);
+      }
 
       return () => {
         unsubscribePromises.forEach((promise) => {
@@ -599,122 +601,133 @@ export default function ChannelScreen() {
     }
   }, [channel, handleCommand]);
 
-    const hitNoificationApi= async (typee:string,chatId:string,name:string) => {
+  const hitNoificationApi = async (
+    typee: string,
+    chatId: string,
+    name: string
+  ) => {
     if (!session) return;
-    try{
- console.log("vcvc");
- const reuestData = {
+    try {
+      console.log("vcvc");
+      const reuestData = {
         senderId: session.user.id,
         type: typee,
         data: {
-              chat_id: chatId,
-              group_name: name,
-            },
+          chat_id: chatId,
+          group_name: name,
+        },
       };
-    ///send notification
-        const response = await fetch(
-          `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session.user.id}`,
-            },
-            body: JSON.stringify(reuestData),
-          }
-        );
-        console.log("requestData", reuestData);
-
-        if (!response.ok) {
-          console.log("error>",response);
-          throw new Error(await response.text());
+      ///send notification
+      const response = await fetch(
+        `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.user.id}`,
+          },
+          body: JSON.stringify(reuestData),
         }
+      );
+      console.log("requestData", reuestData);
 
-        const data_ = await response.json();
-        console.log("response>",data_);
-        
+      if (!response.ok) {
+        console.log("error>", response);
+        throw new Error(await response.text());
+      }
+
+      const data_ = await response.json();
+      console.log("response>", data_);
+    } catch (e) {
+      console.log("error_catch>", e);
     }
-    catch(e)
-    {
-console.log("error_catch>",e);
-    }
-  }
+  };
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
       <Stack.Screen
         options={{
           headerTitle: () => (
-            <View>
+            <TouchableOpacity
+              style={{ alignItems: "center" }}
+              onPress={() => {
+                // Optional: Navigate to contact info on title tap (iOS behavior)
+                if (channel?.data?.name !== "Orbit App") {
+                  handleInfoPress();
+                }
+              }}
+            >
               <Text
-                style={{ fontSize: 17, fontWeight: "600", textAlign: "center" }}
-                className="text-foreground"
+                style={{
+                  fontSize: 17,
+                  fontWeight: "600",
+                  color: theme.colors.text,
+                  textAlign: "center",
+                }}
               >
                 {channel?.data?.name || "Chat"}
               </Text>
-
-              {channel?.data?.name !== "Orbit App" ? (
+              {channel?.data?.name !== "Orbit App" && (
                 <Text
-                  style={{ fontSize: 13, textAlign: "center" }}
-                  className="text-muted-foreground"
+                  style={{
+                    fontSize: 13,
+                    color: theme.colors.text + "60",
+                    textAlign: "center",
+                    marginTop: 1,
+                  }}
                 >
                   {memberCount} {memberCount === 1 ? "member" : "members"}
                 </Text>
-              ) : (
-                <></>
               )}
-            </View>
+            </TouchableOpacity>
           ),
           headerLeft: () => (
-              <TouchableOpacity
-                style={{ marginLeft: 10 }}
-                onPress={()=>{
-                      router.back();
+            <TouchableOpacity
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                paddingLeft: 8,
+              }}
+              onPress={() => router.back()}
+            >
+              <ArrowLeft size={22} color={theme.colors.text} strokeWidth={2} />
+              <Text
+                style={{
+                  fontSize: 17,
+                  color: theme.colors.text,
+                  marginLeft: 6,
                 }}
               >
-                {/* You can use an icon here instead of text */}
-                {Platform.OS === "ios" ? (
-                  <ArrowLeft size={24} className="text-foreground" />
-                ) : (
-                  <Icon
-                    name="arrow-back"
-                    type="material"
-                    size={24}
-                    color="#239ED0"
-                  />
-                )}
-              </TouchableOpacity>
-            ),
+                Messages
+              </Text>
+            </TouchableOpacity>
+          ),
           headerRight: () =>
             channel?.data?.name !== "Orbit App" ? (
               <TouchableOpacity
                 onPress={handleInfoPress}
-                style={{ marginRight: 8 }}
+                style={{ paddingRight: 8 }}
               >
-                {Platform.OS == "ios" ? (
-                  <Info size={24} className="text-primary" />
-                ) : (
-                  <Icon
-                    name="information-outline"
-                    type="material-community"
-                    size={24}
-                    color="gray"
-                  />
-                )}
+                <Info size={22} color={theme.colors.text} strokeWidth={2} />
               </TouchableOpacity>
-            ) : (
-              <></>
-            ),
+            ) : null,
+          headerStyle: {
+            backgroundColor: theme.colors.card,
+          },
+          headerTintColor: theme.colors.text,
+          headerTitleAlign: "center",
+          headerBackVisible: false,
+          headerShadowVisible: false,
         }}
       />
       {loading ? (
-        <View className="items-center justify-center flex-1">
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color={theme.colors.text} />
           <Text className="mt-4 text-foreground">Loading chat...</Text>
         </View>
       ) : error ? (
-        <View className="items-center justify-center flex-1 px-4">
-          <Text className="mb-4 text-center text-red-500">{error}</Text>
+        <View className="flex-1 justify-center items-center px-4">
+          <Text className="mb-4 text-center text-destructive">{error}</Text>
           <Text className="text-primary" onPress={() => router.back()}>
             Go back
           </Text>
@@ -808,71 +821,74 @@ console.log("error_catch>",e);
                 return new Promise(() => {});
               }
             }
-            
-            console.log("LKL>>",channel?.data?.member_count);
-           const name = channel?.data?.name;
-           const chnlId=channel?.data?.id;
-             if(channel?.data?.member_count > 2){
+
+            console.log("LKL>>", channel?.data?.member_count);
+            const name = channel?.data?.name as string;
+            const chnlId = channel?.data?.id as string;
+            const memberCount = channel?.data?.member_count as number;
+            if (memberCount > 2) {
               //group
-              console.log("LKLchannelId>>",chnlId);
-               hitNoificationApi('new_group_message',chnlId,name);
-            }
-            else{
-               hitNoificationApi('new_message',chnlId,name);
+              console.log("LKLchannelId>>", chnlId);
+              hitNoificationApi("new_group_message", chnlId, name);
+            } else {
+              hitNoificationApi("new_message", chnlId, name);
             }
             return channel?.sendMessage(message);
-           
-          
           }}
         >
           {thread ? (
             <Thread />
           ) : (
             <>
-  {channel?.data?.name === 'Orbit App' ? (
-   <View 
+              {channel?.data?.name === "Orbit App" ? (
+                <View
+                  style={{
+                    flex: 1,
+                    justifyContent: "flex-end", // align children to bottom
+                    alignItems: "flex-start", // align to the left
+                    padding: 16,
+                    backgroundColor: theme.colors.card,
+                  }}
+                >
+                  <View className="w-[80%] p-4 border bg-muted/50 border-border rounded-tl-3xl rounded-tr-3xl rounded-bl-none rounded-br-3xl">
+                    <Text className="text-foreground">
+                      {" "}
+                      {orbitMsg?.text || "No orbit message"}
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <>
+                  <MessageList
+                    onThreadSelect={setThread}
+                    additionalFlatListProps={{
+                      initialNumToRender: 30,
+                      maxToRenderPerBatch: 10,
+                      windowSize: 10,
+                      removeClippedSubviews: false,
+                      inverted: Platform.OS === "ios" ? true : false,
 
-   style={{
-    flex: 1,
-    justifyContent: 'flex-end', // align children to bottom
-    alignItems: 'flex-start',   // align to the left
-    padding: 16,
-   }
-   }>
-   <View 
-  className="w-[80%] p-4 border bg-muted/50 border-border rounded-tl-3xl rounded-tr-3xl rounded-bl-none rounded-br-3xl">
- 
- <Text  
->  {orbitMsg?.text || 'No orbit message'}
-</Text>
-</View>
-</View>
-  ) : (
-    <>
-      <MessageList
-        onThreadSelect={setThread}
-        additionalFlatListProps={{
-          initialNumToRender: 30,
-          maxToRenderPerBatch: 10,
-          windowSize: 10,
-          removeClippedSubviews: false,
-          inverted: Platform.OS === 'ios' ? true : false,
-        }}
-        loadMore={() => {
-          console.log('[ChatChannel] Loading more messages...');
-          return Promise.resolve();
-        }}
-      />
-      <MessageInput
-        additionalTextInputProps={{
-          placeholder: 'Type /event to share an event...',
-          placeholderTextColor: theme.colors.text,
-        }}
-      />
-    </>
-  )}
-</>
-
+                      style: {
+                        backgroundColor: theme.colors.card,
+                      },
+                      contentContainerStyle: {
+                        backgroundColor: theme.colors.card,
+                      },
+                    }}
+                    loadMore={() => {
+                      console.log("[ChatChannel] Loading more messages...");
+                      return Promise.resolve();
+                    }}
+                  />
+                  <MessageInput
+                    audioRecordingEnabled={true}
+                    AudioRecordingLockIndicator={() => (
+                      <View className="w-10 h-10 bg-red-500" />
+                    )}
+                  />
+                </>
+              )}
+            </>
           )}
         </Channel>
       ) : null}

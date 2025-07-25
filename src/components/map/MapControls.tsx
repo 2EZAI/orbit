@@ -1,36 +1,19 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
 import {
   View,
-  TextInput,
   TouchableOpacity,
-  Animated,
   Pressable,
-  Dimensions,
-  LayoutAnimation,
   Platform,
-  UIManager,
+  Image,
 } from "react-native";
-import {
-  Search,
-  X,
-  Navigation2,
-  Plus,
-  Minus,
-  MapPin,
-} from "lucide-react-native";
+import { Search, Navigation2, Plus, Minus, Bell, X } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { Icon } from "react-native-elements";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNotificationsApi } from "~/hooks/useNotificationsApi";
-
-// Enable LayoutAnimation for Android
-if (Platform.OS === "android") {
-  if (UIManager.setLayoutAnimationEnabledExperimental) {
-    UIManager.setLayoutAnimationEnabledExperimental(true);
-  }
-}
+import { useUser } from "~/hooks/useUserData";
+import { SearchSheet } from "~/src/components/search/SearchSheet";
 
 type TimeFrame = "Today" | "Week" | "Weekend";
 
@@ -40,7 +23,11 @@ interface MapControlsProps {
   onZoomOut: () => void;
   onRecenter: () => void;
   isFollowingUser: boolean;
+  timeFrame: TimeFrame;
   onSelectedTimeFrame: (text: string) => void;
+  eventsList: any[];
+  locationsList?: any[];
+  onShowControler: (show: boolean) => void;
 }
 
 export function MapControls({
@@ -51,30 +38,23 @@ export function MapControls({
   isFollowingUser,
   timeFrame,
   onSelectedTimeFrame,
+  eventsList,
+  locationsList = [],
+  onShowControler,
 }: MapControlsProps) {
   const router = useRouter();
-  const { theme } = useTheme();
-  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const { theme, isDarkMode } = useTheme();
+  const { user } = useUser();
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [selectedTimeFrame, setSelectedTimeFrame] =
     useState<TimeFrame>(timeFrame);
-  const [searchQuery, setSearchQuery] = useState("");
   const { fetchAllNoifications, unReadCount } = useNotificationsApi();
   const timeFrames: TimeFrame[] = ["Today", "Week", "Weekend"];
 
   const toggleSearch = () => {
-    LayoutAnimation.configureNext(
-      LayoutAnimation.create(
-        200,
-        LayoutAnimation.Types.easeInEaseOut,
-        LayoutAnimation.Properties.opacity
-      )
-    );
-
-    setIsSearchExpanded(!isSearchExpanded);
-    if (!isSearchExpanded) {
-      setSearchQuery("");
-    }
+    setIsSearchVisible(!isSearchVisible);
   };
+
   useEffect(() => {
     hitNotificationCount();
   }, []);
@@ -89,154 +69,220 @@ export function MapControls({
 
   return (
     <>
-      {/* Top Controls */}
-      <View className="absolute left-0 right-0 z-50 top-10">
-        <View className="flex-row items-center pb-2 pt-10">
-          {/* Time Frame Tabs */}
-          <View className=" w-[86%] px-4 ">
-            <View className="flex-row p-1 border rounded-md bg-background/80 backdrop-blur-2xl border-border">
-              {timeFrames.map((timeFrame) => (
-                <Pressable
-                  key={timeFrame}
-                  onPress={() => {
-                    setSelectedTimeFrame(timeFrame);
-                    onSelectedTimeFrame(timeFrame);
-                  }}
-                  className={`flex-1 py-2 px-4 rounded-md ${
-                    selectedTimeFrame === timeFrame ? "bg-primary" : ""
-                  }`}
-                >
-                  <Text
-                    className={`text-center font-medium ${
-                      selectedTimeFrame === timeFrame
-                        ? "text-primary-foreground"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {timeFrame}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-
-          <TouchableOpacity
-            className=""
-            onPress={() => {
-              router.push({
-                pathname: "/(app)/(notification)",
-              });
+      {/* Pills Row - Avatar, Search, Notifications */}
+      <View
+        style={{
+          position: "absolute",
+          top: 80,
+          left: 0,
+          right: 0,
+          zIndex: 40,
+        }}
+      >
+        <View
+          style={{
+            marginHorizontal: 12,
+            marginBottom: 15,
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          {/* Left Pill - Search Only */}
+          <View
+            style={{
+              backgroundColor: theme.colors.card,
+              borderRadius: 20,
+              padding: 6,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 8,
+              elevation: 5,
             }}
           >
-            <Icon
-              name="bell"
-              type="material-community"
-              size={36}
-              color="#239ED0"
-              className="mt-4 mr-2"
-            />
+            <TouchableOpacity
+              onPress={toggleSearch}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 16,
+                backgroundColor: isDarkMode
+                  ? theme.colors.background
+                  : "#F5F5F5",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Search size={16} color={theme.colors.text} strokeWidth={3} />
+            </TouchableOpacity>
+          </View>
 
-            {unReadCount != null && unReadCount !== 0 && (
-              <View className="absolute top-1 right-0 bg-red-600 rounded-full w-8 h-8 items-center justify-center">
-                <Text className="text-white text-xs font-bold">
-                  {unReadCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-        {/* Search Bar */}
-        <View className="px-4">
+          {/* Right Pill - Avatar + Notification */}
           <View
-            className={`items-end ${isSearchExpanded ? "items-stretch" : ""}`}
+            style={{
+              backgroundColor: theme.colors.card,
+              borderRadius: 20,
+              paddingHorizontal: 8,
+              paddingVertical: 6,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              shadowColor: isDarkMode ? theme.colors.border : "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: isDarkMode ? 0.3 : 0.1,
+              shadowRadius: 8,
+              elevation: 5,
+            }}
           >
-            {isSearchExpanded ? (
-              <View className="flex-row items-center border rounded-full bg-background/80 backdrop-blur-lg border-border h-11">
-                <View className="flex-row items-center flex-1 px-4">
-                  {Platform.OS === "ios" ? (
-                    <Search size={20} className="text-muted-foreground" />
-                  ) : (
-                    <Icon
-                      name="magnify"
-                      type="material-community"
-                      size={20}
-                      color="#239ED0"
-                    />
-                  )}
-                  <TextInput
-                    placeholder="Search For Events..."
-                    placeholderTextColor={theme.colors.text}
-                    className="flex-1 h-full ml-2 text-base text-foreground"
-                    value={searchQuery}
-                    onChangeText={(text) => {
-                      setSearchQuery(text);
-                      onSearch(text);
-                    }}
-                    autoFocus
-                  />
-                </View>
-                <TouchableOpacity
-                  onPress={toggleSearch}
-                  className="justify-center h-full px-4"
+            {/* Notification */}
+            <TouchableOpacity
+              onPress={() => router.push("/(app)/(notification)")}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 16,
+                backgroundColor: theme.colors.primary,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Bell size={16} color="white" />
+              {!!(unReadCount && unReadCount > 0) && (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: -4,
+                    right: -4,
+                    backgroundColor: "#ff3b30",
+                    borderRadius: 10,
+                    minWidth: 20,
+                    height: 20,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    borderWidth: 2,
+                    borderColor: "white",
+                  }}
                 >
-                  <X size={20} className="text-foreground" />
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity
-                // onPress={toggleSearch}
-                onPress={() => {
-                  setSearchQuery();
-                  onSearch();
+                  <Text
+                    style={{ color: "white", fontSize: 12, fontWeight: "bold" }}
+                  >
+                    {unReadCount > 99 ? "99+" : String(unReadCount)}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            {/* User Avatar */}
+            <TouchableOpacity onPress={() => router.push("/(app)/(profile)")}>
+              <Image
+                source={
+                  user?.avatar_url
+                    ? { uri: user.avatar_url }
+                    : require("~/assets/favicon.png")
+                }
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 16,
+                  borderWidth: 2,
+                  borderColor: theme.colors.primary,
                 }}
-                className="items-center justify-center border rounded-full w-11 h-11 bg-background/80 backdrop-blur-lg border-border"
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      {/* Time Frame Tabs */}
+      <View
+        style={{
+          position: "absolute",
+          top: 130,
+          left: 0,
+          right: 0,
+          zIndex: 35,
+        }}
+      >
+        <View
+          style={{
+            backgroundColor: theme.colors.card,
+            marginHorizontal: 12,
+            marginTop: 10,
+            borderRadius: 14,
+            padding: 3,
+            shadowColor: isDarkMode ? theme.colors.border : "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: isDarkMode ? 0.3 : 0.1,
+            shadowRadius: 8,
+            elevation: 5,
+          }}
+        >
+          <View className="flex-row">
+            {timeFrames.map((frame) => (
+              <Pressable
+                key={frame}
+                onPress={() => {
+                  setSelectedTimeFrame(frame);
+                  onSelectedTimeFrame(frame);
+                }}
+                style={{
+                  flex: 1,
+                  backgroundColor:
+                    selectedTimeFrame === frame
+                      ? theme.colors.primary
+                      : "transparent",
+                  borderRadius: 10,
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  marginHorizontal: 1,
+                }}
               >
-                {Platform.OS === "ios" ? (
-                  <Search size={20} className="text-foreground" />
-                ) : (
-                  <Icon
-                    name="magnify"
-                    type="material-community"
-                    size={20}
-                    color="#239ED0"
-                  />
-                )}
-              </TouchableOpacity>
-            )}
+                <Text
+                  style={{
+                    textAlign: "center",
+                    fontWeight: "600",
+                    fontSize: 14,
+                    color:
+                      selectedTimeFrame === frame ? "white" : theme.colors.text,
+                  }}
+                >
+                  {frame}
+                </Text>
+              </Pressable>
+            ))}
           </View>
         </View>
       </View>
 
       {/* Bottom Controls */}
-      <View className="absolute left-0 right-0 bottom-16 mb-[125px]">
+      <View className="absolute left-0 right-0 bottom-20 mb-[125px] shadow-xs">
         {/* Zoom Controls */}
-        <View className="absolute border rounded-lg left-4 bg-background/80 backdrop-blur-lg border-border">
+        <View
+          style={{
+            position: "absolute",
+            left: 16,
+            backgroundColor: theme.colors.card,
+            borderRadius: 12,
+            shadowColor: isDarkMode ? theme.colors.border : "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: isDarkMode ? 0.3 : 0.1,
+            shadowRadius: 4,
+            elevation: 3,
+          }}
+        >
           <TouchableOpacity
             onPress={onZoomIn}
-            className="p-2 border-b border-border"
+            style={{
+              padding: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: theme.colors.border,
+            }}
           >
-            {Platform.OS === "ios" ? (
-              <Plus size={20} />
-            ) : (
-              <Icon
-                name="plus"
-                type="material-community"
-                size={20}
-                color="#239ED0"
-              />
-            )}
+            <Plus size={20} color={theme.colors.text} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={onZoomOut} className="p-2">
-            {Platform.OS === "ios" ? (
-              <Minus size={20} />
-            ) : (
-              <Icon
-                name="minus"
-                type="material-community"
-                size={20}
-                color="#239ED0"
-              />
-            )}
+          <TouchableOpacity onPress={onZoomOut} style={{ padding: 12 }}>
+            <Minus size={20} color={theme.colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -244,21 +290,35 @@ export function MapControls({
         {!isFollowingUser && (
           <TouchableOpacity
             onPress={onRecenter}
-            className="absolute items-center justify-center border rounded-full right-4 w-11 h-11 bg-background/80 backdrop-blur-lg border-border"
+            style={{
+              position: "absolute",
+              right: 16,
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: theme.colors.card,
+              justifyContent: "center",
+              alignItems: "center",
+              shadowColor: isDarkMode ? theme.colors.border : "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: isDarkMode ? 0.3 : 0.1,
+              shadowRadius: 4,
+              elevation: 3,
+            }}
           >
-            {Platform.OS === "ios" ? (
-              <Navigation2 size={20} />
-            ) : (
-              <Icon
-                name="navigation-outline"
-                type="material-community"
-                size={20}
-                color="#239ED0"
-              />
-            )}
+            <Navigation2 size={20} color={theme.colors.text} />
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Search Sheet */}
+      <SearchSheet
+        isOpen={isSearchVisible}
+        onClose={() => setIsSearchVisible(false)}
+        eventsList={eventsList}
+        locationsList={locationsList}
+        onShowControler={() => onShowControler(true)}
+      />
     </>
   );
 }
