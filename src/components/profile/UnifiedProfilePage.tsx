@@ -2,7 +2,6 @@ import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   TouchableOpacity,
-  Image,
   ScrollView,
   ActivityIndicator,
   RefreshControl,
@@ -10,6 +9,9 @@ import {
   Share,
   Alert,
   Animated,
+  StatusBar,
+  Platform,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
@@ -22,15 +24,17 @@ import {
   UserPlus,
   UserMinus,
   Share2,
+  MessageCircle,
+  Edit3,
 } from "lucide-react-native";
 import { router } from "expo-router";
 import { Button } from "~/src/components/ui/button";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
-import { ScreenHeader } from "~/src/components/ui/screen-header";
 import { RichText } from "~/src/components/ui/rich-text";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { supabase } from "~/src/lib/supabase";
 import Toast from "react-native-toast-message";
+import { useChat } from "~/src/lib/chat";
 
 // Import tab components
 import UnifiedPostsTab from "./UnifiedPostsTab";
@@ -38,6 +42,10 @@ import UnifiedEventsTab from "./UnifiedEventsTab";
 import UnifiedInfoTab from "./UnifiedInfoTab";
 
 type Tab = "Posts" | "Events" | "Info";
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const HEADER_MAX_HEIGHT = 140;
+const HEADER_MIN_HEIGHT = 80;
 
 interface UserProfile {
   id: string;
@@ -53,7 +61,7 @@ interface UserProfile {
 }
 
 interface UnifiedProfilePageProps {
-  userId?: string; // If not provided, shows current user
+  userId?: string;
   showBackButton?: boolean;
   onBack?: () => void;
 }
@@ -67,6 +75,7 @@ export function UnifiedProfilePage({
   const { user: currentUser } = useUser();
   const { theme, isDarkMode } = useTheme();
   const { followUser, unfollowUser, getFollowCounts } = useFollow();
+  const { client } = useChat();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("Posts");
@@ -75,13 +84,6 @@ export function UnifiedProfilePage({
   const [isFollowBack, setIsFollowBack] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Animation values for collapsible header
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const headerHeight = 250; // Height of full profile header
-  const minHeaderHeight = 60; // Height of minimized header
-  const scrollThreshold = 200; // More gradual minimization threshold
-
-  // Determine if this is the current user's profile
   const isCurrentUser = !userId || userId === session?.user?.id;
   const targetUserId = userId || session?.user?.id;
 
@@ -96,24 +98,19 @@ export function UnifiedProfilePage({
 
     setIsLoading(true);
     try {
+      // Get user data
+      let userData;
       if (isCurrentUser && currentUser) {
-        // Use current user data
-        const counts = await getFollowCounts(currentUser.id);
-        setProfile({
+        userData = {
           id: currentUser.id,
           username: currentUser.username,
           first_name: currentUser.first_name,
           last_name: currentUser.last_name,
           avatar_url: currentUser.avatar_url,
           bio: currentUser.bio,
-          followers_count: counts.followerCount,
-          following_count: counts.followingCount,
-          posts_count: 0, // Will be loaded by PostsTab
-          events_count: 0, // Will be loaded by EventsTab
-        });
+        };
       } else {
-        // Fetch other user's profile
-        const { data: userData, error: userError } = await supabase
+        const { data: fetchedUserData, error: userError } = await supabase
           .from("users")
           .select(
             `
@@ -129,44 +126,49 @@ export function UnifiedProfilePage({
           .single();
 
         if (userError) throw userError;
+        userData = fetchedUserData;
+      }
 
-        // Get counts
-        const [
-          { count: followersCount },
-          { count: followingCount },
-          { count: postsCount },
-          { count: eventsCount },
-        ] = await Promise.all([
-          supabase
-            .from("follows")
-            .select("*", { count: "exact" })
-            .eq("following_id", userData.id),
-          supabase
-            .from("follows")
-            .select("*", { count: "exact" })
-            .eq("follower_id", userData.id),
-          supabase
-            .from("posts")
-            .select("*", { count: "exact" })
-            .eq("user_id", userData.id),
-          supabase
-            .from("event_attendees")
-            .select("*", { count: "exact" })
-            .eq("user_id", userData.id),
-        ]);
+      // Get all counts for any user (current or other)
+      const [
+        { count: followersCount },
+        { count: followingCount },
+        { count: postsCount },
+        { count: eventsCount },
+      ] = await Promise.all([
+        supabase
+          .from("follows")
+          .select("*", { count: "exact" })
+          .eq("following_id", userData.id),
+        supabase
+          .from("follows")
+          .select("*", { count: "exact" })
+          .eq("follower_id", userData.id),
+        supabase
+          .from("posts")
+          .select("*", { count: "exact" })
+          .eq("user_id", userData.id),
+        supabase
+          .from("events")
+          .select("*", { count: "exact" })
+          .eq("created_by", userData.id),
+      ]);
 
-        setProfile({
-          ...userData,
-          followers_count: followersCount || 0,
-          following_count: followingCount || 0,
-          posts_count: postsCount || 0,
-          events_count: eventsCount || 0,
-        });
+      setProfile({
+        ...userData,
+        followers_count: followersCount || 0,
+        following_count: followingCount || 0,
+        posts_count: postsCount || 0,
+        events_count: eventsCount || 0,
+      });
 
-        // Check follow status
-        if (session?.user?.id && userData.id !== session.user.id) {
-          await checkFollowStatus(userData.id);
-        }
+      // Check follow status only for non-current users
+      if (
+        !isCurrentUser &&
+        session?.user?.id &&
+        userData.id !== session.user.id
+      ) {
+        await checkFollowStatus(userData.id);
       }
     } catch (error) {
       console.error("Error loading profile:", error);
@@ -192,7 +194,6 @@ export function UnifiedProfilePage({
 
       setIsFollowing(!!followData);
 
-      // Check if they follow back
       const { data: followBackData } = await supabase
         .from("follows")
         .select("id")
@@ -202,7 +203,6 @@ export function UnifiedProfilePage({
 
       setIsFollowBack(!!followBackData);
     } catch (error) {
-      // No follow relationship found
       setIsFollowing(false);
       setIsFollowBack(false);
     }
@@ -281,41 +281,113 @@ export function UnifiedProfilePage({
     return profile.username || "Anonymous";
   };
 
-  const getActionButtons = () => {
-    if (isCurrentUser) {
-      return [
-        {
-          icon: <Settings size={18} color="white" strokeWidth={2.5} />,
-          onPress: () =>
-            router.push(`/(app)/(profile)/${session?.user?.id}` as any),
-          backgroundColor: theme.colors.primary,
-        },
-      ];
-    } else {
-      return showBackButton
-        ? [
-            {
-              icon: (
-                <ArrowLeft
-                  size={18}
-                  color={theme.colors.text}
-                  strokeWidth={2.5}
-                />
-              ),
-              onPress: onBack || (() => router.back()),
-            },
-          ]
-        : [];
+  const handleDirectMessage = async () => {
+    if (!client || !session?.user?.id || !profile || isCurrentUser) {
+      console.log("Cannot start DM: Missing requirements", {
+        hasClient: !!client,
+        hasCurrentUserId: !!session?.user?.id,
+        hasProfile: !!profile,
+        isCurrentUser,
+      });
+      return;
+    }
+
+    try {
+      const currentUserId = session.user.id;
+      const otherUserId = profile.id;
+
+      console.log("Starting DM check between users:", {
+        currentUserId,
+        otherUserId,
+      });
+
+      // Check if a DM channel already exists between these two users
+      const existingChannels = await client.queryChannels({
+        type: "messaging",
+        members: { $eq: [currentUserId, otherUserId] }, // Exactly these two members
+      });
+
+      console.log("Found existing channels:", existingChannels.length);
+
+      if (existingChannels.length > 0) {
+        // DM already exists, navigate to it
+        const existingChannel = existingChannels[0];
+        console.log("Opening existing DM:", existingChannel.id);
+
+        router.push({
+          pathname: "/(app)/(chat)/channel/[id]",
+          params: {
+            id: existingChannel.id,
+            name: getDisplayName(),
+          },
+        });
+      } else {
+        // No DM exists, create a new one
+        console.log("Creating new DM channel");
+
+        // Generate a unique channel ID
+        const timestamp = Date.now();
+        const randomStr = Math.random().toString(36).substring(7);
+        const uniqueChannelId = `dm-${timestamp}-${randomStr}`;
+
+        // Create the DM channel
+        const channel = client.channel("messaging", uniqueChannelId, {
+          members: [currentUserId, otherUserId],
+          name: getDisplayName(), // Use the other user's display name
+          created_by: currentUserId,
+        });
+
+        // Watch the channel (this creates it)
+        await channel.watch();
+        console.log("New DM channel created:", channel.id);
+
+        // Create channel record in Supabase
+        const { error: channelError } = await supabase
+          .from("chat_channels")
+          .insert({
+            stream_channel_id: channel.id,
+            channel_type: "messaging",
+            created_by: currentUserId,
+            name: getDisplayName(),
+          });
+
+        if (channelError) {
+          console.error("Error saving channel to Supabase:", channelError);
+          // Continue anyway since the Stream channel was created successfully
+        }
+
+        // Navigate to the new channel
+        router.push({
+          pathname: "/(app)/(chat)/channel/[id]",
+          params: {
+            id: channel.id,
+            name: getDisplayName(),
+          },
+        });
+      }
+
+      Toast.show({
+        type: "success",
+        text1: "Opening conversation...",
+      });
+    } catch (error) {
+      console.error("Error handling direct message:", error);
+      Toast.show({
+        type: "error",
+        text1: "Failed to open conversation",
+        text2: "Please try again later",
+      });
     }
   };
 
   if (isLoading || !profile) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.card }}>
+        <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
         <View
           style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
         >
-          <ActivityIndicator size="large" color={theme.colors.text} />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text style={{ marginTop: 16, color: theme.colors.text }}>
             Loading profile...
           </Text>
@@ -324,71 +396,49 @@ export function UnifiedProfilePage({
     );
   }
 
-  // Create animated interpolations for header with gradual minimization
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [0, scrollThreshold * 0.7, scrollThreshold],
-    outputRange: [1, 0.3, 0],
-    extrapolate: "clamp",
-  });
-
-  // Keep action buttons visible
-  const buttonsOpacity = scrollY.interpolate({
-    inputRange: [0, scrollThreshold * 0.8, scrollThreshold],
-    outputRange: [1, 1, 1], // Always visible
-    extrapolate: "clamp",
-  });
-
-  const headerTranslateY = scrollY.interpolate({
-    inputRange: [0, scrollThreshold],
-    outputRange: [0, -80],
-    extrapolate: "clamp",
-  });
-
-  const headerScale = scrollY.interpolate({
-    inputRange: [0, scrollThreshold * 0.4],
-    outputRange: [1, 0.95],
-    extrapolate: "clamp",
-  });
-
-  const minimizedHeaderOpacity = scrollY.interpolate({
-    inputRange: [scrollThreshold * 0.7, scrollThreshold],
-    outputRange: [0, 1],
-    extrapolate: "clamp",
-  });
-
-  // Tabs no longer need to translate since header properly collapses
+  // Removed scroll animations since we're using fixed layout
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.card }}>
-      {/* Minimized Header - Shows when scrolled */}
-      <Animated.View
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
+
+      {/* Fixed Header */}
+      <View
         style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: minHeaderHeight + 44, // Include status bar
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingHorizontal: 16,
+          paddingVertical: 12,
           backgroundColor: theme.colors.card,
           borderBottomWidth: 1,
           borderBottomColor: theme.colors.border,
-          zIndex: 1000,
-          opacity: minimizedHeaderOpacity,
-          flexDirection: "row",
-          alignItems: "center",
-          paddingHorizontal: 16,
-          paddingTop: 44, // Status bar height
+          minHeight: 60,
         }}
       >
-        {showBackButton && (
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
           <TouchableOpacity
             onPress={onBack || (() => router.back())}
-            style={{ marginRight: 12 }}
+            style={{
+              marginRight: 12,
+              padding: 8,
+              borderRadius: 20,
+              backgroundColor: theme.colors.background,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+            }}
           >
-            <ArrowLeft size={24} color={theme.colors.text} />
+            <ArrowLeft size={20} color={theme.colors.text} />
           </TouchableOpacity>
-        )}
-        {profile && (
-          <>
+
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              flex: 1,
+              maxWidth: "70%", // Prevent overflow
+            }}
+          >
             <UserAvatar
               size={32}
               user={{
@@ -397,106 +447,91 @@ export function UnifiedProfilePage({
                 image: profile.avatar_url,
               }}
             />
-            <View style={{ marginLeft: 12, flex: 1 }}>
+            <View style={{ marginLeft: 12, flex: 1, minWidth: 0 }}>
               <Text
                 style={{
                   fontSize: 16,
-                  fontWeight: "bold",
+                  fontWeight: "700",
                   color: theme.colors.text,
                 }}
                 numberOfLines={1}
+                ellipsizeMode="tail"
               >
                 {getDisplayName()}
               </Text>
               <Text
                 style={{
-                  fontSize: 12,
+                  fontSize: 13,
+                  fontWeight: "500",
                   color: theme.colors.text + "80",
                 }}
                 numberOfLines={1}
+                ellipsizeMode="tail"
               >
-                @{profile.username || "user"}
+                @{profile.username || "anonymous"}
               </Text>
             </View>
+          </View>
+        </View>
 
-            {/* Actions in minimized header */}
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              {getActionButtons().map((action, index) => (
-                <TouchableOpacity
-                  key={index}
-                  onPress={action.onPress}
-                  style={{
-                    padding: 8,
-                    borderRadius: 20,
-                    backgroundColor: theme.colors.card,
-                  }}
-                >
-                  {action.icon}
-                </TouchableOpacity>
-              ))}
-            </View>
-          </>
-        )}
-      </Animated.View>
-
-      {/* Profile Header - Collapsible */}
-      <Animated.View
-        style={{
-          height: scrollY.interpolate({
-            inputRange: [0, scrollThreshold],
-            outputRange: [headerHeight, 120], // Increased space for buttons and padding
-            extrapolate: "clamp",
-          }),
-          overflow: "hidden",
-        }}
-      >
-        {/* Animated Profile Header */}
-        <Animated.View
-          style={{
-            paddingHorizontal: 20,
-            paddingBottom: 20,
-            backgroundColor: theme.colors.card,
-            opacity: headerOpacity,
-            transform: [
-              { translateY: headerTranslateY },
-              { scale: headerScale },
-            ],
-          }}
-        >
-          {/* Back Button */}
-          <View style={{ position: "absolute", top: 20, left: 0, zIndex: 10 }}>
+        <View style={{ flexDirection: "row", gap: 8, minWidth: 40 }}>
+          {isCurrentUser && (
             <TouchableOpacity
-              onPress={onBack || (() => router.back())}
+              onPress={() => router.push("/(app)/(profile)/settings")}
               style={{
                 padding: 8,
                 borderRadius: 20,
-                backgroundColor: theme.colors.card + "80",
+                backgroundColor: theme.colors.background,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
               }}
             >
-              <ArrowLeft
-                size={24}
-                color={theme.colors.text}
-                strokeWidth={2.5}
-              />
+              <Settings size={20} color={theme.colors.text} />
             </TouchableOpacity>
-          </View>
+          )}
+        </View>
+      </View>
 
-          {/* Avatar and Name */}
+      {/* Scrollable Content */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
+          />
+        }
+      >
+        {/* Profile Section */}
+        <View
+          style={{
+            padding: 20,
+            backgroundColor: theme.colors.card,
+          }}
+        >
+          {/* Profile Picture */}
           <View style={{ alignItems: "center", marginBottom: 16 }}>
             <UserAvatar
-              size={80}
+              size={100}
               user={{
                 id: profile.id,
                 name: getDisplayName(),
                 image: profile.avatar_url,
               }}
             />
+          </View>
+
+          {/* Name and Username */}
+          <View style={{ alignItems: "center", marginBottom: 16 }}>
             <Text
               style={{
                 fontSize: 24,
-                fontWeight: "bold",
+                fontWeight: "800",
                 color: theme.colors.text,
-                marginTop: 12,
+                marginBottom: 4,
+                textAlign: "center",
               }}
             >
               {getDisplayName()}
@@ -504,17 +539,50 @@ export function UnifiedProfilePage({
             <Text
               style={{
                 fontSize: 16,
+                fontWeight: "500",
                 color: theme.colors.text + "80",
-                marginTop: 4,
+                marginBottom: 8,
               }}
             >
               @{profile.username || "anonymous"}
             </Text>
+
+            {/* Follows you badge */}
+            {isFollowBack && !isCurrentUser && (
+              <View
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 4,
+                  backgroundColor: theme.colors.primary + "20",
+                  borderRadius: 12,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "600",
+                    color: theme.colors.primary,
+                  }}
+                >
+                  Follows you
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Bio */}
           {profile.bio && (
-            <View style={{ marginBottom: 16, alignItems: "center" }}>
+            <View
+              style={{
+                marginBottom: 20,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                backgroundColor: theme.colors.card,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+              }}
+            >
               <RichText
                 style={{
                   fontSize: 16,
@@ -528,298 +596,259 @@ export function UnifiedProfilePage({
             </View>
           )}
 
-          {/* Stats */}
+          {/* Stats Row */}
           <View
             style={{
               flexDirection: "row",
               justifyContent: "space-around",
               marginBottom: 20,
+              paddingVertical: 16,
+              backgroundColor: theme.colors.card,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
             }}
           >
-            <View style={{ alignItems: "center" }}>
+            <TouchableOpacity style={{ alignItems: "center" }}>
               <Text
                 style={{
                   fontSize: 20,
-                  fontWeight: "bold",
+                  fontWeight: "800",
                   color: theme.colors.text,
+                  marginBottom: 4,
                 }}
               >
-                {profile.posts_count}
+                {profile.posts_count.toLocaleString()}
               </Text>
               <Text
                 style={{
                   fontSize: 14,
+                  fontWeight: "600",
                   color: theme.colors.text + "80",
                 }}
               >
                 Posts
               </Text>
-            </View>
-            <View style={{ alignItems: "center" }}>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={{ alignItems: "center" }}>
               <Text
                 style={{
                   fontSize: 20,
-                  fontWeight: "bold",
+                  fontWeight: "800",
                   color: theme.colors.text,
+                  marginBottom: 4,
                 }}
               >
-                {profile.followers_count}
+                {profile.followers_count.toLocaleString()}
               </Text>
               <Text
                 style={{
                   fontSize: 14,
+                  fontWeight: "600",
                   color: theme.colors.text + "80",
                 }}
               >
                 Followers
               </Text>
-            </View>
-            <View style={{ alignItems: "center" }}>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={{ alignItems: "center" }}>
               <Text
                 style={{
                   fontSize: 20,
-                  fontWeight: "bold",
+                  fontWeight: "800",
                   color: theme.colors.text,
+                  marginBottom: 4,
                 }}
               >
-                {profile.following_count}
+                {profile.following_count.toLocaleString()}
               </Text>
               <Text
                 style={{
                   fontSize: 14,
+                  fontWeight: "600",
                   color: theme.colors.text + "80",
                 }}
               >
                 Following
               </Text>
-            </View>
-            <View style={{ alignItems: "center" }}>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={{ alignItems: "center" }}>
               <Text
                 style={{
                   fontSize: 20,
-                  fontWeight: "bold",
+                  fontWeight: "800",
                   color: theme.colors.text,
+                  marginBottom: 4,
                 }}
               >
-                {profile.events_count}
+                {profile.events_count.toLocaleString()}
               </Text>
               <Text
                 style={{
                   fontSize: 14,
+                  fontWeight: "600",
                   color: theme.colors.text + "80",
                 }}
               >
                 Events
               </Text>
-            </View>
+            </TouchableOpacity>
           </View>
 
-          {/* Action Buttons - Always Visible */}
-          <Animated.View
-            style={{
-              flexDirection: "row",
-              gap: 12,
-              opacity: buttonsOpacity,
-            }}
-          >
-            {!isCurrentUser ? (
-              <>
-                <Button
-                  onPress={handleFollowToggle}
-                  style={{
-                    flex: 1,
-                    backgroundColor: isFollowing
-                      ? theme.colors.border
-                      : theme.colors.primary,
-                  }}
-                >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    {isFollowing ? (
-                      <UserMinus size={18} color={theme.colors.text} />
-                    ) : (
-                      <UserPlus size={18} color="white" />
-                    )}
-                    <Text
-                      style={{
-                        color: isFollowing ? theme.colors.text : "white",
-                        fontWeight: "600",
-                      }}
-                    >
-                      {isFollowing ? "Unfollow" : "Follow"}
-                      {isFollowBack && isFollowing ? " Back" : ""}
-                    </Text>
-                  </View>
-                </Button>
-                <Button
-                  onPress={handleShareProfile}
-                  style={{
-                    backgroundColor: theme.colors.card,
-                    borderWidth: 1,
-                    borderColor: theme.colors.border,
-                    paddingHorizontal: 16,
-                  }}
-                >
-                  <Share2 size={18} color={theme.colors.text} />
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  onPress={() =>
-                    router.push(`/(app)/(profile)/${session?.user?.id}` as any)
-                  }
-                  style={{
-                    backgroundColor: theme.colors.primary,
-                    paddingHorizontal: 16,
-                  }}
-                >
-                  <Settings size={18} color="white" strokeWidth={2.5} />
-                </Button>
-                <Button
-                  onPress={handleShareProfile}
-                  style={{
-                    flex: 1,
-                    backgroundColor: theme.colors.card,
-                    borderWidth: 1,
-                    borderColor: theme.colors.border,
-                  }}
-                >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <Share2 size={18} color={theme.colors.text} />
-                    <Text
-                      style={{
-                        color: theme.colors.text,
-                        fontWeight: "600",
-                      }}
-                    >
-                      Share Profile
-                    </Text>
-                  </View>
-                </Button>
-              </>
-            )}
-          </Animated.View>
-        </Animated.View>
-      </Animated.View>
-
-      {/* Tabs and Content Container */}
-      <Animated.View
-        style={{
-          flex: 1,
-          paddingTop: scrollY.interpolate({
-            inputRange: [scrollThreshold * 0.7, scrollThreshold],
-            outputRange: [0, minHeaderHeight - 55], // Account for larger collapsed header height (60 - 55 = 5px)
-            extrapolate: "clamp",
-          }),
-        }}
-      >
-        {/* Tabs Navigation */}
-        <View
-          style={{
-            flexDirection: "row",
-            backgroundColor: theme.colors.card,
-            borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border,
-          }}
-        >
-          {(["Posts", "Events", "Info"] as Tab[]).map((tab) => (
-            <Pressable
-              key={tab}
-              onPress={() => setActiveTab(tab)}
-              style={{
-                flex: 1,
-                paddingVertical: 16,
-                borderBottomWidth: activeTab === tab ? 2 : 0,
-                borderBottomColor: theme.colors.primary,
-              }}
-            >
-              <Text
+          {/* Action Buttons - Only for non-current users */}
+          {!isCurrentUser && (
+            <View style={{ flexDirection: "row", gap: 12, marginBottom: 20 }}>
+              <TouchableOpacity
+                onPress={handleFollowToggle}
                 style={{
-                  textAlign: "center",
-                  fontSize: 16,
-                  fontWeight: activeTab === tab ? "600" : "400",
-                  color:
-                    activeTab === tab
-                      ? theme.colors.primary
-                      : theme.colors.text + "80",
+                  flex: 1,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingVertical: 14,
+                  borderRadius: 24,
+                  backgroundColor: isFollowing
+                    ? theme.colors.card
+                    : theme.colors.primary,
+                  borderWidth: isFollowing ? 1 : 0,
+                  borderColor: theme.colors.border,
                 }}
               >
-                {tab}
-              </Text>
-            </Pressable>
-          ))}
+                {isFollowing ? (
+                  <UserMinus
+                    size={18}
+                    color={theme.colors.text}
+                    strokeWidth={2.5}
+                  />
+                ) : (
+                  <UserPlus size={18} color="white" strokeWidth={2.5} />
+                )}
+                <Text
+                  style={{
+                    marginLeft: 8,
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: isFollowing ? theme.colors.text : "white",
+                  }}
+                >
+                  {isFollowing ? "Following" : "Follow"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleDirectMessage}
+                style={{
+                  paddingHorizontal: 20,
+                  paddingVertical: 14,
+                  borderRadius: 24,
+                  backgroundColor: theme.colors.card,
+                  borderWidth: 1,
+                  borderColor: theme.colors.border,
+                }}
+              >
+                <MessageCircle
+                  size={18}
+                  color={theme.colors.text}
+                  strokeWidth={2.5}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleShareProfile}
+                style={{
+                  paddingHorizontal: 20,
+                  paddingVertical: 14,
+                  borderRadius: 24,
+                  backgroundColor: theme.colors.card,
+                  borderWidth: 1,
+                  borderColor: theme.colors.border,
+                }}
+              >
+                <Share2 size={18} color={theme.colors.text} strokeWidth={2.5} />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
-        {/* Tab Content - Each tab handles its own scrolling */}
-        <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
+        {/* Tabs */}
+        <View
+          style={{
+            backgroundColor: theme.colors.card,
+            borderTopWidth: 1,
+            borderTopColor: theme.colors.border,
+            paddingTop: 0,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              backgroundColor: theme.colors.background,
+              borderRadius: 16,
+              margin: 16,
+              padding: 4,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+            }}
+          >
+            {(["Posts", "Events", "Info"] as Tab[]).map((tab) => (
+              <Pressable
+                key={tab}
+                onPress={() => setActiveTab(tab)}
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  alignItems: "center",
+                  borderRadius: 12,
+                  backgroundColor:
+                    activeTab === tab ? theme.colors.primary : "transparent",
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color:
+                      activeTab === tab ? "white" : theme.colors.text + "80",
+                  }}
+                >
+                  {tab}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        {/* Tab Content */}
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: theme.colors.card,
+            minHeight: 400,
+          }}
+        >
           {activeTab === "Posts" && (
             <UnifiedPostsTab
               userId={targetUserId || ""}
               isCurrentUser={isCurrentUser}
-              onScroll={Animated.event(
-                [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-                { useNativeDriver: false }
-              )}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={onRefresh}
-                  colors={[theme.colors.primary]}
-                  tintColor={theme.colors.primary}
-                />
-              }
             />
           )}
           {activeTab === "Events" && (
             <UnifiedEventsTab
               userId={targetUserId || ""}
               isCurrentUser={isCurrentUser}
-              onScroll={Animated.event(
-                [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-                { useNativeDriver: false }
-              )}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={onRefresh}
-                  colors={[theme.colors.primary]}
-                  tintColor={theme.colors.primary}
-                />
-              }
             />
           )}
           {activeTab === "Info" && (
             <UnifiedInfoTab
               userId={targetUserId || ""}
               isCurrentUser={isCurrentUser}
-              onScroll={Animated.event(
-                [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-                { useNativeDriver: false }
-              )}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={onRefresh}
-                  colors={[theme.colors.primary]}
-                  tintColor={theme.colors.primary}
-                />
-              }
             />
           )}
         </View>
-      </Animated.View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

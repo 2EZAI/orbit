@@ -303,6 +303,205 @@ export default function UnifiedInfoTab({
     );
   }
 
+  // If no onScroll prop provided, render as regular view to avoid ScrollView nesting
+  if (!onScroll) {
+    return (
+      <View style={{ backgroundColor: theme.colors.card, paddingBottom: 20 }}>
+        <View style={{ padding: 16 }}>
+          {/* Bio */}
+          {profileInfo?.bio && (
+            <View
+              style={{
+                padding: 16,
+                backgroundColor: theme.colors.card,
+                borderRadius: 12,
+                marginBottom: 16,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginBottom: 12,
+                }}
+              >
+                <Info size={20} color={theme.colors.primary} />
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "600",
+                    color: theme.colors.text,
+                    marginLeft: 8,
+                  }}
+                >
+                  About
+                </Text>
+              </View>
+              <Text
+                style={{
+                  fontSize: 16,
+                  lineHeight: 24,
+                  color: theme.colors.text,
+                }}
+              >
+                {profileInfo.bio}
+              </Text>
+            </View>
+          )}
+
+          {/* Basic Info */}
+          <InfoCard
+            icon={<MapPin size={20} color={theme.colors.primary} />}
+            label="Location"
+            value={profileInfo?.location}
+          />
+
+          <InfoCard
+            icon={<MapPin size={20} color={theme.colors.primary} />}
+            label="Hometown"
+            value={formatLocation(profileInfo?.hometown)}
+          />
+
+          <InfoCard
+            icon={<Briefcase size={20} color={theme.colors.primary} />}
+            label="Occupation"
+            value={profileInfo?.occupation}
+          />
+
+          <InfoCard
+            icon={<GraduationCap size={20} color={theme.colors.primary} />}
+            label="Education"
+            value={profileInfo?.education}
+          />
+
+          <InfoCard
+            icon={<Heart size={20} color={theme.colors.primary} />}
+            label="Gender"
+            value={profileInfo?.gender}
+          />
+
+          <InfoCard
+            icon={<Calendar size={20} color={theme.colors.primary} />}
+            label="Member Since"
+            value={formatDate(profileInfo?.member_since)}
+          />
+
+          {/* Topics/Interests */}
+          {profileInfo?.topics && profileInfo.topics.length > 0 && (
+            <View
+              style={{
+                padding: 16,
+                backgroundColor: theme.colors.card,
+                borderRadius: 12,
+                marginBottom: 16,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginBottom: 12,
+                }}
+              >
+                <Users size={20} color={theme.colors.primary} />
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "600",
+                    color: theme.colors.text,
+                    marginLeft: 8,
+                  }}
+                >
+                  Interests
+                </Text>
+              </View>
+              <View
+                style={{
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 8,
+                }}
+              >
+                {profileInfo.topics.map((topic) => (
+                  <View
+                    key={topic.id}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      backgroundColor: theme.colors.primary + "20",
+                      borderRadius: 16,
+                      borderWidth: 1,
+                      borderColor: theme.colors.primary + "40",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: "500",
+                        color: theme.colors.primary,
+                      }}
+                    >
+                      {topic.name}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Empty State */}
+          {!profileInfo?.bio &&
+            !profileInfo?.location &&
+            !profileInfo?.occupation &&
+            !profileInfo?.education &&
+            !profileInfo?.gender &&
+            (!profileInfo?.topics || profileInfo.topics.length === 0) && (
+              <View
+                style={{
+                  padding: 32,
+                  backgroundColor: theme.colors.card,
+                  borderRadius: 12,
+                  alignItems: "center",
+                  borderWidth: 1,
+                  borderColor: theme.colors.border,
+                }}
+              >
+                <Info size={48} color={theme.colors.text + "40"} />
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: "600",
+                    color: theme.colors.text,
+                    marginTop: 16,
+                    textAlign: "center",
+                  }}
+                >
+                  No information available
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    color: theme.colors.text + "80",
+                    marginTop: 8,
+                    textAlign: "center",
+                    lineHeight: 20,
+                  }}
+                >
+                  {isCurrentUser
+                    ? "Add information to your profile to let others know more about you"
+                    : "This user hasn't added any profile information yet"}
+                </Text>
+              </View>
+            )}
+        </View>
+      </View>
+    );
+  }
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.colors.card }}

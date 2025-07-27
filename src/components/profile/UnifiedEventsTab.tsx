@@ -365,6 +365,139 @@ export default function UnifiedEventsTab({
 
   const currentEvents = getCurrentEvents();
 
+  // If no onScroll prop provided, render as regular views to avoid VirtualizedList nesting
+  if (!onScroll) {
+    return (
+      <View style={{ backgroundColor: theme.colors.card, paddingBottom: 20 }}>
+        {/* Sub-tabs */}
+        <View
+          style={{
+            flexDirection: "row",
+            backgroundColor: theme.colors.card,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+            paddingHorizontal: 16,
+          }}
+        >
+          {(["Created", "Joined"] as EventTab[]).map((tab) => (
+            <Pressable
+              key={tab}
+              onPress={() => setActiveTab(tab)}
+              style={{
+                flex: 1,
+                paddingVertical: 12,
+                borderBottomWidth: activeTab === tab ? 2 : 0,
+                borderBottomColor: theme.colors.primary,
+              }}
+            >
+              <Text
+                style={{
+                  textAlign: "center",
+                  fontSize: 14,
+                  fontWeight: activeTab === tab ? "600" : "400",
+                  color:
+                    activeTab === tab
+                      ? theme.colors.primary
+                      : theme.colors.text + "80",
+                }}
+              >
+                {tab}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {/* Events List as regular views */}
+        {loading && currentEvents.length === 0 ? (
+          <View
+            style={{
+              justifyContent: "center",
+              alignItems: "center",
+              paddingVertical: 40,
+            }}
+          >
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text
+              style={{
+                marginTop: 16,
+                color: theme.colors.text + "80",
+              }}
+            >
+              Loading events...
+            </Text>
+          </View>
+        ) : currentEvents.length === 0 ? (
+          <View
+            style={{
+              justifyContent: "center",
+              alignItems: "center",
+              paddingVertical: 60,
+              paddingHorizontal: 32,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "600",
+                color: theme.colors.text,
+                textAlign: "center",
+              }}
+            >
+              {activeTab === "Created"
+                ? "No events created"
+                : "No events joined"}
+            </Text>
+            <Text
+              style={{
+                marginTop: 8,
+                fontSize: 14,
+                color: theme.colors.text + "80",
+                textAlign: "center",
+                lineHeight: 20,
+              }}
+            >
+              {activeTab === "Created"
+                ? isCurrentUser
+                  ? "Create your first event to bring people together"
+                  : "This user hasn't created any events yet"
+                : isCurrentUser
+                ? "Join events to see them here"
+                : "This user hasn't joined any events yet"}
+            </Text>
+          </View>
+        ) : (
+          <View style={{ paddingTop: 16, paddingBottom: 20 }}>
+            {currentEvents.slice(0, 10).map((event) => (
+              <View key={event.id}>{renderEvent({ item: event })}</View>
+            ))}
+            {currentEvents.length > 10 && (
+              <View style={{ padding: 16, alignItems: "center" }}>
+                <Text style={{ color: theme.colors.text + "80", fontSize: 14 }}>
+                  Showing first 10 events
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Event Details Sheet */}
+        {selectedEvent && (
+          <UnifiedDetailsSheet
+            data={selectedEvent as any}
+            isOpen={isSheetOpen}
+            onClose={handleCloseSheet}
+            nearbyData={[]}
+            onDataSelect={(data) => {
+              handleCloseSheet();
+            }}
+            onShowControler={() => {}}
+            isEvent={true}
+          />
+        )}
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
       {/* Sub-tabs */}

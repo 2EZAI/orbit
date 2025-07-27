@@ -515,6 +515,78 @@ export default function UnifiedPostsTab({
     );
   }
 
+  // If no onScroll prop provided, render as regular views to avoid VirtualizedList nesting
+  if (!onScroll) {
+    return (
+      <View style={{ backgroundColor: theme.colors.card, paddingBottom: 20 }}>
+        {loading && posts.length === 0 ? (
+          <View
+            style={{
+              justifyContent: "center",
+              alignItems: "center",
+              paddingVertical: 40,
+            }}
+          >
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text
+              style={{
+                marginTop: 16,
+                color: theme.colors.text + "80",
+              }}
+            >
+              Loading posts...
+            </Text>
+          </View>
+        ) : posts.length === 0 ? (
+          <View
+            style={{
+              justifyContent: "center",
+              alignItems: "center",
+              paddingVertical: 60,
+              paddingHorizontal: 32,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "600",
+                color: theme.colors.text,
+                textAlign: "center",
+              }}
+            >
+              No posts yet
+            </Text>
+            <Text
+              style={{
+                marginTop: 8,
+                fontSize: 14,
+                color: theme.colors.text + "80",
+                textAlign: "center",
+              }}
+            >
+              {isCurrentUser
+                ? "Share your thoughts and experiences"
+                : "This user hasn't posted anything yet"}
+            </Text>
+          </View>
+        ) : (
+          <View>
+            {posts.slice(0, 10).map((post, index) => (
+              <View key={post.id}>{renderPost({ item: post, index })}</View>
+            ))}
+            {posts.length > 10 && (
+              <View style={{ padding: 16, alignItems: "center" }}>
+                <Text style={{ color: theme.colors.text + "80", fontSize: 14 }}>
+                  Showing first 10 posts
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
       <FlatList

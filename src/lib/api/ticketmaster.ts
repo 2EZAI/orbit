@@ -36,7 +36,6 @@ export async function fetchTicketmasterEvents() {
       attendees: 0, // Ticketmaster events don't have join counts
     }));
   } catch (error) {
-    console.error("Error fetching Ticketmaster events:", error);
     return [];
   }
 }
