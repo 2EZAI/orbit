@@ -254,6 +254,8 @@ const getContextActions = (
     const name =
       (detailData as MapEvent)?.name || (data as MapEvent).name || "";
     const joinStatus = (detailData as any)?.join_status || false;
+    const isTicketmaster =
+      (detailData as any)?.is_ticketmaster || (data as any)?.is_ticketmaster;
 
     if (categoryName.includes("food") || name.includes("dinner")) {
       return [
@@ -267,30 +269,38 @@ const getContextActions = (
     }
     if (categoryName.includes("music") || name.includes("concert")) {
       return [
-        { label: "Event Info", action: "details", icon: "🎵" },
+        { label: "View Details", action: "details", icon: "🎵" },
         {
-          label: joinStatus ? "Create Orbit" : "Get Tickets",
+          label: joinStatus
+            ? "Create Orbit"
+            : isTicketmaster
+            ? "Buy Tickets"
+            : "Join Event",
           action: joinStatus ? "create" : "join",
-          icon: joinStatus ? "💬" : "🎫",
+          icon: joinStatus ? "💬" : isTicketmaster ? "🎫" : "✨",
         },
       ];
     }
     if (categoryName.includes("business") || name.includes("meeting")) {
       return [
-        { label: "Details", action: "details", icon: "💼" },
+        { label: "View Details", action: "details", icon: "💼" },
         {
-          label: joinStatus ? "Create Orbit" : "Register",
+          label: joinStatus ? "Create Orbit" : "Join Event",
           action: joinStatus ? "create" : "join",
           icon: joinStatus ? "💬" : "📝",
         },
       ];
     }
     return [
-      { label: "Learn More", action: "details", icon: "ℹ️" },
+      { label: "View Details", action: "details", icon: "ℹ️" },
       {
-        label: joinStatus ? "Create Orbit" : "Join Event",
+        label: joinStatus
+          ? "Create Orbit"
+          : isTicketmaster
+          ? "Buy Tickets"
+          : "Join Event",
         action: joinStatus ? "create" : "join",
-        icon: joinStatus ? "💬" : "✨",
+        icon: joinStatus ? "💬" : isTicketmaster ? "🎫" : "✨",
       },
     ];
   } else {

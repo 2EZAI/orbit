@@ -1321,17 +1321,19 @@ export function UnifiedDetailsSheet({
           >
             {isEventType ? (
               <View className="flex-row gap-3">
-                {/* Tickets Button */}
-                {hasTickets && !isJoined && (
-                  <TouchableOpacity
-                    onPress={handleTicketPurchase}
-                    className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
-                  >
-                    <Text className="text-lg font-semibold text-purple-600">
-                      Buy Tickets
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                {/* Tickets Button - Only show for Ticketmaster events */}
+                {hasTickets &&
+                  !isJoined &&
+                  (currentData as any)?.is_ticketmaster && (
+                    <TouchableOpacity
+                      onPress={handleTicketPurchase}
+                      className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
+                    >
+                      <Text className="text-lg font-semibold text-purple-600">
+                        Buy Tickets
+                      </Text>
+                    </TouchableOpacity>
+                  )}
 
                 {/* Join/Create Orbit/Leave Button */}
                 {loading ? (
@@ -1373,8 +1375,8 @@ export function UnifiedDetailsSheet({
               </View>
             ) : (
               <View className="flex-row gap-3">
-                {/* Tickets Button for Location */}
-                {hasTickets && (
+                {/* Tickets Button for Location - Only show for Ticketmaster events */}
+                {hasTickets && (currentData as any)?.is_ticketmaster && (
                   <TouchableOpacity
                     onPress={handleTicketPurchase}
                     className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
