@@ -4,26 +4,14 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  Image,
+  StatusBar,
   Platform,
   DeviceEventEmitter,
+  ActivityIndicator,
 } from "react-native";
 import { Category, Prompt } from "~/hooks/useMapEvents";
-import { Icon } from "react-native-elements";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
-import { Input } from "~/src/components/ui/input";
-import { Button } from "~/src/components/ui/button";
-import {
-  Calendar,
-  Clock,
-  MapPin,
-  Image as ImageIcon,
-  Plus,
-  X,
-  Globe,
-  Lock,
-} from "lucide-react-native";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react-native";
 import { useActionSheet } from "@expo/react-native-action-sheet";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
@@ -33,7 +21,18 @@ import { router } from "expo-router";
 import { debounce } from "lodash";
 import Toast from "react-native-toast-message";
 import { useLocalSearchParams } from "expo-router";
-import { TopicListSingleSelection } from "~/src/components/topics/TopicListSingleSelection";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+// Import modular components
+import BasicInfoSection from "~/src/components/createpost/BasicInfoSection";
+import PromptsSection from "~/src/components/createpost/PromptsSection";
+import CategorySection from "~/src/components/createpost/CategorySection";
+import ImagesSection from "~/src/components/createpost/ImagesSection";
+import LocationSection from "~/src/components/createpost/LocationSection";
+import DateTimeSection from "~/src/components/createpost/DateTimeSection";
+import AdditionalInfoSection from "~/src/components/createpost/AdditionalInfoSection";
+import StepIndicator from "~/src/components/createpost/StepIndicator";
 
 interface EventImage {
   uri: string;
@@ -75,21 +74,52 @@ function decode(base64: string): Uint8Array {
   return bytes;
 }
 
+const STEPS = [
+  {
+    id: "basic-info",
+    title: "Basic Info",
+    description: "Event name, description, and privacy settings",
+  },
+  {
+    id: "category",
+    title: "Category",
+    description: "Choose your event category",
+  },
+  {
+    id: "prompts",
+    title: "Prompts",
+    description: "Select event prompts (if available)",
+  },
+  {
+    id: "images",
+    title: "Images",
+    description: "Add photos to showcase your event",
+  },
+  {
+    id: "location",
+    title: "Location",
+    description: "Set your event location",
+  },
+  {
+    id: "datetime",
+    title: "Date & Time",
+    description: "Schedule your event",
+  },
+  {
+    id: "additional",
+    title: "Additional",
+    description: "Optional external links",
+  },
+];
+
 export default function CreateEvent() {
   const params = useLocalSearchParams();
-  //   console.log("locationType>>", locationtype);
-  //   console.log("latitude>>", Latitude);
-  //    console.log("longitude>>", Longitude);
-  //    const [locationId, setlocationId] = useState(locationid ? locationid : undefined);
-  //    const [locationType, setlocationType] = useState(locationtype ? locationtype : undefined);
-  //    const [latitude, setlatitude] = useState(Latitude ? Latitude : undefined);
-  //    const [longitude, setlongitude] = useState(Longitude ? Longitude : undefined);
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
 
-  //    const parsedCategory = category ? JSON.parse(category as string) : [];
-  // console.log("parsedCategory>>", parsedCategory);
-  // const [categoryList, setCategoryList] = useState<Category>(parsedCategory === undefined ? {} : parsedCategory);
-  // const [selectedPrompts, setSelectedPrompts] = useState<Prompts>({});
-  // const [showPrompts, setshowPrompts] = useState( categoryList?.prompts === undefined ? false : true);
+  // Form state
+  const [currentStep, setCurrentStep] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
 
   const [locationId, setlocationId] = useState<string | undefined>(undefined);
   const [locationType, setlocationType] = useState<string | undefined>(
@@ -198,6 +228,58 @@ export default function CreateEvent() {
       }
     );
   }, []);
+
+  const validateCurrentStep = () => {
+    switch (currentStep) {
+      case 0: // Basic Info
+        return name.trim() !== "" && description.trim() !== "";
+      case 1: // Category
+        return selectedTopics !== "";
+      case 2: // Prompts (optional)
+        return true;
+      case 3: // Images
+        return images.length > 0;
+      case 4: // Location
+        if (locationType === "static" || locationType === "googleApi") {
+          return true;
+        }
+        return locationDetails.city !== "" && locationDetails.state !== "";
+      case 5: // Date & Time
+        return startDate < endDate;
+      case 6: // Additional (optional)
+        return true;
+      default:
+        return false;
+    }
+  };
+
+  const handleNext = () => {
+    if (!validateCurrentStep()) {
+      Toast.show({
+        type: "error",
+        text1: "Please complete all required fields",
+        text2: "Fill in the missing information to continue",
+      });
+      return;
+    }
+
+    // Mark current step as completed
+    if (!completedSteps.includes(currentStep)) {
+      setCompletedSteps([...completedSteps, currentStep]);
+    }
+
+    if (currentStep < STEPS.length - 1) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      handleCreateEvent();
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
 
   const showDatePicker = (isStart: boolean) => {
     const currentDate = isStart ? startDate : endDate;
@@ -413,7 +495,6 @@ export default function CreateEvent() {
       if (
         !name ||
         !description ||
-        // !selectedPrompts?.id ||
         selectedTopics === "" ||
         images.length === 0
       ) {
@@ -529,7 +610,6 @@ export default function CreateEvent() {
       }
 
       // 2. Create event using our API
-
       let eventData: any = {
         name,
         description,
@@ -595,16 +675,30 @@ export default function CreateEvent() {
         text2: "Your event has been created successfully",
       });
 
-      // Navigate to the map view centered on the event location
+      // Navigate to summary screen with event data
       router.push({
-        pathname: "/(app)/(map)",
+        pathname: "/(app)/(create)/summary",
         params: {
+          name,
+          description,
+          isPrivate: isPrivate.toString(),
+          images: JSON.stringify(images),
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          locationDetails: locationDetails.city
+            ? JSON.stringify({
+                address1: locationDetails.address1,
+                city: locationDetails.city,
+                state: locationDetails.state,
+                zip: locationDetails.zip,
+              })
+            : undefined,
+          externalUrl,
           lat: event.location.latitude,
           lng: event.location.longitude,
-          zoom: 15, // Close enough to see the event clearly
+          eventId: event.id, // Pass the event ID
         },
       });
-      DeviceEventEmitter.emit("mapReload", true);
     } catch (error: any) {
       console.error("Event creation error:", error);
       Alert.alert(
@@ -618,496 +712,262 @@ export default function CreateEvent() {
     }
   };
 
+  const handleBack = () => {
+    router.back();
+  };
+
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 0:
+        return (
+          <BasicInfoSection
+            name={name}
+            setName={setName}
+            description={description}
+            setDescription={setDescription}
+            isPrivate={isPrivate}
+            setIsPrivate={setIsPrivate}
+          />
+        );
+      case 1:
+        return (
+          <CategorySection
+            selectedTopics={selectedTopics}
+            onSelectTopic={setSelectedTopics}
+          />
+        );
+      case 2:
+        return showPrompts ? (
+          <PromptsSection
+            categoryList={categoryList}
+            selectedPrompts={selectedPrompts}
+            setSelectedPrompts={setSelectedPrompts}
+          />
+        ) : (
+          <View style={{ alignItems: "center", padding: 40 }}>
+            <Text style={{ fontSize: 16, color: theme.colors.text + "CC" }}>
+              No prompts available for this category
+            </Text>
+          </View>
+        );
+      case 3:
+        return (
+          <ImagesSection
+            images={images}
+            onPickImage={pickImage}
+            onRemoveImage={removeImage}
+          />
+        );
+      case 4:
+        return (
+          <LocationSection
+            locationType={locationType}
+            address1={address1}
+            setAddress1={setAddress1}
+            address2={address2}
+            setAddress2={setAddress2}
+            locationDetails={locationDetails}
+            searchResults={searchResults}
+            showResults={showResults}
+            onSearchAddress={debouncedSearch}
+            onAddressSelect={handleAddressSelect}
+          />
+        );
+      case 5:
+        return (
+          <DateTimeSection
+            startDate={startDate}
+            endDate={endDate}
+            onShowDatePicker={showDatePicker}
+            onShowTimePicker={showTimePicker}
+          />
+        );
+      case 6:
+        return (
+          <AdditionalInfoSection
+            externalUrl={externalUrl}
+            setExternalUrl={setExternalUrl}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: 100 }}
-        keyboardShouldPersistTaps="handled"
-        scrollEnabled={!showResults}
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: theme.dark ? "#1a1a2e" : "#f8fafc",
+      }}
+    >
+      <StatusBar
+        barStyle={theme.dark ? "light-content" : "dark-content"}
+        backgroundColor="transparent"
+        translucent
+      />
+
+      {/* Cosmic Background */}
+      <View
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: theme.dark ? "#1a1a2e" : "#f8fafc",
+        }}
+      />
+
+      {/* Main Content */}
+      <View
+        style={{
+          flex: 1,
+          paddingTop: Math.max(insets.top + 10, 20),
+          paddingHorizontal: 20,
+          paddingBottom: Math.max(insets.bottom + 20, 40),
+        }}
       >
-        {/* Header Section */}
-        <View className="px-4 pt-2 pb-6 mb-4 border-b border-border">
-          <Text className="text-3xl font-bold">Create Event</Text>
-          <Text className="mt-1 text-base text-muted-foreground">
-            Share your event with the community
-          </Text>
+        {/* Compact Header */}
+        <View style={{ marginBottom: 20 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginBottom: 16,
+            }}
+          >
+            <TouchableOpacity
+              onPress={handleBack}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: theme.dark
+                  ? "rgba(139, 92, 246, 0.2)"
+                  : "rgba(139, 92, 246, 0.1)",
+                justifyContent: "center",
+                alignItems: "center",
+                marginRight: 12,
+                borderWidth: 1,
+                borderColor: theme.dark
+                  ? "rgba(139, 92, 246, 0.3)"
+                  : "rgba(139, 92, 246, 0.2)",
+              }}
+            >
+              <ArrowLeft size={18} color="#8B5CF6" />
+            </TouchableOpacity>
+            <Text
+              style={{
+                fontSize: 20,
+                fontWeight: "700",
+                color: theme.colors.text,
+              }}
+            >
+              Create Event
+            </Text>
+          </View>
         </View>
 
-        <View className="px-4">
-          {/* Basic Info Section */}
-          <View className="p-4 mb-6 rounded-lg bg-card">
-            <View className="mb-4">
-              <Text className="mb-1 text-lg font-semibold">
-                Basic Information
-              </Text>
-              <Text className="text-sm text-muted-foreground">
-                Let's start with the essential details
-              </Text>
-            </View>
+        {/* Step Indicator */}
+        <StepIndicator
+          steps={STEPS}
+          currentStep={currentStep}
+          completedSteps={completedSteps}
+        />
 
-            <View className="space-y-4">
-              <View>
-                <Text className="mb-1.5 font-medium">Event Name *</Text>
-                <Input
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="Give your event a catchy name"
-                  className="bg-background"
-                />
-              </View>
+        {/* Current Step Content */}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          keyboardShouldPersistTaps="handled"
+          scrollEnabled={!showResults}
+          style={{ flex: 1 }}
+        >
+          {renderCurrentStep()}
+        </ScrollView>
 
-              <View>
-                <Text className="mb-1.5 font-medium">Event Privacy *</Text>
-                <View className="flex-row gap-3">
-                  <TouchableOpacity
-                    onPress={() => setIsPrivate(false)}
-                    className={`flex-1 p-4 border rounded-xl ${
-                      !isPrivate
-                        ? "bg-primary/10 border-primary"
-                        : "bg-background border-border"
-                    }`}
-                  >
-                    <View className="items-center">
-                      {Platform.OS == "ios" ? (
-                        <Globe
-                          size={24}
-                          className={
-                            !isPrivate
-                              ? "text-primary"
-                              : "text-muted-foreground"
-                          }
-                        />
-                      ) : (
-                        <Icon
-                          name="web"
-                          type="material-community"
-                          size={24}
-                          color="#239ED0"
-                          className={
-                            isPrivate ? "text-primary" : "text-muted-foreground"
-                          }
-                        />
-                      )}
-                      <Text className="mt-2 mb-1 font-semibold">Public</Text>
-                      <Text className="text-xs text-center text-muted-foreground">
-                        Everyone can see and join
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
+        {/* Navigation Buttons */}
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            paddingTop: 16,
+            gap: 16,
+          }}
+        >
+          <TouchableOpacity
+            onPress={handlePrevious}
+            disabled={currentStep === 0}
+            style={{
+              flex: 1,
+              height: 50,
+              backgroundColor: "transparent",
+              borderRadius: 16,
+              justifyContent: "center",
+              alignItems: "center",
+              borderWidth: 1,
+              borderColor:
+                currentStep === 0 ? theme.colors.text + "20" : "#8B5CF6",
+              opacity: currentStep === 0 ? 0.5 : 1,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: "600",
+                color: currentStep === 0 ? theme.colors.text + "40" : "#8B5CF6",
+              }}
+            >
+              Previous
+            </Text>
+          </TouchableOpacity>
 
-                  <TouchableOpacity
-                    onPress={() => setIsPrivate(true)}
-                    className={`flex-1 p-4 border rounded-xl ${
-                      isPrivate
-                        ? "bg-primary/10 border-primary"
-                        : "bg-background border-border"
-                    }`}
-                  >
-                    <View className="items-center">
-                      {Platform.OS == "ios" ? (
-                        <Lock
-                          size={24}
-                          className={
-                            isPrivate ? "text-primary" : "text-muted-foreground"
-                          }
-                        />
-                      ) : (
-                        <Icon
-                          name="lock-outline"
-                          type="material-community"
-                          size={24}
-                          color="#239ED0"
-                          className={
-                            isPrivate ? "text-primary" : "text-muted-foreground"
-                          }
-                        />
-                      )}
-                      <Text className="mt-2 mb-1 font-semibold">Private</Text>
-                      <Text className="text-xs text-center text-muted-foreground">
-                        Followers only
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                </View>
-                <Text className="mt-2 text-xs text-muted-foreground">
-                  {isPrivate
-                    ? "Only your followers can see this event. Others will need an invite to join."
-                    : "This event will be visible to everyone on the map."}
-                </Text>
-              </View>
-
-              <View>
-                <Text className="mb-1.5 font-medium">Description *</Text>
-                <Input
-                  value={description}
-                  onChangeText={setDescription}
-                  placeholder="Tell people what your event is about..."
-                  multiline
-                  numberOfLines={6}
-                  textAlignVertical="top"
-                  className="min-h-[150px] p-3 leading-relaxed bg-background"
+          <TouchableOpacity
+            onPress={handleNext}
+            disabled={isLoading}
+            style={{
+              flex: 1,
+              height: 50,
+              backgroundColor: "#8B5CF6",
+              borderRadius: 16,
+              justifyContent: "center",
+              alignItems: "center",
+              shadowColor: "#8B5CF6",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 12,
+              elevation: 8,
+              opacity: isLoading ? 0.7 : 1,
+            }}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text
                   style={{
-                    height: 150,
-                    textAlignVertical: "top",
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: "white",
+                    marginRight: 8,
                   }}
-                />
-              </View>
-            </View>
-          </View>
-
-          {/* Prompts Section */}
-          {showPrompts &&
-            categoryList?.prompts &&
-            categoryList.prompts.length > 0 && (
-              <View className="p-4 mb-6 rounded-lg bg-card">
-                <Text className="mb-1.5 font-medium">Prompts *</Text>
-
-                <View className="flex-row flex-wrap gap-2 m-4">
-                  {categoryList?.prompts?.map((prompt) => {
-                    const isSelected =
-                      selectedPrompts?.id === prompt?.id ? true : false;
-                    return (
-                      <TouchableOpacity
-                        key={prompt.id}
-                        onPress={() => {
-                          setSelectedPrompts(prompt);
-                        }}
-                        className={`px-4 py-2 rounded-full border ${
-                          isSelected
-                            ? "bg-primary border-primary"
-                            : "bg-transparent border-border"
-                        }`}
-                      >
-                        <Text
-                          className={
-                            isSelected
-                              ? "text-primary-foreground"
-                              : "text-foreground"
-                          }
-                        >
-                          {prompt.name}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+                >
+                  {currentStep === STEPS.length - 1 ? "Create Event" : "Next"}
+                </Text>
+                {currentStep === STEPS.length - 1 ? (
+                  <Check size={18} color="white" />
+                ) : (
+                  <ArrowRight size={18} color="white" />
+                )}
               </View>
             )}
-
-          <View className="p-4 mb-6 rounded-lg bg-card">
-            <Text className="mb-1.5 font-medium">Category *</Text>
-            <TopicListSingleSelection
-              selectedTopics={selectedTopics}
-              onSelectTopic={setSelectedTopics}
-            />
-          </View>
-
-          {/* Images Section */}
-          <View className="p-4 mb-6 rounded-lg bg-card">
-            <View className="mb-4">
-              <Text className="mb-1 text-lg font-semibold">Event Images</Text>
-              <Text className="text-sm text-muted-foreground">
-                Add up to 5 images to showcase your event
-              </Text>
-            </View>
-
-            <View className="flex-row flex-wrap gap-3">
-              {images.map((image, index) => (
-                <View key={index} className="relative">
-                  <Image
-                    source={{ uri: image.uri }}
-                    className="w-[100px] h-[100px] rounded-xl"
-                  />
-                  <TouchableOpacity
-                    onPress={() => removeImage(index)}
-                    className="absolute -top-2 -right-2 justify-center items-center w-6 h-6 rounded-full bg-destructive"
-                  >
-                    <X size={16} color="white" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-              {images.length < 5 && (
-                <TouchableOpacity
-                  onPress={pickImage}
-                  className="items-center justify-center w-[100px] h-[100px] rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/30"
-                >
-                  <Plus size={24} className="text-muted-foreground" />
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-
-          {/* Location Section */}
-          {locationType === undefined && (
-            <View className="p-4 mb-6 rounded-lg bg-card">
-              <View className="mb-4">
-                <Text className="mb-1 text-lg font-semibold">Location</Text>
-                <Text className="text-sm text-muted-foreground">
-                  Where will your event take place?
-                </Text>
-              </View>
-
-              <View className="space-y-4">
-                {/* Address Search Input Container */}
-                <View>
-                  <Input
-                    value={address1}
-                    onChangeText={(text) => {
-                      setAddress1(text);
-                      debouncedSearch(text);
-                    }}
-                    placeholder="Search address..."
-                    className="pr-10 bg-background"
-                  />
-                </View>
-
-                {/* Search Results Dropdown */}
-                {showResults && searchResults.length > 0 && (
-                  <View className="rounded-lg border border-border bg-background">
-                    {searchResults.slice(0, 5).map((result) => (
-                      <TouchableOpacity
-                        key={result.id}
-                        onPress={() => handleAddressSelect(result)}
-                        className="p-3 border-b border-border"
-                      >
-                        <Text className="font-medium">{result.text}</Text>
-                        <Text className="text-sm text-muted-foreground">
-                          {result.place_name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-
-                {/* Address Line 2 Input */}
-                <Input
-                  value={address2}
-                  onChangeText={setAddress2}
-                  placeholder="Apt, Suite, etc. (optional)"
-                  className="bg-background"
-                />
-
-                {/* Location Summary */}
-                {locationDetails.city && (
-                  <View className="flex-row items-center p-3 mt-2 space-x-2 rounded-lg bg-muted">
-                    <MapPin size={16} className="text-muted-foreground" />
-                    <Text className="text-sm text-muted-foreground">
-                      {locationDetails.city}, {locationDetails.state}{" "}
-                      {locationDetails.zip}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* Date & Time Section */}
-          <View className="p-4 mb-6 rounded-lg bg-card">
-            <View className="mb-4">
-              <Text className="mb-1 text-lg font-semibold">Date & Time</Text>
-              <Text className="text-sm text-muted-foreground">
-                When will your event happen?
-              </Text>
-            </View>
-
-            <View className="space-y-6">
-              {/* Start Time */}
-              <View className="p-4 rounded-lg bg-muted/30">
-                <View className="flex-row justify-between items-center mb-4">
-                  <View>
-                    <Text className="text-base font-semibold">Start Time</Text>
-                    <Text className="text-sm text-muted-foreground">
-                      When does your event begin?
-                    </Text>
-                  </View>
-                  <View className="justify-center items-center w-8 h-8 rounded-full bg-primary/10">
-                    {Platform.OS == "ios" ? (
-                      <Clock size={18} className="text-primary" />
-                    ) : (
-                      <Icon
-                        name="clock-outline"
-                        type="material-community"
-                        size={24}
-                        color="#239ED0"
-                      />
-                    )}
-                  </View>
-                </View>
-
-                <View className="space-y-3">
-                  <TouchableOpacity
-                    onPress={() => showDatePicker(true)}
-                    className="flex-row justify-between items-center p-3 rounded-lg border bg-background border-border"
-                  >
-                    <View className="flex-row items-center">
-                      {Platform.OS == "ios" ? (
-                        <Calendar
-                          size={20}
-                          className="mr-3 text-muted-foreground"
-                        />
-                      ) : (
-                        <Icon
-                          name="calendar-outline"
-                          type="material-community"
-                          size={24}
-                          color="#239ED0"
-                        />
-                      )}
-                      <Text>Date</Text>
-                    </View>
-                    <Text className="text-primary">
-                      {startDate.toLocaleDateString()}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => showTimePicker(true)}
-                    className="flex-row justify-between items-center p-3 rounded-lg border bg-background border-border"
-                  >
-                    <View className="flex-row items-center">
-                      {Platform.OS == "ios" ? (
-                        <Clock
-                          size={20}
-                          className="mr-3 text-muted-foreground"
-                        />
-                      ) : (
-                        <Icon
-                          name="clock-outline"
-                          type="material-community"
-                          size={24}
-                          color="#239ED0"
-                        />
-                      )}
-                      <Text>Time</Text>
-                    </View>
-                    <Text className="text-primary">
-                      {startDate.toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* End Time */}
-              <View className="p-4 rounded-lg bg-muted/30">
-                <View className="flex-row justify-between items-center mb-4">
-                  <View>
-                    <Text className="text-base font-semibold">End Time</Text>
-                    <Text className="text-sm text-muted-foreground">
-                      When does your event end?
-                    </Text>
-                  </View>
-                  <View className="justify-center items-center w-8 h-8 rounded-full bg-primary/10">
-                    {Platform.OS == "ios" ? (
-                      <Clock size={18} className="text-primary" />
-                    ) : (
-                      <Icon
-                        name="clock-outline"
-                        type="material-community"
-                        size={24}
-                        color="#239ED0"
-                      />
-                    )}
-                  </View>
-                </View>
-
-                <View className="space-y-3">
-                  <TouchableOpacity
-                    onPress={() => showDatePicker(false)}
-                    className="flex-row justify-between items-center p-3 rounded-lg border bg-background border-border"
-                  >
-                    <View className="flex-row items-center">
-                      {Platform.OS == "ios" ? (
-                        <Calendar
-                          size={20}
-                          className="mr-3 text-muted-foreground"
-                        />
-                      ) : (
-                        <Icon
-                          name="calendar-outline"
-                          type="material-community"
-                          size={24}
-                          color="#239ED0"
-                        />
-                      )}
-                      <Text>Date</Text>
-                    </View>
-                    <Text className="text-primary">
-                      {endDate.toLocaleDateString()}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => showTimePicker(false)}
-                    className="flex-row justify-between items-center p-3 rounded-lg border bg-background border-border"
-                  >
-                    <View className="flex-row items-center">
-                      {Platform.OS == "ios" ? (
-                        <Clock
-                          size={20}
-                          className="mr-3 text-muted-foreground"
-                        />
-                      ) : (
-                        <Icon
-                          name="clock-outline"
-                          type="material-community"
-                          size={24}
-                          color="#239ED0"
-                        />
-                      )}
-                      <Text>Time</Text>
-                    </View>
-                    <Text className="text-primary">
-                      {endDate.toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* External URL Section */}
-          <View className="p-4 mb-6 rounded-lg bg-card">
-            <View className="mb-4">
-              <Text className="mb-1 text-lg font-semibold">
-                Additional Info
-              </Text>
-              <Text className="text-sm text-muted-foreground">
-                Optional details about your event
-              </Text>
-            </View>
-
-            <View>
-              <Text className="mb-1.5 font-medium">External URL</Text>
-              <Input
-                value={externalUrl}
-                onChangeText={setExternalUrl}
-                placeholder="https://"
-                className="bg-background"
-              />
-            </View>
-          </View>
-
-          {/* Submit Button */}
-          <View className="px-4 py-4 -mx-4 mb-4 border-t border-border">
-            <Button
-              onPress={handleCreateEvent}
-              disabled={isLoading}
-              className="w-full"
-            >
-              <Text className="font-medium text-primary-foreground">
-                {isLoading ? "Creating Event..." : "Create Event"}
-              </Text>
-            </Button>
-          </View>
+          </TouchableOpacity>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+
+      {/* Toast Component */}
+      <Toast />
+    </View>
   );
 }

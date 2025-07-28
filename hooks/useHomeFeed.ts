@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "~/src/lib/supabase";
-import { fetchTicketmasterEvents } from "~/src/lib/api/ticketmaster";
+import { fetchAllEvents } from "~/src/lib/api/ticketmaster";
 import { createHomeFeedSections } from "~/src/lib/utils/feedSections";
 import {
   transformEvent,
@@ -50,16 +50,23 @@ export function useHomeFeed() {
       const locations = (rpcData?.locations || []).map(transformLocation);
       const topics = rpcData?.topics || [];
 
-      // Fetch Ticketmaster events in parallel (this is external API)
-      const ticketmasterEvents = await fetchTicketmasterEvents();
+      console.log("Database events count:", events.length);
+      console.log("Database locations count:", locations.length);
 
-      // Combine all content
-      const allEvents = [...events, ...ticketmasterEvents];
+      // Fetch all events (including Ticketmaster) from the backend
+      const allBackendEvents = await fetchAllEvents();
+      console.log("All backend events count:", allBackendEvents.length);
+
+      // Combine all content - use backend events instead of separate database + ticketmaster
+      const allEvents = allBackendEvents;
       const allContent = [...allEvents, ...locations];
+
+      console.log("Total events after combining:", allEvents.length);
+      console.log("Total content (events + locations):", allContent.length);
 
       // Create featured events
       const featuredEvents = allEvents
-        .sort((a, b) => {
+        .sort((a: any, b: any) => {
           const aAttendees = a.attendees || 0;
           const bAttendees = b.attendees || 0;
           if (aAttendees !== bAttendees) return bAttendees - aAttendees;
@@ -106,24 +113,24 @@ export function useHomeFeed() {
       if (criticalImages.length > 0) {
         imagePreloader.preloadImages(criticalImages, {
           priority: "high",
-          aggressive: true,
+          aggressive: false, // Reduced aggressiveness
           cache: true,
         });
       }
 
-      // Enhanced feed preloading with all data
+      // Enhanced feed preloading with all data - delayed and less aggressive
       setTimeout(() => {
         imagePreloader.preloadFeedImages({
           events: allEvents,
           locations: locations,
           featuredEvents: featuredEvents,
         });
-      }, 500); // Start after critical images
+      }, 2000); // Increased delay to 2 seconds
 
       // Log cache stats
       setTimeout(() => {
         const stats = imagePreloader.getCacheStats();
-      }, 2000);
+      }, 3000); // Increased delay
 
       setData({
         allContent,

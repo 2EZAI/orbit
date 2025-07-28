@@ -3,6 +3,7 @@ import { View, TouchableOpacity, StyleSheet } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { OptimizedImage } from "~/src/components/ui/optimized-image";
 import { MapPin, Clock, Users } from "lucide-react-native";
+import { useTheme } from "~/src/components/ThemeProvider";
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80";
@@ -21,9 +22,11 @@ interface EventCardProps {
 }
 
 export function EventCard({ item, onPress }: EventCardProps) {
+  const { theme } = useTheme();
+
   return (
     <TouchableOpacity
-      style={styles.airbnbEventCard}
+      style={[styles.airbnbEventCard, { backgroundColor: theme.colors.card }]}
       activeOpacity={0.9}
       onPress={onPress}
     >
@@ -39,18 +42,34 @@ export function EventCard({ item, onPress }: EventCardProps) {
         resizeMode="cover"
       />
       <View style={styles.airbnbEventContent}>
-        <Text style={styles.airbnbEventTitle} numberOfLines={2}>
+        <Text
+          style={[styles.airbnbEventTitle, { color: theme.colors.text }]}
+          numberOfLines={2}
+        >
           {item.title}
         </Text>
         <View style={styles.airbnbEventMeta}>
           <View style={styles.airbnbMetaRow}>
             <Clock size={12} color="#666" />
-            <Text style={styles.airbnbEventMetaText}>{item.date}</Text>
+            <Text
+              style={[
+                styles.airbnbEventMetaText,
+                { color: theme.colors.text + "CC" },
+              ]}
+            >
+              {item.date}
+            </Text>
           </View>
           {item.location && (
             <View style={styles.airbnbMetaRow}>
               <MapPin size={12} color="#666" />
-              <Text style={styles.airbnbEventMetaText} numberOfLines={1}>
+              <Text
+                style={[
+                  styles.airbnbEventMetaText,
+                  { color: theme.colors.text + "CC" },
+                ]}
+                numberOfLines={1}
+              >
                 {item.location}
               </Text>
             </View>
@@ -71,12 +90,11 @@ const styles = StyleSheet.create({
   airbnbEventCard: {
     width: 220,
     borderRadius: 16,
-    backgroundColor: "#fff",
-    shadowColor: "#000",
+    shadowColor: "#8B5CF6",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.1,
     shadowRadius: 6,
-    elevation: 2,
+    elevation: 3,
     marginRight: 12,
     overflow: "hidden",
     position: "relative",
@@ -93,7 +111,6 @@ const styles = StyleSheet.create({
   airbnbEventTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#222",
     marginBottom: 6,
   },
   airbnbEventMeta: {
@@ -108,7 +125,6 @@ const styles = StyleSheet.create({
   },
   airbnbEventMetaText: {
     fontSize: 12,
-    color: "#666",
     fontWeight: "500",
     marginLeft: 3,
   },

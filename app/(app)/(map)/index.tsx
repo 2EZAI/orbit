@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   DeviceEventEmitter,
 } from "react-native";
+import { useLocalSearchParams } from "expo-router";
 
 type TimeFrame = "Today" | "Week" | "Weekend";
 import { supabase } from "~/src/lib/supabase";
@@ -46,6 +47,7 @@ const CUSTOM_DARK_STYLE =
   "mapbox://styles/tangentdigitalagency/clzwv4xtp002y01psdttf9jhr";
 
 export default function Map() {
+  const params = useLocalSearchParams();
   const [selectedTimeFrame, setSelectedTimeFrame] =
     useState<TimeFrame>("Today");
   const [showDetails, setShowDetails] = useState(false);
@@ -171,10 +173,44 @@ export default function Map() {
       }
     );
 
+    const showEventCardListener = DeviceEventEmitter.addListener(
+      "showEventCard",
+      (data: { eventId: string; lat: number; lng: number }) => {
+        // Center map on event location
+        if (cameraRef.current) {
+          cameraRef.current.setCamera({
+            centerCoordinate: [data.lng, data.lat],
+            zoomLevel: 15,
+            animationDuration: 1000,
+            animationMode: "flyTo",
+          });
+        }
+
+        // Update map center to trigger new data fetch
+        setMapCenter([data.lat, data.lng]);
+
+        // Wait a bit for data to load, then find the event
+        setTimeout(() => {
+          const event =
+            eventsNow.find((e) => e.id === data.eventId) ||
+            eventsToday.find((e) => e.id === data.eventId) ||
+            eventsTomorrow.find((e) => e.id === data.eventId);
+
+          if (event) {
+            setIsEvent(true);
+            handleEventClick(event as MapEvent);
+          } else {
+            console.log("Event still not found after delay:", data.eventId);
+          }
+        }, 2000); // Wait 2 seconds for data to load
+      }
+    );
+
     return () => {
       eventListener.remove();
+      showEventCardListener.remove();
     };
-  }, [handleEventClick]);
+  }, [handleEventClick, eventsNow, eventsToday, eventsTomorrow, cameraRef]);
 
   // Update mapCenter when location becomes available
   useEffect(() => {
@@ -182,6 +218,54 @@ export default function Map() {
       setMapCenter([location.latitude, location.longitude]);
     }
   }, [location, mapCenter]);
+
+  // Handle route params for showing event cards
+  useEffect(() => {
+    if (params.showEventCard === "true" && params.eventId) {
+      // Center map on event location if coordinates are provided
+      if (params.lat && params.lng) {
+        const lat = parseFloat(params.lat as string);
+        const lng = parseFloat(params.lng as string);
+
+        if (cameraRef.current) {
+          cameraRef.current.setCamera({
+            centerCoordinate: [lng, lat],
+            zoomLevel: 15,
+            animationDuration: 1000,
+            animationMode: "flyTo",
+          });
+        }
+
+        // Update map center to trigger new data fetch
+        setMapCenter([lat, lng]);
+      }
+
+      // Find the event by ID and open its card
+      const event =
+        eventsNow.find((e) => e.id === params.eventId) ||
+        eventsToday.find((e) => e.id === params.eventId) ||
+        eventsTomorrow.find((e) => e.id === params.eventId);
+
+      if (event) {
+        setIsEvent(true);
+        handleEventClick(event as MapEvent);
+      } else {
+        // If event not found in current arrays, wait for data to load
+        // The DeviceEventEmitter listener will handle this case
+        console.log("Event not found in current arrays, waiting for data...");
+      }
+    }
+  }, [
+    params.showEventCard,
+    params.eventId,
+    params.lat,
+    params.lng,
+    eventsNow,
+    eventsToday,
+    eventsTomorrow,
+    handleEventClick,
+    cameraRef,
+  ]);
 
   const haversine = (
     lat1: number,

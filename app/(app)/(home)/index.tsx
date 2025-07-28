@@ -110,8 +110,8 @@ const StoryCard = ({ item, onPress }: StoryCardProps) => {
         >
           <Bookmark
             size={16}
-            color={saved ? "#8B5CF6" : "#fff"}
-            fill={saved ? "#8B5CF6" : "transparent"}
+            color={saved ? theme.colors.primary : "#fff"}
+            fill={saved ? theme.colors.primary : "transparent"}
           />
         </TouchableOpacity>
       </View>
@@ -150,13 +150,22 @@ const StorySection = ({
   events: any[];
   onEventSelect: (event: any) => void;
 }) => {
+  const { theme } = useTheme();
+
   if (!events || events.length === 0) return null;
 
   return (
     <View style={styles.storySectionContainer}>
       <View style={styles.storySectionHeader}>
-        <Text style={styles.storySectionTitle}>✨ Featured</Text>
-        <Text style={styles.storySectionSubtitle}>
+        <Text style={[styles.storySectionTitle, { color: theme.colors.text }]}>
+          ✨ Featured
+        </Text>
+        <Text
+          style={[
+            styles.storySectionSubtitle,
+            { color: theme.colors.text + "80" },
+          ]}
+        >
           Don't miss these amazing events
         </Text>
       </View>
@@ -236,31 +245,14 @@ const TikTokLocationCard = ({ item, onPress }: TikTokLocationCardProps) => {
         >
           <Bookmark
             size={20}
-            color={saved ? "#8B5CF6" : "#fff"}
-            fill={saved ? "#8B5CF6" : "transparent"}
+            color={saved ? theme.colors.primary : "#fff"}
+            fill={saved ? theme.colors.primary : "transparent"}
           />
         </TouchableOpacity>
       </View>
 
       {/* Side Actions */}
       <View style={styles.tiktokSideActions}>
-        <TouchableOpacity
-          style={styles.tiktokSideButton}
-          onPress={() => setLiked(!liked)}
-        >
-          <Heart
-            size={28}
-            color={liked ? "#8B5CF6" : "#fff"}
-            fill={liked ? "#8B5CF6" : "transparent"}
-          />
-          <Text style={styles.tiktokSideText}>Like</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.tiktokSideButton}>
-          <Share size={26} color="#fff" />
-          <Text style={styles.tiktokSideText}>Share</Text>
-        </TouchableOpacity>
-
         <TouchableOpacity style={styles.tiktokSideButton}>
           <Users size={26} color="#fff" />
           <Text style={styles.tiktokSideText}>{visitCount}</Text>
@@ -421,12 +413,14 @@ export default function Home() {
   const renderItem = ({ item }: { item: any }) => {
     if (item.type === "stories") {
       return (
-        <StorySection
+        <FeaturedSection
           events={item.data}
+          currentIndex={currentFeaturedIndex}
           onEventSelect={(event: any) => {
             setSelectedEvent(event);
             setIsSelectedItemLocation(false);
           }}
+          onIndexChange={setCurrentFeaturedIndex}
         />
       );
     } else if (item.type === "section") {
@@ -495,7 +489,7 @@ export default function Home() {
         ]}
       >
         <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={[styles.loadingText, { color: theme.colors.text }]}>
+        <Text style={[styles.loadingText, { color: theme.colors.primary }]}>
           Discovering amazing events...
         </Text>
       </View>
@@ -507,7 +501,7 @@ export default function Home() {
       <View
         style={[styles.errorContainer, { backgroundColor: theme.colors.card }]}
       >
-        <Text style={[styles.errorText, { color: theme.colors.text }]}>
+        <Text style={[styles.errorText, { color: theme.colors.primary }]}>
           {error}
         </Text>
         <TouchableOpacity
@@ -517,7 +511,9 @@ export default function Home() {
           ]}
           onPress={refetch}
         >
-          <Text style={styles.retryButtonText}>Try Again</Text>
+          <Text style={[styles.retryButtonText, { color: "white" }]}>
+            Try Again
+          </Text>
         </TouchableOpacity>
       </View>
     );
@@ -622,11 +618,16 @@ export default function Home() {
         {/* Empty State */}
         <View style={styles.emptyStateContainer}>
           <Text style={styles.emptyStateEmoji}>🎉</Text>
-          <Text style={[styles.emptyStateTitle, { color: theme.colors.text }]}>
+          <Text
+            style={[styles.emptyStateTitle, { color: theme.colors.primary }]}
+          >
             No Events Yet
           </Text>
           <Text
-            style={[styles.emptyStateSubtitle, { color: theme.colors.text }]}
+            style={[
+              styles.emptyStateSubtitle,
+              { color: theme.colors.text + "CC" },
+            ]}
           >
             Be the first to create an event in your area!
           </Text>
@@ -637,7 +638,9 @@ export default function Home() {
             ]}
             onPress={() => router.push("/(app)/(create)")}
           >
-            <Text style={styles.createEventButtonText}>Create Event</Text>
+            <Text style={[styles.createEventButtonText, { color: "white" }]}>
+              Create Event
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -872,7 +875,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   errorText: {
-    color: "#8B5CF6",
     textAlign: "center",
     margin: 20,
     fontSize: 16,
@@ -884,7 +886,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   retryButtonText: {
-    color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
   },
@@ -899,11 +900,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 16,
     borderWidth: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
+    shadowColor: "#8B5CF6",
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   searchPlaceholder: {
     flex: 1,
@@ -917,6 +918,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#8B5CF6",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   modernListContent: {
     paddingBottom: 40,
@@ -928,6 +934,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
     position: "relative",
+    shadowColor: "#8B5CF6",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
   },
   storySectionContainer: {
     marginBottom: 20,
@@ -939,12 +950,10 @@ const styles = StyleSheet.create({
   storySectionTitle: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#fff",
     marginBottom: 5,
   },
   storySectionSubtitle: {
     fontSize: 14,
-    color: "#666",
   },
   storyScrollContent: {
     paddingHorizontal: 10,
@@ -976,7 +985,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   storyCategoryBadge: {
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(139, 92, 246, 0.8)",
     borderRadius: 15,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -995,7 +1004,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(139, 92, 246, 0.8)",
   },
   storyBottomContent: {
     position: "absolute",
@@ -1010,6 +1019,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 8,
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   storyMetaInfo: {
     flexDirection: "row",
@@ -1024,13 +1036,15 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 12,
     marginLeft: 5,
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   emptyStateContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
-    backgroundColor: "rgba(139, 92, 246, 0.08)",
   },
   emptyStateEmoji: {
     fontSize: 60,
@@ -1051,9 +1065,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 25,
     borderRadius: 12,
+    shadowColor: "#8B5CF6",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   createEventButtonText: {
-    color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
   },
@@ -1064,6 +1082,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
     marginBottom: 10,
+    shadowColor: "#8B5CF6",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
   },
   tiktokImageContainer: {
     width: "100%",
@@ -1092,7 +1115,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   tiktokCategoryBadge: {
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(139, 92, 246, 0.8)",
     borderRadius: 15,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -1111,7 +1134,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(139, 92, 246, 0.8)",
   },
   tiktokSideActions: {
     position: "absolute",
@@ -1124,7 +1147,7 @@ const styles = StyleSheet.create({
   tiktokSideButton: {
     alignItems: "center",
     marginBottom: 20,
-    backgroundColor: "rgba(0,0,0,0.3)",
+    backgroundColor: "rgba(139, 92, 246, 0.6)",
     borderRadius: 25,
     padding: 8,
   },
@@ -1133,6 +1156,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginTop: 2,
     fontWeight: "600",
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   tiktokBottomContent: {
     position: "absolute",
@@ -1147,11 +1173,17 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
     marginBottom: 8,
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   tiktokDescription: {
     color: "#fff",
     fontSize: 14,
     marginBottom: 10,
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   tiktokMetaInfo: {
     flexDirection: "row",
@@ -1166,6 +1198,9 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 12,
     marginLeft: 5,
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   tiktokSectionContainer: {
     marginBottom: 20,

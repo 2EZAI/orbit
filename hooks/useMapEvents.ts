@@ -365,7 +365,12 @@ export function useMapEvents({
         }
         ///fetch events
         const response = await fetch(
-          `${process.env.BACKEND_MAP_URL}/api/events/all?page=${page}&limit=${pageSize}`,
+          `${
+            process.env.BACKEND_MAP_URL
+          }/api/events/all?page=${page}&limit=${Math.max(
+            Number(pageSize),
+            500
+          )}`,
           {
             method: "POST",
             headers: {

@@ -1,6 +1,6 @@
 import { imagePreloader } from "./imagePreloader";
 import { supabase } from "./supabase";
-import { fetchTicketmasterEvents } from "./api/ticketmaster";
+import { fetchAllEvents } from "./api/ticketmaster";
 import { transformEvent, transformLocation } from "./utils/transformers";
 
 class CacheWarmer {
@@ -34,15 +34,15 @@ class CacheWarmer {
         const locations = (rpcData.locations || []).map(transformLocation);
 
         // Get external events too
-        const ticketmasterEvents = await fetchTicketmasterEvents();
-        const allEvents = [...events, ...ticketmasterEvents];
+        const allBackendEvents = await fetchAllEvents();
+        const allEvents = allBackendEvents;
 
         // Extract images to preload
         const imagesToWarm: string[] = [];
 
         // High priority: Featured content
         const featuredEvents = allEvents
-          .sort((a, b) => {
+          .sort((a: any, b: any) => {
             const aAttendees = a.attendees || 0;
             const bAttendees = b.attendees || 0;
             if (aAttendees !== bAttendees) return bAttendees - aAttendees;
@@ -53,7 +53,7 @@ class CacheWarmer {
           })
           .slice(0, 8);
 
-        featuredEvents.forEach((event) => {
+        featuredEvents.forEach((event: any) => {
           if (event.image_urls && event.image_urls.length > 0) {
             imagesToWarm.push(...event.image_urls.slice(0, 2)); // First 2 images
           }
@@ -67,7 +67,7 @@ class CacheWarmer {
         });
 
         // Recent events
-        allEvents.slice(0, 15).forEach((event) => {
+        allEvents.slice(0, 15).forEach((event: any) => {
           if (event.image_urls && event.image_urls.length > 0) {
             imagesToWarm.push(event.image_urls[0]);
           }

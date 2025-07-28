@@ -2,6 +2,7 @@ import React from "react";
 import { TouchableOpacity, View, StyleSheet } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { OptimizedImage } from "~/src/components/ui/optimized-image";
+import { useTheme } from "~/src/components/ThemeProvider";
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80";
@@ -20,9 +21,14 @@ interface LocationCardProps {
 }
 
 export function LocationCard({ item, onPress }: LocationCardProps) {
+  const { theme } = useTheme();
+
   return (
     <TouchableOpacity
-      style={styles.airbnbLocationCard}
+      style={[
+        styles.airbnbLocationCard,
+        { backgroundColor: theme.colors.card },
+      ]}
       activeOpacity={0.9}
       onPress={onPress}
     >
@@ -38,11 +44,20 @@ export function LocationCard({ item, onPress }: LocationCardProps) {
         resizeMode="cover"
       />
       <View style={styles.airbnbLocationContent}>
-        <Text style={styles.airbnbLocationTitle} numberOfLines={2}>
+        <Text
+          style={[styles.airbnbLocationTitle, { color: theme.colors.text }]}
+          numberOfLines={2}
+        >
           {item.title}
         </Text>
         {item.location && (
-          <Text style={styles.airbnbLocationSubtitle} numberOfLines={1}>
+          <Text
+            style={[
+              styles.airbnbLocationSubtitle,
+              { color: theme.colors.text + "CC" },
+            ]}
+            numberOfLines={1}
+          >
             {item.location}
           </Text>
         )}
@@ -56,12 +71,11 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 120,
     borderRadius: 18,
-    backgroundColor: "#fff",
-    shadowColor: "#000",
+    shadowColor: "#8B5CF6",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 3,
     marginBottom: 12,
     overflow: "hidden",
     flexDirection: "row",
@@ -80,12 +94,10 @@ const styles = StyleSheet.create({
   airbnbLocationTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#222",
     marginBottom: 2,
   },
   airbnbLocationSubtitle: {
     fontSize: 13,
-    color: "#888",
     fontWeight: "500",
   },
 });

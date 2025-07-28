@@ -1,5 +1,5 @@
 import { supabase } from "~/src/lib/supabase";
-import { fetchTicketmasterEvents } from "~/src/lib/api/ticketmaster";
+import { fetchAllEvents } from "~/src/lib/api/ticketmaster";
 import {
   transformEvent,
   transformLocation,
@@ -88,9 +88,371 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         );
       });
     } else if (section.key === "ticketmaster") {
-      // Get all Ticketmaster events
-      const ticketmasterEvents = await fetchTicketmasterEvents();
-      allSectionData = ticketmasterEvents || [];
+      // Get all events and filter for Ticketmaster
+      const allEvents = await fetchAllEvents();
+      allSectionData =
+        allEvents.filter((event: any) => event.is_ticketmaster) || [];
+    } else if (section.key === "this-weekend") {
+      // Get all events and filter for this weekend
+      const allEvents = await fetchAllEvents();
+      const today = new Date();
+      allSectionData =
+        allEvents.filter((event: any) => {
+          const eventDate = new Date(event.start_datetime);
+          const daysUntil = Math.floor(
+            (eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          return daysUntil >= 0 && daysUntil <= 7;
+        }) || [];
+    } else if (section.key === "popular-events") {
+      // Get all events and sort by popularity
+      const allEvents = await fetchAllEvents();
+      allSectionData =
+        allEvents
+          .sort((a: any, b: any) => {
+            const aAttendees = a.attendees?.count || 0;
+            const bAttendees = b.attendees?.count || 0;
+            return bAttendees - aAttendees;
+          })
+          .slice(0, 100) || [];
+    } else if (section.key === "nearby-locations") {
+      // Get all locations
+      const { data: rpcData } = await supabase.rpc("get_home_feed_data", {});
+      const locations = (rpcData?.locations || []).map(transformLocation);
+      allSectionData = locations.slice(0, 100) || [];
+    } else if (section.key === "trending-locations") {
+      // Get all locations
+      const { data: rpcData } = await supabase.rpc("get_home_feed_data", {});
+      const locations = (rpcData?.locations || []).map(transformLocation);
+      allSectionData = locations.slice(0, 100) || [];
+    } else if (section.key === "featured-locations") {
+      // Get all locations
+      const { data: rpcData } = await supabase.rpc("get_home_feed_data", {});
+      const locations = (rpcData?.locations || []).map(transformLocation);
+      allSectionData = locations.slice(0, 100) || [];
+    } else if (section.key === "new-locations") {
+      // Get all locations
+      const { data: rpcData } = await supabase.rpc("get_home_feed_data", {});
+      const locations = (rpcData?.locations || []).map(transformLocation);
+      allSectionData = locations.slice(0, 100) || [];
+    } else if (section.key === "hot-locations") {
+      // Get all locations
+      const { data: rpcData } = await supabase.rpc("get_home_feed_data", {});
+      const locations = (rpcData?.locations || []).map(transformLocation);
+      allSectionData = locations.slice(0, 100) || [];
+    } else if (section.key === "local-locations") {
+      // Get all locations
+      const { data: rpcData } = await supabase.rpc("get_home_feed_data", {});
+      const locations = (rpcData?.locations || []).map(transformLocation);
+      allSectionData = locations.slice(0, 100) || [];
+    } else if (section.key === "this-week") {
+      // Get all events and filter for this week
+      const allEvents = await fetchAllEvents();
+      const today = new Date();
+      allSectionData =
+        allEvents.filter((event: any) => {
+          const eventDate = new Date(event.start_datetime);
+          const daysUntil = Math.floor(
+            (eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          return daysUntil >= 0 && daysUntil <= 14;
+        }) || [];
+    } else if (section.key === "free-events") {
+      // Get all events and filter for free events
+      const allEvents = await fetchAllEvents();
+      allSectionData =
+        allEvents.filter((event: any) => {
+          const name = event.name?.toLowerCase() || "";
+          const description = event.description?.toLowerCase() || "";
+          return (
+            name.includes("free") ||
+            description.includes("free") ||
+            name.includes("no cost") ||
+            description.includes("no cost")
+          );
+        }) || [];
+    } else if (section.key === "outdoor-events") {
+      // Get all events and filter for outdoor events
+      const allEvents = await fetchAllEvents();
+      allSectionData =
+        allEvents.filter((event: any) => {
+          const name = event.name?.toLowerCase() || "";
+          const description = event.description?.toLowerCase() || "";
+          const venue = event.venue_name?.toLowerCase() || "";
+          return (
+            name.includes("park") ||
+            description.includes("park") ||
+            venue.includes("park") ||
+            name.includes("outdoor") ||
+            description.includes("outdoor") ||
+            name.includes("beach") ||
+            description.includes("beach") ||
+            name.includes("festival") ||
+            description.includes("festival")
+          );
+        }) || [];
+    } else if (section.key === "nightlife-events") {
+      // Get all events and filter for nightlife
+      const allEvents = await fetchAllEvents();
+      allSectionData =
+        allEvents.filter((event: any) => {
+          const name = event.name?.toLowerCase() || "";
+          const description = event.description?.toLowerCase() || "";
+          const venue = event.venue_name?.toLowerCase() || "";
+          return (
+            name.includes("club") ||
+            description.includes("club") ||
+            venue.includes("club") ||
+            name.includes("bar") ||
+            description.includes("bar") ||
+            venue.includes("bar") ||
+            name.includes("night") ||
+            description.includes("night") ||
+            name.includes("party") ||
+            description.includes("party")
+          );
+        }) || [];
+    } else if (section.key === "family-events") {
+      // Get all events and filter for family friendly
+      const allEvents = await fetchAllEvents();
+      allSectionData =
+        allEvents.filter((event: any) => {
+          const name = event.name?.toLowerCase() || "";
+          const description = event.description?.toLowerCase() || "";
+          return (
+            name.includes("family") ||
+            description.includes("family") ||
+            name.includes("kids") ||
+            description.includes("kids") ||
+            name.includes("children") ||
+            description.includes("children") ||
+            name.includes("family-friendly") ||
+            description.includes("family-friendly")
+          );
+        }) || [];
+    } else if (section.key === "sports-events") {
+      // Get all events and filter for sports
+      const allEvents = await fetchAllEvents();
+      console.log("🔍 Sports Events - Total events fetched:", allEvents.length);
+
+      allSectionData =
+        allEvents.filter((event: any) => {
+          const name = event.name?.toLowerCase() || "";
+          const description = event.description?.toLowerCase() || "";
+          const isSports =
+            name.includes("sport") ||
+            description.includes("sport") ||
+            name.includes("game") ||
+            description.includes("game") ||
+            name.includes("match") ||
+            description.includes("match") ||
+            name.includes("tournament") ||
+            description.includes("tournament");
+
+          if (isSports) {
+            console.log("🔍 Sports Event found:", event.name);
+          }
+
+          return isSports;
+        }) || [];
+
+      console.log("🔍 Sports Events - Filtered count:", allSectionData.length);
+    } else if (section.key === "food-events") {
+      // Get all events and filter for food & drink
+      const allEvents = await fetchAllEvents();
+      allSectionData =
+        allEvents.filter((event: any) => {
+          const name = event.name?.toLowerCase() || "";
+          const description = event.description?.toLowerCase() || "";
+          return (
+            name.includes("food") ||
+            description.includes("food") ||
+            name.includes("drink") ||
+            description.includes("drink") ||
+            name.includes("wine") ||
+            description.includes("wine") ||
+            name.includes("beer") ||
+            description.includes("beer") ||
+            name.includes("tasting") ||
+            description.includes("tasting") ||
+            name.includes("dinner") ||
+            description.includes("dinner")
+          );
+        }) || [];
+    } else if (section.key === "art-events") {
+      // Get all events and filter for art & culture
+      const allEvents = await fetchAllEvents();
+      allSectionData =
+        allEvents.filter((event: any) => {
+          const name = event.name?.toLowerCase() || "";
+          const description = event.description?.toLowerCase() || "";
+          return (
+            name.includes("art") ||
+            description.includes("art") ||
+            name.includes("museum") ||
+            description.includes("museum") ||
+            name.includes("gallery") ||
+            description.includes("gallery") ||
+            name.includes("exhibition") ||
+            description.includes("exhibition") ||
+            name.includes("culture") ||
+            description.includes("culture")
+          );
+        }) || [];
+    } else if (section.key === "music-events") {
+      // Get all events and filter for music
+      const allEvents = await fetchAllEvents();
+      allSectionData =
+        allEvents.filter((event: any) => {
+          const name = event.name?.toLowerCase() || "";
+          const description = event.description?.toLowerCase() || "";
+          return (
+            name.includes("concert") ||
+            description.includes("concert") ||
+            name.includes("music") ||
+            description.includes("music") ||
+            name.includes("band") ||
+            description.includes("band") ||
+            name.includes("dj") ||
+            description.includes("dj") ||
+            name.includes("live") ||
+            description.includes("live")
+          );
+        }) || [];
+    } else if (section.key === "business-events") {
+      // Get all events and filter for business & networking
+      const allEvents = await fetchAllEvents();
+      allSectionData =
+        allEvents.filter((event: any) => {
+          const name = event.name?.toLowerCase() || "";
+          const description = event.description?.toLowerCase() || "";
+          return (
+            name.includes("business") ||
+            description.includes("business") ||
+            name.includes("networking") ||
+            description.includes("networking") ||
+            name.includes("conference") ||
+            description.includes("conference") ||
+            name.includes("workshop") ||
+            description.includes("workshop") ||
+            name.includes("seminar") ||
+            description.includes("seminar")
+          );
+        }) || [];
+    } else if (section.key === "tech-events") {
+      // Get all events and filter for tech
+      const allEvents = await fetchAllEvents();
+      allSectionData =
+        allEvents.filter((event: any) => {
+          const name = event.name?.toLowerCase() || "";
+          const description = event.description?.toLowerCase() || "";
+          return (
+            name.includes("tech") ||
+            description.includes("tech") ||
+            name.includes("technology") ||
+            description.includes("technology") ||
+            name.includes("startup") ||
+            description.includes("startup") ||
+            name.includes("coding") ||
+            description.includes("coding") ||
+            name.includes("hackathon") ||
+            description.includes("hackathon")
+          );
+        }) || [];
+    } else if (section.key === "wellness-events") {
+      // Get all events and filter for wellness & fitness
+      const allEvents = await fetchAllEvents();
+      allSectionData =
+        allEvents.filter((event: any) => {
+          const name = event.name?.toLowerCase() || "";
+          const description = event.description?.toLowerCase() || "";
+          return (
+            name.includes("yoga") ||
+            description.includes("yoga") ||
+            name.includes("fitness") ||
+            description.includes("fitness") ||
+            name.includes("wellness") ||
+            description.includes("wellness") ||
+            name.includes("meditation") ||
+            description.includes("meditation") ||
+            name.includes("workout") ||
+            description.includes("workout")
+          );
+        }) || [];
+    } else if (section.key === "educational-events") {
+      // Get all events and filter for educational
+      const allEvents = await fetchAllEvents();
+      allSectionData =
+        allEvents.filter((event: any) => {
+          const name = event.name?.toLowerCase() || "";
+          const description = event.description?.toLowerCase() || "";
+          return (
+            name.includes("learn") ||
+            description.includes("learn") ||
+            name.includes("education") ||
+            description.includes("education") ||
+            name.includes("class") ||
+            description.includes("class") ||
+            name.includes("course") ||
+            description.includes("course") ||
+            name.includes("training") ||
+            description.includes("training")
+          );
+        }) || [];
+    } else if (section.key === "charity-events") {
+      // Get all events and filter for charity & volunteer
+      const allEvents = await fetchAllEvents();
+      allSectionData =
+        allEvents.filter((event: any) => {
+          const name = event.name?.toLowerCase() || "";
+          const description = event.description?.toLowerCase() || "";
+          return (
+            name.includes("charity") ||
+            description.includes("charity") ||
+            name.includes("volunteer") ||
+            description.includes("volunteer") ||
+            name.includes("donation") ||
+            description.includes("donation") ||
+            name.includes("fundraiser") ||
+            description.includes("fundraiser")
+          );
+        }) || [];
+    } else if (section.key === "late-night-events") {
+      // Get all events and filter for late night
+      const allEvents = await fetchAllEvents();
+      allSectionData =
+        allEvents.filter((event: any) => {
+          const eventDate = new Date(event.start_datetime);
+          const hours = eventDate.getHours();
+          return hours >= 21 || hours <= 6; // 9 PM to 6 AM
+        }) || [];
+    } else if (section.key === "morning-events") {
+      // Get all events and filter for morning
+      const allEvents = await fetchAllEvents();
+      allSectionData =
+        allEvents.filter((event: any) => {
+          const eventDate = new Date(event.start_datetime);
+          const hours = eventDate.getHours();
+          return hours >= 6 && hours <= 12; // 6 AM to 12 PM
+        }) || [];
+    } else if (section.key === "afternoon-events") {
+      // Get all events and filter for afternoon
+      const allEvents = await fetchAllEvents();
+      allSectionData =
+        allEvents.filter((event: any) => {
+          const eventDate = new Date(event.start_datetime);
+          const hours = eventDate.getHours();
+          return hours >= 12 && hours <= 18; // 12 PM to 6 PM
+        }) || [];
+    } else if (section.key === "evening-events") {
+      // Get all events and filter for evening
+      const allEvents = await fetchAllEvents();
+      allSectionData =
+        allEvents.filter((event: any) => {
+          const eventDate = new Date(event.start_datetime);
+          const hours = eventDate.getHours();
+          return hours >= 18 && hours <= 21; // 6 PM to 9 PM
+        }) || [];
     } else if (section.key.startsWith("category-")) {
       // Get all events for this category
       const categoryId = section.key.replace("category-", "");
@@ -109,6 +471,19 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
       const events = (eventsResponse.data || []).map(transformEvent);
       const locations = (locationsResponse.data || []).map(transformLocation);
       allSectionData = [...events, ...locations];
+    } else if (section.key === "more") {
+      // Get all remaining events and locations
+      const [eventsResponse, locationsResponse] = await Promise.all([
+        supabase
+          .from("events")
+          .select("*")
+          .gte("start_datetime", now.toISOString())
+          .order("start_datetime", { ascending: true }),
+        supabase.from("static_locations").select("*"),
+      ]);
+      const events = (eventsResponse.data || []).map(transformEvent);
+      const locations = (locationsResponse.data || []).map(transformLocation);
+      allSectionData = shuffleArray([...events, ...locations]);
     } else {
       // For any other section, get all events and locations
       const [eventsResponse, locationsResponse] = await Promise.all([

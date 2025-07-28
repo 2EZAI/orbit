@@ -71,10 +71,8 @@ export function SectionViewSheet({
         <View style={styles.itemMeta}>
           {item.date && (
             <View style={styles.metaRow}>
-              <Clock size={12} color={theme.colors.textSecondary} />
-              <Text
-                style={[styles.metaText, { color: theme.colors.textSecondary }]}
-              >
+              <Clock size={12} color={theme.colors.text} />
+              <Text style={[styles.metaText, { color: theme.colors.text }]}>
                 {item.date}
               </Text>
             </View>
@@ -82,9 +80,9 @@ export function SectionViewSheet({
 
           {item.location && (
             <View style={styles.metaRow}>
-              <MapPin size={12} color={theme.colors.textSecondary} />
+              <MapPin size={12} color={theme.colors.text} />
               <Text
-                style={[styles.metaText, { color: theme.colors.textSecondary }]}
+                style={[styles.metaText, { color: theme.colors.text }]}
                 numberOfLines={1}
               >
                 {item.location}
@@ -101,34 +99,6 @@ export function SectionViewSheet({
             </View>
           )}
         </View>
-
-        {item.isLocation && (
-          <View
-            style={[
-              styles.locationBadge,
-              { backgroundColor: theme.colors.primary + "20" },
-            ]}
-          >
-            <Text
-              style={[
-                styles.locationBadgeText,
-                { color: theme.colors.primary },
-              ]}
-            >
-              Location
-            </Text>
-          </View>
-        )}
-
-        {item.is_ticketmaster && (
-          <View
-            style={[styles.ticketmasterBadge, { backgroundColor: "#ff6b6b20" }]}
-          >
-            <Text style={[styles.ticketmasterBadgeText, { color: "#ff6b6b" }]}>
-              Ticketmaster
-            </Text>
-          </View>
-        )}
       </View>
     </TouchableOpacity>
   );
@@ -141,7 +111,7 @@ export function SectionViewSheet({
       onRequestClose={onClose}
     >
       <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        style={[styles.container, { backgroundColor: theme.colors.card }]}
       >
         {/* Header */}
         <View
@@ -151,18 +121,13 @@ export function SectionViewSheet({
             <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
               {section?.title || "All Items"}
             </Text>
-            <Text
-              style={[
-                styles.headerSubtitle,
-                { color: theme.colors.textSecondary },
-              ]}
-            >
+            <Text style={[styles.headerSubtitle, { color: theme.colors.text }]}>
               {filteredData.length} items
             </Text>
           </View>
 
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <X size={24} color={theme.colors.text} />
+            <X size={20} color="#8B5CF6" />
           </TouchableOpacity>
         </View>
 
@@ -170,18 +135,21 @@ export function SectionViewSheet({
         <View
           style={[
             styles.searchContainer,
-            { backgroundColor: theme.colors.card },
+            {
+              backgroundColor: theme.colors.card,
+              borderColor: theme.colors.border,
+            },
           ]}
         >
           <Search
             size={20}
-            color={theme.colors.textSecondary}
+            color={theme.colors.text}
             style={styles.searchIcon}
           />
           <TextInput
             style={[styles.searchInput, { color: theme.colors.text }]}
             placeholder="Search events and places..."
-            placeholderTextColor={theme.colors.textSecondary}
+            placeholderTextColor={theme.colors.text}
             value={searchTerm}
             onChangeText={setSearchTerm}
           />
@@ -213,6 +181,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
+    shadowColor: "#8B5CF6",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   headerLeft: {
     flex: 1,
@@ -227,8 +200,15 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   closeButton: {
-    padding: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(139, 92, 246, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
     marginLeft: 16,
+    borderWidth: 1,
+    borderColor: "rgba(139, 92, 246, 0.2)",
   },
   searchContainer: {
     flexDirection: "row",
@@ -237,7 +217,13 @@ const styles = StyleSheet.create({
     marginVertical: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowColor: "#8B5CF6",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   searchIcon: {
     marginRight: 12,
@@ -246,6 +232,8 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: "500",
+    backgroundColor: "transparent",
+    borderWidth: 0,
   },
   listContent: {
     paddingHorizontal: 20,
@@ -258,11 +246,11 @@ const styles = StyleSheet.create({
     width: (screenWidth - 60) / 2,
     borderRadius: 16,
     marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowColor: "#8B5CF6",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 4,
     overflow: "hidden",
   },
   itemImage: {

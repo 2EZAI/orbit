@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { ChevronRight } from "lucide-react-native";
+import { useTheme } from "~/src/components/ThemeProvider";
 
 interface SectionProps {
   title: string;
@@ -26,20 +27,29 @@ export function FeedSection({
   renderItem,
   loading,
 }: SectionProps) {
+  const { theme } = useTheme();
+
   if (!data || data.length === 0) return null;
 
   return (
     <View style={styles.airbnbSection}>
       <View style={styles.airbnbSectionHeader}>
-        <Text style={styles.airbnbSectionTitle}>{title}</Text>
+        <Text style={[styles.airbnbSectionTitle, { color: theme.colors.text }]}>
+          {title}
+        </Text>
         <TouchableOpacity onPress={onSeeAll} style={styles.seeAllButton}>
-          <Text style={styles.seeAllText}>See all</Text>
-          <ChevronRight size={16} color="#8B5CF6" />
+          <Text style={[styles.seeAllText, { color: theme.colors.primary }]}>
+            See all
+          </Text>
+          <ChevronRight size={16} color={theme.colors.primary} />
         </TouchableOpacity>
       </View>
 
       {loading ? (
-        <ActivityIndicator style={styles.sectionLoading} color="#8B5CF6" />
+        <ActivityIndicator
+          style={styles.sectionLoading}
+          color={theme.colors.primary}
+        />
       ) : layout === "grid" ? (
         <FlatList
           data={data}
@@ -79,7 +89,6 @@ const styles = StyleSheet.create({
   airbnbSectionTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#222",
   },
   seeAllButton: {
     flexDirection: "row",
@@ -87,7 +96,6 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     fontSize: 14,
-    color: "#8B5CF6",
     fontWeight: "600",
   },
   sectionLoading: {
