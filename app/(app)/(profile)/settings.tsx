@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, TouchableOpacity, ScrollView, SafeAreaView } from "react-native";
 import { router } from "expo-router";
 import { Text } from "~/src/components/ui/text";
+import { supabase } from "~/src/lib/supabase";
 import { useTheme } from "~/src/components/ThemeProvider";
 import {
   ArrowLeft,
@@ -16,19 +17,20 @@ import {
   Shield,
   Trash2,
   FileText,
-  Settings,
+  LogOut,
 } from "lucide-react-native";
 
 // Import modal components (we'll create these next)
 import { PersonalInfoModal } from "~/src/components/settings/PersonalInfoModal";
 import { UsernameModal } from "~/src/components/settings/UsernameModal";
-import { EmailModal } from "~/src/components/settings/EmailModal";
 import { PasswordModal } from "~/src/components/settings/PasswordModal";
+
+import { DeleteAccountModal } from "~/src/components/settings/DeleteAccountModal";
+import { EmailModal } from "~/src/components/settings/EmailModal";
 import { LocationPreferencesModal } from "~/src/components/settings/LocationPreferencesModal";
 import { AddressModal } from "~/src/components/settings/AddressModal";
 import { InterestsModal } from "~/src/components/settings/InterestsModal";
 import { PrivacyModal } from "~/src/components/settings/PrivacyModal";
-import { DeleteAccountModal } from "~/src/components/settings/DeleteAccountModal";
 
 interface SettingItemProps {
   icon: React.ReactNode;
@@ -137,6 +139,16 @@ export default function SettingsScreen() {
     router.back();
   };
 
+  const handleLogout = async () => {
+    try {
+      console.log("Initiating logout...");
+      await supabase.auth.signOut();
+      console.log("Logout successful - app layout will handle redirect");
+    } catch (error) {
+      console.error("Error logging out:", error);
+    }
+  };
+
   const openWebview = (url: string, title: string) => {
     router.push({
       pathname: "/(app)/(webview)",
@@ -240,6 +252,12 @@ export default function SettingsScreen() {
 
         {/* Privacy & more */}
         <SectionHeader title="Privacy & more" />
+
+        <SettingItem
+          icon={<LogOut size={20} color={theme.colors.primary} />}
+          title="Log Out"
+          onPress={handleLogout}
+        />
 
         <SettingItem
           icon={<Trash2 size={20} color="#FF3B30" />}

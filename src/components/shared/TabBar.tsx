@@ -81,10 +81,20 @@ export default function TabBar() {
   }, [currentActiveIndex, activeIndex, slideAnimation]);
 
   useEffect(() => {
-    DeviceEventEmitter.addListener("mapReload", (value) => {
-      console.log("event----mapReload", value);
-      router.replace("/(app)/(map)");
-    });
+    const subscription = DeviceEventEmitter.addListener(
+      "mapReload",
+      (value) => {
+        console.log("event----mapReload", value);
+        // Add a small delay to ensure navigation context is available
+        setTimeout(() => {
+          router.replace("/(app)/(map)");
+        }, 100);
+      }
+    );
+
+    return () => {
+      subscription?.remove();
+    };
   }, []);
 
   // Hide the tab bar when in a channel

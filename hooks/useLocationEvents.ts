@@ -58,10 +58,6 @@ export function useLocationEvents(
       return;
     }
 
-    console.log(
-      "🔍 [useLocationEvents] Fetching events for location:",
-      locationId
-    );
     setLoading(true);
     setError(null);
 
@@ -103,26 +99,11 @@ export function useLocationEvents(
         .order("start_datetime", { ascending: true });
 
       if (eventsError) {
-        console.error("❌ [useLocationEvents] Supabase error:", eventsError);
         throw eventsError;
       }
 
-      console.log("📍 [useLocationEvents] SUPABASE QUERY RESULT:", {
-        locationId: locationId,
-        query: `SELECT * FROM events WHERE location_id = '${locationId}'`,
-        resultCount: eventsData?.length || 0,
-        rawResults: eventsData,
-        firstResult: eventsData?.[0] || null,
-      });
-
       // Check if we found any events
       if (!eventsData || eventsData.length === 0) {
-        console.log("⚠️ [useLocationEvents] NO EVENTS FOUND - DEBUG INFO:", {
-          locationId,
-          eventsData,
-          eventsDataType: typeof eventsData,
-          isArray: Array.isArray(eventsData),
-        });
         setEvents([]);
         setLoading(false);
         return;
@@ -151,11 +132,7 @@ export function useLocationEvents(
                 .eq("event_id", event.id);
 
             if (attendeesError) {
-              console.warn(
-                "⚠️ [useLocationEvents] Error fetching attendees for event:",
-                event.id,
-                attendeesError
-              );
+              // Silently handle attendees error
             }
 
             const attendees = {
@@ -201,11 +178,6 @@ export function useLocationEvents(
               attendees,
             } as LocationEvent;
           } catch (err) {
-            console.warn(
-              "⚠️ [useLocationEvents] Error processing event:",
-              event.id,
-              err
-            );
             // Extract creator from the joined users data (fallback case)
             const creator = (event as any).users?.[0]
               ? {
@@ -225,21 +197,10 @@ export function useLocationEvents(
         })
       );
 
-      console.log("✅ [useLocationEvents] Processed events with attendees:", {
-        locationId,
-        eventsCount: eventsWithAttendees.length,
-        events: eventsWithAttendees,
-      });
-
       setEvents(eventsWithAttendees);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Unknown error occurred";
-      console.error("❌ [useLocationEvents] Error fetching events:", {
-        locationId,
-        error: err,
-        message: errorMessage,
-      });
       setError(errorMessage);
       setEvents([]);
     } finally {

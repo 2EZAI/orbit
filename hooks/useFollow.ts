@@ -33,7 +33,6 @@ export function useFollow(): UseFollowReturn {
         .single();
 
       if (error) {
-        console.error("Error checking follow status:", error);
         return false;
       }
 
@@ -80,7 +79,6 @@ export function useFollow(): UseFollowReturn {
           });
         }
       } catch (error) {
-        console.error("Error following user:", error);
         Toast.show({
           type: "error",
           text1: "Error",
@@ -120,7 +118,6 @@ export function useFollow(): UseFollowReturn {
           text2: "Successfully unfollowed user",
         });
       } catch (error) {
-        console.error("Error unfollowing user:", error);
         Toast.show({
           type: "error",
           text1: "Error",
@@ -142,7 +139,6 @@ export function useFollow(): UseFollowReturn {
         .eq("following_id", userId);
 
       if (error) {
-        console.error("Error getting followers:", error);
         return [];
       }
 
@@ -160,7 +156,6 @@ export function useFollow(): UseFollowReturn {
         .eq("follower_id", userId);
 
       if (error) {
-        console.error("Error getting following:", error);
         return [];
       }
 
@@ -181,7 +176,6 @@ export function useFollow(): UseFollowReturn {
         .single();
 
       if (error) {
-        console.error("Error getting follow counts:", error);
         return { followerCount: 0, followingCount: 0 };
       }
 

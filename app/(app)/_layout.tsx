@@ -7,17 +7,27 @@ import TabBar from "~/src/components/shared/TabBar";
 import { Redirect } from "expo-router";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import useNotifications from "~/hooks/useNotifications";
+import { useRef, useEffect } from "react";
 
 export default function AppLayout() {
   const { theme } = useTheme();
   const { session, loading } = useAuth();
+  const lastSessionState = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    const hasSession = !!session;
+    if (lastSessionState.current !== hasSession) {
+      console.log("App layout: Session state changed to:", hasSession);
+      lastSessionState.current = hasSession;
+    }
+  }, [session]);
 
   if (loading) {
     return null;
   }
 
   if (!session) {
-    return <Redirect href="/(auth)/sign-in" />;
+    return <Redirect href="/" />;
   }
   useNotifications();
   return (
@@ -34,7 +44,7 @@ export default function AppLayout() {
             currentRoute.name,
             currentRoute.path
           );
-          // Show tab bar everywhere except onboarding, notifications, and specific chat messages
+          // Show tab bar everywhere except notifications and specific chat messages
           const isSpecificChatRoute =
             currentRoute.name === "(webview)" ||
             (currentRoute.name === "(chat)" &&
@@ -43,10 +53,7 @@ export default function AppLayout() {
               "id" in currentRoute.params);
 
           const hideTabBar =
-            currentRoute.name === "onboarding" ||
-            currentRoute.name === "(notification)" ||
-            currentRoute.name === "(profile)" ||
-            isSpecificChatRoute;
+            currentRoute.name === "(notification)" || isSpecificChatRoute;
 
           return hideTabBar ? null : <TabBar />;
         }}
@@ -71,7 +78,6 @@ export default function AppLayout() {
           }}
         />
         <Tabs.Screen name="(profile)" />
-        <Tabs.Screen name="onboarding" />
       </Tabs>
     </View>
   );

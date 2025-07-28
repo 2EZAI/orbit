@@ -84,17 +84,17 @@ interface UseUserReturn {
     pageSize: Partial<any>
   ) => Promise<void>;
   fetchCreatedEvents: (
-    type: String,
-    updates: Partial<any>,
-    page: Partial<any>,
-    pageSize: Partial<any>
-  ) => Promise<void>;
+    type_: String,
+    pagee: Partial<any>,
+    pageSize: Partial<any>,
+    userid: string
+  ) => Promise<any>;
   filterEvents: (
-    type: String,
-    updates: Partial<any>,
-    page: Partial<any>,
-    pageSize: Partial<any>
-  ) => Promise<void>;
+    eventName: Partial<any>,
+    pagee: Partial<any>,
+    pageSize: Partial<any>,
+    userid: string
+  ) => Promise<any>;
 }
 
 export function useUpdateEvents(): UseUserReturn {
@@ -130,16 +130,12 @@ export function useUpdateEvents(): UseUserReturn {
           body: JSON.stringify(eventData),
         }
       );
-      console.log("session.access_token>>", session.access_token);
-      console.log("eventData>UpdateEventStatus", eventData);
 
       if (!response.ok) {
         throw new Error(await response.text());
       }
 
       const data = await response.json();
-      // console.log("event data", data);
-      console.log("[Events] Updated", data, "events from API");
       Toast.show({
         type: "success",
         text1: "Event Updated",
@@ -170,16 +166,12 @@ export function useUpdateEvents(): UseUserReturn {
           body: JSON.stringify(eventData),
         }
       );
-      console.log("session.access_token>>", session.access_token);
-      console.log("eventData>fetchEvent", eventData);
 
       if (!response.ok) {
         throw new Error(await response.text());
       }
 
       const data = await response.json();
-      // console.log("event data", data);
-      console.log("[Events] Fetched", data, "events from API");
       // Toast.show({
       //   type: "success",
       //   text1: "Event fetched"
@@ -207,15 +199,12 @@ export function useUpdateEvents(): UseUserReturn {
           // body: JSON.stringify(eventData),
         }
       );
-      console.log("session.access_token>>", session.access_token);
 
       if (!response.ok) {
         throw new Error(await response.text());
       }
 
       const data = await response.json();
-      // console.log("event data", data);
-      console.log("location Fetched", data, "location from API");
       // Toast.show({
       //   type: "success",
       //   text1: "Event fetched"
@@ -243,13 +232,6 @@ export function useUpdateEvents(): UseUserReturn {
 
       const apiUrl = `${process.env.BACKEND_MAP_URL}/api/events/location/${location.id}`;
 
-      console.log("🔍 [fetchLocationEvents] Making API call:", {
-        url: apiUrl,
-        locationId: location.id,
-        locationData: location,
-        requestBody: eventData,
-      });
-
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
@@ -261,30 +243,13 @@ export function useUpdateEvents(): UseUserReturn {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("❌ [fetchLocationEvents] API Error:", {
-          status: response.status,
-          statusText: response.statusText,
-          errorText,
-          locationId: location.id,
-        });
         throw new Error(errorText);
       }
 
       const data = await response.json();
-      console.log("📍 [fetchLocationEvents] API Response:", {
-        locationId: location.id,
-        responseData: data,
-        eventsCount: data?.events?.length || 0,
-        events: data?.events,
-      });
 
       return data.events;
     } catch (e) {
-      console.error("❌ [fetchLocationEvents] Exception:", {
-        error: e,
-        locationId: location?.id,
-        message: e instanceof Error ? e.message : "Unknown error",
-      });
       setError(e instanceof Error ? e : new Error("An error occurred"));
       throw e;
     }
@@ -317,16 +282,12 @@ export function useUpdateEvents(): UseUserReturn {
           body: JSON.stringify(eventData),
         }
       );
-      console.log("session.access_token>>", session.access_token);
-      console.log("fetchCreatedEvents>fetchEvent", eventData);
 
       if (!response.ok) {
         throw new Error(await response.text());
       }
 
       const data = await response.json();
-      // console.log("event data", data);
-      console.log("[Events] fetchCreatedEvents", data, "events from API");
       // Toast.show({
       //   type: "success",
       //   text1: "Event fetched"
@@ -364,16 +325,12 @@ export function useUpdateEvents(): UseUserReturn {
           body: JSON.stringify(eventData),
         }
       );
-      console.log("session.access_token>>", session.access_token);
-      console.log("filterEvents>fetchEvent", eventData);
 
       if (!response.ok) {
         throw new Error(await response.text());
       }
 
       const data = await response.json();
-      // console.log("event data", data);
-      console.log("[Events] filterEvents", data, "events from API");
       // Toast.show({
       //   type: "success",
       //   text1: "Event fetched"

@@ -295,11 +295,6 @@ export function UnifiedDetailsSheet({
       name: (locationData as any).category?.name || "",
     };
 
-    console.log(
-      "🔍 [UnifiedDetailsSheet] Simplified category for router:",
-      simplifiedCategory
-    );
-
     router.push({
       pathname: "/(app)/(create)",
       params: {
@@ -328,7 +323,6 @@ export function UnifiedDetailsSheet({
   const hitDetailApi = async () => {
     // Skip API call if we just manually updated the state
     if (manuallyUpdated) {
-      console.log("🚫 Skipping API call - state was manually updated");
       setLoading(false);
       return;
     }
@@ -337,11 +331,6 @@ export function UnifiedDetailsSheet({
       if (isEventData(data, isEvent)) {
         try {
           const freshData = await fetchEventDetail(data as any);
-          console.log("🔄 Fresh event data received:", freshData);
-          console.log(
-            "🔍 Fresh data join_status:",
-            (freshData as any)?.join_status
-          );
           setDetailData(freshData as unknown as UnifiedData);
         } catch (fetchError) {
           console.error("Error fetching event detail:", fetchError);
@@ -349,7 +338,6 @@ export function UnifiedDetailsSheet({
       } else {
         try {
           const freshData = await fetchLocationDetail(data as MapLocation);
-          console.log("🔄 Fresh location data received:", freshData);
           setDetailData(freshData as unknown as UnifiedData);
         } catch (fetchError) {
           console.error("Error fetching location detail:", fetchError);

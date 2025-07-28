@@ -22,9 +22,9 @@ export const UserMarkerWithCount = ({
   }, [avatarUrl]);
 
   return (
-    <View className="items-center w-20 justify-center">
+    <View className="justify-center items-center w-20">
       <View
-        className="p-6 rounded-full bg-white shadow-lg"
+        className="p-6 bg-white rounded-full shadow-lg"
         style={{
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
@@ -41,7 +41,7 @@ export const UserMarkerWithCount = ({
               ? { uri: avatarUrl }
               : require("~/assets/favicon.png")
           }
-          className="absolute w-12 h-12 rounded-full bg-muted border-2 border-white"
+          className="absolute w-12 h-12 rounded-full border-2 border-white bg-muted"
           onError={(e) => {
             console.error(
               "[UserMarker] Failed to load avatar:",
@@ -50,19 +50,19 @@ export const UserMarkerWithCount = ({
             setImageError(true);
           }}
         />
-        <View className="absolute items-center justify-center mt-2 w-4 h-4 border rounded-full -top-1 -left-1 bg-green-400">
-          <View className="w-2 h-2 rounded-full bg-white" />
+        <View className="absolute -top-1 -left-1 justify-center items-center mt-2 w-4 h-4 bg-green-400 rounded-full border">
+          <View className="w-2 h-2 bg-white rounded-full" />
         </View>
 
         {showCount && count && count > 8 && (
-          <View className="absolute w-12 h-12 justify-center rounded-full bg-muted border-2 border-white">
-            <Text className="text-xs text-center font-bold text-black">
+          <View className="absolute justify-center w-12 h-12 rounded-full border-2 border-white bg-muted">
+            <Text className="text-xs font-bold text-center text-black">
               {String(count || 0) + "+"}
             </Text>
           </View>
         )}
       </View>
-      <View className="w-2 h-2 -mt-1 rounded-full bg-black/20" />
+      <View className="-mt-1 w-2 h-2 rounded-full bg-black/20" />
     </View>
   );
 };

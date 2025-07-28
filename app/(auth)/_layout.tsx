@@ -35,7 +35,7 @@ export default function AuthLayout() {
         options={{
           title: "Onboarding",
           gestureEnabled: false,
-          presentation: "fullScreenModal",
+          presentation: "card",
         }}
       />
     </Stack>

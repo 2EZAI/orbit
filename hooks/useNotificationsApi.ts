@@ -55,10 +55,7 @@ interface useNotificationsReturn {
 const saveUnReadNotifCount = async (count: string) => {
   try {
     await AsyncStorage.setItem("unread_notification", JSON.stringify(count));
-    console.log("Saved successfully");
-  } catch (error) {
-    console.error("Error saving notification:", error);
-  }
+  } catch (error) {}
 };
 export function useNotificationsApi(): useNotificationsReturn {
   const { session } = useAuth();
@@ -90,9 +87,7 @@ export function useNotificationsApi(): useNotificationsReturn {
       }
 
       const data = await response.json();
-      console.log("notifications>", data);
       const meta = data?.meta?.unreadCount;
-      console.log("meta>", meta);
       setUnReadCount(meta);
       saveUnReadNotifCount(String(meta || 0));
 
@@ -104,7 +99,6 @@ export function useNotificationsApi(): useNotificationsReturn {
   };
 
   const readNoifications = async (notifId: string) => {
-    console.log("readNoifications:>");
     try {
       if (!session) return;
       const response = await fetch(
@@ -124,11 +118,8 @@ export function useNotificationsApi(): useNotificationsReturn {
       }
 
       const notifDetail = await response.json();
-      console.log("notifDetail>", notifDetail);
       return notifDetail;
-    } catch (error) {
-      console.error("Error fetching read notification:", error);
-    }
+    } catch (error) {}
   };
 
   return {
