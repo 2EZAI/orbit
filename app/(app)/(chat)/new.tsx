@@ -12,7 +12,14 @@ import { useChat } from "~/src/lib/chat";
 import { useRouter } from "expo-router";
 import { supabase } from "~/src/lib/supabase";
 import { User as AuthUser } from "@supabase/supabase-js";
-import { Users, Search, X, ArrowLeft } from "lucide-react-native";
+import {
+  Users,
+  Search,
+  X,
+  ArrowLeft,
+  UserPlus,
+  UserCheck,
+} from "lucide-react-native";
 import { Input } from "~/src/components/ui/input";
 import { Button } from "~/src/components/ui/button";
 import { Text } from "~/src/components/ui/text";
@@ -49,7 +56,13 @@ export default function NewChatScreen() {
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
   const [chatName, setChatName] = useState("");
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [followers, setFollowers] = useState<User[]>([]);
+  const [following, setFollowing] = useState<User[]>([]);
+  const [activeTab, setActiveTab] = useState<
+    "followers" | "following" | "people"
+  >("people");
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingFollows, setIsLoadingFollows] = useState(false);
   const { session } = useAuth();
 
   const isGroupChat = selectedUsers.length > 1;
@@ -136,8 +149,102 @@ export default function NewChatScreen() {
     fetchUsers();
   }, [client?.userID]);
 
-  // Filter users based on search text
-  const filteredUsers = allUsers.filter((user) => {
+  // Fetch followers and following
+  useEffect(() => {
+    const fetchFollows = async () => {
+      if (!client?.userID) return;
+
+      setIsLoadingFollows(true);
+      try {
+        // Fetch followers (users who follow the current user)
+        const { data: followersData, error: followersError } = await supabase
+          .from("follows")
+          .select(
+            `
+            follower_id,
+            users!follows_follower_id_fkey(
+              id, email, first_name, last_name, username, avatar_url
+            )
+          `
+          )
+          .eq("following_id", client.userID);
+
+        if (followersError) {
+          console.error("Error fetching followers:", followersError);
+        } else {
+          const formattedFollowers = (followersData || []).map((item: any) => ({
+            id: item.users.id,
+            email: item.users.email || "",
+            first_name: item.users.first_name,
+            last_name: item.users.last_name,
+            username: item.users.username,
+            avatar_url: item.users.avatar_url,
+            aud: "authenticated",
+            app_metadata: {},
+            user_metadata: {},
+            created_at: "",
+            updated_at: "",
+          }));
+          setFollowers(formattedFollowers);
+        }
+
+        // Fetch following (users the current user follows)
+        const { data: followingData, error: followingError } = await supabase
+          .from("follows")
+          .select(
+            `
+            following_id,
+            users!follows_following_id_fkey(
+              id, email, first_name, last_name, username, avatar_url
+            )
+          `
+          )
+          .eq("follower_id", client.userID);
+
+        if (followingError) {
+          console.error("Error fetching following:", followingError);
+        } else {
+          const formattedFollowing = (followingData || []).map((item: any) => ({
+            id: item.users.id,
+            email: item.users.email || "",
+            first_name: item.users.first_name,
+            last_name: item.users.last_name,
+            username: item.users.username,
+            avatar_url: item.users.avatar_url,
+            aud: "authenticated",
+            app_metadata: {},
+            user_metadata: {},
+            created_at: "",
+            updated_at: "",
+          }));
+          setFollowing(formattedFollowing);
+        }
+      } catch (error) {
+        console.error("Error fetching follows:", error);
+      } finally {
+        setIsLoadingFollows(false);
+      }
+    };
+
+    fetchFollows();
+  }, [client?.userID]);
+
+  // Get current tab's user list
+  const getCurrentUserList = () => {
+    switch (activeTab) {
+      case "followers":
+        return followers;
+      case "following":
+        return following;
+      case "people":
+        return allUsers;
+      default:
+        return allUsers;
+    }
+  };
+
+  // Filter users based on search text and current tab
+  const filteredUsers = getCurrentUserList().filter((user) => {
     const searchTerm = searchText.toLowerCase();
     const fullName = `${user.first_name || ""} ${
       user.last_name || ""
@@ -578,6 +685,139 @@ export default function NewChatScreen() {
           </View>
         )}
 
+        {/* Tabs */}
+        <View
+          style={{
+            backgroundColor: theme.colors.card,
+            borderRadius: 16,
+            marginBottom: 16,
+            shadowColor: theme.colors.border,
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            elevation: 3,
+          }}
+        >
+          <View style={{ padding: 16 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                backgroundColor: theme.colors.border,
+                borderRadius: 12,
+                padding: 4,
+              }}
+            >
+              {/* Followers Tab */}
+              <TouchableOpacity
+                onPress={() => setActiveTab("followers")}
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  paddingHorizontal: 4,
+                  borderRadius: 8,
+                  backgroundColor:
+                    activeTab === "followers"
+                      ? theme.colors.primary
+                      : "transparent",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <UserPlus
+                  size={14}
+                  color={
+                    activeTab === "followers" ? "white" : theme.colors.text
+                  }
+                />
+                <Text
+                  style={{
+                    marginTop: 2,
+                    fontSize: 11,
+                    fontWeight: "600",
+                    color:
+                      activeTab === "followers" ? "white" : theme.colors.text,
+                    textAlign: "center",
+                  }}
+                  numberOfLines={1}
+                >
+                  Followers
+                </Text>
+              </TouchableOpacity>
+
+              {/* Following Tab */}
+              <TouchableOpacity
+                onPress={() => setActiveTab("following")}
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  paddingHorizontal: 4,
+                  borderRadius: 8,
+                  backgroundColor:
+                    activeTab === "following"
+                      ? theme.colors.primary
+                      : "transparent",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <UserCheck
+                  size={14}
+                  color={
+                    activeTab === "following" ? "white" : theme.colors.text
+                  }
+                />
+                <Text
+                  style={{
+                    marginTop: 2,
+                    fontSize: 11,
+                    fontWeight: "600",
+                    color:
+                      activeTab === "following" ? "white" : theme.colors.text,
+                    textAlign: "center",
+                  }}
+                  numberOfLines={1}
+                >
+                  Following
+                </Text>
+              </TouchableOpacity>
+
+              {/* People Tab */}
+              <TouchableOpacity
+                onPress={() => setActiveTab("people")}
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  paddingHorizontal: 4,
+                  borderRadius: 8,
+                  backgroundColor:
+                    activeTab === "people"
+                      ? theme.colors.primary
+                      : "transparent",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Users
+                  size={14}
+                  color={activeTab === "people" ? "white" : theme.colors.text}
+                />
+                <Text
+                  style={{
+                    marginTop: 2,
+                    fontSize: 11,
+                    fontWeight: "600",
+                    color: activeTab === "people" ? "white" : theme.colors.text,
+                    textAlign: "center",
+                  }}
+                  numberOfLines={1}
+                >
+                  People
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
         {/* Users List */}
         <View
           style={{
@@ -600,9 +840,13 @@ export default function NewChatScreen() {
                 marginBottom: 12,
               }}
             >
-              People
+              {activeTab === "followers"
+                ? "Your Followers"
+                : activeTab === "following"
+                ? "People You Follow"
+                : "All People"}
             </Text>
-            {isLoading ? (
+            {isLoading || isLoadingFollows ? (
               <View className="flex-1 justify-center items-center py-8">
                 <ActivityIndicator size="large" color={theme.colors.card} />
                 <Text
@@ -611,7 +855,7 @@ export default function NewChatScreen() {
                     color: theme.colors.text,
                   }}
                 >
-                  Loading people...
+                  Loading {activeTab}...
                 </Text>
               </View>
             ) : (
@@ -708,7 +952,13 @@ export default function NewChatScreen() {
                         marginBottom: 16,
                       }}
                     >
-                      <Users size={24} color={theme.colors.text} />
+                      {activeTab === "followers" ? (
+                        <UserPlus size={24} color={theme.colors.text} />
+                      ) : activeTab === "following" ? (
+                        <UserCheck size={24} color={theme.colors.text} />
+                      ) : (
+                        <Users size={24} color={theme.colors.text} />
+                      )}
                     </View>
                     <Text
                       style={{
@@ -718,7 +968,11 @@ export default function NewChatScreen() {
                       }}
                     >
                       {searchText.trim()
-                        ? "No people found matching your search"
+                        ? `No ${activeTab} found matching your search`
+                        : activeTab === "followers"
+                        ? "No followers yet"
+                        : activeTab === "following"
+                        ? "You're not following anyone yet"
                         : "No people available to chat with"}
                     </Text>
                   </View>

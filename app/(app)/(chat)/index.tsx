@@ -583,9 +583,7 @@ export default function ChatListScreen() {
                   width: 36,
                   height: 36,
                   borderRadius: 18,
-                  backgroundColor: isDarkMode
-                    ? "rgba(255, 255, 255, 0.08)"
-                    : "rgba(255, 255, 255, 0.9)",
+                  backgroundColor: theme.colors.primary,
                 }}
               >
                 <Search size={18} color={theme.colors.text} strokeWidth={2.5} />
@@ -598,10 +596,10 @@ export default function ChatListScreen() {
                   width: 36,
                   height: 36,
                   borderRadius: 18,
-                  backgroundColor: theme.colors.text,
+                  backgroundColor: theme.colors.primary,
                 }}
               >
-                <Plus size={18} color="white" strokeWidth={2.5} />
+                <Plus size={18} color={theme.colors.text} strokeWidth={2.5} />
               </TouchableOpacity>
             </View>
           </View>

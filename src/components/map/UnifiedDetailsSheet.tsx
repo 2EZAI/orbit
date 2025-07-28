@@ -271,6 +271,9 @@ export function UnifiedDetailsSheet({
 
   const handleCreateOrbit = () => {
     if (isEventData(detailData || data, isEvent)) {
+      // Close the sheet first
+      onClose();
+
       router.push({
         pathname: "/new",
         params: {
