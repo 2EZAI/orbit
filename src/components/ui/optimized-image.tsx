@@ -176,7 +176,10 @@ export function OptimizedImage({
     return (
       <View
         className={className}
-        style={[{ width, height, backgroundColor: "#f3f4f6" }, style]}
+        style={[
+          { width, height, backgroundColor: "rgba(139, 92, 246, 0.05)" },
+          style,
+        ]}
       />
     );
   }
@@ -208,7 +211,7 @@ export function OptimizedImage({
             bottom: 0,
             justifyContent: "center",
             alignItems: "center",
-            backgroundColor: "#f3f4f6",
+            backgroundColor: "rgba(139, 92, 246, 0.05)",
           }}
         >
           <ActivityIndicator size="small" color="#8B5CF6" />
@@ -223,7 +226,7 @@ export function OptimizedImage({
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: "#f3f4f6",
+            backgroundColor: "rgba(139, 92, 246, 0.05)",
             justifyContent: "center",
             alignItems: "center",
           }}
@@ -232,7 +235,7 @@ export function OptimizedImage({
             style={{
               width: 20,
               height: 20,
-              backgroundColor: "#d1d5db",
+              backgroundColor: "rgba(139, 92, 246, 0.15)",
               borderRadius: 4,
             }}
           />

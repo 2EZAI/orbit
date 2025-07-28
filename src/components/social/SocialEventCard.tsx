@@ -142,7 +142,7 @@ const getThemeColors = (data: UnifiedData) => {
       categoryName.includes("nightlife") ||
       categoryName.includes("entertainment"):
       return {
-        primary: "#9333EA",
+        primary: "#8B5CF6",
         secondary: "#EC4899",
         gradientColors: ["rgba(0, 0, 0, 0.2)", "rgba(0, 0, 0, 0.7)"] as const,
       };
@@ -170,8 +170,8 @@ const getThemeColors = (data: UnifiedData) => {
     case categoryName.includes("business") ||
       categoryName.includes("networking"):
       return {
-        primary: "#6366F1",
-        secondary: "#4F46E5",
+        primary: "#8B5CF6",
+        secondary: "#A78BFA",
         gradientColors: ["rgba(0, 0, 0, 0.2)", "rgba(0, 0, 0, 0.7)"] as const,
       };
     case categoryName.includes("art") || categoryName.includes("culture"):
@@ -182,8 +182,8 @@ const getThemeColors = (data: UnifiedData) => {
       };
     default:
       return {
-        primary: "#6366F1",
-        secondary: "#4F46E5",
+        primary: "#8B5CF6",
+        secondary: "#A78BFA",
         gradientColors: ["rgba(0, 0, 0, 0.2)", "rgba(0, 0, 0, 0.7)"] as const,
       };
   }

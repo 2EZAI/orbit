@@ -94,7 +94,9 @@ const ModernSearchInput = ({
         style={{
           flexDirection: "row",
           alignItems: "center",
-          backgroundColor: isDarkMode ? theme.colors.card : "#F2F2F7",
+          backgroundColor: isDarkMode
+            ? "rgba(255, 255, 255, 0.08)"
+            : "rgba(255, 255, 255, 0.9)",
           borderRadius: 12,
           paddingHorizontal: 12,
           paddingVertical: 8,
@@ -581,7 +583,9 @@ export default function ChatListScreen() {
                   width: 36,
                   height: 36,
                   borderRadius: 18,
-                  backgroundColor: isDarkMode ? theme.colors.card : "#F2F2F7",
+                  backgroundColor: isDarkMode
+                    ? "rgba(255, 255, 255, 0.08)"
+                    : "rgba(255, 255, 255, 0.9)",
                 }}
               >
                 <Search size={18} color={theme.colors.text} strokeWidth={2.5} />

@@ -10,7 +10,7 @@ import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import { useChat } from "~/src/lib/chat";
 import { Text } from "~/src/components/ui/text";
 import { Check, X, Search } from "lucide-react-native";
-import { Icon } from 'react-native-elements';
+import { Icon } from "react-native-elements";
 import { TextInput } from "react-native";
 import type { UserResponse } from "stream-chat";
 
@@ -91,15 +91,17 @@ export default function AddMembersScreen() {
             <TouchableOpacity
               onPress={() => router.back()}
               style={{ marginLeft: 16 }}
-            >{Platform.OS == 'ios' ?
-              <X size={24} color="#007AFF" />
-              : <Icon 
-  name="close" 
-  type="material-community" 
-  size={24} 
-  color="#239ED0" 
-/>
-            }
+            >
+              {Platform.OS == "ios" ? (
+                <X size={24} color="#007AFF" />
+              ) : (
+                <Icon
+                  name="close"
+                  type="material-community"
+                  size={24}
+                  color="#239ED0"
+                />
+              )}
             </TouchableOpacity>
           ),
           headerRight: () => (
@@ -122,21 +124,22 @@ export default function AddMembersScreen() {
           style={{
             flexDirection: "row",
             alignItems: "center",
-            backgroundColor: "#f0f0f0",
+            backgroundColor: "rgba(139, 92, 246, 0.1)",
             borderRadius: 10,
             padding: 8,
             marginBottom: 16,
           }}
         >
-        {Platform.OS == 'ios' ?
-          <Search size={20} color="#666" style={{ marginRight: 8 }} />
-          : <Icon 
-  name="Search" 
-  type="material-community" 
-  size={20} 
-  color="#239ED0" 
-/>
-        }
+          {Platform.OS == "ios" ? (
+            <Search size={20} color="#666" style={{ marginRight: 8 }} />
+          ) : (
+            <Icon
+              name="Search"
+              type="material-community"
+              size={20}
+              color="#239ED0"
+            />
+          )}
           <TextInput
             placeholder="Search users..."
             value={searchQuery}

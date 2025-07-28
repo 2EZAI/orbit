@@ -65,7 +65,7 @@ const Firefly = ({ id, theme }: { id: string; theme: any }) => {
       "#34D399",
     ];
     const lightModeColors = [
-      "#7C3AED",
+      "#8B5CF6",
       "#8B5CF6",
       "#A855F7",
       "#C026D3",

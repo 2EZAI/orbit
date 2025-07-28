@@ -711,7 +711,7 @@ export default function SocialFeed() {
           width: 60,
           height: 60,
           borderRadius: 40,
-          backgroundColor: theme.colors.primary || "#3B82F6",
+          backgroundColor: "#8B5CF6",
           justifyContent: "center",
           alignItems: "center",
           shadowColor: isDarkMode ? theme.colors.primary : "#000",

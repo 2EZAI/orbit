@@ -37,7 +37,7 @@ export function UserAvatar({ user, size = 40 }: UserAvatarProps) {
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: "#E5E7EB",
+        backgroundColor: "rgba(139, 92, 246, 0.1)",
         alignItems: "center",
         justifyContent: "center",
       }}

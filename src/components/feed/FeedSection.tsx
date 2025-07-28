@@ -34,12 +34,12 @@ export function FeedSection({
         <Text style={styles.airbnbSectionTitle}>{title}</Text>
         <TouchableOpacity onPress={onSeeAll} style={styles.seeAllButton}>
           <Text style={styles.seeAllText}>See all</Text>
-          <ChevronRight size={16} color="#6c47ff" />
+          <ChevronRight size={16} color="#8B5CF6" />
         </TouchableOpacity>
       </View>
 
       {loading ? (
-        <ActivityIndicator style={styles.sectionLoading} color="#6c47ff" />
+        <ActivityIndicator style={styles.sectionLoading} color="#8B5CF6" />
       ) : layout === "grid" ? (
         <FlatList
           data={data}
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     fontSize: 14,
-    color: "#6c47ff",
+    color: "#8B5CF6",
     fontWeight: "600",
   },
   sectionLoading: {

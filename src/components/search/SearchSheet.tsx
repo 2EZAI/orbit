@@ -759,7 +759,7 @@ export function SearchSheet({
                               style={{
                                 paddingHorizontal: 6,
                                 paddingVertical: 2,
-                                backgroundColor: "#1976D2",
+                                backgroundColor: "#8B5CF6",
                                 borderRadius: 4,
                                 marginLeft: 8,
                               }}

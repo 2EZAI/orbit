@@ -110,8 +110,8 @@ const StoryCard = ({ item, onPress }: StoryCardProps) => {
         >
           <Bookmark
             size={16}
-            color={saved ? "#FFD700" : "#fff"}
-            fill={saved ? "#FFD700" : "transparent"}
+            color={saved ? "#8B5CF6" : "#fff"}
+            fill={saved ? "#8B5CF6" : "transparent"}
           />
         </TouchableOpacity>
       </View>
@@ -236,8 +236,8 @@ const TikTokLocationCard = ({ item, onPress }: TikTokLocationCardProps) => {
         >
           <Bookmark
             size={20}
-            color={saved ? "#FFD700" : "#fff"}
-            fill={saved ? "#FFD700" : "transparent"}
+            color={saved ? "#8B5CF6" : "#fff"}
+            fill={saved ? "#8B5CF6" : "transparent"}
           />
         </TouchableOpacity>
       </View>
@@ -250,8 +250,8 @@ const TikTokLocationCard = ({ item, onPress }: TikTokLocationCardProps) => {
         >
           <Heart
             size={28}
-            color={liked ? "#ff4757" : "#fff"}
-            fill={liked ? "#ff4757" : "transparent"}
+            color={liked ? "#8B5CF6" : "#fff"}
+            fill={liked ? "#8B5CF6" : "transparent"}
           />
           <Text style={styles.tiktokSideText}>Like</Text>
         </TouchableOpacity>
@@ -491,7 +491,7 @@ export default function Home() {
       <View
         style={[
           styles.loadingContainer,
-          { backgroundColor: theme.colors.background },
+          { backgroundColor: theme.colors.card },
         ]}
       >
         <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -505,10 +505,7 @@ export default function Home() {
   if (error) {
     return (
       <View
-        style={[
-          styles.errorContainer,
-          { backgroundColor: theme.colors.background },
-        ]}
+        style={[styles.errorContainer, { backgroundColor: theme.colors.card }]}
       >
         <Text style={[styles.errorText, { color: theme.colors.text }]}>
           {error}
@@ -529,11 +526,11 @@ export default function Home() {
   if (!loading && data.flatListData.length === 0) {
     return (
       <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        style={[styles.container, { backgroundColor: theme.colors.card }]}
       >
         <StatusBar
           barStyle={isDarkMode ? "light-content" : "dark-content"}
-          backgroundColor={theme.colors.background}
+          backgroundColor={theme.colors.card}
         />
 
         <ScreenHeader
@@ -671,15 +668,13 @@ export default function Home() {
   }
 
   return (
-    <View
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-    >
+    <View style={[styles.container, { backgroundColor: theme.colors.card }]}>
       <StatusBar
         barStyle={isDarkMode ? "light-content" : "dark-content"}
-        backgroundColor={theme.colors.background}
+        backgroundColor={theme.colors.card}
       />
 
-      <SafeAreaView style={{ backgroundColor: theme.colors.background }}>
+      <SafeAreaView style={{ backgroundColor: theme.colors.card }}>
         <ScreenHeader
           title="Discover"
           actions={[
@@ -861,27 +856,23 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#000",
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: "#666",
   },
   errorContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#000",
   },
   errorText: {
-    color: "#ff6b6b",
+    color: "#8B5CF6",
     textAlign: "center",
     margin: 20,
     fontSize: 16,
@@ -1039,7 +1030,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "rgba(139, 92, 246, 0.08)",
   },
   emptyStateEmoji: {
     fontSize: 60,
@@ -1055,7 +1046,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
     marginBottom: 20,
-    color: "#666",
   },
   createEventButton: {
     paddingVertical: 12,

@@ -4,7 +4,7 @@ export const NAV_THEME = {
     border: "#E5E5E5", // Light gray border
     card: "#FFFFFF", // Pure white cards
     notification: "#FF3B30", // Red for notifications
-    primary: "#5A2475", // Your main purple
+    primary: "#8B5CF6", // Your main purple
     text: "#000000", // Black text
   },
   dark: {
@@ -12,7 +12,7 @@ export const NAV_THEME = {
     border: "#3A3A3A", // Darker gray border
     card: "#2A2A2A", // Slightly lighter than background for cards
     notification: "#FF453A", // Slightly brighter red for dark mode
-    primary: "#5A2475", // Same main purple
+    primary: "#8B5CF6", // Same main purple
     text: "#FFFFFF", // White text
   },
 };

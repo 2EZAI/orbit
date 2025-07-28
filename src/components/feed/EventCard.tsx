@@ -58,7 +58,7 @@ export function EventCard({ item, onPress }: EventCardProps) {
         </View>
         {item.attendees > 0 && (
           <View style={styles.airbnbAttendeesChip}>
-            <Users size={10} color="#6c47ff" />
+            <Users size={10} color="#8B5CF6" />
             <Text style={styles.airbnbAttendeesText}>{item.attendees}</Text>
           </View>
         )}
@@ -118,13 +118,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 10,
-    backgroundColor: "#f0f0ff",
+    backgroundColor: "#8B5CF6" + "15",
     alignSelf: "flex-start",
     marginTop: 3,
   },
   airbnbAttendeesText: {
     fontSize: 11,
-    color: "#6c47ff",
+    color: "#8B5CF6",
     fontWeight: "600",
     marginLeft: 3,
   },
