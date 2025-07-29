@@ -6,7 +6,8 @@ import { useTheme } from "~/src/components/ThemeProvider";
 import TabBar from "~/src/components/shared/TabBar";
 import { Redirect } from "expo-router";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import useNotifications from '~/hooks/useNotifications';
+import useNotifications from "~/hooks/useNotifications";
+import { useRef } from "react";
 import { Walkthrough } from 'react-native-wlkt';
 import { useEffect, useState } from "react";
 
@@ -14,14 +15,24 @@ import { useEffect, useState } from "react";
 export default function AppLayout() {
   const { theme } = useTheme();
   const { session, loading } = useAuth();
+  const lastSessionState = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    const hasSession = !!session;
+    if (lastSessionState.current !== hasSession) {
+      console.log("App layout: Session state changed to:", hasSession);
+      lastSessionState.current = hasSession;
+    }
+  }, [session]);
+
   if (loading) {
     return null;
   }
 
   if (!session) {
-    return <Redirect href="/(auth)/sign-in" />;
+    return <Redirect href="/" />;
   }
-useNotifications();
+  useNotifications();
   return (
   
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -40,14 +51,16 @@ useNotifications();
           // Show tab bar everywhere except onboarding and specific chat messages
           const isSpecificChatRoute =
             currentRoute.name === "(webview)" ||
+            currentRoute.name === "(create)" ||
             (currentRoute.name === "(chat)" &&
               typeof currentRoute.params === "object" &&
               currentRoute.params !== null &&
               "id" in currentRoute.params);
-          return currentRoute.name === "onboarding" ||
-            isSpecificChatRoute ? null : (
-            <TabBar />
-          );
+
+          const hideTabBar =
+            currentRoute.name === "(notification)" || isSpecificChatRoute;
+
+          return hideTabBar ? null : <TabBar />;
         }}
       >
         <Tabs.Screen name="(map)" />
@@ -70,7 +83,6 @@ useNotifications();
           }}
         />
         <Tabs.Screen name="(profile)" />
-        <Tabs.Screen name="onboarding" />
       </Tabs>
        <Walkthrough/>
     </View>

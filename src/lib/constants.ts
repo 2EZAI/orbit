@@ -1,18 +1,18 @@
 export const NAV_THEME = {
   light: {
-    background: "hsl( 253 44% 98%)", // background
-    border: "hsl( 220 13% 91%)", // border
-    card: "hsl(253 44% 97%)", // card
-    notification: "hsl(0 84.2% 60.2%)", // destructive
-    primary: "hsl(253 91% 58%)", // primary
-    text: "hsl(240 10% 3.9%)", // foreground
+    background: "#FFFFFF", // Pure white background
+    border: "#E5E5E5", // Light gray border
+    card: "#FFFFFF", // Pure white cards
+    notification: "#FF3B30", // Red for notifications
+    primary: "#8B5CF6", // Your main purple
+    text: "#000000", // Black text
   },
   dark: {
-    background: "hsl(253 43% 3%)", // background
-    border: "hsl(215 27.9% 16.9%)", // border
-    card: "hsl(253 43% 4%)", // card
-    notification: "hsl(0 72% 51%)", // destructive
-    primary: "hsl(253 91% 58%)", // primary
-    text: "hsl(0 0% 98%)", // foreground
+    background: "#222831", // Your dark background
+    border: "#3A3A3A", // Darker gray border
+    card: "#2A2A2A", // Slightly lighter than background for cards
+    notification: "#FF453A", // Slightly brighter red for dark mode
+    primary: "#8B5CF6", // Same main purple
+    text: "#FFFFFF", // White text
   },
 };

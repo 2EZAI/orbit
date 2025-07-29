@@ -57,19 +57,16 @@ function RootLayoutContent() {
         <Stack.Screen
           name="(auth)"
           options={{
-            presentation: "modal",
-            animation: "slide_from_bottom",
-            gestureEnabled: true,
-            gestureDirection: "vertical",
+            presentation: "card",
+            animation: "slide_from_right",
+            gestureEnabled: false,
             headerShown: false,
-            headerLeft: () => null,
-            headerTitle: "",
           }}
         />
         <Stack.Screen
           name="(app)"
           options={{
-            presentation: "containedModal",
+            presentation: "card",
             animation: "none",
             gestureEnabled: false,
           }}

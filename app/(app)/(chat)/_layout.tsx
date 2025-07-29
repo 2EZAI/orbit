@@ -5,10 +5,12 @@ import { useChat } from "~/src/lib/chat";
 import { View, Text, ActivityIndicator } from "react-native";
 import { useEffect } from "react";
 import { LiveLocationContextProvider } from "~/src/lib/LiveLocationContext";
-import { SafeAreaView} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "~/src/components/ThemeProvider";
 
 export default function ChatLayout() {
   const { client, isConnecting } = useChat();
+  const { theme } = useTheme();
   const pathname = usePathname();
 
   useEffect(() => {
@@ -37,9 +39,21 @@ export default function ChatLayout() {
 
   if (isConnecting || !client) {
     return (
-      <View className="items-center justify-center flex-1 bg-background">
-        <ActivityIndicator size="large" color="#0000ff" />
-        <Text className="mt-4 text-foreground">
+      <View
+        style={{
+          alignItems: "center",
+          justifyContent: "center",
+          flex: 1,
+          backgroundColor: theme.colors.card,
+        }}
+      >
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text
+          style={{
+            marginTop: 16,
+            color: theme.colors.text,
+          }}
+        >
           {isConnecting ? "Connecting to chat..." : "Loading chat..."}
         </Text>
       </View>
@@ -53,55 +67,59 @@ export default function ChatLayout() {
   // });
 
   return (
-         <SafeAreaView className="flex-1 bg-background">
-    <ChatThemeProvider>
-      <OverlayProvider>
-        <Chat client={client}>
-          <LiveLocationContextProvider>
-            <Stack
-              screenOptions={{
-                headerShown: true,
-                animation: "slide_from_right",
-                headerStyle: {
-                  backgroundColor: "white",
-                },
-                headerTitleStyle: {
-                  color: "black",
-                },
-                headerTintColor: "black",
-              }}
-            >
-              <Stack.Screen
-                name="index"
-                options={{
-                  title: "Messages",
-                  headerShown: false,
-                }}
-              />
-              <Stack.Screen
-                name="channel/[id]"
-                options={{
-                  title: "Chat",
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.card }}>
+      <ChatThemeProvider>
+        <OverlayProvider>
+          <Chat client={client}>
+            <LiveLocationContextProvider>
+              <Stack
+                screenOptions={{
                   headerShown: true,
-                  headerTitleAlign: "center",
-                  headerBackTitle: "Chats",
-                  headerBackVisible: false,
+                  animation: "slide_from_right",
+                  headerStyle: {
+                    backgroundColor: theme.colors.card,
+                  },
+                  headerTitleStyle: {
+                    color: theme.colors.text,
+                  },
+                  headerTintColor: theme.colors.text,
                 }}
-              />
-              <Stack.Screen
-                name="new"
-                options={{
-                  title: "New Message",
-                  presentation: "modal",
-                  animation: "slide_from_bottom",
-                  headerTitleAlign: "center",
-                }}
-              />
-            </Stack>
-          </LiveLocationContextProvider>
-        </Chat>
-      </OverlayProvider>
-    </ChatThemeProvider>
+              >
+                <Stack.Screen
+                  name="index"
+                  options={{
+                    title: "Messages",
+                    headerShown: false,
+                    headerBackTitle: "Back",
+                    headerBackVisible: true,
+                  }}
+                />
+                <Stack.Screen
+                  name="channel/[id]"
+                  options={{
+                    title: "Chat",
+                    headerShown: true,
+                    headerTitleAlign: "center",
+                    headerBackTitle: "Chats",
+                    headerBackVisible: true,
+                  }}
+                />
+                <Stack.Screen
+                  name="new"
+                  options={{
+                    title: "New Message",
+                    headerShown: false,
+                    headerTitleAlign: "center",
+                    headerBackTitle: "Chats",
+                    presentation: "modal",
+                    animation: "slide_from_bottom",
+                  }}
+                />
+              </Stack>
+            </LiveLocationContextProvider>
+          </Chat>
+        </OverlayProvider>
+      </ChatThemeProvider>
     </SafeAreaView>
   );
 }

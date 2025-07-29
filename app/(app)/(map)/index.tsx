@@ -3,21 +3,15 @@ import {
   View,
   StyleSheet,
   Dimensions,
-  Image,
   TouchableOpacity,
   ActivityIndicator,
-  Button,
-  ScrollView,
-  Platform,
-  Linking,
-  Alert,
   DeviceEventEmitter,
 } from "react-native";
+import { useLocalSearchParams } from "expo-router";
 
 type TimeFrame = "Today" | "Week" | "Weekend";
 import { supabase } from "~/src/lib/supabase";
 import { useAuth } from "~/src/lib/auth";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import * as Location from "expo-location";
 import { useTheme } from "~/src/components/ThemeProvider";
@@ -30,18 +24,14 @@ import {
 } from "~/hooks/useMapEvents";
 import { useMapCamera } from "~/src/hooks/useMapCamera";
 import { MapControls } from "~/src/components/map/MapControls";
-import { X, MapPin } from "lucide-react-native";
 
-import { Sheet } from "~/src/components/ui/sheet";
 import { UserMarker } from "~/src/components/map/UserMarker";
 import { UserMarkerWithCount } from "~/src/components/map/UserMarkerWithCount";
 
 import { EventMarker } from "~/src/components/map/EventMarker";
 import { ClusterSheet } from "~/src/components/map/ClusterSheet";
-import { MapEventCard } from "~/src/components/map/EventCard";
-import { MapLocationCard } from "~/src/components/map/LocationCard";
-import { EventDetailsSheet } from "~/src/components/map/EventDetailsSheet";
-import { LocationDetailsSheet } from "~/src/components/map/LocationDetailsSheet";
+import { UnifiedCard } from "~/src/components/map/UnifiedCard";
+import { UnifiedDetailsSheet } from "~/src/components/map/UnifiedDetailsSheet";
 
 import { SearchSheet } from "~/src/components/search/SearchSheet";
 
@@ -57,12 +47,12 @@ const CUSTOM_DARK_STYLE =
   "mapbox://styles/tangentdigitalagency/clzwv4xtp002y01psdttf9jhr";
 
 export default function Map() {
+  const params = useLocalSearchParams();
   const [selectedTimeFrame, setSelectedTimeFrame] =
     useState<TimeFrame>("Today");
   const [showDetails, setShowDetails] = useState(false);
   const [isEvent, setIsEvent] = useState(false);
   const [hideCount, setHideCount] = useState(false);
-  let isUpdatLiveLocation = true;
   const [showControler, setShowControler] = useState(true);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { theme, isDarkMode } = useTheme();
@@ -76,7 +66,7 @@ export default function Map() {
   } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const [followerList, setFollowerList] = useState([]);
+  const [followerList, setFollowerList] = useState<any[]>([]);
   const [selectedCluster, setSelectedCluster] = useState<MapEvent[] | null>(
     null
   );
@@ -89,8 +79,6 @@ export default function Map() {
   const lastCenterRef = useRef<[number, number] | null>(null);
 
   const handleRegionChange = useCallback((region: any) => {
-    // console.log("[Map] Region changed:", region);
-
     // Clear existing timeout
     if (regionChangeTimeoutRef.current) {
       clearTimeout(regionChangeTimeoutRef.current);
@@ -113,12 +101,6 @@ export default function Map() {
           Math.abs(newCenter[0] - lastCenter[0]) > 0.01 ||
           Math.abs(newCenter[1] - lastCenter[1]) > 0.01
         ) {
-          // console.log("[Map] Fetching events for new region:", {
-          //   lat: centerLat,
-          //   lng: centerLng,
-          //   zoom: zoomLevel,
-          // });
-
           // Update the map center to trigger new data fetch
           setMapCenter(newCenter);
           lastCenterRef.current = newCenter;
@@ -178,44 +160,117 @@ export default function Map() {
   // Add logging for event selection
   useEffect(() => {
     if (selectedEvent) {
-      // console.log("Selected event:", {
-      //   id: selectedEvent.id,
-      //   name: selectedEvent.name,
-      //   venue: selectedEvent.venue_name,
-      // });
+      // Event selected
     }
   }, [selectedEvent]);
 
   //set zoom enabled by default
   useEffect(() => {
- setIsFollowingUser(false);
-  DeviceEventEmitter.addListener("eventNotification", (event:Partial<MapEvent>) => {
-      // console.log("event----eventNotification", event);
-     setIsEvent(true);
-    //  setShowDetails(true);
-     handleEventClick(event);
-    });
-  
-  },[])
+    setIsFollowingUser(false);
+    const eventListener = DeviceEventEmitter.addListener(
+      "eventNotification",
+      (event: Partial<MapEvent>) => {
+        setIsEvent(true);
+        handleEventClick(event as MapEvent);
+      }
+    );
+
+    const showEventCardListener = DeviceEventEmitter.addListener(
+      "showEventCard",
+      (data: { eventId: string; lat: number; lng: number }) => {
+        // Center map on event location
+        if (cameraRef.current) {
+          cameraRef.current.setCamera({
+            centerCoordinate: [data.lng, data.lat],
+            zoomLevel: 15,
+            animationDuration: 1000,
+            animationMode: "flyTo",
+          });
+        }
+
+        // Update map center to trigger new data fetch
+        setMapCenter([data.lat, data.lng]);
+
+        // Wait a bit for data to load, then find the event
+        setTimeout(() => {
+          const event =
+            eventsNow.find((e) => e.id === data.eventId) ||
+            eventsToday.find((e) => e.id === data.eventId) ||
+            eventsTomorrow.find((e) => e.id === data.eventId);
+
+          if (event) {
+            setIsEvent(true);
+            handleEventClick(event as MapEvent);
+          } else {
+            console.log("Event still not found after delay:", data.eventId);
+          }
+        }, 2000); // Wait 2 seconds for data to load
+      }
+    );
+
+    return () => {
+      eventListener.remove();
+      showEventCardListener.remove();
+    };
+  }, [handleEventClick, eventsNow, eventsToday, eventsTomorrow, cameraRef]);
 
   // Update mapCenter when location becomes available
   useEffect(() => {
-    
     if (location?.latitude && location?.longitude && !mapCenter) {
-      // console.log("[Map] Setting initial map center to user location:", {
-      //   lat: location.latitude,
-      //   lng: location.longitude,
-      // });
       setMapCenter([location.latitude, location.longitude]);
     }
   }, [location, mapCenter]);
 
 
+  // Handle route params for showing event cards
   useEffect(() => {
-    // console.log("followerList updated >>>>", followerList);
-  }, [followerList]);
+    if (params.showEventCard === "true" && params.eventId) {
+      // Center map on event location if coordinates are provided
+      if (params.lat && params.lng) {
+        const lat = parseFloat(params.lat as string);
+        const lng = parseFloat(params.lng as string);
 
-const setMpaToUserLocation= async()=>{
+        if (cameraRef.current) {
+          cameraRef.current.setCamera({
+            centerCoordinate: [lng, lat],
+            zoomLevel: 15,
+            animationDuration: 1000,
+            animationMode: "flyTo",
+          });
+        }
+
+        // Update map center to trigger new data fetch
+        setMapCenter([lat, lng]);
+      }
+
+      // Find the event by ID and open its card
+      const event =
+        eventsNow.find((e) => e.id === params.eventId) ||
+        eventsToday.find((e) => e.id === params.eventId) ||
+        eventsTomorrow.find((e) => e.id === params.eventId);
+
+      if (event) {
+        setIsEvent(true);
+        handleEventClick(event as MapEvent);
+      } else {
+        // If event not found in current arrays, wait for data to load
+        // The DeviceEventEmitter listener will handle this case
+        console.log("Event not found in current arrays, waiting for data...");
+      }
+    }
+  }, [
+    params.showEventCard,
+    params.eventId,
+    params.lat,
+    params.lng,
+    eventsNow,
+    eventsToday,
+    eventsTomorrow,
+    handleEventClick,
+    cameraRef,
+  ]);
+
+  const setMpaToUserLocation= async()=>{
   const uData = await getUserData('userData');
   const uLocation = await getUserData('userLocation');
 console.log(uData?.event_location_preference); // 77.5946
@@ -236,8 +291,13 @@ console.log(uData?.event_location_preference); // 77.5946
     }
 }
 
-  const haversine = (lat1, lon1, lat2, lon2) => {
-    const toRad = (value) => (value * Math.PI) / 180;
+  const haversine = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ) => {
+    const toRad = (value: number) => (value * Math.PI) / 180;
     const R = 3956; // Radius of Earth in miles
     const dLat = toRad(lat2 - lat1);
     const dLon = toRad(lon2 - lon1);
@@ -249,8 +309,8 @@ console.log(uData?.event_location_preference); // 77.5946
   };
 
   // Compute nearby follower count for each user
-  const getNearbyFollowerCounts = (followerList, radius = 10) => {
-    return followerList.map((user, index) => {
+  const getNearbyFollowerCounts = (followerList: any[], radius = 10) => {
+    return followerList.map((user: any, index: number) => {
       let nearbyCount = 0;
       for (let i = 0; i < followerList.length; i++) {
         if (i !== index) {
@@ -273,138 +333,98 @@ console.log(uData?.event_location_preference); // 77.5946
     });
   };
 
-  // Add logging for events
-  useEffect(() => {
-    // Removed console.log and camera operations to prevent infinite loops
-  }, [events, mapRef, cameraRef]);
-
-  // Add logging for events
-  useEffect(() => {
-    // Removed console.log to prevent infinite loops
-  }, [followerList, mapRef, cameraRef]);
-
-  // Add logging for events
-  useEffect(() => {
-    // Removed console.log and camera operations to prevent infinite loops
-  }, [selectedTimeFrame, mapRef, cameraRef]);
-
-  const locationUpdateTimeoutRef = useRef(null);
+  const locationUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   async function scheduleLocationUpdate(location: Location.LocationObject) {
     if (!location) return;
 
-    clearTimeout(locationUpdateTimeoutRef.current as unknown as NodeJS.Timeout);
+    if (locationUpdateTimeoutRef.current) {
+      clearTimeout(locationUpdateTimeoutRef.current);
+    }
 
     locationUpdateTimeoutRef.current = setTimeout(async () => {
-      // console.error("Updating user location (debounced)");
       await updateUserLocations({
-        live_location_latitude: location.coords.latitude,
-        live_location_longitude: location.coords.longitude,
+        latitude: location.coords.latitude.toString(),
+        longitude: location.coords.longitude.toString(),
       });
     }, 2000);
   }
 
   useEffect(() => {
-    console.log("updateUserLocations>updateUserLocations");
-
     getFollowedUserDetails(); // Assuming this doesn't rely on location
 
-    scheduleLocationUpdate(location as Location.LocationObject);
+    if (location) {
+      scheduleLocationUpdate(location as unknown as Location.LocationObject);
+    }
   }, [location]);
 
-  const getFollowingsByFollower = async () => {
-    console.log("getFollowingsByFollower");
-    if (!session?.user.id) {
-      Alert.alert("Error", "Please sign in to like posts");
-      return;
+  const getFollowedUserDetails = useCallback(async () => {
+    if (!session?.user.id) return [];
+
+    try {
+      // Step 1: Get list of following_ids
+      const { data: follows, error: followError } = await supabase
+        .from("follows")
+        .select("following_id")
+        .eq("follower_id", session?.user.id);
+
+      if (followError) throw followError;
+      if (!follows || follows.length === 0) return [];
+
+      const followingIds = follows.map((f) => f.following_id);
+
+      // Step 2: Check which of them also follow the session user
+      const { data: mutuals, error: mutualError } = await supabase
+        .from("follows")
+        .select("follower_id")
+        .in("follower_id", followingIds) // These people must be the follower
+        .eq("following_id", session?.user.id); // ...of the session user
+
+      if (mutualError) throw mutualError;
+
+      const mutualFollowerIds = mutuals.map((m) => m.follower_id);
+
+      // Step 2: Fetch user data in batch
+      const { data: users, error: usersError } = await supabase
+        .from("users")
+        .select("id, avatar_url")
+        .in("id", mutualFollowerIds)
+        .eq("is_live_location_shared", 1);
+
+      if (usersError) throw usersError;
+
+      const live_usersIds = users.map((m) => m.id);
+      // Step 3: Fetch location data in batch
+      const { data: locations, error: locationError } = await supabase
+        .from("user_locations")
+        .select("user_id, live_location_latitude, live_location_longitude")
+        .in("user_id", live_usersIds);
+
+      if (locationError) throw locationError;
+
+      // Step 4: Combine all data
+      const result = live_usersIds.map((userId) => {
+        const userDetail = users.find((u) => u.id === userId);
+        const locationDetail = locations.find((l) => l.user_id === userId);
+
+        return {
+          userId,
+          avatar_url: userDetail?.avatar_url || null,
+          live_location_latitude:
+            parseFloat(locationDetail?.live_location_latitude || "0") || 0.0,
+          live_location_longitude:
+            parseFloat(locationDetail?.live_location_longitude || "0") || 0.0,
+        };
+      });
+
+      const updatedFollowerList = getNearbyFollowerCounts(result);
+      setFollowerList(updatedFollowerList);
+      return result;
+    } catch (error) {
+      console.error("Error fetching followed user details:", error);
+      return [];
     }
-    console.log("getFollowingsByFollower>>");
-    const { data, error } = await supabase
-      .from("follows")
-      .select("*") // or specify fields like "following_id"
-      .eq("follower_id", session?.user.id);
-
-    if (error) throw error;
-
-    // console.log("Matched followings:", data);
-    return data; // list of all following relationships for the given follower
-  };
-
-  const getFollowedUserDetails = async () => {
-    // Step 1: Get list of following_ids
-    const { data: follows, error: followError } = await supabase
-      .from("follows")
-      .select("following_id")
-      .eq("follower_id", session?.user.id);
-
-    if (followError) throw followError;
-    if (!follows || follows.length === 0) return [];
-
-    const followingIds = follows.map((f) => f.following_id);
-    // console.log("followingIds:", followingIds);
-
-    // Step 2: Check which of them also follow the session user
-    const { data: mutuals, error: mutualError } = await supabase
-      .from("follows")
-      .select("follower_id")
-      .in("follower_id", followingIds) // These people must be the follower
-      .eq("following_id", session?.user.id); // ...of the session user
-
-    if (mutualError) throw mutualError;
-
-    const mutualFollowerIds = mutuals.map((m) => m.follower_id);
-
-    // console.log("Mutual followers:", mutualFollowerIds);
-
-    // Step 2: Fetch user data in batch
-    const { data: users, error: usersError } = await supabase
-      .from("users")
-      .select("id, avatar_url")
-      .in("id", mutualFollowerIds)
-      .eq("is_live_location_shared", 1);
-
-    if (usersError) throw usersError;
-    // console.log("Followed user", users);
-
-    const live_usersIds = users.map((m) => m.id);
-    // Step 3: Fetch location data in batch
-    const { data: locations, error: locationError } = await supabase
-      .from("user_locations")
-      .select("user_id, live_location_latitude, live_location_longitude")
-      .in("user_id", live_usersIds);
-    // console.log("Followed locations", locations);
-    if (locationError) throw locationError;
-
-    // Step 4: Combine all data
-    const result = live_usersIds.map((userId, index) => {
-      const user = users.find((u) => u.id === userId);
-      const location = locations.find((l) => l.user_id === userId);
-
-      // let ll=[{ lat: 41.3688486, lng: -81.6293933 },
-      //   { lat: 41.3688425, lng: -81.6303213 },
-      //   { lat: 41.4439525, lng: -81.8009226 },];
-      // const locationn = ll[index] ;
-
-      return {
-        userId,
-        avatar_url: user?.avatar_url || null,
-        live_location_latitude:
-          parseFloat(location?.live_location_latitude) || 0.0,
-        live_location_longitude:
-          parseFloat(location?.live_location_longitude) || 0.0,
-        // live_location_latitude: locationn.lat ,
-        // live_location_longitude: locationn.lng ,
-      };
-    });
-
-    // console.log("Followed user details:", result);
-    // setFollowerList(result);
-    const updatedFollowerList = getNearbyFollowerCounts(result);
-    // console.log("updatedFollowerList:", updatedFollowerList);
-    setFollowerList([]);
-    setFollowerList(updatedFollowerList);
-    return result;
-  };
+  }, [session?.user.id]);
 
   // Initialize and watch location
   useEffect(() => {
@@ -421,12 +441,6 @@ console.log(uData?.event_location_preference); // 77.5946
         const initialLocation = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.BestForNavigation,
         });
-
-        // console.log("[Map] Initial user location:", {
-        //   latitude: initialLocation.coords.latitude,
-        //   longitude: initialLocation.coords.longitude,
-        //   heading: initialLocation.coords.heading,
-        // });
 
       setLocation({
           latitude: initialLocation.coords.latitude,
@@ -482,7 +496,7 @@ console.log(uData?.event_location_preference); // 77.5946
     })();
 
     return () => locationSubscription?.remove();
-  }, []);
+  }, [cameraRef]);
 
   const handleMapTap = useCallback(() => {
     if (selectedEvent) {
@@ -503,16 +517,11 @@ console.log(uData?.event_location_preference); // 77.5946
       }
       handleEventClick(event);
     },
-    [handleEventClick]
+    [handleEventClick, cameraRef]
   );
 
   const handleClusterPress = useCallback(
     (cluster: { events: MapEvent[] }) => {
-      // console.log("[Map] Cluster pressed:", {
-      //   eventCount: cluster?.events?.length,
-      //   firstEventId: cluster?.events[0]?.id,
-      // });
-
       if (cluster.events?.length === 1) {
         // Center map on selected event
         if (cameraRef.current) {
@@ -565,11 +574,6 @@ console.log(uData?.event_location_preference); // 77.5946
 
   const handleLocationClusterPress = useCallback(
     (cluster: { events: MapLocation[] }) => {
-      // console.log("[Map] Location cluster pressed:", {
-      //   locationCount: cluster?.events?.length,
-      //   firstLocationId: cluster?.events[0]?.id,
-      // });
-
       if (cluster.events?.length === 1) {
         // Center map on selected location
         if (cameraRef.current) {
@@ -638,8 +642,7 @@ console.log(uData?.event_location_preference); // 77.5946
         onPress={handleMapTap}
         logoEnabled={false}
         onDidFinishLoadingMap={() => {
-          console.log("[Map] Map finished loading");
-          
+          //console.log("[Map] Map finished loading");
         }}
         onRegionDidChange={handleRegionChange}
       >
@@ -662,10 +665,6 @@ console.log(uData?.event_location_preference); // 77.5946
         />
 
         {/* Event markers */}
-
-        {/* Debug info */}
-        {/* Removed console.log to prevent infinite loop */}
-
         {selectedTimeFrame == "Today" &&
           clustersToday.map((cluster, index) =>
             !cluster.mainEvent ||
@@ -927,13 +926,13 @@ console.log(uData?.event_location_preference); // 77.5946
         )}
 
         {followerList.length > 0 &&
-          followerList.map((followerUser) => (
+          followerList.map((followerUser: any) => (
             <MapboxGL.MarkerView
               key={`followerUser-${followerUser?.userId}`}
               id={`followerUser-${followerUser?.userId}`}
               coordinate={[
-                followerUser?.live_location_longitude,
-                followerUser?.live_location_latitude,
+                followerUser.live_location_longitude,
+                followerUser.live_location_latitude,
               ]}
               anchor={{ x: 0.5, y: 0.5 }}
             >
@@ -961,34 +960,25 @@ console.log(uData?.event_location_preference); // 77.5946
           isFollowingUser={isFollowingUser}
           timeFrame={selectedTimeFrame}
           onSelectedTimeFrame={(txt) => {
-            // console.log("txt>>", txt);
-            // console.log("clustersNow.length>",clustersNow.length)
-            //   console.log("clustersToday.length>",clustersToday.length)
-            //     console.log("clustersTomorrow.length>",clustersTomorrow.length)
-            
-            setSelectedTimeFrame(txt);
+            setSelectedTimeFrame(txt as TimeFrame);
           }}
+          eventsList={events as any}
+          onShowControler={(value: boolean) => setShowControler(value)}
         />
       )}
-      {selectedEvent && isEvent && (
-        <MapEventCard
-          event={selectedEvent}
-          nearbyEvents={events}
+      {selectedEvent && (
+        <UnifiedCard
+          data={selectedEvent as any}
+          nearbyData={(isEvent ? events : locations) as any}
           onClose={handleCloseModal}
-          onEventSelect={handleEventSelect}
-          onShowDetails={() => {
-            setShowControler(false);
-            setShowDetails(true);
+          onDataSelect={(data: any) => {
+            if (isEvent) {
+              handleEventSelect(data);
+            } else {
+              handleLocationSelect(data);
+            }
           }}
-        />
-      )}
-
-      {selectedEvent && !isEvent && (
-        <MapLocationCard
-          event={selectedEvent}
-          nearbyEvents={locations}
-          onClose={handleCloseModal}
-          onEventSelect={handleLocationSelect}
+          treatAsEvent={isEvent}
           onShowDetails={() => {
             setShowControler(false);
             setShowDetails(true);
@@ -1006,26 +996,19 @@ console.log(uData?.event_location_preference); // 77.5946
       <SearchSheet
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
-        eventsList={events}
-        locationsList={locations}
-        onShowControler={(value) => setShowControler(value)}
+        eventsList={events as any}
+        locationsList={locations as any}
+        onShowControler={() => setShowControler(true)}
       />
-      {showDetails && isEvent && (
-        <EventDetailsSheet
-          event={selectedEvent}
+      {showDetails && selectedEvent && (
+        <UnifiedDetailsSheet
+          data={selectedEvent as any}
           isOpen={showDetails}
           onClose={() => setShowDetails(false)}
-          nearbyEvents={events}
+          nearbyData={(isEvent ? events : locations) as any}
+          onDataSelect={(data) => handleEventClick(data as any)}
           onShowControler={() => setShowControler(true)}
-        />
-      )}
-      {showDetails && !isEvent && (
-        <LocationDetailsSheet
-          event={selectedEvent}
-          isOpen={showDetails}
-          onClose={() => setShowDetails(false)}
-          nearbyEvents={events}
-          onShowControler={() => setShowControler(true)}
+          isEvent={isEvent}
         />
       )}
     </View>

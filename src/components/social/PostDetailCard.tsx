@@ -24,8 +24,7 @@ import {
 } from "lucide-react-native";
 import { router } from "expo-router";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
-import { EventDetailsSheet } from "~/src/components/map/EventDetailsSheet";
-import { LocationDetailsSheet } from "~/src/components/map/LocationDetailsSheet";
+import { UnifiedDetailsSheet } from "~/src/components/map/UnifiedDetailsSheet";
 
 interface Post {
   id: string;
@@ -135,7 +134,7 @@ export function PostDetailCard({
             <TouchableOpacity
               onPress={() => {
                 if (post.user?.username) {
-                  router.push(`/(app)/profile/${post.user.username}`);
+                  router.push(`/(app)/profile/${post.user.id}`);
                 }
               }}
               className="flex-row flex-1 items-center"
@@ -320,37 +319,21 @@ export function PostDetailCard({
       {/* Event Details Sheet */}
       {selectedEvent && (
         <>
-          {isSelectedItemLocation ? (
-            <LocationDetailsSheet
-              event={selectedEvent}
-              isOpen={!!selectedEvent}
-              onClose={() => {
-                setSelectedEvent(null);
-                setIsSelectedItemLocation(false);
-              }}
-              nearbyEvents={[]}
-              onEventSelect={(e) => {
-                setSelectedEvent(e);
-                setIsSelectedItemLocation(false);
-              }}
-              onShowControler={() => {}}
-            />
-          ) : (
-            <EventDetailsSheet
-              event={selectedEvent}
-              isOpen={!!selectedEvent}
-              onClose={() => {
-                setSelectedEvent(null);
-                setIsSelectedItemLocation(false);
-              }}
-              nearbyEvents={[]}
-              onEventSelect={(e) => {
-                setSelectedEvent(e);
-                setIsSelectedItemLocation(false);
-              }}
-              onShowControler={() => {}}
-            />
-          )}
+          <UnifiedDetailsSheet
+            data={selectedEvent as any}
+            isOpen={!!selectedEvent}
+            onClose={() => {
+              setSelectedEvent(null);
+              setIsSelectedItemLocation(false);
+            }}
+            nearbyData={[]}
+            onDataSelect={(data) => {
+              setSelectedEvent(data as any);
+              setIsSelectedItemLocation(false);
+            }}
+            onShowControler={() => {}}
+            isEvent={!isSelectedItemLocation}
+          />
         </>
       )}
     </SafeAreaView>

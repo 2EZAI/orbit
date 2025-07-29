@@ -8,6 +8,7 @@ import {
   RefreshControl,
   StatusBar,
   Dimensions,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
@@ -21,12 +22,17 @@ import {
   MessageCircle,
   Share2,
   MapPin,
-  Users,
+  MoreHorizontal,
+  Bell,
+  Plus,
 } from "lucide-react-native";
 import { router } from "expo-router";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
-import { EventDetailsSheet } from "~/src/components/map/EventDetailsSheet";
-import { LocationDetailsSheet } from "~/src/components/map/LocationDetailsSheet";
+import { UnifiedDetailsSheet } from "~/src/components/map/UnifiedDetailsSheet";
+import { SocialEventCard } from "~/src/components/social/SocialEventCard";
+import { ScreenHeader } from "~/src/components/ui/screen-header";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 
 interface Post {
   id: string;
@@ -42,17 +48,16 @@ interface Post {
     id: string;
     username: string | null;
     avatar_url: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
   };
   event?: any;
   isLiked?: boolean;
 }
 
-const FALLBACK_IMAGE =
-  "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80";
-
 const { width: screenWidth } = Dimensions.get("window");
 
-const ImageCarousel = ({
+const ImageGallery = ({
   images,
   postId,
   event,
@@ -61,62 +66,43 @@ const ImageCarousel = ({
   postId: string;
   event?: any;
 }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  const handleScroll = (event: any) => {
-    const contentOffset = event.nativeEvent.contentOffset.x;
-    const index = Math.round(contentOffset / screenWidth);
-    setCurrentIndex(index);
-  };
+  const { theme, isDarkMode } = useTheme();
 
   const handleImagePress = () => {
-    // console.log("Image pressed, navigating to post:", postId);
     router.push({
       pathname: `/post/${postId}`,
       params: { event: event ? JSON.stringify(event) : "" },
     });
   };
 
-  return (
-    <View className="relative">
-      <TouchableOpacity
-        onPress={handleImagePress}
-        activeOpacity={0.95}
-        style={{ flex: 1 }}
-      >
-        <FlatList
-          data={images}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          keyExtractor={(_, index) => `image-${postId}-${index}`}
-          renderItem={({ item }) => (
-            <View style={{ width: screenWidth - 32 }}>
-              <Image
-                source={{ uri: item }}
-                className="w-full h-48"
-                style={{ resizeMode: "cover" }}
-              />
-            </View>
-          )}
-        />
-      </TouchableOpacity>
+  if (images.length === 0) return null;
 
-      {/* Pagination Dots */}
-      {images.length > 1 && (
-        <View className="absolute right-0 left-0 bottom-2 flex-row justify-center">
-          {images.map((_, index) => (
-            <View
-              key={`dot-${postId}-${index}`}
-              className={`w-1.5 h-1.5 rounded-full mx-0.5 ${
-                index === currentIndex ? "bg-white" : "bg-white/60"
-              }`}
-            />
+  return (
+    <View className="px-4 pb-3">
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View className="flex-row gap-2">
+          {images.map((imageUrl, index) => (
+            <TouchableOpacity
+              key={`${postId}-image-${index}`}
+              onPress={handleImagePress}
+              className="overflow-hidden rounded-xl"
+              style={{
+                width: 120,
+                height: 120,
+              }}
+            >
+              <Image
+                source={{ uri: imageUrl }}
+                style={{
+                  width: 120,
+                  height: 120,
+                  resizeMode: "cover",
+                }}
+              />
+            </TouchableOpacity>
           ))}
         </View>
-      )}
+      </ScrollView>
     </View>
   );
 };
@@ -124,6 +110,8 @@ const ImageCarousel = ({
 export default function SocialFeed() {
   const { session } = useAuth();
   const { user } = useUser();
+  const { theme, isDarkMode } = useTheme();
+  const { fetchAllNoifications, unReadCount } = useNotificationsApi();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -131,27 +119,19 @@ export default function SocialFeed() {
   const [hasMore, setHasMore] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const [isSelectedItemLocation, setIsSelectedItemLocation] = useState(false);
+  const [showUnifiedCard, setShowUnifiedCard] = useState(false);
 
   const PAGE_SIZE = 20;
 
-  const loadPosts = async (isRefresh = false) => {
-    // console.log(
-    //   "loadPosts called, loading:",
-    //   loading,
-    //   "hasMore:",
-    //   hasMore,
-    //   "isRefresh:",
-    //   isRefresh,
-    //   "current page:",
-    //   page
-    // );
+  useEffect(() => {
+    fetchAllNoifications(1, 20);
+  }, []);
 
+  const loadPosts = async (isRefresh = false) => {
     if (loading || (!hasMore && !isRefresh)) {
-      console.log("Early return from loadPosts");
       return;
     }
 
-    // Calculate the correct page for this request
     const currentPage = isRefresh ? 1 : page;
 
     if (isRefresh) {
@@ -160,103 +140,29 @@ export default function SocialFeed() {
     }
 
     setLoading(true);
-    console.log("Starting to fetch posts...");
 
     try {
-      // const from = (currentPage - 1) * PAGE_SIZE;
-      // const to = from + PAGE_SIZE - 1;
-
-      // console.log(
-      //   "Querying posts from",
-      //   from,
-      //   "to",
-      //   to,
-      //   "for page:",
-      //   currentPage
-      // );
-
-      // const { data: postsData, error } = await supabase
-      //   .from("posts")
-      //   .select(
-      //     `
-      //     id,
-      //     content,
-      //     media_urls,
-      //     created_at,
-      //     address,
-      //     city,
-      //     state,
-      //     like_count,
-      //     comment_count,
-      //     event_id,
-      //     user:users!posts_user_id_fkey (
-      //       id,
-      //       username,
-      //       avatar_url
-      //     ),
-      //     event:events!posts_event_id_fkey (
-      //       id,
-      //       name,
-      //       description,
-      //       start_datetime,
-      //       end_datetime,
-      //       venue_name,
-      //       address,
-      //       city,
-      //       state
-      //     )
-      //   `
-      //   )
-      //   .order("created_at", { ascending: false })
-      //   .range(from, to);
- console.log(
-        "for page:",
-        currentPage
-      );
-const response = await fetch(
+      const response = await fetch(
         `${process.env.BACKEND_MAP_URL}/api/posts/all?page=${currentPage}&limit=${PAGE_SIZE}`,
         {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${session?.access_token}`,
           },
         }
       );
-     
 
       if (!response.ok) {
         setLoading(false);
         setRefreshing(false);
         setHasMore(false);
         throw new Error(await response.text());
-        return;
-   
       }
 
       const response_ = await response.json();
-       
-     const postsData = response_?.data;
-      // console.log("api response:", { postsData });
+      const postsData = response_?.data;
 
-      // if (error) {
-      //   console.error("Error fetching posts:", error);
-      //   setLoading(false);
-      //   setRefreshing(false);
-      //   setHasMore(false);
-      //   return;
-      // }
-
-      // console.log("Raw postsData:", postsData);
-      if (postsData && postsData.length > 0) {
-        // console.log("First post date:", postsData[0].created_at);
-        // console.log(
-        //   "Last post date:",
-        //   postsData[postsData.length - 1].created_at
-        // );
-      }
-
-      // Transform the data to match our Post interface
       const transformedPosts =
         postsData?.map((post: any) => ({
           id: post.id,
@@ -272,12 +178,12 @@ const response = await fetch(
             id: post.id,
             username: post.username,
             avatar_url: post.avatar_url,
+            first_name: post.first_name,
+            last_name: post.last_name,
           },
           event: post.event,
-          isLiked: false, // We'll check this separately
+          isLiked: false,
         })) || [];
-
-      // console.log("Transformed posts:", transformedPosts);
 
       // Check which posts are liked by the current user
       if (session?.user?.id) {
@@ -288,7 +194,7 @@ const response = await fetch(
             .eq("user_id", session.user.id);
 
           const likedPostIds = new Set(likedPosts?.map((p) => p.post_id) || []);
-          transformedPosts.forEach((post) => {
+          transformedPosts.forEach((post: Post) => {
             post.isLiked = likedPostIds.has(post.id);
           });
         } catch (error) {
@@ -296,14 +202,9 @@ const response = await fetch(
         }
       }
 
-      // console.log("Final transformed posts length:", transformedPosts.length);
-      // console.log("Sample post data:", transformedPosts[0]);
-
       if (transformedPosts.length === 0) {
-        console.log("No posts found, setting hasMore to false");
         setHasMore(false);
       } else {
-        console.log("Setting posts, isRefresh:", isRefresh);
         if (isRefresh) {
           setPosts(transformedPosts);
         } else {
@@ -314,7 +215,6 @@ const response = await fetch(
     } catch (error) {
       console.error("Error fetching posts:", error);
     } finally {
-      console.log("Setting loading to false");
       setLoading(false);
       setRefreshing(false);
     }
@@ -325,11 +225,10 @@ const response = await fetch(
   }, []);
 
   const onRefresh = () => {
-    console.log("onRefresh called, resetting state");
     setRefreshing(true);
     setPage(1);
     setHasMore(true);
-    setPosts([]); // Clear existing posts
+    setPosts([]);
     loadPosts(true);
   };
 
@@ -341,7 +240,6 @@ const response = await fetch(
       if (!post) return;
 
       if (post.isLiked) {
-        // Unlike
         const { error } = await supabase
           .from("post_likes")
           .delete()
@@ -362,7 +260,6 @@ const response = await fetch(
           );
         }
       } else {
-        // Like
         const { error } = await supabase.from("post_likes").insert({
           post_id: postId,
           user_id: session.user.id,
@@ -387,49 +284,72 @@ const response = await fetch(
     }
   };
 
-  const renderPost = ({ item: post }: { item: Post }) => (
-    <View className="mb-2 bg-white border-b border-gray-100">
-      {/* Post Header */}
-      <View className="flex-row items-center p-3">
-        <TouchableOpacity
-          onPress={() => {
-            if (post.user?.id) {
-              router.push(`/(app)/profile/${post.user.id}`);
-            }
-          }}
-          className="flex-row flex-1 items-center"
-        >
-          <UserAvatar
-            size={36}
-            user={{
-              id: post.user.id,
-              name: post.user.username || "Anonymous",
-              image: post.user.avatar_url,
-            }}
-          />
-          <View className="flex-1 ml-3">
-            <Text className="text-sm font-semibold text-gray-900">
-              {post.user.username || "Anonymous"}
-            </Text>
-            <Text className="text-xs text-gray-500">
-              {format(new Date(post.created_at), "MMM d • h:mm a")}
-            </Text>
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity className="p-1">
-          <Icon
-            name="dots-horizontal"
-            type="material-community"
-            size={18}
-            color="#9ca3af"
-          />
-        </TouchableOpacity>
-      </View>
+  const renderPost = ({ item: post, index }: { item: Post; index: number }) => {
+    const hasEvent = post.event;
+    const hasImages = post.media_urls && post.media_urls.length > 0;
+    const hasContent = post.content && post.content.trim();
 
-      {/* Post Content */}
-      <View className="px-3">
-        {/* Text Content - Only show if there's text */}
-        {post.content && post.content.trim() && (
+    return (
+      <View style={{ backgroundColor: theme.colors.card }}>
+        {/* Post Header */}
+        <View
+          className={`flex-row items-center px-4 py-4 ${
+            index === 0 ? "pt-6" : ""
+          }`}
+        >
+          <TouchableOpacity
+            onPress={() => {
+              if (post.user?.id) {
+                router.push(`/(app)/profile/${post.user.id}`);
+              }
+            }}
+            className="flex-row flex-1 items-center"
+          >
+            <UserAvatar
+              size={40}
+              user={{
+                id: post.user.id,
+                name:
+                  post.user.first_name && post.user.last_name
+                    ? `${post.user.first_name} ${post.user.last_name}`
+                    : post.user.username || "Anonymous",
+                image: post.user.avatar_url,
+              }}
+            />
+            <View className="flex-1 ml-3">
+              {(post.user.first_name || post.user.last_name) && (
+                <Text
+                  className="text-base font-semibold"
+                  style={{ color: theme.colors.text }}
+                >
+                  {post.user.first_name} {post.user.last_name}
+                </Text>
+              )}
+              <Text
+                className="text-sm font-medium"
+                style={{ color: theme.colors.text }}
+              >
+                @{post.user.username || "Anonymous"}
+              </Text>
+              <Text
+                className="text-sm"
+                style={{ color: isDarkMode ? "#9CA3AF" : "#6B7280" }}
+              >
+                {format(new Date(post.created_at), "MMM d • h:mm a")}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity className="p-2">
+            <MoreHorizontal
+              size={20}
+              color={isDarkMode ? "#9CA3AF" : "#6B7280"}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Post Content */}
+        {hasContent && (
           <TouchableOpacity
             onPress={() => {
               router.push({
@@ -437,17 +357,102 @@ const response = await fetch(
                 params: { event: post.event ? JSON.stringify(post.event) : "" },
               });
             }}
+            className="px-4 pb-3"
           >
-            <Text className="mb-3 text-sm leading-5 text-gray-800">
+            <Text
+              className="text-base leading-6"
+              style={{ color: theme.colors.text }}
+            >
               {post.content}
             </Text>
           </TouchableOpacity>
         )}
 
-        {/* Media - Dynamic height based on content */}
-        {post.media_urls && post.media_urls.length > 0 && (
-          <View className="overflow-hidden mb-3 rounded-xl">
-            {post.media_urls.length === 1 ? (
+        {/* Image Gallery */}
+        {hasImages && (
+          <ImageGallery
+            images={post.media_urls}
+            postId={post.id}
+            event={post.event}
+          />
+        )}
+
+        {/* Event Card */}
+        {hasEvent && (
+          <View className="px-4 pb-3">
+            <SocialEventCard
+              data={post.event}
+              onDataSelect={(data) => {
+                setSelectedEvent(data);
+                setIsSelectedItemLocation(false);
+                setShowUnifiedCard(true);
+              }}
+              onShowDetails={() => {
+                setSelectedEvent(post.event);
+                setIsSelectedItemLocation(false);
+                setShowUnifiedCard(true);
+              }}
+              treatAsEvent={true}
+            />
+          </View>
+        )}
+
+        {/* Location */}
+        {post.address && (
+          <TouchableOpacity
+            onPress={() => {
+              router.push({
+                pathname: `/post/${post.id}`,
+                params: { event: post.event ? JSON.stringify(post.event) : "" },
+              });
+            }}
+            className="flex-row items-center px-4 pb-3"
+          >
+            <MapPin size={16} color={isDarkMode ? "#9CA3AF" : "#6B7280"} />
+            <Text
+              className="ml-2 text-sm"
+              style={{ color: isDarkMode ? "#9CA3AF" : "#6B7280" }}
+            >
+              {post.address}
+              {post.city && `, ${post.city}`}
+              {post.state && `, ${post.state}`}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Post Actions */}
+        <View className="px-4 py-4">
+          <View className="flex-row justify-between items-center">
+            <View className="flex-row items-center">
+              <TouchableOpacity
+                onPress={() => toggleLike(post.id)}
+                className="flex-row items-center mr-8"
+              >
+                <Heart
+                  size={20}
+                  color={
+                    post.isLiked
+                      ? "#ef4444"
+                      : isDarkMode
+                      ? "#9CA3AF"
+                      : "#6B7280"
+                  }
+                  fill={post.isLiked ? "#ef4444" : "none"}
+                />
+                <Text
+                  className="ml-2 text-sm font-medium"
+                  style={{
+                    color: post.isLiked
+                      ? "#ef4444"
+                      : isDarkMode
+                      ? "#9CA3AF"
+                      : "#6B7280",
+                  }}
+                >
+                  {post.like_count}
+                </Text>
+              </TouchableOpacity>
+
               <TouchableOpacity
                 onPress={() => {
                   router.push({
@@ -457,168 +462,187 @@ const response = await fetch(
                     },
                   });
                 }}
+                className="flex-row items-center mr-8"
               >
-                <Image
-                  source={{ uri: post.media_urls[0] }}
-                  className="w-full h-48"
-                  style={{ resizeMode: "cover" }}
+                <MessageCircle
+                  size={20}
+                  color={isDarkMode ? "#9CA3AF" : "#6B7280"}
                 />
+                <Text
+                  className="ml-2 text-sm font-medium"
+                  style={{ color: isDarkMode ? "#9CA3AF" : "#6B7280" }}
+                >
+                  {post.comment_count}
+                </Text>
               </TouchableOpacity>
-            ) : (
-              <ImageCarousel
-                images={post.media_urls}
-                postId={post.id}
-                event={post.event}
-              />
-            )}
+
+              <TouchableOpacity className="flex-row items-center">
+                <Share2 size={20} color={isDarkMode ? "#9CA3AF" : "#6B7280"} />
+              </TouchableOpacity>
+            </View>
           </View>
-        )}
-
-        {/* Location - Only show if there's an address */}
-        {post.address && (
-          <TouchableOpacity
-            onPress={() => {
-              router.push({
-                pathname: `/post/${post.id}`,
-                params: { event: post.event ? JSON.stringify(post.event) : "" },
-              });
-            }}
-          >
-            <View className="flex-row items-center mb-3">
-              <MapPin size={14} color="#6b7280" />
-              <Text className="ml-1 text-xs text-gray-600">
-                {post.address}
-                {post.city && `, ${post.city}`}
-                {post.state && `, ${post.state}`}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        )}
-
-        {/* Event Card - Redesigned */}
-        {post.event && (
-          <TouchableOpacity
-            onPress={() => {
-              setSelectedEvent(post.event);
-              setIsSelectedItemLocation(false);
-            }}
-            className="p-3 mb-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100"
-          >
-            <View className="flex-row items-center">
-              <View className="flex-1">
-                <Text className="text-sm font-semibold text-blue-900">
-                  {post.event.name}
-                </Text>
-                <Text className="mt-1 text-xs text-blue-700">
-                  {format(
-                    new Date(post.event.start_datetime),
-                    "MMM d • h:mm a"
-                  )}
-                </Text>
-                <View className="flex-row items-center mt-1">
-                  <Users size={12} color="#3b82f6" />
-                  <Text className="ml-1 text-xs text-blue-700">
-                    {post.event.venue_name || post.event.address || "Event"}
-                  </Text>
-                </View>
-              </View>
-              <View className="px-3 py-1 bg-blue-600 rounded-full">
-                <Text className="text-xs font-medium text-white">View</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Post Actions - Redesigned */}
-      <View className="flex-row justify-between items-center px-3 pb-3">
-        <View className="flex-row items-center space-x-8">
-          <TouchableOpacity
-            onPress={() => toggleLike(post.id)}
-            className="flex-row items-center"
-          >
-            <Heart
-              size={18}
-              color={post.isLiked ? "#ef4444" : "#6b7280"}
-              fill={post.isLiked ? "#ef4444" : "none"}
-            />
-            <Text
-              className={`ml-1 text-xs ${
-                post.isLiked ? "text-red-500" : "text-gray-500"
-              }`}
-            >
-              {post.like_count}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => {
-              router.push({
-                pathname: `/post/${post.id}`,
-                params: { event: post.event ? JSON.stringify(post.event) : "" },
-              });
-            }}
-            className="flex-row items-center"
-          >
-            <MessageCircle size={18} color="#6b7280" />
-            <Text className="ml-1 text-xs text-gray-500">
-              {post.comment_count}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity className="flex-row items-center">
-            <Share2 size={18} color="#6b7280" />
-          </TouchableOpacity>
         </View>
+
+        {/* Divider */}
+        <View
+          className="mx-4 h-px"
+          style={{ backgroundColor: theme.colors.border }}
+        />
       </View>
-    </View>
-  );
+    );
+  };
 
   if (loading && posts.length === 0) {
     return (
-      <SafeAreaView className="flex-1 bg-white">
-        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <SafeAreaView
+        className="flex-1"
+        style={{ backgroundColor: theme.colors.card }}
+      >
+        <StatusBar
+          barStyle={isDarkMode ? "light-content" : "dark-content"}
+          backgroundColor={theme.colors.card}
+        />
 
-        {/* Header */}
-        <View className="flex-row justify-between items-center p-4 border-b border-gray-200">
-          <Text className="text-xl font-bold">Social Feed</Text>
-          <TouchableOpacity
-            onPress={() => router.push("/(app)/(create)")}
-            className="px-4 py-2 bg-blue-600 rounded-full"
-          >
-            <Text className="font-medium text-white">Post</Text>
-          </TouchableOpacity>
-        </View>
+        <ScreenHeader
+          title="Social Feed"
+          actions={[
+            {
+              icon: <Bell size={18} color="white" strokeWidth={2.5} />,
+              onPress: () => router.push("/(app)/(notification)"),
+              backgroundColor: theme.colors.primary,
+              badge: !!(unReadCount && unReadCount > 0) ? (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: -4,
+                    right: -4,
+                    backgroundColor: "#ff3b30",
+                    borderRadius: 10,
+                    minWidth: 20,
+                    height: 20,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    borderWidth: 2,
+                    borderColor: "white",
+                  }}
+                >
+                  <Text
+                    style={{ color: "white", fontSize: 12, fontWeight: "bold" }}
+                  >
+                    {unReadCount > 99 ? "99+" : String(unReadCount)}
+                  </Text>
+                </View>
+              ) : undefined,
+            },
+            {
+              icon: (
+                <Image
+                  source={
+                    user?.avatar_url
+                      ? { uri: user.avatar_url }
+                      : require("~/assets/favicon.png")
+                  }
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    borderWidth: 2,
+                    borderColor: theme.colors.primary,
+                  }}
+                />
+              ),
+              onPress: () => router.push("/(app)/(profile)"),
+            },
+          ]}
+        />
 
         <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#1d4ed8" />
-          <Text className="mt-4 text-gray-500">Loading posts...</Text>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text
+            className="mt-4"
+            style={{ color: isDarkMode ? "#9CA3AF" : "#6B7280" }}
+          >
+            Loading posts...
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+    <SafeAreaView
+      className="flex-1"
+      style={{ backgroundColor: theme.colors.card }}
+    >
+      <StatusBar
+        barStyle={isDarkMode ? "light-content" : "dark-content"}
+        backgroundColor={theme.colors.card}
+      />
 
-      {/* Header */}
-      <View className="flex-row justify-between items-center p-4 border-b border-gray-200">
-        <Text className="text-xl font-bold">Social Feed</Text>
-        <TouchableOpacity
-          onPress={() => router.push("/(app)/(create)")}
-          className="px-4 py-2 bg-blue-600 rounded-full"
-        >
-          <Text className="font-medium text-white">Post</Text>
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        title="Social Feed"
+        actions={[
+          {
+            icon: <Bell size={18} color="white" strokeWidth={2.5} />,
+            onPress: () => router.push("/(app)/(notification)"),
+            backgroundColor: theme.colors.primary,
+            badge: !!(unReadCount && unReadCount > 0) ? (
+              <View
+                style={{
+                  position: "absolute",
+                  top: -4,
+                  right: -4,
+                  backgroundColor: "#ff3b30",
+                  borderRadius: 10,
+                  minWidth: 20,
+                  height: 20,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  borderWidth: 2,
+                  borderColor: "white",
+                }}
+              >
+                <Text
+                  style={{ color: "white", fontSize: 12, fontWeight: "bold" }}
+                >
+                  {unReadCount > 99 ? "99+" : String(unReadCount)}
+                </Text>
+              </View>
+            ) : undefined,
+          },
+          {
+            icon: (
+              <Image
+                source={
+                  user?.avatar_url
+                    ? { uri: user.avatar_url }
+                    : require("~/assets/favicon.png")
+                }
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  borderWidth: 2,
+                  borderColor: theme.colors.primary,
+                }}
+              />
+            ),
+            onPress: () => router.push("/(app)/(profile)"),
+          },
+        ]}
+      />
 
       <FlatList
         data={posts}
         renderItem={renderPost}
         keyExtractor={(item) => item.id}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#3B82F6"]}
+            tintColor="#3B82F6"
+          />
         }
         onEndReached={() => {
           if (hasMore && !loading) {
@@ -628,59 +652,78 @@ const response = await fetch(
         onEndReachedThreshold={0.5}
         ListFooterComponent={
           loading && hasMore ? (
-            <View className="py-4">
-              <ActivityIndicator size="small" color="#1d4ed8" />
+            <View className="py-8">
+              <ActivityIndicator size="small" color="#3B82F6" />
             </View>
           ) : null
         }
         ListEmptyComponent={
           !loading ? (
             <View className="flex-1 justify-center items-center py-20">
-              <Text className="text-lg text-gray-500">No posts yet</Text>
-              <Text className="mt-2 text-sm text-gray-400">
+              <Text
+                className="text-xl font-medium"
+                style={{ color: theme.colors.text }}
+              >
+                No posts yet
+              </Text>
+              <Text
+                className="mt-2 text-base text-center"
+                style={{ color: isDarkMode ? "#9CA3AF" : "#6B7280" }}
+              >
                 Follow people to see their posts here
               </Text>
             </View>
           ) : null
         }
+        showsVerticalScrollIndicator={false}
       />
 
       {/* Event Details Sheet */}
-      {selectedEvent && (
-        <>
-          {isSelectedItemLocation ? (
-            <LocationDetailsSheet
-              event={selectedEvent}
-              isOpen={!!selectedEvent}
-              onClose={() => {
-                setSelectedEvent(null);
-                setIsSelectedItemLocation(false);
-              }}
-              nearbyEvents={[]}
-              onEventSelect={(e) => {
-                setSelectedEvent(e);
-                setIsSelectedItemLocation(false);
-              }}
-              onShowControler={() => {}}
-            />
-          ) : (
-            <EventDetailsSheet
-              event={selectedEvent}
-              isOpen={!!selectedEvent}
-              onClose={() => {
-                setSelectedEvent(null);
-                setIsSelectedItemLocation(false);
-              }}
-              nearbyEvents={[]}
-              onEventSelect={(e) => {
-                setSelectedEvent(e);
-                setIsSelectedItemLocation(false);
-              }}
-              onShowControler={() => {}}
-            />
-          )}
-        </>
+      {selectedEvent && showUnifiedCard && (
+        <UnifiedDetailsSheet
+          data={selectedEvent as any}
+          isOpen={!!selectedEvent && showUnifiedCard}
+          onClose={() => {
+            setSelectedEvent(null);
+            setIsSelectedItemLocation(false);
+            setShowUnifiedCard(false);
+          }}
+          nearbyData={[]}
+          onDataSelect={(data) => {
+            setSelectedEvent(data as any);
+            setIsSelectedItemLocation(false);
+          }}
+          onShowControler={() => {}}
+          isEvent={!isSelectedItemLocation}
+        />
       )}
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        onPress={() => router.push("/(app)/post/create")}
+        accessibilityLabel="Create new post"
+        accessibilityHint="Navigate to create a new post"
+        accessibilityRole="button"
+        style={{
+          position: "absolute",
+          bottom: 120, // Above the tab bar
+          right: 20,
+          width: 60,
+          height: 60,
+          borderRadius: 40,
+          backgroundColor: "#8B5CF6",
+          justifyContent: "center",
+          alignItems: "center",
+          shadowColor: isDarkMode ? theme.colors.primary : "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: isDarkMode ? 0.4 : 0.25,
+          shadowRadius: 8,
+          elevation: 8,
+          zIndex: 1000,
+        }}
+      >
+        <Plus size={24} color="white" strokeWidth={2.5} />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }

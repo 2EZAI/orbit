@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { View, TouchableOpacity, Image } from "react-native";
-import { Text } from "../ui/text";
+import { View, TouchableOpacity } from "react-native";
+import { Text } from "~/src/components/ui/text";
+import { OptimizedImage } from "~/src/components/ui/optimized-image";
 import { MapEvent } from "~/hooks/useMapEvents";
 import { Clock, MapPin } from "lucide-react-native";
 import { format } from "date-fns";
-import { EventDetailsSheet } from "../map/EventDetailsSheet";
+import { UnifiedDetailsSheet } from "../map/UnifiedDetailsSheet";
 
 interface FeedEventCardProps {
   event: MapEvent;
@@ -34,11 +35,18 @@ export function FeedEventCard({
         }}
       >
         <View className="relative">
-        {event?.image_urls?.[0] &&   <Image
-            source={{ uri: event?.image_urls[0] }}
-            className="w-full h-48"
-            style={{ resizeMode: "cover" }}
-          />}
+          {event?.image_urls?.[0] && (
+            <OptimizedImage
+              uri={event?.image_urls[0]}
+              width={400}
+              height={192}
+              quality={75}
+              thumbnail={true}
+              lazy={true}
+              className="w-full h-48"
+              resizeMode="cover"
+            />
+          )}
           <View className="absolute top-4 left-4 px-3 py-1 rounded-lg bg-white/90">
             <Text className="font-medium">{format(startTime, "MMM d")}</Text>
             <Text className="text-xs text-center text-muted-foreground">
@@ -119,13 +127,14 @@ export function FeedEventCard({
       </TouchableOpacity>
 
       {showDetails && (
-        <EventDetailsSheet
-          event={event}
+        <UnifiedDetailsSheet
+          data={event as any}
           isOpen={showDetails}
           onClose={() => setShowDetails(false)}
-          nearbyEvents={nearbyEvents || []}
-          onEventSelect={onEventSelect || (() => {})}
+          nearbyData={(nearbyEvents || []) as any}
+          onDataSelect={(data) => onEventSelect?.(data as MapEvent, false)}
           onShowControler={() => {}}
+          isEvent={true}
         />
       )}
     </>

@@ -1,5 +1,70 @@
 import type { DeepPartial, Theme } from "stream-chat-expo";
 
+// Function to create Stream Chat theme based on our theme colors
+export const createStreamChatTheme = (themeColors: {
+  background: string;
+  card: string;
+  text: string;
+  border: string;
+  primary: string;
+  notification: string;
+}): DeepPartial<Theme> => {
+  return {
+    colors: {
+      // Message bubble colors - Stream Chat specific
+      accent_blue: themeColors.primary, // Other user messages
+      blue_alice: "#F2F2F7", // Own messages - soft gray
+      white: themeColors.card,
+      black: themeColors.text,
+      grey: themeColors.text + "80",
+      border: themeColors.border,
+      // Background
+      white_snow: themeColors.card,
+      grey_gainsboro: themeColors.border,
+    },
+    messageList: {
+      container: {
+        backgroundColor: themeColors.card,
+      },
+    },
+    messageSimple: {
+      content: {
+        textContainer: {
+          backgroundColor: "transparent", // Let Stream Chat handle bubble colors
+        },
+        wrapper: {
+          backgroundColor: themeColors.card,
+        },
+      },
+    },
+    messageInput: {
+      container: {
+        backgroundColor: themeColors.card,
+        borderTopColor: themeColors.border,
+        borderTopWidth: 1,
+      },
+      inputBox: {
+        backgroundColor: themeColors.border,
+        borderColor: themeColors.border,
+        borderRadius: 20,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+      },
+    },
+    channel: {
+      selectChannel: {
+        backgroundColor: themeColors.card,
+      },
+    },
+    channelPreview: {
+      container: {
+        backgroundColor: themeColors.card,
+      },
+    },
+  };
+};
+
+// Legacy exports for backward compatibility (deprecated)
 // Convert CSS HSL to string format
 const hslToString = (hsl: string) => `hsl(${hsl})`;
 
@@ -13,8 +78,8 @@ const colors = {
   cardForeground: hslToString("0 0% 0%"),
   border: hslToString("220 13% 91%"),
   input: hslToString("220 13% 91%"),
-  primary: hslToString("253 91% 58%"),
-  primaryForeground: hslToString("253 91% 98%"),
+  primary: hslToString("262 83% 70%"),
+  primaryForeground: hslToString("262 83% 98%"),
   secondary: hslToString("253 5% 89%"),
   secondaryForeground: hslToString("253 5% 29%"),
   accent: hslToString("253 12% 82%"),
@@ -33,8 +98,8 @@ const darkColors = {
   cardForeground: hslToString("253 31% 99%"),
   border: hslToString("215 27.9% 16.9%"),
   input: hslToString("215 27.9% 16.9%"),
-  primary: hslToString("253 91% 58%"),
-  primaryForeground: hslToString("253 91% 98%"),
+  primary: hslToString("262 83% 70%"),
+  primaryForeground: hslToString("262 83% 98%"),
   secondary: hslToString("253 7% 9%"),
   secondaryForeground: hslToString("253 7% 69%"),
   accent: hslToString("253 13% 14%"),

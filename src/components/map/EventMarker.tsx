@@ -1,5 +1,6 @@
-import React, { useEffect } from "react";
-import { View, Image } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View } from "react-native";
+import FastImage from "react-native-fast-image"; // Make sure to install this package
 import { Text } from "../ui/text";
 
 interface EventMarkerProps {
@@ -13,13 +14,17 @@ export function EventMarker({
   count = 1,
   isSelected = false,
 }: EventMarkerProps) {
+  const [imageError, setImageError] = useState(false);
+
   useEffect(() => {
-    // console.log("[EventMarker] Rendering marker:", {
-    //   imageUrl,
-    //   count,
-    //   isSelected,
-    // });
-  }, [imageUrl, count, isSelected]);
+    setImageError(false); // Reset error state when URL changes
+  }, [imageUrl]);
+
+  // Always use a thumbnail version for markers (Supabase Storage transformation)
+  const optimizedUrl =
+    imageUrl && imageUrl.includes("supabase.co")
+      ? `${imageUrl}?width=40&height=40&quality=60`
+      : imageUrl;
 
   return (
     <View
@@ -27,18 +32,12 @@ export function EventMarker({
         isSelected ? "border-primary scale-110" : ""
       }`}
     >
-      {imageUrl ? (
-        <Image
-          source={{ uri: imageUrl }}
-          className="w-full h-full rounded-lg"
-          onError={(e) =>{
-  // console.log(
-  //             "[EventMarker] Image load error:",
-  //             e.nativeEvent.error
-  //           )
-          }
-          
-          }
+      {optimizedUrl && !imageError ? (
+        <FastImage
+          source={{ uri: optimizedUrl }}
+          style={{ width: "100%", height: "100%", borderRadius: 8 }}
+          onError={() => setImageError(true)}
+          resizeMode={FastImage.resizeMode.cover}
         />
       ) : (
         <View className="w-full h-full rounded-lg bg-muted" />
@@ -51,3 +50,4 @@ export function EventMarker({
     </View>
   );
 }
+// Note: You must install react-native-fast-image and link it according to their docs for best performance.

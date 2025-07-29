@@ -20,6 +20,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log("Initial session check:", !!session);
       setSession(session);
       setLoading(false);
     });
@@ -27,14 +28,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth state change:", event, "Session:", !!session);
       setSession(session);
 
-      if (session) {
-        router.replace("/(app)/(map)");
-      } else {
+      // Only redirect on sign out - let app layout handle authenticated routing
+      if (event === "SIGNED_OUT") {
+        console.log("User signed out, redirecting to landing page");
         router.replace("/");
       }
+      // Don't redirect on SIGNED_IN - causes issues with session persistence
     });
 
     return () => subscription.unsubscribe();

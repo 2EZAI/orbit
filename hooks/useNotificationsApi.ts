@@ -1,13 +1,18 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "~/src/lib/auth";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export interface NotificationData {
   type: string;
-  chat_id: string;
-  sender_id: string;
-  group_name: string;
-  member_ids: string[];
-  stream_channel_id: string;
+  chat_id?: string;
+  sender_id?: string;
+  group_name?: string;
+  member_ids?: string[];
+  stream_channel_id?: string;
+  post_id?: string;
+  event_id?: string;
+  is_ticketmaster?: boolean;
+  user_id?: string;
 }
 
 export interface Notification {
@@ -37,83 +42,85 @@ export interface NotificationResponse {
   meta: NotificationMeta;
 }
 
-
 interface useNotificationsReturn {
   loading: boolean;
   error: Error | null;
-  fetchAllNoifications: (page: Partial<number>,pageSize:Partial<number>) => Promise<void>;
+  fetchAllNoifications: (
+    page: Partial<number>,
+    pageSize: Partial<number>
+  ) => Promise<NotificationResponse>;
   readNoifications: (notifId: Partial<string>) => Promise<void>;
   unReadCount: number | null;
 }
-
+const saveUnReadNotifCount = async (count: string) => {
+  try {
+    await AsyncStorage.setItem("unread_notification", JSON.stringify(count));
+  } catch (error) {}
+};
 export function useNotificationsApi(): useNotificationsReturn {
   const { session } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [unReadCount, setUnReadCount] = useState<number | null>(null);
- // fetch location events
- const fetchAllNoifications = async (pagee: Partial<number>,pageSize: Partial<number>) => {
-  try {
-    if (!session?.user?.id) throw new Error("No user logged in");
+  // fetch location events
+  const fetchAllNoifications = async (
+    pagee: Partial<number>,
+    pageSize: Partial<number>
+  ) => {
+    try {
+      if (!session?.user?.id) throw new Error("No user logged in");
 
-          const response = await fetch(
-            `${process.env.BACKEND_MAP_URL}/api/notifications/user/${session?.user?.id}?page=${pagee}&limit=${pageSize}`,
-            {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              // body: JSON.stringify(eventData),
-            }
-          );
-      
-          if (!response.ok) {
-            throw new Error(await response.text());
-          }
-    
-          const data = await response.json();
-          // console.log("notifications>", data);
-          const meta= data?.meta?.unreadCount;
-          // console.log("meta>",meta);
-          setUnReadCount(meta);
-  
-    return data; 
-          
-  } catch (e) {
-    setError(e instanceof Error ? e : new Error("An error occurred"));
-    throw e;
-  }
-};
+      const response = await fetch(
+        `${process.env.BACKEND_MAP_URL}/api/notifications/user/${session?.user?.id}?page=${pagee}&limit=${pageSize}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          // body: JSON.stringify(eventData),
+        }
+      );
 
-const readNoifications = async (notifId: string) => {
-  console.log("readNoifications:>");
-  try {
-    if (!session) return;
-    const response = await fetch(
-      `${process.env.BACKEND_MAP_URL}/api/notifications/read/${notifId}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        // body: JSON.stringify(eventData),
+      if (!response.ok) {
+        throw new Error(await response.text());
       }
-    );
 
-    if (!response.ok) {
-      throw new Error(await response.text());
+      const data = await response.json();
+      const meta = data?.meta?.unreadCount;
+      setUnReadCount(meta);
+      saveUnReadNotifCount(String(meta || 0));
+
+      return data;
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error("An error occurred"));
+      throw e;
     }
+  };
 
-    const notifDetail = await response.json();
-    // console.log("notifDetail>", notifDetail);
-   return notifDetail;
-  } catch (error) {
-    console.error("Error fetching read notification:", error);
-  }
-};
+  const readNoifications = async (notifId: string) => {
+    try {
+      if (!session) return;
+      const response = await fetch(
+        `${process.env.BACKEND_MAP_URL}/api/notifications/read/${notifId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          // body: JSON.stringify(eventData),
+        }
+      );
 
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      const notifDetail = await response.json();
+      return notifDetail;
+    } catch (error) {}
+  };
 
   return {
     loading,
