@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import {DeviceEventEmitter} from "react-native";
 import { supabase } from "~/src/lib/supabase";
 import { useAuth } from "~/src/lib/auth";
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -107,7 +108,7 @@ export function useUser(): UseUserReturn {
     try {
       const jsonValue = JSON.stringify(data);
       await AsyncStorage.setItem(key, jsonValue);
-      console.log('User data saved');
+      console.log(`${key} data saved>`);
     } catch (e) {
       console.error('Error saving location', e);
     }
@@ -137,7 +138,8 @@ export function useUser(): UseUserReturn {
 
       if (supabaseError) throw supabaseError;
       setUserLocation(data);
-      storeData('userLocation',data);
+      storeData('userLocation',data);    
+
     } catch (e) {
       setError(e instanceof Error ? e : new Error("An error occurred"));
     } finally {
@@ -351,8 +353,8 @@ export function useUser(): UseUserReturn {
           .eq("user_id", session.user.id);
 
     result = { data, error }
-    console.log("data>>",data);
-    console.log("error>>",error);
+    // console.log("data>>",data);
+    // console.log("error>>",error);
   } else {
     // Insert new record
     const { data, error } = await supabase

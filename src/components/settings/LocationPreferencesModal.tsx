@@ -16,6 +16,7 @@ import Constants from "expo-constants";
 import Toast from "react-native-toast-message";
 import { MapPin, X, Navigation, Globe, Search } from "lucide-react-native";
 import { debounce } from "lodash";
+import { router } from "expo-router";
 
 const MAPBOX_ACCESS_TOKEN = Constants.expoConfig?.extra?.mapboxAccessToken;
 
@@ -47,7 +48,7 @@ export function LocationPreferencesModal({
 }: LocationPreferencesModalProps) {
   const { theme } = useTheme();
   const { session } = useAuth();
-  const { user, updateUser } = useUser();
+  const { user, updateUser ,updateUserLocations} = useUser();
 
   const [selectedMode, setSelectedMode] = useState<"current" | "orbit">(
     "current"
@@ -138,12 +139,22 @@ export function LocationPreferencesModal({
       await updateUser({
         event_location_preference: selectedMode === "orbit" ? 1 : 0,
       });
-
+  console.log("selectedMode",selectedMode,orbitLocation);
       // If orbit mode, save the orbit location (you may want to add a separate table for this)
       if (selectedMode === "orbit" && orbitLocation) {
+      
         // For now, we could store this in user preferences or create a new table
         // This is a placeholder - you might want to add orbit_location fields to the user table
         console.log("Orbit location selected:", orbitLocation);
+        
+        await updateUserLocations({
+        city: orbitLocation.city,
+        state: orbitLocation.state,
+        postal_code: orbitLocation.zip,
+        address: orbitLocation.address1,
+        latitude: orbitLocation.coordinates?.[1]?.toString() || "0",
+        longitude: orbitLocation.coordinates?.[0]?.toString() || "0",
+      });
       }
 
       Toast.show({
@@ -156,6 +167,9 @@ export function LocationPreferencesModal({
       });
 
       onClose();
+      router.back();
+      router.back();
+      router.replace("/(app)/(map)");
     } catch (error) {
       console.error("Error updating location preferences:", error);
       Toast.show({

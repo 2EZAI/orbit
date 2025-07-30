@@ -3,7 +3,7 @@ import {
   TouchableOpacity,
   DeviceEventEmitter,
   Platform,
-  Text
+  Text,
   Animated,
   Dimensions,
 } from "react-native";
@@ -56,7 +56,7 @@ const TAB_ROUTES = [
 ];
 const txt1 = `To Create Event Tap ➕ icon in the bottom bar.\n\nAdd the time,\ncategory,\nname,\nand other details.`;
 const txt2 = `To start a chat or group chat, tap the 💬 icon in the bottom bar.`;
-const txt3 = `To create a post, tap the 👤 icon in the bottom bar.\n\n• Then go to the Post tab.\n• Click on the Create New Post button.`;
+const txt3 = `To create a post, tap the 👤 icon on top right side.\n\n• Select users.\n• Click on the Create button.`;
 
 const tutorialScenario = [
   {
@@ -99,7 +99,7 @@ const tutorialView = (txt: string, position: number, componentId: string) => {
         bottom: 0,
         right: 0,
         left: 0,
-        marginBottom: "10%",
+        marginBottom: "14%",
         marginHorizontal: 40, // replaces margingLeft + marginRight
         backgroundColor: "white",
         padding: 20,
@@ -348,9 +348,9 @@ export default function TabBar() {
             <WalkthroughComponent
               id={
                 index === 2
-                  ? `createchat`
+                  ?`createevent` 
                   : index === 3
-                  ? `createevent`
+                  ? `createchat`
                   : `createpost`
               }
               key={

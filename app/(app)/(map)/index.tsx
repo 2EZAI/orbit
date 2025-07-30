@@ -164,9 +164,18 @@ export default function Map() {
     }
   }, [selectedEvent]);
 
+  const moveToLocation = (latitude, longitude) => {
+    if (cameraRef.current) {
+      console.log('moveToLocation', latitude,longitude);
+      cameraRef.current.flyTo([longitude, latitude], 1000); // 
+      cameraRef.current.zoomTo(15, 1000);
+    }
+  };
+  
   //set zoom enabled by default
   useEffect(() => {
     setIsFollowingUser(false);
+    
     const eventListener = DeviceEventEmitter.addListener(
       "eventNotification",
       (event: Partial<MapEvent>) => {
@@ -277,11 +286,10 @@ console.log(uData?.event_location_preference); // 77.5946
   console.log("setMpaToUserLocation",uLocation);
  if(uData?.event_location_preference === 1  ){
     if (uLocation?.latitude && uLocation?.longitude ) {
-      
 // Center map on userlocation
       if (cameraRef.current) {
         cameraRef.current.setCamera({
-          centerCoordinate: [parseInt(uLocation?.longitude), parseInt(uLocation?.latitude)],
+          centerCoordinate: [parseFloat(uLocation?.longitude), parseFloat(uLocation?.latitude)],
           zoomLevel: 14,
           animationDuration: 500,
           animationMode: "flyTo",
@@ -507,6 +515,7 @@ console.log(uData?.event_location_preference); // 77.5946
   const handleEventSelect = useCallback(
     (event: MapEvent) => {
       // Center map on selected event
+      console.log('cameraRef.current>click>',cameraRef.current)
       if (cameraRef.current) {
         cameraRef.current.setCamera({
           centerCoordinate: [event.location.longitude, event.location.latitude],
@@ -525,6 +534,9 @@ console.log(uData?.event_location_preference); // 77.5946
       if (cluster.events?.length === 1) {
         // Center map on selected event
         if (cameraRef.current) {
+      console.log('cameraRef.current>handleClusterPress>',cameraRef.current,cluster.events[0].location.longitude,
+              cluster.events[0].location.latitude)
+
           cameraRef.current.setCamera({
             centerCoordinate: [
               cluster.events[0].location.longitude,
@@ -547,6 +559,8 @@ console.log(uData?.event_location_preference); // 77.5946
     (location: MapLocation) => {
       // Center map on selected location
       if (cameraRef.current) {
+       console.log('cameraRef.current>handleLocationSelect>',cameraRef.current)
+
         cameraRef.current.setCamera({
           centerCoordinate: [
             location.location.longitude,
@@ -577,6 +591,8 @@ console.log(uData?.event_location_preference); // 77.5946
       if (cluster.events?.length === 1) {
         // Center map on selected location
         if (cameraRef.current) {
+                console.log('cameraRef.current>handleLocationClusterPress>',cameraRef.current)
+
           cameraRef.current.setCamera({
             centerCoordinate: [
               cluster.events[0].location.longitude,
