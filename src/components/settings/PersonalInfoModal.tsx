@@ -25,7 +25,16 @@ export function PersonalInfoModal({ isOpen, onClose }: PersonalInfoModalProps) {
   const [lastName, setLastName] = useState("");
   const [bio, setBio] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
+  // Reset expansion when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setIsExpanded(false);
+    }
+  }, [isOpen]);
+
+  // Load user data
   useEffect(() => {
     if (user && isOpen) {
       setFirstName(user.first_name || "");
@@ -72,7 +81,7 @@ export function PersonalInfoModal({ isOpen, onClose }: PersonalInfoModalProps) {
   };
 
   return (
-    <Sheet isOpen={isOpen} onClose={onClose}>
+    <Sheet isOpen={isOpen} onClose={onClose} expanded={isExpanded}>
       <View style={{ padding: 20 }}>
         {/* Header */}
         <View
@@ -148,6 +157,8 @@ export function PersonalInfoModal({ isOpen, onClose }: PersonalInfoModalProps) {
               <Input
                 value={firstName}
                 onChangeText={setFirstName}
+                onFocus={() => setIsExpanded(true)}
+                onBlur={() => setIsExpanded(false)}
                 placeholder="Enter your first name"
                 style={{
                   paddingHorizontal: 16,
@@ -185,6 +196,8 @@ export function PersonalInfoModal({ isOpen, onClose }: PersonalInfoModalProps) {
               <Input
                 value={lastName}
                 onChangeText={setLastName}
+                onFocus={() => setIsExpanded(true)}
+                onBlur={() => setIsExpanded(false)}
                 placeholder="Enter your last name"
                 style={{
                   paddingHorizontal: 16,
@@ -223,6 +236,8 @@ export function PersonalInfoModal({ isOpen, onClose }: PersonalInfoModalProps) {
               <Input
                 value={bio}
                 onChangeText={setBio}
+                onFocus={() => setIsExpanded(true)}
+                onBlur={() => setIsExpanded(false)}
                 placeholder="Tell others about yourself..."
                 multiline
                 numberOfLines={4}

@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { Sheet } from "../ui/sheet";
+import { OptimizedImage } from "../ui/optimized-image";
 import { supabase } from "../../lib/supabase";
 import { Input } from "../ui/input";
 import { Calendar, MapPin, Users, Search, X } from "lucide-react-native";
@@ -101,6 +102,7 @@ export function SearchSheet({
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("users");
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
 
   // Tab configuration
@@ -118,10 +120,24 @@ export function SearchSheet({
       setTicketmasterEvents([]);
       setActiveTab("users");
       setIsExpanded(false);
+      setIsFocused(false);
       // Focus search input after a brief delay
       setTimeout(() => searchInputRef.current?.focus(), 100);
     }
   }, [isOpen]);
+
+  // Auto-expand when user starts searching
+  useEffect(() => {
+    if (searchQuery.length >= 1) {
+      // Delay the expansion slightly to avoid layout conflicts
+      const timer = setTimeout(() => {
+        setIsExpanded(true);
+      }, 150);
+      return () => clearTimeout(timer);
+    } else {
+      setIsExpanded(false);
+    }
+  }, [searchQuery.length]);
 
   // Search function with both RPC and Ticketmaster
   const handleSearch = async (query: string) => {
@@ -453,6 +469,7 @@ export function SearchSheet({
             paddingBottom: 16,
             borderBottomWidth: 1,
             borderBottomColor: theme.colors.border,
+            backgroundColor: theme.colors.background,
           }}
         >
           <View style={{ flex: 1 }}>
@@ -463,6 +480,14 @@ export function SearchSheet({
               onChangeText={(text: string) => {
                 setSearchQuery(text);
                 debouncedSearch(text);
+              }}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => {
+                // Only set focus to false if there's no search query
+                // This prevents premature collapse while user is still searching
+                if (searchQuery.length === 0) {
+                  setIsFocused(false);
+                }
               }}
               placeholderTextColor={theme.colors.text + "80"}
               style={{
@@ -478,6 +503,8 @@ export function SearchSheet({
                 setSearchQuery("");
                 setResults({ events: [], users: [], locations: [] });
                 setTicketmasterEvents([]);
+                setIsFocused(false);
+                searchInputRef.current?.blur();
               }}
               style={{
                 marginLeft: 12,
@@ -492,7 +519,9 @@ export function SearchSheet({
           {/* Expand/Collapse Button */}
           {searchQuery.length > 1 && (
             <TouchableOpacity
-              onPress={() => setIsExpanded(!isExpanded)}
+              onPress={() => {
+                setIsExpanded(!isExpanded);
+              }}
               style={{
                 marginLeft: 8,
                 padding: 8,
@@ -725,19 +754,19 @@ export function SearchSheet({
                           marginRight: 12,
                         }}
                       >
-                        {event.image_urls && event.image_urls.length > 0 ? (
-                          <Image
-                            source={{ uri: event.image_urls[0] }}
-                            style={{
-                              width: 56,
-                              height: 56,
-                              borderRadius: 8,
-                            }}
-                            resizeMode="cover"
-                          />
-                        ) : (
-                          <Calendar size={24} color={theme.colors.primary} />
-                        )}
+                        <OptimizedImage
+                          uri={event.image_urls?.[0] || ""}
+                          width={56}
+                          height={56}
+                          quality={80}
+                          style={{
+                            width: 56,
+                            height: 56,
+                            borderRadius: 8,
+                          }}
+                          resizeMode="cover"
+                          fallbackUri="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=56&q=80"
+                        />
                       </View>
                       <View style={{ flex: 1, justifyContent: "center" }}>
                         <View

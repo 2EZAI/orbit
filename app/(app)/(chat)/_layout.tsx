@@ -115,6 +115,23 @@ export default function ChatLayout() {
                     animation: "slide_from_bottom",
                   }}
                 />
+                <Stack.Screen
+                  name="call/[id]"
+                  options={{
+                    title: "Call",
+                    headerShown: false,
+                    presentation: "modal",
+                    animation: "slide_from_bottom",
+                  }}
+                />
+                <Stack.Screen
+                  name="channel/[id]/settings"
+                  options={{
+                    headerShown: false,
+                    presentation: "modal",
+                    animation: "slide_from_right",
+                  }}
+                />
               </Stack>
             </LiveLocationContextProvider>
           </Chat>

@@ -28,7 +28,6 @@ import { PasswordModal } from "~/src/components/settings/PasswordModal";
 import { DeleteAccountModal } from "~/src/components/settings/DeleteAccountModal";
 import { EmailModal } from "~/src/components/settings/EmailModal";
 import { LocationPreferencesModal } from "~/src/components/settings/LocationPreferencesModal";
-import { AddressModal } from "~/src/components/settings/AddressModal";
 import { InterestsModal } from "~/src/components/settings/InterestsModal";
 import { PrivacyModal } from "~/src/components/settings/PrivacyModal";
 
@@ -130,7 +129,6 @@ export default function SettingsScreen() {
   const [showEmail, setShowEmail] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showLocationPreferences, setShowLocationPreferences] = useState(false);
-  const [showAddress, setShowAddress] = useState(false);
   const [showInterests, setShowInterests] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
@@ -198,34 +196,28 @@ export default function SettingsScreen() {
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
         {/* Profile Settings */}
         <SectionHeader title="Profile Settings" />
-
         <SettingItem
           icon={<User size={20} color={theme.colors.primary} />}
           title="Update Personal Information"
           onPress={() => setShowPersonalInfo(true)}
         />
-
         <SettingItem
           icon={<Edit3 size={20} color={theme.colors.primary} />}
           title="Update User Name"
           onPress={() => setShowUsername(true)}
         />
-
         <SettingItem
           icon={<Mail size={20} color={theme.colors.primary} />}
           title="Update Email"
           onPress={() => setShowEmail(true)}
         />
-
         <SettingItem
           icon={<Lock size={20} color={theme.colors.primary} />}
           title="Update Password"
           onPress={() => setShowPassword(true)}
         />
-
         {/* Event & Maps Settings */}
         <SectionHeader title="Event & Maps Settings" />
-
         <SettingItem
           icon={<MapPin size={20} color={theme.colors.primary} />}
           title="Location Preferences"
@@ -233,39 +225,28 @@ export default function SettingsScreen() {
         />
 
         <SettingItem
-          icon={<Map size={20} color={theme.colors.primary} />}
-          title="Main Location"
-          onPress={() => setShowAddress(true)}
-        />
-
-        <SettingItem
           icon={<Heart size={20} color={theme.colors.primary} />}
           title="Update Interests"
           onPress={() => setShowInterests(true)}
         />
-
         <SettingItem
           icon={<Shield size={20} color={theme.colors.primary} />}
           title="Map & Location Privacy"
           onPress={() => setShowPrivacy(true)}
         />
-
         {/* Privacy & more */}
         <SectionHeader title="Privacy & more" />
-
         <SettingItem
           icon={<LogOut size={20} color={theme.colors.primary} />}
           title="Log Out"
           onPress={handleLogout}
         />
-
         <SettingItem
           icon={<Trash2 size={20} color="#FF3B30" />}
           title="Delete My Account"
           onPress={() => setShowDeleteAccount(true)}
           destructive
         />
-
         <SettingItem
           icon={<FileText size={20} color={theme.colors.primary} />}
           title="Terms & Conditions"
@@ -273,7 +254,6 @@ export default function SettingsScreen() {
             openWebview("https://yourapp.com/terms", "Terms & Conditions")
           }
         />
-
         <SettingItem
           icon={<FileText size={20} color={theme.colors.primary} />}
           title="Privacy Policy"
@@ -281,7 +261,6 @@ export default function SettingsScreen() {
             openWebview("https://yourapp.com/privacy", "Privacy Policy")
           }
         />
-
         {/* Bottom spacing */}
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -307,11 +286,6 @@ export default function SettingsScreen() {
       <LocationPreferencesModal
         isOpen={showLocationPreferences}
         onClose={() => setShowLocationPreferences(false)}
-      />
-
-      <AddressModal
-        isOpen={showAddress}
-        onClose={() => setShowAddress(false)}
       />
 
       <InterestsModal

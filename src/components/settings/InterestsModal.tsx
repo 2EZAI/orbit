@@ -42,7 +42,16 @@ export function InterestsModal({ isOpen, onClose }: InterestsModalProps) {
   const [searchText, setSearchText] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
+  // Reset expansion when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setIsExpanded(false);
+    }
+  }, [isOpen]);
+
+  // Load user data
   useEffect(() => {
     if (isOpen) {
       loadTopics();
@@ -243,7 +252,7 @@ export function InterestsModal({ isOpen, onClose }: InterestsModalProps) {
   };
 
   return (
-    <Sheet isOpen={isOpen} onClose={onClose}>
+    <Sheet isOpen={isOpen} onClose={onClose} expanded={isExpanded}>
       <View style={{ flex: 1, maxHeight: "85%" }}>
         {/* Fixed Header Section */}
         <View
@@ -395,6 +404,8 @@ export function InterestsModal({ isOpen, onClose }: InterestsModalProps) {
               <Input
                 value={searchText}
                 onChangeText={handleSearchChange}
+                onFocus={() => setIsExpanded(true)}
+                onBlur={() => setIsExpanded(false)}
                 placeholder="Search interests..."
                 style={{
                   flex: 1,

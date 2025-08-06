@@ -24,6 +24,10 @@ import {
 } from "~/hooks/useMapEvents";
 import { useMapCamera } from "~/src/hooks/useMapCamera";
 import { MapControls } from "~/src/components/map/MapControls";
+import {
+  FilterState,
+  generateDefaultFilters,
+} from "~/src/components/map/MarkerFilter";
 
 import { UserMarker } from "~/src/components/map/UserMarker";
 import { UserMarkerWithCount } from "~/src/components/map/UserMarkerWithCount";
@@ -32,6 +36,7 @@ import { EventMarker } from "~/src/components/map/EventMarker";
 import { ClusterSheet } from "~/src/components/map/ClusterSheet";
 import { UnifiedCard } from "~/src/components/map/UnifiedCard";
 import { UnifiedDetailsSheet } from "~/src/components/map/UnifiedDetailsSheet";
+import { MapLoadingScreen } from "~/src/components/map/MapLoadingScreen";
 
 import { SearchSheet } from "~/src/components/search/SearchSheet";
 
@@ -42,9 +47,21 @@ MapboxGL.setAccessToken(
 
 // Custom style URLs - now these will work with Mapbox
 const CUSTOM_LIGHT_STYLE =
-  "mapbox://styles/tangentdigitalagency/clzwv4xtp002y01psdttf9jhr";
+  "mapbox://styles/tangentdigitalagency/clzwv44pl002x01ps9aa65wxc";
 const CUSTOM_DARK_STYLE =
   "mapbox://styles/tangentdigitalagency/clzwv4xtp002y01psdttf9jhr";
+
+// Temporary fix: Use working light style until custom style is resolved
+// TODO: Replace WORKING_LIGHT_STYLE with CUSTOM_LIGHT_STYLE once the custom style is fixed
+const WORKING_LIGHT_STYLE = "mapbox://styles/mapbox/light-v11";
+
+// Reliable fallback styles using default Mapbox styles
+const FALLBACK_LIGHT_STYLE = "mapbox://styles/mapbox/light-v11";
+const FALLBACK_DARK_STYLE = "mapbox://styles/mapbox/dark-v11";
+
+// Theme-aware fallback selection
+const getFallbackStyle = (isDarkMode: boolean) =>
+  isDarkMode ? FALLBACK_DARK_STYLE : FALLBACK_LIGHT_STYLE;
 
 export default function Map() {
   const params = useLocalSearchParams();
@@ -70,6 +87,55 @@ export default function Map() {
   const [selectedCluster, setSelectedCluster] = useState<MapEvent[] | null>(
     null
   );
+  const [mapStyleError, setMapStyleError] = useState(false);
+  const [filters, setFilters] = useState<FilterState>({});
+  const [isMapFullyLoaded, setIsMapFullyLoaded] = useState(false); // Track overall map loading state
+  const [loadingReason, setLoadingReason] = useState<
+    "initial" | "timeframe" | "filters" | "data"
+  >("initial"); // Track why we're loading
+  const markersReadyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Reset style error when theme changes to retry the correct style
+  useEffect(() => {
+    setMapStyleError(false);
+    console.log("Theme changed to:", isDarkMode ? "DARK" : "LIGHT");
+    console.log(
+      "Will attempt to use style:",
+      isDarkMode ? CUSTOM_DARK_STYLE : WORKING_LIGHT_STYLE
+    );
+    console.log("Fallback available:", getFallbackStyle(isDarkMode));
+  }, [isDarkMode]);
+
+  // Get loading text based on the current loading reason
+  const getLoadingText = () => {
+    switch (loadingReason) {
+      case "initial":
+        return {
+          title: "Welcome to Orbit",
+          subtitle: "Setting up your personalized map experience...",
+        };
+      case "data":
+        return {
+          title: "Discovering Events",
+          subtitle: "Finding amazing events and locations near you...",
+        };
+      case "timeframe":
+        return {
+          title: "Updating Timeline",
+          subtitle: `Loading ${selectedTimeFrame.toLowerCase()} events...`,
+        };
+      case "filters":
+        return {
+          title: "Applying Filters",
+          subtitle: "Updating map with your preferences...",
+        };
+      default:
+        return {
+          title: "Loading Map",
+          subtitle: "Please wait while we prepare everything...",
+        };
+    }
+  };
 
   // Add state to track current map center
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
@@ -77,6 +143,124 @@ export default function Map() {
   // Add debounced region change handler
   const regionChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastCenterRef = useRef<[number, number] | null>(null);
+
+  // Helper function to determine marker type
+  const getMarkerType = (
+    event: MapEvent
+  ): "user-event" | "ticketmaster" | "api-event" => {
+    if (event.created_by) {
+      return "user-event";
+    }
+    if ((event as any).is_ticketmaster) {
+      return "ticketmaster";
+    }
+    return "api-event";
+  };
+
+  // Helper function to get category name for coloring
+  const getCategoryName = (event: MapEvent | MapLocation): string => {
+    if (
+      "categories" in event &&
+      event.categories &&
+      event.categories.length > 0
+    ) {
+      return event.categories[0].name;
+    }
+    if ("category" in event && event.category) {
+      return event.category.name;
+    }
+    if ("type" in event && event.type) {
+      return event.type;
+    }
+    return "";
+  };
+
+  // Dynamic filter functions - uses OR logic for better UX
+  const shouldShowMarker = (event: MapEvent | MapLocation): boolean => {
+    // If no filters are set yet, show everything
+    if (Object.keys(filters).length === 0) return true;
+
+    // If all filters are false, hide everything
+    const hasAnyFilterEnabled = Object.values(filters).some(
+      (value) => value === true
+    );
+    if (!hasAnyFilterEnabled) return false;
+
+    let shouldShow = false;
+
+    // Check event source type filters - user-friendly names only
+    if ("source" in event && event.source) {
+      const sourceKey =
+        event.source === "user"
+          ? "community-events"
+          : (typeof event.source === "string" &&
+              event.source.includes("ticket")) ||
+            event.source === "ticketmaster"
+          ? "ticketed-events"
+          : "featured-events"; // No technical terms
+
+      if (filters.hasOwnProperty(sourceKey) && filters[sourceKey]) {
+        shouldShow = true;
+      }
+    }
+
+    // Check event category filters
+    if (
+      "categories" in event &&
+      event.categories &&
+      Array.isArray(event.categories)
+    ) {
+      for (const cat of event.categories) {
+        const catKey = `event-${cat.name.toLowerCase().replace(/\s+/g, "-")}`;
+        if (filters.hasOwnProperty(catKey) && filters[catKey]) {
+          shouldShow = true;
+          break;
+        }
+      }
+    }
+
+    // Check location category filters
+    if ("category" in event && event.category) {
+      const catKey = `location-${event.category.name
+        .toLowerCase()
+        .replace(/\s+/g, "-")}`;
+      if (filters.hasOwnProperty(catKey) && filters[catKey]) {
+        shouldShow = true;
+      }
+    }
+
+    // Check location type filters
+    if ("type" in event && event.type) {
+      const typeKey = `type-${event.type.toLowerCase().replace(/\s+/g, "-")}`;
+      if (filters.hasOwnProperty(typeKey) && filters[typeKey]) {
+        shouldShow = true;
+      }
+    }
+
+    return shouldShow;
+  };
+
+  const filterClusters = (clusters: any[]) => {
+    const filtered = clusters
+      .filter((cluster) => {
+        // Check if the main event should be shown
+        if (cluster.mainEvent && !shouldShowMarker(cluster.mainEvent))
+          return false;
+
+        // Filter the events in the cluster
+        const filteredEvents = cluster.events.filter(shouldShowMarker);
+
+        // Only show cluster if it has at least one visible event
+        return filteredEvents.length > 0;
+      })
+      .map((cluster) => ({
+        ...cluster,
+        events: cluster.events.filter(shouldShowMarker),
+      }));
+
+    // Limit to maximum 200 markers to prevent callback overflow
+    return filtered.slice(0, 200);
+  };
 
   const handleRegionChange = useCallback((region: any) => {
     // Clear existing timeout
@@ -154,6 +338,98 @@ export default function Map() {
         ? "week"
         : "weekend",
   });
+
+  // Comprehensive loading state management - placed after useMapEvents hook
+  useEffect(() => {
+    // Clear any existing timeout
+    if (markersReadyTimeoutRef.current) {
+      clearTimeout(markersReadyTimeoutRef.current);
+    }
+
+    if (isLoading) {
+      // Data is loading, show loading screen
+      setLoadingReason("data");
+      setIsMapFullyLoaded(false);
+    } else if (!isLoading && (events.length > 0 || locations.length > 0)) {
+      // Data has loaded and we have markers to show
+      // Add a delay to allow markers to render and images to load
+      markersReadyTimeoutRef.current = setTimeout(() => {
+        setIsMapFullyLoaded(true);
+      }, 1000); // 1 second delay for markers to render and images to load
+    } else if (!isLoading && events.length === 0 && locations.length === 0) {
+      // Data loaded but no events/locations found, hide loading immediately
+      setIsMapFullyLoaded(true);
+    }
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (markersReadyTimeoutRef.current) {
+        clearTimeout(markersReadyTimeoutRef.current);
+      }
+    };
+  }, [isLoading, events.length, locations.length]);
+
+  // Handle time frame changes - show loading while new markers are prepared
+  useEffect(() => {
+    if (events.length > 0 || locations.length > 0) {
+      // We have data, but time frame changed, so markers will change
+      setLoadingReason("timeframe");
+      setIsMapFullyLoaded(false);
+
+      // Clear any existing timeout
+      if (markersReadyTimeoutRef.current) {
+        clearTimeout(markersReadyTimeoutRef.current);
+      }
+
+      // Add a shorter delay for time frame changes since data is already loaded
+      markersReadyTimeoutRef.current = setTimeout(() => {
+        setIsMapFullyLoaded(true);
+      }, 600); // Shorter delay for time frame changes
+    }
+  }, [selectedTimeFrame]);
+
+  // Handle filter changes - show loading while markers are filtered
+  useEffect(() => {
+    if ((events.length > 0 || locations.length > 0) && isMapFullyLoaded) {
+      // We have data and map was fully loaded, but filters changed
+      setLoadingReason("filters");
+      setIsMapFullyLoaded(false);
+
+      // Clear any existing timeout
+      if (markersReadyTimeoutRef.current) {
+        clearTimeout(markersReadyTimeoutRef.current);
+      }
+
+      // Add a very short delay for filter changes
+      markersReadyTimeoutRef.current = setTimeout(() => {
+        setIsMapFullyLoaded(true);
+      }, 300); // Short delay for filter changes
+    }
+  }, [filters]);
+
+  // Cleanup all timeouts and listeners on unmount
+  useEffect(() => {
+    return () => {
+      // Clear all timeouts
+      if (markersReadyTimeoutRef.current) {
+        clearTimeout(markersReadyTimeoutRef.current);
+      }
+      if (regionChangeTimeoutRef.current) {
+        clearTimeout(regionChangeTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Generate dynamic filters when data loads
+  useEffect(() => {
+    if ((events && events.length > 0) || (locations && locations.length > 0)) {
+      const defaultFilters = generateDefaultFilters(
+        events || [],
+        locations || []
+      );
+      setFilters(defaultFilters);
+    }
+  }, [events, locations]);
 
   // Add logging for event selection
   useEffect(() => {
@@ -598,7 +874,13 @@ export default function Map() {
       <MapboxGL.MapView
         ref={mapRef}
         style={styles.map}
-        styleURL={isDarkMode ? CUSTOM_DARK_STYLE : CUSTOM_LIGHT_STYLE}
+        styleURL={
+          mapStyleError
+            ? getFallbackStyle(isDarkMode)
+            : isDarkMode
+            ? CUSTOM_DARK_STYLE
+            : WORKING_LIGHT_STYLE // Use working light style temporarily
+        }
         rotateEnabled
         scrollEnabled
         zoomEnabled
@@ -606,7 +888,20 @@ export default function Map() {
         onPress={handleMapTap}
         logoEnabled={false}
         onDidFinishLoadingMap={() => {
-          // Map finished loading
+          console.log(
+            "Map finished loading with style:",
+            isDarkMode ? "DARK" : "LIGHT"
+          );
+          setMapStyleError(false); // Reset error state on successful load
+        }}
+        onMapLoadingError={() => {
+          console.error("Map failed to load");
+          console.log(
+            "Attempted style URL:",
+            isDarkMode ? CUSTOM_DARK_STYLE : WORKING_LIGHT_STYLE
+          );
+          console.log("Falling back to:", getFallbackStyle(isDarkMode));
+          setMapStyleError(true); // Trigger fallback
         }}
         onRegionDidChange={handleRegionChange}
       >
@@ -630,10 +925,8 @@ export default function Map() {
 
         {/* Event markers */}
         {selectedTimeFrame == "Today" &&
-          clustersToday.map((cluster, index) =>
-            !cluster.mainEvent ||
-            !Array.isArray(cluster.mainEvent.image_urls) ||
-            !cluster.mainEvent.image_urls[0] ? null : (
+          filterClusters(clustersToday).map((cluster, index) =>
+            !cluster.mainEvent ? null : (
               <MapboxGL.MarkerView
                 key={`cluster-now-${cluster.location.latitude.toFixed(
                   3
@@ -650,37 +943,33 @@ export default function Map() {
                 <View
                   style={{
                     zIndex: cluster.events.some(
-                      (e) => e.id === selectedEvent?.id
+                      (e: MapEvent) => e.id === selectedEvent?.id
                     )
                       ? 1000
                       : 100,
                   }}
                 >
-                  <TouchableOpacity
+                  <EventMarker
+                    imageUrl={cluster.mainEvent.image_urls?.[0]}
+                    count={cluster.events.length}
+                    isSelected={cluster.events.some(
+                      (e: MapEvent) => e.id === selectedEvent?.id
+                    )}
+                    markerType={getMarkerType(cluster.mainEvent)}
+                    categoryName={getCategoryName(cluster.mainEvent)}
                     onPress={() => {
                       setIsEvent(true);
                       handleClusterPress(cluster);
                     }}
-                    style={{ padding: 5 }}
-                  >
-                    <EventMarker
-                      imageUrl={cluster.mainEvent.image_urls[0]}
-                      count={cluster.events.length}
-                      isSelected={cluster.events.some(
-                        (e) => e.id === selectedEvent?.id
-                      )}
-                    />
-                  </TouchableOpacity>
+                  />
                 </View>
               </MapboxGL.MarkerView>
             )
           )}
 
         {selectedTimeFrame == "Week" &&
-          clustersNow.map((cluster, index) =>
-            !cluster.mainEvent ||
-            !Array.isArray(cluster.mainEvent.image_urls) ||
-            !cluster.mainEvent.image_urls[0] ? null : (
+          filterClusters(clustersNow).map((cluster, index) =>
+            !cluster.mainEvent ? null : (
               <MapboxGL.MarkerView
                 key={`cluster-week-${cluster.location.latitude.toFixed(
                   3
@@ -697,37 +986,33 @@ export default function Map() {
                 <View
                   style={{
                     zIndex: cluster.events.some(
-                      (e) => e.id === selectedEvent?.id
+                      (e: MapEvent) => e.id === selectedEvent?.id
                     )
                       ? 1000
                       : 100,
                   }}
                 >
-                  <TouchableOpacity
+                  <EventMarker
+                    imageUrl={cluster.mainEvent.image_urls?.[0]}
+                    count={cluster.events.length}
+                    isSelected={cluster.events.some(
+                      (e: MapEvent) => e.id === selectedEvent?.id
+                    )}
+                    markerType={getMarkerType(cluster.mainEvent)}
+                    categoryName={getCategoryName(cluster.mainEvent)}
                     onPress={() => {
                       setIsEvent(true);
                       handleClusterPress(cluster);
                     }}
-                    style={{ padding: 5 }}
-                  >
-                    <EventMarker
-                      imageUrl={cluster.mainEvent.image_urls[0]}
-                      count={cluster.events.length}
-                      isSelected={cluster.events.some(
-                        (e) => e.id === selectedEvent?.id
-                      )}
-                    />
-                  </TouchableOpacity>
+                  />
                 </View>
               </MapboxGL.MarkerView>
             )
           )}
 
         {selectedTimeFrame == "Weekend" &&
-          clustersTomorrow.map((cluster, index) =>
-            !cluster.mainEvent ||
-            !Array.isArray(cluster.mainEvent.image_urls) ||
-            !cluster.mainEvent.image_urls[0] ? null : (
+          filterClusters(clustersTomorrow).map((cluster, index) =>
+            !cluster.mainEvent ? null : (
               <MapboxGL.MarkerView
                 key={`cluster-weekend-${cluster.location.latitude.toFixed(
                   3
@@ -744,27 +1029,25 @@ export default function Map() {
                 <View
                   style={{
                     zIndex: cluster.events.some(
-                      (e) => e.id === selectedEvent?.id
+                      (e: MapEvent) => e.id === selectedEvent?.id
                     )
                       ? 1000
                       : 100,
                   }}
                 >
-                  <TouchableOpacity
+                  <EventMarker
+                    imageUrl={cluster.mainEvent.image_urls?.[0]}
+                    count={cluster.events.length}
+                    isSelected={cluster.events.some(
+                      (e: MapEvent) => e.id === selectedEvent?.id
+                    )}
+                    markerType={getMarkerType(cluster.mainEvent)}
+                    categoryName={getCategoryName(cluster.mainEvent)}
                     onPress={() => {
                       setIsEvent(true);
                       handleClusterPress(cluster);
                     }}
-                    style={{ padding: 5 }}
-                  >
-                    <EventMarker
-                      imageUrl={cluster.mainEvent.image_urls[0]}
-                      count={cluster.events.length}
-                      isSelected={cluster.events.some(
-                        (e) => e.id === selectedEvent?.id
-                      )}
-                    />
-                  </TouchableOpacity>
+                  />
                 </View>
               </MapboxGL.MarkerView>
             )
@@ -775,7 +1058,7 @@ export default function Map() {
           clustersToday.length === 0 &&
           clustersTomorrow.length === 0 &&
           clusters.length > 0 &&
-          clusters.map((cluster, index) =>
+          filterClusters(clusters).map((cluster, index) =>
             !cluster.mainEvent ||
             !Array.isArray(cluster.mainEvent.image_urls) ||
             !cluster.mainEvent.image_urls[0] ? null : (
@@ -795,27 +1078,25 @@ export default function Map() {
                 <View
                   style={{
                     zIndex: cluster.events.some(
-                      (e) => e.id === selectedEvent?.id
+                      (e: MapEvent) => e.id === selectedEvent?.id
                     )
                       ? 1000
                       : 100,
                   }}
                 >
-                  <TouchableOpacity
+                  <EventMarker
+                    imageUrl={cluster.mainEvent.image_urls?.[0]}
+                    count={cluster.events.length}
+                    isSelected={cluster.events.some(
+                      (e: MapEvent) => e.id === selectedEvent?.id
+                    )}
+                    markerType={getMarkerType(cluster.mainEvent)}
+                    categoryName={getCategoryName(cluster.mainEvent)}
                     onPress={() => {
                       setIsEvent(true);
                       handleClusterPress(cluster);
                     }}
-                    style={{ padding: 5 }}
-                  >
-                    <EventMarker
-                      imageUrl={cluster.mainEvent.image_urls[0]}
-                      count={cluster.events.length}
-                      isSelected={cluster.events.some(
-                        (e) => e.id === selectedEvent?.id
-                      )}
-                    />
-                  </TouchableOpacity>
+                  />
                 </View>
               </MapboxGL.MarkerView>
             )
@@ -823,7 +1104,7 @@ export default function Map() {
 
         {/* locations fetched from static_location table for (beach, club , park etc) */}
         {clustersLocations.length > 0 &&
-          clustersLocations.map((cluster, index) =>
+          filterClusters(clustersLocations).map((cluster, index) =>
             !cluster.mainEvent ||
             !Array.isArray(cluster.mainEvent.image_urls) ||
             !cluster.mainEvent.image_urls[0] ? null : (
@@ -843,27 +1124,25 @@ export default function Map() {
                 <View
                   style={{
                     zIndex: cluster?.events?.some(
-                      (e) => e.id === selectedEvent?.id
+                      (e: MapEvent) => e.id === selectedEvent?.id
                     )
                       ? 1000
                       : 100,
                   }}
                 >
-                  <TouchableOpacity
+                  <EventMarker
+                    imageUrl={cluster.mainEvent?.image_urls?.[0]}
+                    count={cluster?.events?.length}
+                    isSelected={cluster?.events?.some(
+                      (e: MapEvent) => e.id === selectedEvent?.id
+                    )}
+                    markerType="static-location"
+                    categoryName={getCategoryName(cluster.mainEvent as any)}
                     onPress={() => {
                       setIsEvent(false);
                       handleLocationClusterPress(cluster);
                     }}
-                    style={{ padding: 5 }}
-                  >
-                    <EventMarker
-                      imageUrl={cluster.mainEvent?.image_urls?.[0]}
-                      count={cluster?.events?.length}
-                      isSelected={cluster?.events?.some(
-                        (e) => e.id === selectedEvent?.id
-                      )}
-                    />
-                  </TouchableOpacity>
+                  />
                 </View>
               </MapboxGL.MarkerView>
             )
@@ -918,6 +1197,8 @@ export default function Map() {
       {showControler && (
         <MapControls
           onSearch={() => setIsSearchOpen(true)}
+          filters={filters}
+          onFilterChange={setFilters}
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
           onRecenter={() => handleRecenter(location)}
@@ -927,6 +1208,7 @@ export default function Map() {
             setSelectedTimeFrame(txt as TimeFrame);
           }}
           eventsList={events as any}
+          locationsList={locations as any}
           onShowControler={(value: boolean) => setShowControler(value)}
         />
       )}
@@ -975,6 +1257,13 @@ export default function Map() {
           isEvent={isEvent}
         />
       )}
+
+      {/* Loading Screen - appears on top when data and markers are loading */}
+      <MapLoadingScreen
+        isVisible={!isMapFullyLoaded}
+        loadingText={getLoadingText().title}
+        subtitle={getLoadingText().subtitle}
+      />
     </View>
   );
 }

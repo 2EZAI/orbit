@@ -21,6 +21,9 @@ import {
   AutoCompleteSuggestionList,
   Card,
   AutoCompleteInput,
+  TypingIndicator,
+  ReactionListTop,
+  ReactionListBottom,
 } from "stream-chat-expo";
 import { useAuth } from "~/src/lib/auth";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
@@ -31,7 +34,6 @@ import {
   View,
   TouchableOpacity,
   Alert,
-  ActionSheetIOS,
   TextInput,
   FlatList,
   Platform,
@@ -56,7 +58,9 @@ import type {
 } from "stream-chat";
 import type { MessageType } from "stream-chat-expo";
 import { useTheme } from "~/src/components/ThemeProvider";
-import { ArrowLeft } from "lucide-react-native";
+import { ArrowLeft, Phone, Video } from "lucide-react-native";
+import { useVideo } from "~/src/lib/video";
+import ActiveCallBanner from "~/src/components/chat/ActiveCallBanner";
 
 interface Event {
   id: string;
@@ -234,23 +238,301 @@ const EventMessage = (props: any) => {
   return <DefaultMessage {...props} />;
 };
 
-// Enhanced message component with proper typing
-const EnhancedMessage = (props: any) => {
-  const messageContext = useMessageContext();
-  console.log("[ChatMessage] Message context:", {
-    hasContext: !!messageContext,
-    hasMessage: !!messageContext?.message,
-    messageId: messageContext?.message?.id,
-    text: messageContext?.message?.text,
-  });
+// Poll message component
+const PollMessage = (props: any) => {
+  const { message } = useMessageContext();
+  const { channel } = useChannelContext();
+  const { theme } = useTheme();
 
-  // Return null if message context is not available
+  // Check if message has a poll
+  if (!message?.poll) {
+    return <DefaultMessage {...props} />;
+  }
+
+  const poll = message.poll;
+  const hasVoted = poll.own_votes && poll.own_votes.length > 0;
+
+  const handleVote = async (optionId: string) => {
+    try {
+      if (!channel || !message?.id) return;
+
+      // Cast vote using Stream Chat poll API
+      const pollVoteResponse = await channel._client.post(
+        `${channel._client.baseURL}/polls/${poll.id}/vote`,
+        {
+          message_id: message.id,
+          vote: { option_id: optionId },
+        }
+      );
+
+      console.log("Poll vote response:", pollVoteResponse);
+
+      // Refresh the message to show updated poll results
+      await channel.query({
+        messages: { limit: 1, id_gte: message.id, id_lte: message.id },
+      });
+    } catch (error) {
+      console.error("Error voting on poll:", error);
+      Alert.alert("Error", "Failed to submit vote. Please try again.");
+    }
+  };
+
+  const getTotalVotes = () => {
+    if (!poll.vote_counts_by_option) return 0;
+    return Object.values(poll.vote_counts_by_option).reduce(
+      (sum: number, count: number) => sum + count,
+      0
+    );
+  };
+
+  const getVotePercentage = (optionId: string) => {
+    const totalVotes = getTotalVotes();
+    if (totalVotes === 0) return 0;
+    const optionVotes = poll.vote_counts_by_option?.[optionId] || 0;
+    return Math.round((optionVotes / totalVotes) * 100);
+  };
+
+  return (
+    <MessageSimple
+      {...props}
+      MessageContent={() => (
+        <View
+          style={{
+            backgroundColor: theme.colors.background,
+            borderColor: theme.colors.border,
+            borderWidth: 1,
+            borderRadius: 16,
+            padding: 20,
+            marginVertical: 8,
+            shadowColor: theme.colors.border,
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            elevation: 3,
+          }}
+        >
+          {/* Poll Header */}
+          <View style={{ marginBottom: 16 }}>
+            <Text
+              style={{
+                color: theme.colors.text,
+                fontSize: 18,
+                fontWeight: "700",
+                marginBottom: 4,
+              }}
+            >
+              📊 {poll.name}
+            </Text>
+
+            {/* Poll Description */}
+            {poll.description && (
+              <Text
+                style={{
+                  color: theme.colors.text + "70",
+                  fontSize: 15,
+                  lineHeight: 20,
+                }}
+              >
+                {poll.description}
+              </Text>
+            )}
+          </View>
+
+          {/* Poll Options */}
+          {poll.options?.map((option: any) => {
+            const voteCount = poll.vote_counts_by_option?.[option.id] || 0;
+            const percentage = getVotePercentage(option.id);
+            const isSelected = poll.own_votes?.some(
+              (vote: any) => vote.option_id === option.id
+            );
+
+            return (
+              <TouchableOpacity
+                key={option.id}
+                onPress={() => !poll.is_closed && handleVote(option.id)}
+                disabled={poll.is_closed}
+                style={{
+                  backgroundColor: isSelected
+                    ? theme.colors.primary + "15"
+                    : theme.colors.card,
+                  borderColor: isSelected
+                    ? theme.colors.primary
+                    : theme.colors.border,
+                  borderWidth: isSelected ? 2 : 1,
+                  borderRadius: 12,
+                  padding: 16,
+                  marginVertical: 6,
+                  position: "relative",
+                  overflow: "hidden",
+                  shadowColor: isSelected
+                    ? theme.colors.primary
+                    : "transparent",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 2,
+                  elevation: isSelected ? 2 : 0,
+                }}
+              >
+                {/* Progress bar background */}
+                {getTotalVotes() > 0 && (
+                  <View
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: `${percentage}%`,
+                      backgroundColor: isSelected
+                        ? theme.colors.primary + "25"
+                        : theme.colors.primary + "15",
+                      borderRadius: 11,
+                    }}
+                  />
+                )}
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    zIndex: 1,
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      flex: 1,
+                    }}
+                  >
+                    {isSelected && (
+                      <Text style={{ marginRight: 8, fontSize: 16 }}>✓</Text>
+                    )}
+                    <Text
+                      style={{
+                        color: theme.colors.text,
+                        fontSize: 16,
+                        fontWeight: isSelected ? "600" : "400",
+                        flex: 1,
+                      }}
+                    >
+                      {option.text}
+                    </Text>
+                  </View>
+                  {getTotalVotes() > 0 && (
+                    <View style={{ alignItems: "flex-end" }}>
+                      <Text
+                        style={{
+                          color: theme.colors.text,
+                          fontSize: 14,
+                          fontWeight: "600",
+                        }}
+                      >
+                        {percentage}%
+                      </Text>
+                      <Text
+                        style={{
+                          color: theme.colors.text + "70",
+                          fontSize: 12,
+                        }}
+                      >
+                        {voteCount} vote{voteCount !== 1 ? "s" : ""}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+
+          {/* Poll Footer */}
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginTop: 16,
+              paddingTop: 16,
+              borderTopWidth: 1,
+              borderTopColor: theme.colors.border + "40",
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Text style={{ marginRight: 4, fontSize: 14 }}>👥</Text>
+              <Text
+                style={{
+                  color: theme.colors.text + "80",
+                  fontSize: 14,
+                  fontWeight: "500",
+                }}
+              >
+                {getTotalVotes()} {getTotalVotes() === 1 ? "vote" : "votes"}
+              </Text>
+            </View>
+            {poll.is_closed && (
+              <View
+                style={{
+                  backgroundColor: theme.colors.notification + "20",
+                  paddingHorizontal: 12,
+                  paddingVertical: 4,
+                  borderRadius: 12,
+                }}
+              >
+                <Text
+                  style={{
+                    color: theme.colors.notification,
+                    fontSize: 12,
+                    fontWeight: "600",
+                  }}
+                >
+                  🔒 Closed
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
+    />
+  );
+};
+
+// Combined message component that handles both events and polls
+const CombinedMessage = (props: any) => {
+  const messageContext = useMessageContext();
+
+  // Fallback to DefaultMessage if message context is not available
   if (!messageContext || !messageContext.message) {
-    return null;
+    return <DefaultMessage {...props} />;
   }
 
   const { message } = messageContext;
 
+  // Check if this is a poll message
+  if (message?.poll) {
+    return <PollMessage {...props} />;
+  }
+
+  // Check if this is an event message
+  const isEventSearchMessage = (
+    msg: any
+  ): msg is { attachments: EventAttachment[] } => {
+    return msg?.attachments?.some((att: any) => att.type === "event_card");
+  };
+
+  const isEventMessage = (msg: any): msg is EventMessage => {
+    const hasEventAttachment = msg?.attachments?.some(
+      (att: any) => att.type === "event"
+    );
+    const hasValidAttachments =
+      Array.isArray(msg?.attachments) && msg.attachments.length > 0;
+    return hasEventAttachment && hasValidAttachments;
+  };
+
+  if (isEventSearchMessage(message) || isEventMessage(message)) {
+    return <EventMessage {...props} />;
+  }
+
+  // Default message rendering with enhanced features
   return (
     <MessageSimple
       {...props}
@@ -258,19 +540,27 @@ const EnhancedMessage = (props: any) => {
       MessageAvatar={MessageAvatar}
       MessageContent={MessageContent}
       MessageFooter={(messageFooterProps) => (
-        <MessageFooter
-          {...messageFooterProps}
-          formattedDate={
-            message.created_at
-              ? new Date(message.created_at).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : ""
-          }
-        />
+        <>
+          {/* Reactions */}
+          {message.latest_reactions && message.latest_reactions.length > 0 && (
+            <ReactionListBottom />
+          )}
+          <MessageFooter
+            {...messageFooterProps}
+            formattedDate={
+              message.created_at
+                ? new Date(message.created_at).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : ""
+            }
+          />
+        </>
       )}
       MessageStatus={MessageStatus}
+      // Enable message actions (edit, delete, react, reply)
+      messageActions={true}
     />
   );
 };
@@ -291,6 +581,7 @@ export default function ChannelScreen() {
   const [searchResults, setSearchResults] = useState<Event[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [orbitMsg, setorbitMsg] = useState<any>(null);
+  const { videoClient } = useVideo();
 
   console.log("chanell???", channel?.data);
   // if (channel?.data?.name === "Orbit App") {
@@ -301,131 +592,47 @@ export default function ChannelScreen() {
   const handleInfoPress = useCallback(() => {
     if (!channel) return;
 
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        options: [
-          "Change Chat Name",
-          "View Members",
-          "Add Members",
-          "View Media",
-          "Clear Chat History",
-          "Delete Chat",
-          "Cancel",
-        ],
-        cancelButtonIndex: 6,
-        destructiveButtonIndex: 5,
+    // Navigate to the settings screen
+    router.push(`/(app)/(chat)/channel/${channel.id}/settings`);
+  }, [channel, router]);
+
+  const handleVideoCall = useCallback(() => {
+    if (!channel || !videoClient) {
+      Alert.alert("Error", "Unable to start video call");
+      return;
+    }
+
+    // Generate a unique call ID based on channel ID
+    const callId = `channel-call-${channel.id}-${Date.now()}`;
+
+    router.push({
+      pathname: "/call/[id]" as const,
+      params: {
+        id: callId,
+        type: "default",
+        create: "true",
       },
-      async (buttonIndex) => {
-        try {
-          switch (buttonIndex) {
-            case 0: // Change name
-              Alert.prompt(
-                "Change Chat Name",
-                "Enter a new name for this chat",
-                async (newName) => {
-                  if (newName?.trim()) {
-                    await channel.update({
-                      name: newName.trim(),
-                    });
-                  }
-                }
-              );
-              break;
+    });
+  }, [channel, videoClient, router]);
 
-            case 1: // View members
-              const members = await channel.queryMembers({});
-              Alert.alert(
-                "Channel Members",
-                members.members
-                  .map((member) => member.user?.name || member.user_id)
-                  .join("\n")
-              );
-              break;
+  const handleAudioCall = useCallback(() => {
+    if (!channel || !videoClient) {
+      Alert.alert("Error", "Unable to start audio call");
+      return;
+    }
 
-            case 2: // Add members
-              router.push({
-                pathname: "/members/add",
-                params: { channelId: id },
-              });
-              break;
+    // Generate a unique call ID based on channel ID
+    const callId = `channel-call-${channel.id}-${Date.now()}`;
 
-            case 3: // View media
-              router.push({
-                pathname: `/channel/${id}/media`,
-              });
-              break;
-
-            case 4: // Clear history
-              Alert.alert(
-                "Clear Chat History",
-                "Are you sure you want to clear all messages? This cannot be undone.",
-                [
-                  {
-                    text: "Cancel",
-                    style: "cancel",
-                  },
-                  {
-                    text: "Clear",
-                    style: "destructive",
-                    onPress: async () => {
-                      await channel.truncate();
-                    },
-                  },
-                ]
-              );
-              break;
-
-            case 5: // Delete chat
-              Alert.alert(
-                "Delete Chat",
-                "Are you sure you want to delete this chat? This cannot be undone.",
-                [
-                  {
-                    text: "Cancel",
-                    style: "cancel",
-                  },
-                  {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                      try {
-                        // Call backend to delete channel
-                        const response = await fetch(
-                          `${process.env.BACKEND_CHAT_URL}/api/channels/${id}`,
-                          {
-                            method: "DELETE",
-                            headers: {
-                              Authorization: `Bearer ${client?.tokenManager.token}`,
-                            },
-                          }
-                        );
-
-                        if (!response.ok) {
-                          throw new Error("Failed to delete channel");
-                        }
-
-                        // Navigate back after successful deletion
-                        router.back();
-                      } catch (error) {
-                        console.error("Error deleting channel:", error);
-                        Alert.alert(
-                          "Error",
-                          "Failed to delete chat. Please try again."
-                        );
-                      }
-                    },
-                  },
-                ]
-              );
-              break;
-          }
-        } catch (error) {
-          console.error("Channel action error:", error);
-          Alert.alert("Error", "Failed to perform action");
-        }
-      }
-    );
-  }, [channel, router, id, client?.tokenManager.token]);
+    router.push({
+      pathname: "/call/[id]" as const,
+      params: {
+        id: callId,
+        type: "audio_room",
+        create: "true",
+      },
+    });
+  }, [channel, videoClient, router]);
 
   useEffect(() => {
     if (!client || !id || channelRef.current) {
@@ -704,12 +911,31 @@ export default function ChannelScreen() {
           ),
           headerRight: () =>
             channel?.data?.name !== "Orbit App" ? (
-              <TouchableOpacity
-                onPress={handleInfoPress}
-                style={{ paddingRight: 8 }}
-              >
-                <Info size={22} color={theme.colors.text} strokeWidth={2} />
-              </TouchableOpacity>
+              <View style={{ flexDirection: "row", paddingRight: 8, gap: 12 }}>
+                {/* Audio Call Button */}
+                <TouchableOpacity
+                  onPress={handleAudioCall}
+                  style={{ padding: 4 }}
+                >
+                  <Phone size={20} color={theme.colors.text} strokeWidth={2} />
+                </TouchableOpacity>
+
+                {/* Video Call Button */}
+                <TouchableOpacity
+                  onPress={handleVideoCall}
+                  style={{ padding: 4 }}
+                >
+                  <Video size={20} color={theme.colors.text} strokeWidth={2} />
+                </TouchableOpacity>
+
+                {/* Settings Button */}
+                <TouchableOpacity
+                  onPress={handleInfoPress}
+                  style={{ padding: 4 }}
+                >
+                  <Info size={20} color={theme.colors.text} strokeWidth={2} />
+                </TouchableOpacity>
+              </View>
             ) : null,
           headerStyle: {
             backgroundColor: theme.colors.card,
@@ -720,6 +946,16 @@ export default function ChannelScreen() {
           headerShadowVisible: false,
         }}
       />
+
+      {/* Active Call Banner */}
+      {channel && (
+        <ActiveCallBanner
+          channelId={channel.id}
+          // @ts-ignore - temporary fix for channel.data.name type
+          channelName={channel.data?.name}
+        />
+      )}
+
       {loading ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color={theme.colors.text} />
@@ -738,7 +974,7 @@ export default function ChannelScreen() {
           keyboardVerticalOffset={90}
           thread={thread}
           threadList={!!thread}
-          Message={EventMessage}
+          Message={DefaultMessage}
           onPressMessage={({
             additionalInfo,
             defaultHandler,
@@ -861,13 +1097,14 @@ export default function ChannelScreen() {
                 <>
                   <MessageList
                     onThreadSelect={setThread}
+                    // Enable typing indicator
+                    TypingIndicator={TypingIndicator}
                     additionalFlatListProps={{
                       initialNumToRender: 30,
                       maxToRenderPerBatch: 10,
                       windowSize: 10,
                       removeClippedSubviews: false,
                       inverted: Platform.OS === "ios" ? true : false,
-
                       style: {
                         backgroundColor: theme.colors.card,
                       },

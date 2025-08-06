@@ -639,6 +639,7 @@ export function UnifiedCard({
               right: 16,
               bottom: 50,
               marginBottom: 56,
+              zIndex: 1000,
             },
             animatedStyle,
           ]}

@@ -12,7 +12,10 @@ import {
 } from "react-native";
 import { supabase } from "~/src/lib/supabase";
 import { router } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import { Button } from "~/src/components/ui/button";
 import {
@@ -44,6 +47,7 @@ import {
   Users,
   User,
 } from "lucide-react-native";
+import { useTheme } from "~/src/components/ThemeProvider";
 
 let clientLocal: StreamChat<DefaultGenerics> | null = null;
 
@@ -60,14 +64,19 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
   onPress,
   onDelete,
 }) => {
+  const { theme, isDarkMode } = useTheme();
   const translateX = useSharedValue(0);
   const scale = useSharedValue(1);
 
   const getNotificationIcon = () => {
     const type = item?.data?.type;
     const iconProps = {
-      size: 20,
-      color: item.is_read ? "#9CA3AF" : "#3B82F6",
+      size: 22,
+      color: item.is_read
+        ? isDarkMode
+          ? "#9CA3AF"
+          : "#6B7280"
+        : theme.colors.primary,
     };
 
     switch (type) {
@@ -118,49 +127,109 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
   }));
 
   return (
-    <View className="mx-4 mb-3">
+    <View style={{ marginHorizontal: 16, marginBottom: 12 }}>
       <GestureDetector gesture={gesture}>
         <Animated.View style={animatedStyle}>
           <TouchableOpacity
             onPress={() => onPress(item)}
-            className={`relative overflow-hidden rounded-2xl border ${
-              item.is_read
-                ? "bg-gray-50 border-gray-200 opacity-75"
-                : "bg-white border-blue-200 shadow-sm"
-            }`}
+            style={{
+              backgroundColor: theme.colors.card,
+              borderRadius: 20,
+              borderWidth: 2,
+              borderColor: item.is_read
+                ? isDarkMode
+                  ? "rgba(139, 92, 246, 0.2)"
+                  : "rgba(139, 92, 246, 0.15)"
+                : theme.colors.primary + "40",
+              shadowColor: item.is_read ? "transparent" : theme.colors.primary,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: item.is_read ? 0 : 0.15,
+              shadowRadius: 12,
+              elevation: item.is_read ? 0 : 6,
+              overflow: "hidden",
+              opacity: item.is_read ? 0.8 : 1,
+            }}
           >
             {/* Unread indicator */}
             {!item.is_read && (
-              <View className="absolute top-0 bottom-0 left-0 w-1 bg-blue-500" />
+              <View
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  bottom: 0,
+                  left: 0,
+                  width: 4,
+                  backgroundColor: theme.colors.primary,
+                  borderTopLeftRadius: 18,
+                  borderBottomLeftRadius: 18,
+                }}
+              />
             )}
 
-            <View className="flex-row items-start p-4">
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-start",
+                padding: 20,
+              }}
+            >
               {/* Icon */}
               <View
-                className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${
-                  item.is_read ? "bg-gray-100" : "bg-blue-50"
-                }`}
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: item.is_read
+                    ? isDarkMode
+                      ? "rgba(139, 92, 246, 0.2)"
+                      : "rgba(139, 92, 246, 0.15)"
+                    : theme.colors.primary + "20",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  marginRight: 16,
+                  borderWidth: 2,
+                  borderColor: item.is_read
+                    ? "transparent"
+                    : theme.colors.primary + "30",
+                }}
               >
                 {getNotificationIcon()}
               </View>
 
               {/* Content */}
-              <View className="flex-1">
+              <View style={{ flex: 1 }}>
                 <Text
-                  className={`font-semibold text-base ${
-                    item.is_read ? "text-gray-600" : "text-gray-900"
-                  }`}
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: item.is_read
+                      ? theme.colors.text + "CC"
+                      : theme.colors.text,
+                    marginBottom: 4,
+                    lineHeight: 22,
+                  }}
                 >
                   {item.title}
                 </Text>
                 <Text
-                  className={`text-sm mt-1 ${
-                    item.is_read ? "text-gray-500" : "text-gray-700"
-                  }`}
+                  style={{
+                    fontSize: 14,
+                    color: item.is_read
+                      ? theme.colors.text + "99"
+                      : theme.colors.text + "DD",
+                    lineHeight: 20,
+                    marginBottom: 8,
+                  }}
                 >
                   {item.body}
                 </Text>
-                <Text className="mt-2 text-xs text-gray-400">
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: theme.colors.text + "77",
+                    fontWeight: "500",
+                  }}
+                >
                   {new Date(item.created_at).toLocaleDateString("en-US", {
                     month: "short",
                     day: "numeric",
@@ -171,11 +240,45 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
               </View>
 
               {/* Status indicator */}
-              <View className="ml-2">
+              <View
+                style={{
+                  marginLeft: 12,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 {item.is_read ? (
-                  <CheckCheck size={16} color="#9CA3AF" />
+                  <View
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 12,
+                      backgroundColor: isDarkMode
+                        ? "rgba(156, 163, 175, 0.3)"
+                        : "rgba(107, 114, 128, 0.2)",
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    <CheckCheck
+                      size={14}
+                      color={isDarkMode ? "#9CA3AF" : "#6B7280"}
+                    />
+                  </View>
                 ) : (
-                  <View className="w-2 h-2 bg-blue-500 rounded-full" />
+                  <View
+                    style={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: 6,
+                      backgroundColor: theme.colors.primary,
+                      shadowColor: theme.colors.primary,
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.5,
+                      shadowRadius: 4,
+                      elevation: 3,
+                    }}
+                  />
                 )}
               </View>
             </View>
@@ -185,11 +288,34 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
 
       {/* Delete button behind */}
       <Animated.View
-        style={[deleteButtonStyle]}
-        className="absolute top-0 bottom-0 right-4 justify-center"
+        style={[
+          deleteButtonStyle,
+          {
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            right: 16,
+            justifyContent: "center",
+            alignItems: "center",
+          },
+        ]}
       >
-        <View className="p-3 bg-red-500 rounded-full">
-          <Trash2 size={20} color="white" />
+        <View
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: isDarkMode ? "#DC2626" : "#EF4444",
+            justifyContent: "center",
+            alignItems: "center",
+            shadowColor: isDarkMode ? "#DC2626" : "#EF4444",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 6,
+          }}
+        >
+          <Trash2 size={24} color="white" />
         </View>
       </Animated.View>
     </View>
@@ -197,8 +323,10 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
 };
 
 export default function NotificationView() {
+  const { theme, isDarkMode } = useTheme();
   const { session } = useAuth();
   const { client } = useChat();
+  const insets = useSafeAreaInsets();
   const PAGE_SIZE = 20;
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
@@ -556,14 +684,60 @@ export default function NotificationView() {
   };
 
   const renderEmptyState = () => (
-    <View className="flex-1 justify-center items-center px-8 py-16">
-      <View className="justify-center items-center mb-6 w-20 h-20 bg-gray-100 rounded-full">
-        <Bell size={32} color="#9CA3AF" />
+    <View
+      style={{
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        paddingHorizontal: 32,
+        paddingVertical: 64,
+      }}
+    >
+      <View
+        style={{
+          width: 120,
+          height: 120,
+          borderRadius: 60,
+          backgroundColor: isDarkMode
+            ? "rgba(139, 92, 246, 0.15)"
+            : "rgba(139, 92, 246, 0.1)",
+          justifyContent: "center",
+          alignItems: "center",
+          marginBottom: 32,
+          borderWidth: 3,
+          borderColor: isDarkMode
+            ? "rgba(139, 92, 246, 0.3)"
+            : "rgba(139, 92, 246, 0.2)",
+          shadowColor: theme.colors.primary,
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.1,
+          shadowRadius: 16,
+          elevation: 4,
+        }}
+      >
+        <Bell size={48} color={theme.colors.primary} />
       </View>
-      <Text className="mb-2 text-xl font-semibold text-gray-900">
+      <Text
+        style={{
+          fontSize: 28,
+          fontWeight: "900",
+          color: theme.colors.text,
+          marginBottom: 16,
+          textAlign: "center",
+          lineHeight: 34,
+        }}
+      >
         No notifications yet
       </Text>
-      <Text className="leading-6 text-center text-gray-500">
+      <Text
+        style={{
+          fontSize: 16,
+          color: theme.colors.text + "CC",
+          textAlign: "center",
+          lineHeight: 24,
+          maxWidth: 280,
+        }}
+      >
         When you receive notifications, they'll appear here. Stay tuned for
         updates from your friends and events!
       </Text>
@@ -571,50 +745,143 @@ export default function NotificationView() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
       {/* Header */}
-      <View className="px-4 py-3 bg-white border-b border-gray-200">
-        <View className="flex-row justify-between items-center">
-          <View className="flex-row items-center">
-            <TouchableOpacity onPress={() => router.back()} className="mr-3">
-              <ArrowLeft size={24} color="#000" />
+      <View
+        style={{
+          backgroundColor: theme.colors.card,
+          borderBottomWidth: 1,
+          borderBottomColor: theme.colors.border,
+          paddingTop: Math.max(insets.top + 16, 50),
+          paddingBottom: 16,
+          paddingHorizontal: 20,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              flex: 1,
+              marginRight: 12,
+            }}
+          >
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: isDarkMode
+                  ? "rgba(255, 255, 255, 0.1)"
+                  : "rgba(255, 255, 255, 0.9)",
+                borderWidth: 1,
+                borderColor: isDarkMode
+                  ? "rgba(139, 92, 246, 0.3)"
+                  : "rgba(139, 92, 246, 0.2)",
+                justifyContent: "center",
+                alignItems: "center",
+                marginRight: 12,
+                shadowColor: theme.colors.primary,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 2,
+              }}
+            >
+              <ArrowLeft size={20} color={theme.colors.text} />
             </TouchableOpacity>
-            <Text className="text-xl font-bold">Notifications</Text>
+            <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={{
+                fontSize: 24,
+                fontWeight: "900",
+                color: theme.colors.text,
+                lineHeight: 28,
+                flex: 1,
+              }}
+            >
+              Notifications
+            </Text>
             {!!(unreadCount > 0) && (
-              <View className="ml-2 bg-blue-500 rounded-full px-2 py-1 min-w-[20px] items-center">
-                <Text className="text-xs font-bold text-white">
+              <View
+                style={{
+                  backgroundColor: theme.colors.primary,
+                  borderRadius: 10,
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  marginLeft: 8,
+                  minWidth: 20,
+                  alignItems: "center",
+                  shadowColor: theme.colors.primary,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 4,
+                  elevation: 3,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: "700",
+                    color: "white",
+                  }}
+                >
                   {unreadCount > 99 ? "99+" : String(unreadCount)}
                 </Text>
               </View>
             )}
           </View>
 
-          <View className="flex-row gap-2">
+          <View style={{ flexDirection: "row", gap: 6 }}>
             {notifications.length > 0 && (
               <>
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <TouchableOpacity
                   onPress={handleMarkAllRead}
-                  className="px-3"
+                  style={{
+                    backgroundColor: theme.colors.primary + "20",
+                    borderRadius: 20,
+                    paddingHorizontal: 10,
+                    paddingVertical: 8,
+                    borderWidth: 1,
+                    borderColor: theme.colors.primary + "40",
+                    minWidth: 40,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
                 >
-                  <Check size={16} color="#3B82F6" />
-                  <Text className="ml-1 font-medium text-blue-600">
-                    Mark All Read
-                  </Text>
-                </Button>
+                  <Check size={16} color={theme.colors.primary} />
+                </TouchableOpacity>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <TouchableOpacity
                   onPress={handleClearAll}
-                  className="px-3"
+                  style={{
+                    backgroundColor: isDarkMode
+                      ? "rgba(239, 68, 68, 0.2)"
+                      : "rgba(239, 68, 68, 0.15)",
+                    borderRadius: 20,
+                    paddingHorizontal: 10,
+                    paddingVertical: 8,
+                    borderWidth: 1,
+                    borderColor: isDarkMode
+                      ? "rgba(239, 68, 68, 0.4)"
+                      : "rgba(239, 68, 68, 0.3)",
+                    minWidth: 40,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
                 >
-                  <Trash2 size={16} color="#EF4444" />
-                  <Text className="ml-1 font-medium text-red-500">
-                    Clear All
-                  </Text>
-                </Button>
+                  <Trash2
+                    size={16}
+                    color={isDarkMode ? "#F87171" : "#EF4444"}
+                  />
+                </TouchableOpacity>
               </>
             )}
           </View>
@@ -622,16 +889,21 @@ export default function NotificationView() {
       </View>
 
       {/* Content */}
-      <View className="flex-1">
+      <View style={{ flex: 1 }}>
         {notifications.length === 0 && !loading ? (
           renderEmptyState()
         ) : (
           <FlatList
             data={notifications}
-            className="flex-1"
+            style={{ flex: 1 }}
             keyExtractor={(item, index) => `${item.id}-${index}`}
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={theme.colors.primary}
+                colors={[theme.colors.primary]}
+              />
             }
             renderItem={({ item, index }) => (
               <NotificationCard
@@ -649,36 +921,114 @@ export default function NotificationView() {
             onEndReachedThreshold={0.5}
             ListFooterComponent={
               loading && hasMore ? (
-                <View className="py-4">
-                  <ActivityIndicator size="small" color="#3B82F6" />
+                <View style={{ paddingVertical: 20, alignItems: "center" }}>
+                  <ActivityIndicator
+                    size="large"
+                    color={theme.colors.primary}
+                  />
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      color: theme.colors.text + "CC",
+                      marginTop: 8,
+                      fontWeight: "500",
+                    }}
+                  >
+                    Loading more...
+                  </Text>
                 </View>
               ) : null
             }
-            contentContainerStyle={
-              notifications.length === 0 ? { flex: 1 } : { paddingVertical: 16 }
-            }
-            ItemSeparatorComponent={() => <View className="h-1" />}
+            contentContainerStyle={{
+              flexGrow: notifications.length === 0 ? 1 : 0,
+              paddingTop: 16,
+              paddingBottom: 32,
+            }}
+            showsVerticalScrollIndicator={false}
           />
         )}
 
         {loading && notifications.length === 0 && (
-          <View className="flex-1 justify-center items-center">
-            <ActivityIndicator size="large" color="#3B82F6" />
-            <Text className="mt-4 text-gray-500">Loading notifications...</Text>
+          <View
+            style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+          >
+            <View
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 40,
+                backgroundColor: theme.colors.primary + "20",
+                justifyContent: "center",
+                alignItems: "center",
+                marginBottom: 24,
+                borderWidth: 2,
+                borderColor: theme.colors.primary + "40",
+              }}
+            >
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+            </View>
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "600",
+                color: theme.colors.text,
+                marginBottom: 8,
+              }}
+            >
+              Loading notifications...
+            </Text>
+            <Text
+              style={{
+                fontSize: 14,
+                color: theme.colors.text + "CC",
+                textAlign: "center",
+              }}
+            >
+              Fetching your latest updates
+            </Text>
           </View>
         )}
       </View>
 
       {/* Swipe hint for first notification */}
       {notifications.length > 0 && !notifications[0]?.is_read && (
-        <View className="absolute right-4 left-4 bottom-20">
-          <View className="px-4 py-2 bg-blue-500 rounded-lg shadow-lg">
-            <Text className="text-sm text-center text-white">
+        <View
+          style={{
+            position: "absolute",
+            bottom: Math.max(insets.bottom + 20, 40),
+            left: 20,
+            right: 20,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: theme.colors.primary,
+              borderRadius: 16,
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              shadowColor: theme.colors.primary,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 6,
+              borderWidth: 1,
+              borderColor: theme.colors.primary + "40",
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: "600",
+                color: "white",
+                textAlign: "center",
+                lineHeight: 20,
+              }}
+            >
               💡 Swipe left on notifications to delete them
             </Text>
           </View>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }

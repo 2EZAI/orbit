@@ -24,7 +24,16 @@ export function UsernameModal({ isOpen, onClose }: UsernameModalProps) {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
 
+  // Reset expansion when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setIsExpanded(false);
+    }
+  }, [isOpen]);
+
+  // Load user data
   useEffect(() => {
     if (user && isOpen) {
       setUsername(user.username || "");
@@ -154,7 +163,7 @@ export function UsernameModal({ isOpen, onClose }: UsernameModalProps) {
     !checking;
 
   return (
-    <Sheet isOpen={isOpen} onClose={onClose}>
+    <Sheet isOpen={isOpen} onClose={onClose} expanded={isExpanded}>
       <View style={{ padding: 20 }}>
         {/* Header */}
         <View
@@ -262,6 +271,8 @@ export function UsernameModal({ isOpen, onClose }: UsernameModalProps) {
               <Input
                 value={username}
                 onChangeText={setUsername}
+                onFocus={() => setIsExpanded(true)}
+                onBlur={() => setIsExpanded(false)}
                 placeholder="choose_username"
                 autoCapitalize="none"
                 autoCorrect={false}

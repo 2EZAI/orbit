@@ -269,7 +269,7 @@ export default function NewChatScreen() {
 
   const getUserDisplayName = (user: User) => {
     const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim();
-    return fullName || user.username || user.email || "Unknown User";
+    return fullName || user.username || "Unknown User";
   };
 
   const getUserInitials = (user: User) => {
@@ -284,9 +284,6 @@ export default function NewChatScreen() {
     }
     if (user.username) {
       return user.username[0].toUpperCase();
-    }
-    if (user.email) {
-      return user.email[0].toUpperCase();
     }
     return "?";
   };
@@ -909,7 +906,7 @@ export default function NewChatScreen() {
                         className="text-sm"
                         style={{ color: theme.colors.text + "80" }}
                       >
-                        @{item.username || item.email}
+                        @{item.username || "user"}
                       </Text>
                     </View>
 

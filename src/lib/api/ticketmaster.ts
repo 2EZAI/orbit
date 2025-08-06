@@ -73,23 +73,23 @@ export async function fetchAllEvents() {
       console.log("Could not get user location");
     }
 
-    // Use the same location logic as the map - prioritize current device location
+    // FIXED: Respect user location preference properly
     const eventData = {
       latitude:
-        currentDeviceLocation?.latitude != null
-          ? currentDeviceLocation.latitude
-          : user != null &&
-            user?.event_location_preference == 1 &&
-            userLocation?.latitude != null
-          ? parseFloat(userLocation.latitude)
+        user?.event_location_preference === 0 && currentDeviceLocation?.latitude != null
+          ? currentDeviceLocation.latitude  // Use device location only if user chose "Current Location"
+          : user?.event_location_preference === 1 && userLocation?.latitude != null
+          ? parseFloat(userLocation.latitude)  // Use orbit mode location if user chose "Orbit Mode"
+          : currentDeviceLocation?.latitude != null
+          ? currentDeviceLocation.latitude  // Fallback to device location if no preference set
           : null,
       longitude:
-        currentDeviceLocation?.longitude != null
-          ? currentDeviceLocation.longitude
-          : user != null &&
-            user?.event_location_preference == 1 &&
-            userLocation?.longitude != null
-          ? parseFloat(userLocation.longitude)
+        user?.event_location_preference === 0 && currentDeviceLocation?.longitude != null
+          ? currentDeviceLocation.longitude  // Use device location only if user chose "Current Location"
+          : user?.event_location_preference === 1 && userLocation?.longitude != null
+          ? parseFloat(userLocation.longitude)  // Use orbit mode location if user chose "Orbit Mode"
+          : currentDeviceLocation?.longitude != null
+          ? currentDeviceLocation.longitude  // Fallback to device location if no preference set
           : null,
     };
 

@@ -61,6 +61,49 @@ export const createStreamChatTheme = (themeColors: {
         backgroundColor: themeColors.card,
       },
     },
+    // Poll components styling
+    poll: {
+      container: {
+        backgroundColor: themeColors.card,
+        borderColor: themeColors.border,
+        borderWidth: 1,
+        borderRadius: 12,
+        padding: 16,
+        marginVertical: 8,
+      },
+      title: {
+        color: themeColors.text,
+        fontSize: 16,
+        fontWeight: "600",
+        marginBottom: 12,
+      },
+      option: {
+        backgroundColor: themeColors.border,
+        borderColor: themeColors.border,
+        borderWidth: 1,
+        borderRadius: 8,
+        padding: 12,
+        marginVertical: 4,
+      },
+      optionText: {
+        color: themeColors.text,
+        fontSize: 14,
+      },
+      selectedOption: {
+        backgroundColor: themeColors.primary + "20",
+        borderColor: themeColors.primary,
+      },
+      voteCount: {
+        color: themeColors.text + "80",
+        fontSize: 12,
+        marginTop: 4,
+      },
+      progressBar: {
+        backgroundColor: themeColors.primary,
+        height: 4,
+        borderRadius: 2,
+      },
+    },
   };
 };
 

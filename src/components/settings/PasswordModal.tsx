@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
@@ -22,10 +22,18 @@ export function PasswordModal({ isOpen, onClose }: PasswordModalProps) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Reset expansion when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setIsExpanded(false);
+    }
+  }, [isOpen]);
 
   const validatePassword = (password: string) => {
     if (password.length < 8)
@@ -135,6 +143,8 @@ export function PasswordModal({ isOpen, onClose }: PasswordModalProps) {
       <Input
         value={value}
         onChangeText={onChangeText}
+        onFocus={() => setIsExpanded(true)}
+        onBlur={() => setIsExpanded(false)}
         placeholder={placeholder}
         secureTextEntry={!show}
         autoCapitalize="none"
@@ -161,7 +171,7 @@ export function PasswordModal({ isOpen, onClose }: PasswordModalProps) {
   );
 
   return (
-    <Sheet isOpen={isOpen} onClose={onClose}>
+    <Sheet isOpen={isOpen} onClose={onClose} expanded={isExpanded}>
       <View style={{ padding: 20 }}>
         {/* Header */}
         <View

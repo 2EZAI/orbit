@@ -20,7 +20,16 @@ export function EmailModal({ isOpen, onClose }: EmailModalProps) {
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
+  // Reset expansion when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setIsExpanded(false);
+    }
+  }, [isOpen]);
+
+  // Load user data
   useEffect(() => {
     if (session?.user?.email && isOpen) {
       setEmail(session.user.email);
@@ -105,7 +114,7 @@ export function EmailModal({ isOpen, onClose }: EmailModalProps) {
     validateEmail(email.trim());
 
   return (
-    <Sheet isOpen={isOpen} onClose={onClose}>
+    <Sheet isOpen={isOpen} onClose={onClose} expanded={isExpanded}>
       <View style={{ padding: 20 }}>
         {/* Header */}
         <View
@@ -202,6 +211,8 @@ export function EmailModal({ isOpen, onClose }: EmailModalProps) {
             <Input
               value={email}
               onChangeText={setEmail}
+              onFocus={() => setIsExpanded(true)}
+              onBlur={() => setIsExpanded(false)}
               placeholder="your.email@example.com"
               keyboardType="email-address"
               autoCapitalize="none"

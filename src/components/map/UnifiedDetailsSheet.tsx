@@ -13,6 +13,7 @@ import {
   PanResponder,
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
+import { OptimizedImage } from "~/src/components/ui/optimized-image";
 import { MapEvent, MapLocation, Category, Prompt } from "~/hooks/useMapEvents";
 import { router } from "expo-router";
 import {
@@ -30,6 +31,7 @@ import {
   TrendingUp,
   UserCheck,
   Shuffle,
+  Clock,
 } from "lucide-react-native";
 import { format } from "date-fns";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
@@ -657,8 +659,8 @@ export function UnifiedDetailsSheet({
                 </View>
               )}
 
-              {/* Category Badge */}
-              {categoryName && (
+              {/* Category Badge - Only show for valid categories */}
+              {categoryName && categoryName !== "Place" && (
                 <View className="absolute bottom-4 left-4">
                   <View
                     className="flex-row items-center px-4 py-2 rounded-full"
@@ -693,7 +695,7 @@ export function UnifiedDetailsSheet({
               {/* Event/Location Specific Info */}
               {isEventType ? (
                 <>
-                  {/* Event Date & Time - Compact */}
+                  {/* Event Date & Time - Compact - ONLY FOR EVENTS */}
                   {(currentData as any).start_datetime && (
                     <View
                       className="flex-row items-center p-3 mb-3 rounded-xl"
@@ -796,6 +798,36 @@ export function UnifiedDetailsSheet({
                       </TouchableOpacity>
                     </View>
                   </View>
+
+                  {/* Operation Hours - For static locations */}
+                  {(currentData as any).operation_hours && (
+                    <View
+                      className="flex-row items-center p-3 mb-3 rounded-xl"
+                      style={{
+                        backgroundColor: isDarkMode
+                          ? "rgba(34, 197, 94, 0.1)"
+                          : "rgb(240, 253, 244)",
+                      }}
+                    >
+                      <View className="justify-center items-center mr-3 w-10 h-10 bg-green-500 rounded-full">
+                        <Clock size={20} color="white" />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="mb-1 text-xs font-medium tracking-wide text-green-600 uppercase">
+                          Hours
+                        </Text>
+                        <Text
+                          className="text-base font-bold leading-tight"
+                          style={{ color: theme.colors.text }}
+                        >
+                          {typeof (currentData as any).operation_hours ===
+                          "string"
+                            ? (currentData as any).operation_hours
+                            : "Open daily"}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
 
                   {/* Location Prompts */}
                   {(currentData as any).category?.prompts &&
@@ -1039,13 +1071,14 @@ export function UnifiedDetailsSheet({
                             borderColor: theme.colors.border,
                           }}
                         >
-                          {event.image_urls?.[0] && (
-                            <Image
-                              source={{ uri: event.image_urls[0] }}
-                              className="w-full h-24"
-                              resizeMode="cover"
-                            />
-                          )}
+                          <OptimizedImage
+                            uri={event.image_urls?.[0]}
+                            width={300}
+                            height={96}
+                            quality={80}
+                            className="w-full h-24"
+                            resizeMode="cover"
+                          />
                           <View className="p-3">
                             <Text
                               className="text-sm font-bold"
@@ -1215,8 +1248,11 @@ export function UnifiedDetailsSheet({
                             borderColor: theme.colors.border,
                           }}
                         >
-                          <Image
-                            source={{ uri: item.image_urls?.[0] }}
+                          <OptimizedImage
+                            uri={item.image_urls?.[0]}
+                            width={192}
+                            height={112}
+                            quality={80}
                             className="w-full h-28"
                             resizeMode="cover"
                           />

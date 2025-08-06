@@ -1,19 +1,20 @@
 import React from "react";
-import { View, TouchableOpacity, FlatList, StyleSheet } from "react-native";
+import {
+  View,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
+  Dimensions,
+} from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { OptimizedImage } from "~/src/components/ui/optimized-image";
-import { MapPin, Users } from "lucide-react-native";
+import { MapPin, Users, Calendar, Star } from "lucide-react-native";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { LinearGradient } from "expo-linear-gradient";
 
-const FALLBACK_IMAGE =
-  "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80";
-
-function isValidImage(url: string | undefined | null) {
-  if (!url) return false;
-  if (typeof url !== "string") return false;
-  if (url.trim() === "") return false;
-  if (url.includes("placehold.co") || url.includes("fpoimg.com")) return false;
-  return true;
-}
+const { width: screenWidth } = Dimensions.get("window");
+const FEATURED_CARD_WIDTH = screenWidth * 0.82; // Larger, more prominent cards
+const FEATURED_CARD_HEIGHT = 220; // Taller cards for better content display
 
 interface FeaturedSectionProps {
   events: any[];
@@ -28,172 +29,316 @@ export function FeaturedSection({
   onEventSelect,
   onIndexChange,
 }: FeaturedSectionProps) {
+  const { theme } = useTheme();
+
   if (!events || events.length === 0) return null;
 
   return (
     <View style={styles.featuredSection}>
+      {/* Section Header */}
+      <View style={styles.sectionHeader}>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+          ✨ Featured Events
+        </Text>
+        <Text
+          style={[styles.sectionSubtitle, { color: theme.colors.text + "80" }]}
+        >
+          Don't miss these amazing events happening near you
+        </Text>
+      </View>
+
       <FlatList
         data={events}
         horizontal
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
+        snapToInterval={FEATURED_CARD_WIDTH + 20}
+        decelerationRate="fast"
+        renderItem={({ item, index }) => (
           <TouchableOpacity
-            style={styles.unifiedFeaturedCard}
-            activeOpacity={0.9}
+            style={[
+              styles.featuredCard,
+              {
+                backgroundColor: theme.colors.card,
+                borderColor: theme.colors.border + "30",
+              },
+            ]}
+            activeOpacity={0.96}
             onPress={() => onEventSelect(item)}
           >
             {/* Background Image */}
-            <OptimizedImage
-              uri={item.image || item.image_urls?.[0]}
-              width={280}
-              height={160}
-              quality={85}
-              thumbnail={false}
-              lazy={false}
-              style={styles.unifiedFeaturedImage}
-              resizeMode="cover"
-            />
+            <View style={styles.imageContainer}>
+              <OptimizedImage
+                uri={item.image || item.image_urls?.[0]}
+                width={FEATURED_CARD_WIDTH}
+                height={FEATURED_CARD_HEIGHT}
+                quality={90}
+                thumbnail={false}
+                lazy={false}
+                style={styles.featuredImage}
+                resizeMode="cover"
+              />
 
-            {/* Gradient Overlay */}
-            <View style={styles.unifiedGradientOverlay} />
+              {/* Enhanced Gradient Overlay */}
+              <LinearGradient
+                colors={[
+                  "transparent",
+                  "rgba(0,0,0,0.2)",
+                  "rgba(0,0,0,0.6)",
+                  "rgba(0,0,0,0.8)",
+                ]}
+                style={styles.gradientOverlay}
+              />
 
-            {/* Featured Badge */}
-            <View style={styles.unifiedFeaturedBadge}>
-              <Text style={styles.unifiedBadgeText}>Featured Event</Text>
+              {/* Featured Badge */}
+              <View
+                style={[
+                  styles.featuredBadge,
+                  { backgroundColor: theme.colors.primary },
+                ]}
+              >
+                <Star size={12} color="white" fill="white" />
+                <Text style={styles.badgeText}>Featured</Text>
+              </View>
+
+              {/* Attendees Badge - Only for events */}
+              {!item.isLocation && item.attendees > 0 && (
+                <View style={styles.attendeesBadge}>
+                  <Users size={12} color="white" />
+                  <Text style={styles.attendeesText}>
+                    {item.attendees || 0}
+                  </Text>
+                </View>
+              )}
             </View>
 
-            {/* Content Overlay */}
-            <View style={styles.unifiedContentOverlay}>
-              {/* Event Title - Allow more lines */}
-              <Text style={styles.unifiedEventTitle} numberOfLines={3}>
-                {item.title}
+            {/* Content Section - Better Organized */}
+            <View style={styles.contentSection}>
+              {/* Date Badge - Only for events */}
+              {!item.isLocation && (
+                <View style={styles.dateBadge}>
+                  <Calendar size={12} color="white" />
+                  <Text style={styles.dateText}>{item.date || "TBD"}</Text>
+                </View>
+              )}
+
+              {/* Category Badge - For locations */}
+              {item.isLocation && (
+                <View style={styles.dateBadge}>
+                  <MapPin size={12} color="white" />
+                  <Text style={styles.dateText}>
+                    {item.category || item.type || "Place"}
+                  </Text>
+                </View>
+              )}
+
+              {/* Event Title - More space and better typography */}
+              <Text style={styles.eventTitle} numberOfLines={2}>
+                {item.title || item.name || "Untitled Event"}
               </Text>
 
-              {/* Event Date */}
-              <Text style={styles.unifiedEventDate}>{item.date}</Text>
-
-              {/* Location Row */}
+              {/* Location Row - Better spacing */}
               {item.location && (
-                <View style={styles.unifiedLocationRow}>
-                  <MapPin size={12} color="rgba(255,255,255,0.9)" />
-                  <Text style={styles.unifiedLocationText} numberOfLines={2}>
+                <View style={styles.locationRow}>
+                  <MapPin size={13} color="rgba(255,255,255,0.9)" />
+                  <Text style={styles.locationText} numberOfLines={1}>
                     {item.location}
                   </Text>
                 </View>
               )}
 
-              {/* Bottom Row - Attendees */}
-              {item.attendees > 0 && (
-                <View style={styles.unifiedAttendeesRow}>
-                  <Users size={12} color="rgba(255,255,255,0.9)" />
-                  <Text style={styles.unifiedAttendeesText}>
-                    {item.attendees} people going
-                  </Text>
-                </View>
-              )}
+              {/* Action Hint */}
+              <Text style={styles.actionHint}>Tap to view details</Text>
             </View>
           </TouchableOpacity>
         )}
         contentContainerStyle={styles.featuredListContent}
+        onMomentumScrollEnd={(event) => {
+          const newIndex = Math.round(
+            event.nativeEvent.contentOffset.x / (FEATURED_CARD_WIDTH + 20)
+          );
+          onIndexChange(newIndex);
+        }}
       />
+
+      {/* Scroll Indicator Dots */}
+      <View style={styles.scrollIndicator}>
+        {events.map((_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.dot,
+              {
+                backgroundColor:
+                  index === currentIndex
+                    ? theme.colors.primary
+                    : theme.colors.border,
+              },
+            ]}
+          />
+        ))}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   featuredSection: {
-    marginBottom: 24,
+    marginBottom: 32,
+  },
+  sectionHeader: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    marginBottom: 6,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    fontWeight: "500",
+    lineHeight: 20,
   },
   featuredListContent: {
     paddingLeft: 20,
-    paddingRight: 8,
+    paddingRight: 20,
   },
-  unifiedFeaturedCard: {
-    width: 260,
-    height: 180,
-    borderRadius: 16,
+  featuredCard: {
+    width: FEATURED_CARD_WIDTH,
+    height: FEATURED_CARD_HEIGHT,
+    borderRadius: 24,
+    borderWidth: 1,
     shadowColor: "#8B5CF6",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
-    marginRight: 12,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 6,
+    marginRight: 20,
     overflow: "hidden",
-    position: "relative",
   },
-  unifiedFeaturedImage: {
+  imageContainer: {
+    position: "relative",
+    flex: 1,
+  },
+  featuredImage: {
     width: "100%",
     height: "100%",
-    borderRadius: 16,
+    borderRadius: 24,
   },
-  unifiedGradientOverlay: {
+  gradientOverlay: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    borderRadius: 16,
+    borderRadius: 24,
   },
-  unifiedFeaturedBadge: {
+  featuredBadge: {
     position: "absolute",
-    top: 8,
-    left: 8,
-    backgroundColor: "#8B5CF6",
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    top: 16,
+    left: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  unifiedBadgeText: {
-    color: "#fff",
+  badgeText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "700",
+    marginLeft: 4,
+  },
+  attendeesBadge: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 12,
+    // backdropFilter: "blur(10px)",
+  },
+  attendeesText: {
+    color: "white",
+    fontSize: 11,
     fontWeight: "600",
-    fontSize: 9,
+    marginLeft: 4,
   },
-  unifiedContentOverlay: {
+  contentSection: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 12,
-    paddingTop: 16,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
+    padding: 20,
+    paddingTop: 24,
   },
-  unifiedEventTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#fff",
-    marginBottom: 4,
-    lineHeight: 20,
+  dateBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginBottom: 12,
   },
-  unifiedEventDate: {
+  dateText: {
+    color: "white",
     fontSize: 12,
-    color: "rgba(255,255,255,0.9)",
-    fontWeight: "500",
-    marginBottom: 3,
+    fontWeight: "600",
+    marginLeft: 4,
   },
-  unifiedLocationRow: {
+  eventTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "white",
+    marginBottom: 8,
+    lineHeight: 24,
+    textShadowColor: "rgba(0,0,0,0.3)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  locationRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 3,
+    marginBottom: 8,
   },
-  unifiedLocationText: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.9)",
+  locationText: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.95)",
     fontWeight: "500",
-    marginLeft: 3,
+    marginLeft: 6,
     flex: 1,
+    textShadowColor: "rgba(0,0,0,0.3)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
-  unifiedAttendeesRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  unifiedAttendeesText: {
+  actionHint: {
     fontSize: 11,
-    color: "rgba(255,255,255,0.9)",
+    color: "rgba(255,255,255,0.7)",
     fontWeight: "500",
-    marginLeft: 3,
+    textAlign: "center",
+  },
+  scrollIndicator: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 16,
+    paddingHorizontal: 20,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginHorizontal: 3,
   },
 });

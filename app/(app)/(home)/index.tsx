@@ -43,14 +43,19 @@ import { FeaturedSection } from "~/src/components/feed/FeaturedSection";
 import { FeedSection } from "~/src/components/feed/FeedSection";
 import { EventCard } from "~/src/components/feed/EventCard";
 import { LocationCard } from "~/src/components/feed/LocationCard";
-import { FilterModal } from "~/src/components/FilterModal";
+import { MarkerFilter } from "~/src/components/map/MarkerFilter";
 import { SectionViewSheet } from "~/src/components/SectionViewSheet";
 import { UnifiedDetailsSheet } from "~/src/components/map/UnifiedDetailsSheet";
 import { SearchSheet } from "~/src/components/search/SearchSheet";
 import { ScreenHeader } from "~/src/components/ui/screen-header";
+import { HomeLoadingScreen } from "~/src/components/feed/HomeLoadingScreen";
 
 // Utils
 import { handleSectionViewMore } from "~/src/lib/utils/sectionViewMore";
+import {
+  FilterState,
+  generateDefaultFilters,
+} from "~/src/components/map/MarkerFilter";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const STORY_CARD_WIDTH = screenWidth * 0.8;
@@ -367,14 +372,9 @@ export default function Home() {
   const [currentFeaturedIndex, setCurrentFeaturedIndex] = useState(0);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
 
-  // Filter state
+  // Filter state - using the same sophisticated filtering as the map
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [filters, setFilters] = useState({
-    categories: [] as string[],
-    dateRange: "all",
-    minAttendees: 0,
-    maxAttendees: 1000,
-  });
+  const [filters, setFilters] = useState<FilterState>({});
   const [filteredData, setFilteredData] = useState<any[]>([]);
 
   // Section view sheet state
@@ -395,6 +395,17 @@ export default function Home() {
     fetchAllNoifications(1, 20);
   }, []);
 
+  // Initialize filters when data changes
+  useEffect(() => {
+    if (data.allContent.length > 0 && Object.keys(filters).length === 0) {
+      const defaultFilters = generateDefaultFilters(
+        data.allContent.filter((item: any) => !item.isLocation),
+        data.allContent.filter((item: any) => item.isLocation)
+      );
+      setFilters(defaultFilters);
+    }
+  }, [data.allContent]);
+
   const handleViewMore = async (section: any) => {
     const allSectionData = await handleSectionViewMore(section);
     setSectionViewSheet({
@@ -404,10 +415,193 @@ export default function Home() {
     });
   };
 
-  const applyFilters = (newFilters: any) => {
-    // Filter logic here if needed
+  // Dynamic filter functions - same logic as the map
+  const shouldShowItem = (item: any): boolean => {
+    // If no filters are set yet, show everything
+    if (Object.keys(filters).length === 0) return true;
+
+    // If all filters are false, hide everything
+    const hasAnyFilterEnabled = Object.values(filters).some(
+      (value) => value === true
+    );
+    if (!hasAnyFilterEnabled) return false;
+
+    let shouldShow = false;
+
+    // Check event source type filters for events
+    if (!item.isLocation && "source" in item && item.source) {
+      const sourceKey =
+        item.source === "user"
+          ? "community-events"
+          : (typeof item.source === "string" &&
+              item.source.includes("ticket")) ||
+            item.source === "ticketmaster"
+          ? "ticketed-events"
+          : "featured-events";
+
+      if (filters.hasOwnProperty(sourceKey) && filters[sourceKey]) {
+        shouldShow = true;
+      }
+    }
+
+    // Check event category filters
+    if (
+      !item.isLocation &&
+      "categories" in item &&
+      item.categories &&
+      Array.isArray(item.categories)
+    ) {
+      for (const cat of item.categories) {
+        if (cat && cat.name && typeof cat.name === "string") {
+          const catKey = `event-${cat.name.toLowerCase().replace(/\s+/g, "-")}`;
+          if (filters.hasOwnProperty(catKey) && filters[catKey]) {
+            shouldShow = true;
+            break;
+          }
+        }
+      }
+    }
+
+    // Check location category filters
+    if (
+      item.isLocation &&
+      "category" in item &&
+      item.category &&
+      typeof item.category === "string"
+    ) {
+      const catKey = `location-${item.category
+        .toLowerCase()
+        .replace(/\s+/g, "-")}`;
+      if (filters.hasOwnProperty(catKey) && filters[catKey]) {
+        shouldShow = true;
+      }
+    }
+
+    // Check location type filters
+    if (
+      item.isLocation &&
+      "type" in item &&
+      item.type &&
+      typeof item.type === "string"
+    ) {
+      const typeKey = `type-${item.type.toLowerCase().replace(/\s+/g, "-")}`;
+      if (filters.hasOwnProperty(typeKey) && filters[typeKey]) {
+        shouldShow = true;
+      }
+    }
+
+    return shouldShow;
+  };
+
+  const applyFilters = (newFilters: FilterState) => {
     setFilters(newFilters);
-    setFilteredData(data.flatListData); // Simplified for now
+
+    // Create a filtering function with the new filters
+    const shouldShowItemWithNewFilters = (item: any): boolean => {
+      // If no filters are set yet, show everything
+      if (Object.keys(newFilters).length === 0) return true;
+
+      // If all filters are false, hide everything
+      const hasAnyFilterEnabled = Object.values(newFilters).some(
+        (value) => value === true
+      );
+      if (!hasAnyFilterEnabled) return false;
+
+      let shouldShow = false;
+
+      // Check event source type filters for events
+      if (!item.isLocation && "source" in item && item.source) {
+        const sourceKey =
+          item.source === "user"
+            ? "community-events"
+            : (typeof item.source === "string" &&
+                item.source.includes("ticket")) ||
+              item.source === "ticketmaster"
+            ? "ticketed-events"
+            : "featured-events";
+
+        if (newFilters.hasOwnProperty(sourceKey) && newFilters[sourceKey]) {
+          shouldShow = true;
+        }
+      }
+
+      // Check event category filters
+      if (
+        !item.isLocation &&
+        "categories" in item &&
+        item.categories &&
+        Array.isArray(item.categories)
+      ) {
+        for (const cat of item.categories) {
+          if (cat && cat.name && typeof cat.name === "string") {
+            const catKey = `event-${cat.name
+              .toLowerCase()
+              .replace(/\s+/g, "-")}`;
+            if (newFilters.hasOwnProperty(catKey) && newFilters[catKey]) {
+              shouldShow = true;
+              break;
+            }
+          }
+        }
+      }
+
+      // Check location category filters
+      if (
+        item.isLocation &&
+        "category" in item &&
+        item.category &&
+        typeof item.category === "string"
+      ) {
+        const catKey = `location-${item.category
+          .toLowerCase()
+          .replace(/\s+/g, "-")}`;
+        if (newFilters.hasOwnProperty(catKey) && newFilters[catKey]) {
+          shouldShow = true;
+        }
+      }
+
+      // Check location type filters
+      if (
+        item.isLocation &&
+        "type" in item &&
+        item.type &&
+        typeof item.type === "string"
+      ) {
+        const typeKey = `type-${item.type.toLowerCase().replace(/\s+/g, "-")}`;
+        if (newFilters.hasOwnProperty(typeKey) && newFilters[typeKey]) {
+          shouldShow = true;
+        }
+      }
+
+      return shouldShow;
+    };
+
+    // Apply filters to all content
+    const filteredSections = data.flatListData
+      .map((section) => {
+        if (section.type === "section") {
+          const filteredData = section.data.data.filter(
+            shouldShowItemWithNewFilters
+          );
+          return {
+            ...section,
+            data: {
+              ...section.data,
+              data: filteredData,
+            },
+          };
+        }
+        return section;
+      })
+      .filter((section) => {
+        // Remove sections with no data after filtering
+        if (section.type === "section") {
+          return section.data.data.length > 0;
+        }
+        return true;
+      });
+
+    setFilteredData(filteredSections);
   };
 
   const renderItem = ({ item }: { item: any }) => {
@@ -482,16 +676,16 @@ export default function Home() {
 
   if (loading) {
     return (
-      <View
-        style={[
-          styles.loadingContainer,
-          { backgroundColor: theme.colors.card },
-        ]}
-      >
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={[styles.loadingText, { color: theme.colors.primary }]}>
-          Discovering amazing events...
-        </Text>
+      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+        <StatusBar
+          barStyle={isDarkMode ? "light-content" : "dark-content"}
+          backgroundColor={theme.colors.background}
+        />
+        <HomeLoadingScreen
+          isVisible={loading}
+          loadingText="Discovering Amazing Events"
+          subtitle="Finding the best events and experiences in your area..."
+        />
       </View>
     );
   }
@@ -646,15 +840,17 @@ export default function Home() {
 
         {/* Filter Modal */}
         {showFilterModal && (
-          <FilterModal
-            isVisible={showFilterModal}
+          <MarkerFilter
+            isOpen={showFilterModal}
             onClose={() => setShowFilterModal(false)}
             filters={filters}
-            onApplyFilters={(newFilters) => {
+            onFilterChange={(newFilters) => {
               applyFilters(newFilters);
-              setShowFilterModal(false);
             }}
-            theme={theme}
+            eventsList={data.allContent.filter((item: any) => !item.isLocation)}
+            locationsList={data.allContent.filter(
+              (item: any) => item.isLocation
+            )}
           />
         )}
 
@@ -789,15 +985,15 @@ export default function Home() {
 
       {/* Modals */}
       {showFilterModal && (
-        <FilterModal
-          isVisible={showFilterModal}
+        <MarkerFilter
+          isOpen={showFilterModal}
           onClose={() => setShowFilterModal(false)}
           filters={filters}
-          onApplyFilters={(newFilters) => {
+          onFilterChange={(newFilters) => {
             applyFilters(newFilters);
-            setShowFilterModal(false);
           }}
-          theme={theme}
+          eventsList={data.allContent.filter((item: any) => !item.isLocation)}
+          locationsList={data.allContent.filter((item: any) => item.isLocation)}
         />
       )}
 
@@ -860,15 +1056,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-  },
+
   errorContainer: {
     flex: 1,
     justifyContent: "center",

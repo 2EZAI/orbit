@@ -47,12 +47,13 @@ export function LocationPreferencesModal({
 }: LocationPreferencesModalProps) {
   const { theme } = useTheme();
   const { session } = useAuth();
-  const { user, updateUser } = useUser();
+  const { user, updateUser, updateUserLocations, userlocation } = useUser();
 
   const [selectedMode, setSelectedMode] = useState<"current" | "orbit">(
     "current"
   );
   const [saving, setSaving] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Orbit mode states
   const [searchText, setSearchText] = useState("");
@@ -63,14 +64,37 @@ export function LocationPreferencesModal({
     null
   );
 
+  // Reset expansion when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setIsExpanded(false);
+    }
+  }, [isOpen]);
+
+  // Load user data
   useEffect(() => {
     if (user && isOpen) {
-      // Assuming we add a field to track this preference
       setSelectedMode(
         user.event_location_preference === 1 ? "orbit" : "current"
       );
+
+      // If user is in orbit mode and has location data, load it
+      if (user.event_location_preference === 1 && userlocation) {
+        const existingOrbitLocation: OrbitLocation = {
+          city: userlocation.city || "",
+          state: userlocation.state || "",
+          coordinates: [
+            parseFloat(userlocation.longitude || "0"),
+            parseFloat(userlocation.latitude || "0"),
+          ],
+        };
+        setOrbitLocation(existingOrbitLocation);
+        setSearchText(
+          `${existingOrbitLocation.city}, ${existingOrbitLocation.state}`
+        );
+      }
     }
-  }, [user, isOpen]);
+  }, [user, userlocation, isOpen]);
 
   const searchAddress = async (query: string) => {
     if (!query.trim() || !MAPBOX_ACCESS_TOKEN) {
@@ -139,11 +163,16 @@ export function LocationPreferencesModal({
         event_location_preference: selectedMode === "orbit" ? 1 : 0,
       });
 
-      // If orbit mode, save the orbit location (you may want to add a separate table for this)
+      // If orbit mode, save the orbit location to user_locations table
       if (selectedMode === "orbit" && orbitLocation) {
-        // For now, we could store this in user preferences or create a new table
-        // This is a placeholder - you might want to add orbit_location fields to the user table
-        console.log("Orbit location selected:", orbitLocation);
+        await updateUserLocations({
+          city: orbitLocation.city,
+          state: orbitLocation.state,
+          latitude: orbitLocation.coordinates[1].toString(),
+          longitude: orbitLocation.coordinates[0].toString(),
+          location: `${orbitLocation.city}, ${orbitLocation.state}`,
+        });
+        console.log("Orbit location saved:", orbitLocation);
       }
 
       Toast.show({
@@ -261,7 +290,7 @@ export function LocationPreferencesModal({
   );
 
   return (
-    <Sheet isOpen={isOpen} onClose={onClose}>
+    <Sheet isOpen={isOpen} onClose={onClose} expanded={isExpanded}>
       <View style={{ padding: 20 }}>
         {/* Header */}
         <View
@@ -425,6 +454,8 @@ export function LocationPreferencesModal({
                       setShowResults(false);
                     }
                   }}
+                  onFocus={() => setIsExpanded(true)}
+                  onBlur={() => setIsExpanded(false)}
                   placeholder="Search for a city..."
                   style={{
                     flex: 1,

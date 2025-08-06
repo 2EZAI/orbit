@@ -21,10 +21,12 @@ export function transformLocation(location: any) {
     ...location,
     image: location.image_urls?.[0] || FALLBACK_IMAGE,
     title: location.name || "Untitled Location",
-    date: "Open now", // Better text for locations
+    // Remove fake date fields - locations don't have dates!
     location: location.address || location.type || "Location",
-    attendees: 0,
+    category: location.category || location.type,
     isLocation: true, // Flag to identify this as a location
-    start_datetime: new Date().toISOString(), // Give it a date so it sorts properly
+    // Remove fake attendees and start_datetime - these don't apply to static locations
+    operation_hours: location.operation_hours, // Preserve actual location data
+    rating: location.rating,
   };
 }

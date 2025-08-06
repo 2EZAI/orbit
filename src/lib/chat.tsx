@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { StreamChat } from "stream-chat";
 import { useAuth } from "./auth";
+import { supabase } from "./supabase";
 import Constants from "expo-constants";
 
 const STREAM_API_KEY = Constants.expoConfig?.extra?.streamApiKey;
@@ -51,6 +52,29 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       try {
         setIsConnecting(true);
         setConnectionError(null);
+
+        // Get user profile data from database
+        console.log("Fetching user profile data...");
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("first_name, last_name, username, avatar_url")
+          .eq("id", session.user.id)
+          .single();
+
+        if (userError) {
+          console.error("Error fetching user data:", userError);
+        }
+
+        // Prepare user name - use first_name + last_name, fallback to username, never use email
+        let displayName = "User";
+        if (userData?.first_name || userData?.last_name) {
+          displayName = `${userData.first_name || ""} ${
+            userData.last_name || ""
+          }`.trim();
+        } else if (userData?.username) {
+          displayName = userData.username;
+        }
+
         // Get Stream token from backend
         console.log("Requesting Stream token from backend...");
         const response = await fetch(`${BACKEND_URL}/chat/token`, {
@@ -73,11 +97,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         console.log("Initializing Stream client...");
         currentClient = StreamChat.getInstance(STREAM_API_KEY);
 
-        console.log("Connecting user to Stream...");
+        console.log("Connecting user to Stream with name:", displayName);
         await currentClient.connectUser(
           {
             id: session.user.id,
-            name: session.user.email,
+            name: displayName,
+            first_name: userData?.first_name,
+            last_name: userData?.last_name,
+            username: userData?.username,
+            image: userData?.avatar_url,
           },
           token
         );

@@ -36,6 +36,7 @@ import {
   Users,
   MessageCircle,
   ArrowLeft,
+  Video,
 } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
@@ -406,6 +407,11 @@ export default function ChatListScreen() {
     router.push("/(app)/(chat)/new");
   }, [client?.userID, router]);
 
+  const handleVideoCalls = useCallback(() => {
+    console.log("[ChatList] Navigating to video calls");
+    router.push("/(app)/(chat)/video");
+  }, [router]);
+
   const handleChannelSelect = useCallback(
     (channel: Channel<DefaultGenerics>) => {
       if (!client?.userID) {
@@ -575,6 +581,19 @@ export default function ChatListScreen() {
             <View
               style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
             >
+              <TouchableOpacity
+                onPress={handleVideoCalls}
+                style={{
+                  justifyContent: "center",
+                  alignItems: "center",
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: theme.colors.primary,
+                }}
+              >
+                <Video size={18} color={theme.colors.text} strokeWidth={2.5} />
+              </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleSearch}
                 style={{

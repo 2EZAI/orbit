@@ -16,6 +16,7 @@ interface SheetProps {
   onClose: () => void;
   children: React.ReactNode;
   fullScreen?: boolean;
+  expanded?: boolean;
 }
 
 export const Sheet: React.FC<SheetProps> = ({
@@ -23,6 +24,7 @@ export const Sheet: React.FC<SheetProps> = ({
   onClose,
   children,
   fullScreen = false,
+  expanded = false,
 }) => {
   const { theme, isDarkMode } = useTheme();
   const [modalVisible, setModalVisible] = React.useState(false);
@@ -62,8 +64,8 @@ export const Sheet: React.FC<SheetProps> = ({
       borderTopLeftRadius: fullScreen ? 0 : 24,
       borderTopRightRadius: fullScreen ? 0 : 24,
       paddingTop: fullScreen ? 0 : 8,
-      maxHeight: fullScreen ? "100%" : "90%",
-      minHeight: fullScreen ? "100%" : "50%",
+      maxHeight: fullScreen ? "100%" : expanded ? "75%" : "90%",
+      minHeight: fullScreen ? "100%" : expanded ? "75%" : "50%",
     },
     handle: {
       backgroundColor: theme.colors.border,
@@ -106,8 +108,8 @@ export const Sheet: React.FC<SheetProps> = ({
               styles.scrollView,
               { backgroundColor: theme.colors.background },
             ]}
-            bounces={false}
-            showsVerticalScrollIndicator={false}
+            bounces={true}
+            showsVerticalScrollIndicator={true}
             contentContainerStyle={{ backgroundColor: theme.colors.background }}
           >
             {children}

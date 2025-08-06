@@ -12,6 +12,7 @@ import { Text } from "~/src/components/ui/text";
 import { ThemeProvider, useTheme } from "~/src/components/ThemeProvider";
 import { AuthProvider } from "~/src/lib/auth";
 import { ChatProvider } from "~/src/lib/chat";
+import { VideoProvider } from "~/src/lib/video";
 import "~/src/styles/global.css";
 
 const toastConfig = {
@@ -84,9 +85,11 @@ export default function RootLayout() {
       <ThemeProvider>
         <AuthProvider>
           <ChatProvider>
-            <ActionSheetProvider>
-              <RootLayoutContent />
-            </ActionSheetProvider>
+            <VideoProvider>
+              <ActionSheetProvider>
+                <RootLayoutContent />
+              </ActionSheetProvider>
+            </VideoProvider>
           </ChatProvider>
         </AuthProvider>
       </ThemeProvider>
