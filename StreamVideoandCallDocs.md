@@ -14,7 +14,7 @@ This documentation provides comprehensive instructions for frontend developers t
 6. [Usage Examples](#usage-examples)
 7. [Error Handling](#error-handling)
 8. [Best Practices](#best-practices)
-9. [Troubleshooting](#troubleshooting)
+9. [Troubleshooting](#troubleshooting)ggg
 
 ## Authentication
 
@@ -369,9 +369,12 @@ https://orbit-chat-backend-old-9d2b903ab237.herokuapp.com
   "call_id": "call-20231201-123",
   "user_id": "user-123",
   "left_at": "2023-12-01T14:30:00Z",
-  "duration_seconds": 1500
+  "duration_seconds": 1500,
+  "call_auto_ended": false
 }
 ```
+
+**Note:** If this is the last participant leaving the call, `call_auto_ended` will be `true` and the call status will automatically be set to "ended".
 
 ---
 
@@ -1636,9 +1639,18 @@ To add these tables to your existing Supabase database:
 The backend uses optimized database queries for better performance:
 
 - **Call History**: Uses direct joins between `video_call_participants` and `video_calls` tables
-- **Active Calls**: Filters for active calls with live participants using inner joins
-- **Participant Count**: Automatically calculated from participant data
+- **Active Calls**: Uses separate queries for created calls and participated calls, then deduplicates
+- **Participant Count**: Automatically calculated from participant data, filtering active participants
+- **Auto Call Management**: Automatically ends calls when all participants leave
 - **No Database Views**: Direct table queries provide better flexibility and debugging
+
+### Automatic Call Management
+
+The backend automatically manages call lifecycle:
+
+- **Auto-End Calls**: When the last participant leaves, the call status is automatically set to "ended"
+- **Duration Tracking**: Call duration is calculated from start time to end time
+- **Participant Tracking**: Real-time tracking of who's currently in calls vs who has left
 
 ### Database Integration
 
@@ -1817,8 +1829,10 @@ All API errors follow this format:
 
 7. **"invalid input syntax for type uuid" errors**
 
-   - This was fixed in the latest backend version using proper Supabase query syntax
-   - Update to the latest backend code if you encounter this issue
+   - This was caused by malformed OR query syntax in active calls endpoint
+   - Fixed by using separate queries for creator/participant lookups instead of complex OR logic
+   - The error `((created_by.eq.user_id,video_call_participants.user_id.eq.user_id))` indicates incorrect parentheses usage
+   - Update to the latest backend code which uses proper Supabase PostgREST syntax
 
 ### Backend Query Debugging
 
@@ -1833,6 +1847,20 @@ All API errors follow this format:
    - Ensure call status is set to "active" using the `/status` endpoint
    - Check that participants haven't left (left_at should be null)
    - Verify the user is either creator or participant in the call
+
+10. **Calls remain "active" after all users leave**
+
+- This is now automatically handled by the backend
+- When the last participant leaves via `/leave` endpoint, call status is automatically set to "ended"
+- If you're not using the `/leave` endpoint properly, calls may remain active indefinitely
+- Always call the `/leave` endpoint when users disconnect from calls
+
+11. **Call status synchronization issues**
+
+- The backend now handles call lifecycle automatically
+- Call status changes: `created` → `active` (manual) → `ended` (automatic when last user leaves)
+- Frontend should always use the `/leave` endpoint to ensure proper cleanup
+- Monitor the `call_auto_ended` field in leave responses to detect automatic call endings
 
 ### Debug Mode
 
@@ -1872,3 +1900,9 @@ For additional support:
 2. Review backend logs for specific error messages
 3. Test API endpoints using tools like Postman or curl
 4. Ensure all environment variables are properly configured
+
+---
+
+**Last Updated:** December 2024
+**API Version:** v1.0
+**Backend Version:** Node.js + Express + Stream Chat/Video

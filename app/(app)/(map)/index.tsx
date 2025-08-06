@@ -339,6 +339,25 @@ export default function Map() {
         : "weekend",
   });
 
+  // Define handleLocationClick function for navigation from SearchSheet
+  const handleLocationClick = useCallback(
+    (location: MapLocation) => {
+      setIsEvent(false);
+      // Convert MapLocation to MapEvent format for the card
+      const locationAsEvent = {
+        ...location,
+        start_datetime: new Date().toISOString(),
+        end_datetime: new Date().toISOString(),
+        venue_name: location.name,
+        attendees: { count: 0, profiles: [] },
+        categories: location.category ? [location.category] : [],
+      } as MapEvent;
+
+      handleEventClick(locationAsEvent);
+    },
+    [handleEventClick]
+  );
+
   // Comprehensive loading state management - placed after useMapEvents hook
   useEffect(() => {
     // Clear any existing timeout
@@ -495,17 +514,21 @@ export default function Map() {
     }
   }, [location, mapCenter]);
 
-  // Handle route params for showing event cards
+  // Handle route params for showing event/location cards
   useEffect(() => {
-    if (params.showEventCard === "true" && params.eventId) {
+    // Handle event navigation (from SearchSheet or other sources)
+    if (params.eventId) {
       // Center map on event location if coordinates are provided
-      if (params.lat && params.lng) {
-        const lat = parseFloat(params.lat as string);
-        const lng = parseFloat(params.lng as string);
+      const lat = params.latitude || params.lat;
+      const lng = params.longitude || params.lng;
+
+      if (lat && lng) {
+        const latNum = parseFloat(lat as string);
+        const lngNum = parseFloat(lng as string);
 
         if (cameraRef.current) {
           cameraRef.current.setCamera({
-            centerCoordinate: [lng, lat],
+            centerCoordinate: [lngNum, latNum],
             zoomLevel: 15,
             animationDuration: 1000,
             animationMode: "flyTo",
@@ -513,7 +536,7 @@ export default function Map() {
         }
 
         // Update map center to trigger new data fetch
-        setMapCenter([lat, lng]);
+        setMapCenter([latNum, lngNum]);
       }
 
       // Find the event by ID and open its card
@@ -527,19 +550,59 @@ export default function Map() {
         handleEventClick(event as MapEvent);
       } else {
         // If event not found in current arrays, wait for data to load
-        // The DeviceEventEmitter listener will handle this case
         console.log("Event not found in current arrays, waiting for data...");
       }
     }
+
+    // Handle location navigation (from SearchSheet)
+    if (params.locationId) {
+      // Center map on location if coordinates are provided
+      const lat = params.latitude || params.lat;
+      const lng = params.longitude || params.lng;
+
+      if (lat && lng) {
+        const latNum = parseFloat(lat as string);
+        const lngNum = parseFloat(lng as string);
+
+        if (cameraRef.current) {
+          cameraRef.current.setCamera({
+            centerCoordinate: [lngNum, latNum],
+            zoomLevel: 15,
+            animationDuration: 1000,
+            animationMode: "flyTo",
+          });
+        }
+
+        // Update map center to trigger new data fetch
+        setMapCenter([latNum, lngNum]);
+      }
+
+      // Find the location by ID and open its card
+      const location = locations.find((l) => l.id === params.locationId);
+
+      if (location) {
+        setIsEvent(false);
+        handleLocationClick(location as MapLocation);
+      } else {
+        // If location not found in current arrays, wait for data to load
+        console.log(
+          "Location not found in current arrays, waiting for data..."
+        );
+      }
+    }
   }, [
-    params.showEventCard,
     params.eventId,
+    params.locationId,
+    params.latitude,
+    params.longitude,
     params.lat,
     params.lng,
     eventsNow,
     eventsToday,
     eventsTomorrow,
+    locations,
     handleEventClick,
+    handleLocationClick,
     cameraRef,
   ]);
 

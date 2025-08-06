@@ -729,7 +729,10 @@ export default function ChatSettingsScreen() {
                     marginBottom: 8,
                   }}
                 >
-                  <Avatar style={{ width: 40, height: 40, marginRight: 12 }}>
+                  <Avatar
+                    style={{ width: 40, height: 40, marginRight: 12 }}
+                    alt={item.user?.name || ""}
+                  >
                     {item.user?.image ? (
                       <AvatarImage source={{ uri: item.user.image }} />
                     ) : (

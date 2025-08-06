@@ -950,7 +950,7 @@ export default function ChannelScreen() {
       {/* Active Call Banner */}
       {channel && (
         <ActiveCallBanner
-          channelId={channel.id}
+          channelId={channel.id as string}
           // @ts-ignore - temporary fix for channel.data.name type
           channelName={channel.data?.name}
         />

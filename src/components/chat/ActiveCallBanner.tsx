@@ -22,14 +22,21 @@ interface ActiveCall {
   call_id: string;
   call_type: "default" | "audio_room" | "livestream";
   call_name?: string;
+  status: "active";
   started_at: string;
-  active_participants_count: number;
-  creator_name: string;
-  participants?: Array<{
+  ended_at: null;
+  duration_seconds: null;
+  created_by: string;
+  recording_enabled: boolean;
+  screensharing_enabled: boolean;
+  max_participants: number;
+  created_at: string;
+  updated_at: string;
+  video_call_participants: Array<{
     user_id: string;
-    name: string;
-    avatar_url?: string;
+    left_at: null;
   }>;
+  active_participants_count: number;
 }
 
 export default function ActiveCallBanner({
@@ -57,7 +64,9 @@ export default function ActiveCallBanner({
 
         setActiveCall(channelCall || null);
       } catch (error) {
-        console.error("Error checking for active calls:", error);
+        console.warn("Active calls temporarily unavailable:", error);
+        // Don't show error to user, just hide banner when backend has issues
+        setActiveCall(null);
       } finally {
         setLoading(false);
       }
@@ -169,48 +178,24 @@ export default function ActiveCallBanner({
                 style={[styles.duration, { color: theme.colors.text + "60" }]}
               >
                 Started {formatDuration(activeCall.started_at)} ago •{" "}
-                {activeCall.creator_name}
+                {activeCall.video_call_participants.length} active
               </Text>
             </View>
 
-            {/* Participants Avatars */}
-            {activeCall.participants && activeCall.participants.length > 0 && (
-              <View style={styles.avatarsContainer}>
-                {activeCall.participants
-                  .slice(0, 3)
-                  .map((participant, index) => (
-                    <Avatar
-                      key={participant.user_id}
-                      alt={participant.name}
-                      className={`w-8 h-8 ${index > 0 ? "-ml-2" : ""}`}
-                      style={[
-                        styles.avatar,
-                        {
-                          borderColor: theme.colors.background,
-                          zIndex: 3 - index,
-                        },
-                      ]}
-                    />
-                  ))}
-                {activeCall.active_participants_count > 3 && (
-                  <View
-                    style={[
-                      styles.moreParticipants,
-                      {
-                        backgroundColor: theme.colors.border,
-                        borderColor: theme.colors.background,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[styles.moreText, { color: theme.colors.text }]}
-                    >
-                      +{activeCall.active_participants_count - 3}
-                    </Text>
-                  </View>
-                )}
+            {/* Participants Avatars - Simplified since we don't have participant details */}
+            <View style={styles.avatarsContainer}>
+              <View
+                style={[
+                  styles.participantBadge,
+                  { backgroundColor: theme.colors.primary },
+                ]}
+              >
+                <Users size={16} color="white" />
+                <Text style={[styles.participantBadgeText, { color: "white" }]}>
+                  {activeCall.active_participants_count}
+                </Text>
               </View>
-            )}
+            </View>
 
             {/* Join Button */}
             <TouchableOpacity
@@ -297,21 +282,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 12,
   },
-  avatar: {
-    borderWidth: 2,
-  },
-  moreParticipants: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 2,
-    justifyContent: "center",
+  participantBadge: {
+    flexDirection: "row",
     alignItems: "center",
-    marginLeft: -8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  moreText: {
-    fontSize: 10,
+  participantBadgeText: {
+    fontSize: 12,
     fontWeight: "600",
+    marginLeft: 4,
   },
   joinButton: {
     paddingHorizontal: 16,
