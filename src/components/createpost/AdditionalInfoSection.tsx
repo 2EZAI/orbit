@@ -1,5 +1,5 @@
 import React from "react";
-import { View } from "react-native";
+import { View,ScrollView } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
 import { useTheme } from "~/src/components/ThemeProvider";
@@ -16,13 +16,18 @@ export default function AdditionalInfoSection({
   const { theme } = useTheme();
 
   return (
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: 100 }}
+      keyboardShouldPersistTaps="handled"
+    >
     <View
       style={{
         backgroundColor: theme.dark
           ? "rgba(139, 92, 246, 0.1)"
           : "rgba(255, 255, 255, 0.8)",
         borderRadius: 32,
-        padding: 32,
+        padding: 42,
         borderWidth: 1,
         borderColor: theme.dark
           ? "rgba(139, 92, 246, 0.2)"
@@ -38,7 +43,7 @@ export default function AdditionalInfoSection({
       <View style={{ marginBottom: 24 }}>
         <Text
           style={{
-            fontSize: 24,
+            fontSize: 22,
             fontWeight: "700",
             color: theme.colors.text,
             marginBottom: 8,
@@ -99,5 +104,6 @@ export default function AdditionalInfoSection({
         </View>
       </View>
     </View>
+    </ScrollView>
   );
 }

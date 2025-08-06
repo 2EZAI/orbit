@@ -22,7 +22,7 @@ export default function CategorySection({
           ? "rgba(139, 92, 246, 0.1)"
           : "rgba(255, 255, 255, 0.8)",
         borderRadius: 32,
-        padding: 32,
+        padding: 42,
         borderWidth: 1,
         borderColor: theme.dark
           ? "rgba(139, 92, 246, 0.2)"
@@ -38,7 +38,7 @@ export default function CategorySection({
       <View style={{ marginBottom: 24 }}>
         <Text
           style={{
-            fontSize: 24,
+            fontSize: 22,
             fontWeight: "700",
             color: theme.colors.text,
             marginBottom: 8,
@@ -56,11 +56,12 @@ export default function CategorySection({
           Choose a category for your event
         </Text>
       </View>
-
+      
       <TopicListSingleSelection
         selectedTopics={selectedTopics}
         onSelectTopic={onSelectTopic}
       />
+       
     </View>
   );
 }

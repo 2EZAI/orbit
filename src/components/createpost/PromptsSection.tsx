@@ -1,5 +1,5 @@
 import React from "react";
-import { View, TouchableOpacity } from "react-native";
+import { View, TouchableOpacity ,ScrollView} from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Category, Prompt } from "~/hooks/useMapEvents";
 import { useTheme } from "~/src/components/ThemeProvider";
@@ -22,6 +22,11 @@ export default function PromptsSection({
   }
 
   return (
+     <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: 100 }}
+      keyboardShouldPersistTaps="handled"
+    >
     <View
       style={{
         backgroundColor: theme.dark
@@ -99,5 +104,6 @@ export default function PromptsSection({
         })}
       </View>
     </View>
+    </ScrollView>
   );
 }

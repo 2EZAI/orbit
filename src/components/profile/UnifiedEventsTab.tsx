@@ -466,7 +466,7 @@ export default function UnifiedEventsTab({
             </Text>
           </View>
         ) : (
-          <View style={{ paddingTop: 16, paddingBottom: 20 }}>
+          <View style={{ paddingTop: 16, paddingBottom: 80 }}>
             {currentEvents.slice(0, 10).map((event) => (
               <View key={event.id}>{renderEvent({ item: event })}</View>
             ))}

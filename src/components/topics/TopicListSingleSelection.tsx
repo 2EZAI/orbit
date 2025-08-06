@@ -1,16 +1,26 @@
 import React, { useEffect, useState } from "react";
-import { View, TouchableOpacity, ActivityIndicator } from "react-native";
+import {
+  View,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+} from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { supabase } from "~/src/lib/supabase";
+import { useTheme } from "~/src/components/ThemeProvider";
 
 interface TopicListSingleSelectionProps {
   selectedTopics: string;
   onSelectTopic: (topics: string) => void;
 }
 
-export function TopicListSingleSelection({ selectedTopics, onSelectTopic }: TopicListSingleSelectionProps) {
+export function TopicListSingleSelection({
+  selectedTopics,
+  onSelectTopic,
+}: TopicListSingleSelectionProps) {
   const [topics, setTopics] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { theme } = useTheme();
 
   useEffect(() => {
     async function fetchTopics() {
@@ -52,31 +62,38 @@ export function TopicListSingleSelection({ selectedTopics, onSelectTopic }: Topi
   }
 
   return (
-    <View className="flex-row flex-wrap gap-2">
-      {topics?.map((topic) => {
-        // console.log("topic?.id>",topic?.id)
-        //  console.log("selectedTopics>",selectedTopics)
-        const isSelected = selectedTopics == topic?.id;
-        return (
-          <TouchableOpacity
-            key={topic?.id}
-            onPress={() => toggleTopic(topic)}
-            className={`px-4 py-2 rounded-full border ${
-              isSelected
-                ? "bg-primary border-primary"
-                : "bg-transparent border-border"
-            }`}
-          >
-            <Text
-              className={
-                isSelected ? "text-primary-foreground" : "text-foreground"
-              }
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: 100 }}
+      keyboardShouldPersistTaps="handled"
+      style={{ height: "80%" }}
+    >
+      <View className="  flex-row flex-wrap gap-2">
+        {topics?.map((topic) => {
+          // console.log("topic?.id>",topic?.id)
+          //  console.log("selectedTopics>",selectedTopics)
+          const isSelected = selectedTopics == topic?.id;
+          return (
+            <TouchableOpacity
+              key={topic?.id}
+              onPress={() => toggleTopic(topic)}
+              className={`px-4 py-2 rounded-full border ${
+                isSelected
+                  ? "bg-primary border-primary"
+                  : "bg-transparent border-border"
+              }`}
             >
-              {topic?.name}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
+              <Text
+                className={
+                  isSelected ? "text-primary-foreground" : "text-foreground"
+                }
+              >
+                {topic?.name}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </ScrollView>
   );
 }

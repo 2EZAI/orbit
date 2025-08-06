@@ -877,15 +877,12 @@ export default function CreateEvent() {
         />
 
         {/* Current Step Content */}
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 100 }}
-          keyboardShouldPersistTaps="handled"
-          scrollEnabled={!showResults}
+        <View
+          
           style={{ flex: 1 }}
         >
           {renderCurrentStep()}
-        </ScrollView>
+        </View>
 
         {/* Navigation Buttons */}
         <View
