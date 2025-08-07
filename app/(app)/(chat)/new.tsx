@@ -250,13 +250,8 @@ export default function NewChatScreen() {
       user.last_name || ""
     }`.toLowerCase();
     const username = (user.username || "").toLowerCase();
-    const email = (user.email || "").toLowerCase();
 
-    return (
-      fullName.includes(searchTerm) ||
-      username.includes(searchTerm) ||
-      email.includes(searchTerm)
-    );
+    return fullName.includes(searchTerm) || username.includes(searchTerm);
   });
 
   const toggleUserSelection = (user: User) => {

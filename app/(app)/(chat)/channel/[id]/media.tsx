@@ -12,6 +12,7 @@ import { useChat } from "~/src/lib/chat";
 import { Text } from "~/src/components/ui/text";
 import { X } from "lucide-react-native";
 import * as Linking from "expo-linking";
+import { useTheme } from "~/src/components/ThemeProvider";
 
 const MEDIA_TYPES = ["image/*", "video/*"];
 
@@ -19,6 +20,7 @@ export default function MediaGalleryScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { client } = useChat();
+  const { theme } = useTheme();
   const [media, setMedia] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const windowWidth = Dimensions.get("window").width;
@@ -61,7 +63,7 @@ export default function MediaGalleryScreen() {
   }, []);
 
   return (
-    <View style={{ flex: 1, backgroundColor: "white" }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
       <Stack.Screen
         options={{
           title: "Media Gallery",
@@ -70,7 +72,7 @@ export default function MediaGalleryScreen() {
               onPress={() => router.back()}
               style={{ marginLeft: 16 }}
             >
-              <X size={24} color="#007AFF" />
+              <X size={24} color={theme.colors.primary} />
             </TouchableOpacity>
           ),
         }}
@@ -86,7 +88,9 @@ export default function MediaGalleryScreen() {
         <View
           style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
         >
-          <Text style={{ color: "#666" }}>No media found in this chat</Text>
+          <Text style={{ color: theme.colors.text + "80" }}>
+            No media found in this chat
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -117,12 +121,14 @@ export default function MediaGalleryScreen() {
                     position: "absolute",
                     top: 4,
                     right: 4,
-                    backgroundColor: "rgba(0,0,0,0.5)",
+                    backgroundColor: theme.colors.background + "80",
                     borderRadius: 12,
                     padding: 4,
                   }}
                 >
-                  <Text style={{ color: "white", fontSize: 12 }}>Video</Text>
+                  <Text style={{ color: theme.colors.text, fontSize: 12 }}>
+                    Video
+                  </Text>
                 </View>
               )}
             </TouchableOpacity>

@@ -14,6 +14,9 @@ export default function AppLayout() {
   const { session, loading } = useAuth();
   const lastSessionState = useRef<boolean | null>(null);
 
+  // Call hooks before any conditional returns to follow Rules of Hooks
+  useNotifications();
+
   useEffect(() => {
     const hasSession = !!session;
     if (lastSessionState.current !== hasSession) {
@@ -29,7 +32,6 @@ export default function AppLayout() {
   if (!session) {
     return <Redirect href="/" />;
   }
-  useNotifications();
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Tabs

@@ -249,7 +249,13 @@ export default function ChatSettingsScreen() {
     if (user?.first_name || user?.last_name) {
       return `${user.first_name || ""} ${user.last_name || ""}`.trim();
     }
-    return user?.username || user?.name || user?.id || "Unknown User";
+    if (user?.username) {
+      return user.username;
+    }
+    if (user?.name && user.name !== user.id) {
+      return user.name;
+    }
+    return "Unknown User";
   };
 
   const getMemberInitials = (member: any) => {
@@ -526,16 +532,18 @@ export default function ChatSettingsScreen() {
                     flexDirection: "row",
                     alignItems: "center",
                     padding: 12,
-                    backgroundColor: "#ff444420",
+                    backgroundColor: theme.colors.notification + "20",
                     borderRadius: 8,
                   }}
                 >
                   <LogOut
                     size={20}
-                    color="#ff4444"
+                    color={theme.colors.notification}
                     style={{ marginRight: 12 }}
                   />
-                  <Text style={{ fontSize: 16, color: "#ff4444" }}>
+                  <Text
+                    style={{ fontSize: 16, color: theme.colors.notification }}
+                  >
                     Leave Chat
                   </Text>
                 </TouchableOpacity>
@@ -569,17 +577,19 @@ export default function ChatSettingsScreen() {
                     flexDirection: "row",
                     alignItems: "center",
                     padding: 12,
-                    backgroundColor: "#ff444420",
+                    backgroundColor: theme.colors.notification + "20",
                     borderRadius: 8,
                     marginBottom: 12,
                   }}
                 >
                   <Trash2
                     size={20}
-                    color="#ff4444"
+                    color={theme.colors.notification}
                     style={{ marginRight: 12 }}
                   />
-                  <Text style={{ fontSize: 16, color: "#ff4444" }}>
+                  <Text
+                    style={{ fontSize: 16, color: theme.colors.notification }}
+                  >
                     Clear Chat History
                   </Text>
                 </TouchableOpacity>
@@ -590,16 +600,18 @@ export default function ChatSettingsScreen() {
                     flexDirection: "row",
                     alignItems: "center",
                     padding: 12,
-                    backgroundColor: "#ff444420",
+                    backgroundColor: theme.colors.notification + "20",
                     borderRadius: 8,
                   }}
                 >
                   <Trash2
                     size={20}
-                    color="#ff4444"
+                    color={theme.colors.notification}
                     style={{ marginRight: 12 }}
                   />
-                  <Text style={{ fontSize: 16, color: "#ff4444" }}>
+                  <Text
+                    style={{ fontSize: 16, color: theme.colors.notification }}
+                  >
                     Delete Chat
                   </Text>
                 </TouchableOpacity>
@@ -619,7 +631,7 @@ export default function ChatSettingsScreen() {
         <View
           style={{
             flex: 1,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            backgroundColor: theme.colors.background + "80",
             justifyContent: "center",
             padding: 20,
           }}
@@ -680,7 +692,7 @@ export default function ChatSettingsScreen() {
         <View
           style={{
             flex: 1,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            backgroundColor: theme.colors.background + "80",
             justifyContent: "flex-end",
           }}
         >
@@ -778,13 +790,16 @@ export default function ChatSettingsScreen() {
                         onPress={() => handleBanMember(item.user_id)}
                         style={{ padding: 8 }}
                       >
-                        <Ban size={20} color="#ff6644" />
+                        <Ban size={20} color={theme.colors.notification} />
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => handleRemoveMember(item.user_id)}
                         style={{ padding: 8 }}
                       >
-                        <UserMinus size={20} color="#ff4444" />
+                        <UserMinus
+                          size={20}
+                          color={theme.colors.notification}
+                        />
                       </TouchableOpacity>
                     </View>
                   )}

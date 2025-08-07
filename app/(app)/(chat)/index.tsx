@@ -163,7 +163,7 @@ const ModernChannelPreview = (
       if (firstName || lastName) {
         return `${firstName} ${lastName}`.trim();
       }
-      return username || member.user?.id || "Unknown User";
+      return username || "Unknown User";
     }
 
     // For group chats, show first few names
@@ -172,7 +172,7 @@ const ModernChannelPreview = (
       .map((member: ChannelMemberResponse<DefaultGenerics>) => {
         const firstName = member.user?.first_name;
         const username = member.user?.username;
-        return firstName || username || member.user?.id || "Unknown";
+        return firstName || username || "Unknown";
       })
       .join(", ");
   };
@@ -180,9 +180,26 @@ const ModernChannelPreview = (
   const getLastMessagePreview = () => {
     const lastMessage =
       channel.state.messages[channel.state.messages.length - 1];
-    const isTyping = Object.keys(channel.state.typing || {}).length > 0;
+    const typingUsers = Object.keys(channel.state.typing || {});
 
-    if (isTyping) {
+    if (typingUsers.length > 0) {
+      // Get typing user names (avoid emails)
+      const typingNames = typingUsers
+        .map((userId) => {
+          const member = channel.state.members[userId];
+          const user = member?.user;
+          if (user?.first_name || user?.last_name) {
+            return `${user.first_name || ""} ${user.last_name || ""}`.trim();
+          }
+          return user?.username || "Someone";
+        })
+        .filter((name) => name !== "Someone");
+
+      if (typingNames.length === 1) {
+        return `${typingNames[0]} is typing...`;
+      } else if (typingNames.length > 1) {
+        return `${typingNames.join(", ")} are typing...`;
+      }
       return "Someone is typing...";
     }
 
@@ -286,7 +303,7 @@ const ModernChannelPreview = (
                   <View
                     style={{
                       marginLeft: 8,
-                      backgroundColor: "#FF3B30",
+                      backgroundColor: theme.colors.notification,
                       borderRadius: 12,
                       paddingHorizontal: 8,
                       paddingVertical: 4,
@@ -298,7 +315,7 @@ const ModernChannelPreview = (
                       style={{
                         fontSize: 12,
                         fontWeight: "bold",
-                        color: "white",
+                        color: theme.colors.background,
                       }}
                     >
                       {unreadCount > 99 ? "99+" : String(unreadCount)}

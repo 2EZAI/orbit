@@ -20,6 +20,11 @@ import {
   Image,
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "~/src/components/ui/avatar";
 import { Info, Calendar } from "lucide-react-native";
 import { Icon } from "react-native-elements";
 import type {
@@ -161,25 +166,27 @@ const CustomPollComponent = ({ message }: { message: any }) => {
       ) {
         console.log("🎯 Known Stream API error - vote likely succeeded");
 
-        // Fast refresh to show updated poll data
+        // First refresh to show updated poll data
         setTimeout(async () => {
-          console.log("🔄 Quick refresh for poll update...");
+          console.log("🔄 First refresh for poll update...");
           try {
             await channel.query({ messages: { limit: 50 }, presence: true });
           } catch (e) {
             console.log("🔄 Refresh error (expected):", e);
           }
           setIsVoting(false);
-        }, 200);
+        }, 1000);
 
-        // Second refresh to be sure
+        // Second refresh to ensure poll state is fully updated
         setTimeout(async () => {
+          console.log("🔄 Second refresh for poll update...");
           try {
             await channel.query({ watch: true, messages: { limit: 50 } });
+            await channel.queryMembers({});
           } catch (e) {
             console.log("🔄 Second refresh error (expected):", e);
           }
-        }, 800);
+        }, 2000);
       } else {
         setIsVoting(false);
         console.error("❌ Unexpected voting error:", error);
@@ -209,6 +216,34 @@ const CustomPollComponent = ({ message }: { message: any }) => {
     return (
       poll.own_votes?.some((vote: any) => vote.option_id === optionId) || false
     );
+  };
+
+  const getVotersForOption = (optionId: string): any[] => {
+    // Get all votes for this option from poll.votes
+    const optionVotes =
+      poll.votes?.filter((vote: any) => vote.option_id === optionId) || [];
+
+    // Get unique users who voted for this option
+    const voterIds = [...new Set(optionVotes.map((vote: any) => vote.user_id))];
+
+    // Get user details from channel members
+    const voters = voterIds
+      .map((userId) => {
+        const member = Object.values(channel.state.members || {}).find(
+          (m: any) => m.user_id === userId
+        );
+        return member?.user;
+      })
+      .filter(Boolean);
+
+    return voters;
+  };
+
+  const getVoterDisplayName = (user: any): string => {
+    if (user?.first_name || user?.last_name) {
+      return `${user.first_name || ""} ${user.last_name || ""}`.trim();
+    }
+    return user?.username || "Unknown User";
   };
 
   return (
@@ -280,15 +315,71 @@ const CustomPollComponent = ({ message }: { message: any }) => {
                     <Text style={styles.optionNumber}>
                       {String.fromCharCode(65 + index)} {/* A, B, C, etc */}
                     </Text>
-                    <Text
-                      style={[
-                        styles.pollOptionText,
-                        { color: theme.colors.text },
-                      ]}
-                    >
-                      {userVoted ? "✅ " : ""}
-                      {option.text}
-                    </Text>
+                    <View style={styles.pollOptionTextContainer}>
+                      <Text
+                        style={[
+                          styles.pollOptionText,
+                          { color: theme.colors.text },
+                        ]}
+                      >
+                        {userVoted ? "✅ " : ""}
+                        {option.text}
+                      </Text>
+
+                      {/* Voter Avatars */}
+                      {(() => {
+                        const voters = getVotersForOption(option.id);
+                        const displayVoters = voters.slice(0, 5);
+                        const remainingCount =
+                          voters.length - displayVoters.length;
+
+                        if (voters.length === 0) return null;
+
+                        return (
+                          <View style={styles.voterAvatarsContainer}>
+                            {displayVoters.map(
+                              (user: any, voterIndex: number) => (
+                                <Avatar
+                                  key={user?.id || voterIndex}
+                                  style={[
+                                    styles.voterAvatar,
+                                    { marginLeft: voterIndex > 0 ? -8 : 0 },
+                                  ]}
+                                  alt={getVoterDisplayName(user)}
+                                >
+                                  {user?.image ? (
+                                    <AvatarImage source={{ uri: user.image }} />
+                                  ) : (
+                                    <AvatarFallback>
+                                      <Text style={styles.voterInitials}>
+                                        {(
+                                          user?.first_name?.[0] ||
+                                          user?.username?.[0] ||
+                                          "?"
+                                        ).toUpperCase()}
+                                      </Text>
+                                    </AvatarFallback>
+                                  )}
+                                </Avatar>
+                              )
+                            )}
+                            {remainingCount > 0 && (
+                              <View
+                                style={[
+                                  styles.voterAvatar,
+                                  styles.voterCountBadge,
+                                  { marginLeft: -8 },
+                                ]}
+                              >
+                                <Text style={styles.voterCountText}>
+                                  +{remainingCount}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        );
+                      })()}
+                    </View>
                   </View>
 
                   <View style={styles.pollOptionRight}>
@@ -654,7 +745,7 @@ export default function ChannelScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
       <Stack.Screen
         options={{
           headerTitle: () => (
@@ -780,7 +871,9 @@ export default function ChannelScreen() {
           Message={BulletproofMessage}
         >
           {thread ? (
-            <Thread />
+            <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
+              <Thread />
+            </View>
           ) : (
             <>
               {channel?.data?.name === "Orbit App" ? (
@@ -838,7 +931,7 @@ const styles = StyleSheet.create({
   pollHeader: {
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.1)",
+    borderBottomColor: "rgba(128,128,128,0.2)",
   },
 
   pollTitle: {
@@ -897,13 +990,50 @@ const styles = StyleSheet.create({
     marginRight: 12,
     minWidth: 24,
     textAlign: "center",
-    color: "#666",
+    color: "#888",
+  },
+
+  pollOptionTextContainer: {
+    flex: 1,
   },
 
   pollOptionText: {
     fontSize: 16,
     fontWeight: "500",
-    flex: 1,
+    marginBottom: 4,
+  },
+
+  // Voter avatars
+  voterAvatarsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+  },
+
+  voterAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "white",
+  },
+
+  voterInitials: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "white",
+  },
+
+  voterCountBadge: {
+    backgroundColor: "#888",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  voterCountText: {
+    fontSize: 9,
+    fontWeight: "600",
+    color: "white",
   },
 
   pollOptionRight: {
@@ -927,7 +1057,7 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.1)",
+    borderTopColor: "rgba(128,128,128,0.2)",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",

@@ -55,6 +55,14 @@ export const createStreamChatTheme = (themeColors: {
         borderTopColor: themeColors.border,
       },
     },
+    reply: {
+      container: {
+        backgroundColor: themeColors.card,
+      },
+      messageContainer: {
+        backgroundColor: themeColors.card,
+      },
+    },
     // Poll theming removed temporarily - let Stream handle default styling
     // The polls should work with just colors and global theme
   };
