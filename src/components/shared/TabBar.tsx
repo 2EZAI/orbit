@@ -59,9 +59,6 @@ export default function TabBar() {
   const slideAnimation = useRef(new Animated.Value(0)).current;
   const [activeIndex, setActiveIndex] = useState(0);
 
-  console.log("[TabBar] Current route:", pathname);
-  console.log("[TabBar] Segments:", segments);
-
   // Calculate the current active index
   const currentActiveIndex = TAB_ROUTES.findIndex((tab) =>
     segments.includes(tab.segment)
@@ -166,12 +163,6 @@ export default function TabBar() {
 
           const Iconn = tab.icon;
           const IconA = tab.iconAndroid;
-
-          console.log(
-            `[TabBar] Tab ${tab.segment}: segments=${JSON.stringify(
-              segments
-            )}, isActive=${isActive}`
-          );
 
           return (
             <TouchableOpacity

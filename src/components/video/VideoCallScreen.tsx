@@ -210,8 +210,8 @@ export default function VideoCallScreen({
       <SafeAreaView className="flex-1 bg-background">
         <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
         <View className="flex-1 justify-center items-center p-6">
-          <Text className="text-lg text-destructive mb-4">Call Error</Text>
-          <Text className="text-center text-muted-foreground mb-6">
+          <Text className="mb-4 text-lg text-destructive">Call Error</Text>
+          <Text className="mb-6 text-center text-muted-foreground">
             {error}
           </Text>
           <Text className="text-primary" onPress={() => router.back()}>

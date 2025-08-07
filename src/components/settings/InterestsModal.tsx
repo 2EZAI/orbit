@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
-import { Sheet } from "~/src/components/ui/sheet";
+import { KeyboardAwareSheet } from "./KeyboardAwareSheet";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useAuth } from "~/src/lib/auth";
 import { useUser } from "~/hooks/useUserData";
@@ -42,14 +42,6 @@ export function InterestsModal({ isOpen, onClose }: InterestsModalProps) {
   const [searchText, setSearchText] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  // Reset expansion when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setIsExpanded(false);
-    }
-  }, [isOpen]);
 
   // Load user data
   useEffect(() => {
@@ -252,7 +244,7 @@ export function InterestsModal({ isOpen, onClose }: InterestsModalProps) {
   };
 
   return (
-    <Sheet isOpen={isOpen} onClose={onClose} expanded={isExpanded}>
+    <KeyboardAwareSheet isOpen={isOpen} onClose={onClose}>
       <View style={{ flex: 1, maxHeight: "85%" }}>
         {/* Fixed Header Section */}
         <View
@@ -292,6 +284,8 @@ export function InterestsModal({ isOpen, onClose }: InterestsModalProps) {
                   fontSize: 20,
                   fontWeight: "800",
                   color: theme.colors.text,
+                  lineHeight: 25,
+                  paddingVertical: 2,
                 }}
               >
                 Update Interests
@@ -404,8 +398,6 @@ export function InterestsModal({ isOpen, onClose }: InterestsModalProps) {
               <Input
                 value={searchText}
                 onChangeText={handleSearchChange}
-                onFocus={() => setIsExpanded(true)}
-                onBlur={() => setIsExpanded(false)}
                 placeholder="Search interests..."
                 style={{
                   flex: 1,
@@ -463,6 +455,6 @@ export function InterestsModal({ isOpen, onClose }: InterestsModalProps) {
           </View>
         </View>
       </View>
-    </Sheet>
+    </KeyboardAwareSheet>
   );
 }

@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import { View, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
+import { KeyboardAwareInput } from "./KeyboardAwareInput";
 import { Button } from "~/src/components/ui/button";
-import { Sheet } from "~/src/components/ui/sheet";
+import { KeyboardAwareSheet } from "./KeyboardAwareSheet";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useAuth } from "~/src/lib/auth";
 import { useUser } from "~/hooks/useUserData";
@@ -25,14 +26,6 @@ export function PersonalInfoModal({ isOpen, onClose }: PersonalInfoModalProps) {
   const [lastName, setLastName] = useState("");
   const [bio, setBio] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  // Reset expansion when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setIsExpanded(false);
-    }
-  }, [isOpen]);
 
   // Load user data
   useEffect(() => {
@@ -81,7 +74,7 @@ export function PersonalInfoModal({ isOpen, onClose }: PersonalInfoModalProps) {
   };
 
   return (
-    <Sheet isOpen={isOpen} onClose={onClose} expanded={isExpanded}>
+    <KeyboardAwareSheet isOpen={isOpen} onClose={onClose}>
       <View style={{ padding: 20 }}>
         {/* Header */}
         <View
@@ -111,6 +104,8 @@ export function PersonalInfoModal({ isOpen, onClose }: PersonalInfoModalProps) {
                 fontSize: 20,
                 fontWeight: "800",
                 color: theme.colors.text,
+                lineHeight: 25,
+                paddingVertical: 2,
               }}
             >
               Personal Information
@@ -146,31 +141,26 @@ export function PersonalInfoModal({ isOpen, onClose }: PersonalInfoModalProps) {
             >
               First Name
             </Text>
-            <View
-              style={{
+            <KeyboardAwareInput
+              value={firstName}
+              onChangeText={setFirstName}
+              placeholder="Enter your first name"
+              containerStyle={{
                 backgroundColor: theme.colors.card,
                 borderRadius: 12,
                 borderWidth: 1,
                 borderColor: theme.colors.border,
               }}
-            >
-              <Input
-                value={firstName}
-                onChangeText={setFirstName}
-                onFocus={() => setIsExpanded(true)}
-                onBlur={() => setIsExpanded(false)}
-                placeholder="Enter your first name"
-                style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  fontSize: 16,
-                  color: theme.colors.text,
-                  backgroundColor: "transparent",
-                  borderWidth: 0,
-                }}
-                placeholderTextColor={theme.colors.text + "60"}
-              />
-            </View>
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                fontSize: 16,
+                color: theme.colors.text,
+                backgroundColor: "transparent",
+                borderWidth: 0,
+              }}
+              placeholderTextColor={theme.colors.text + "60"}
+            />
           </View>
 
           {/* Last Name */}
@@ -185,31 +175,26 @@ export function PersonalInfoModal({ isOpen, onClose }: PersonalInfoModalProps) {
             >
               Last Name
             </Text>
-            <View
-              style={{
+            <KeyboardAwareInput
+              value={lastName}
+              onChangeText={setLastName}
+              placeholder="Enter your last name"
+              containerStyle={{
                 backgroundColor: theme.colors.card,
                 borderRadius: 12,
                 borderWidth: 1,
                 borderColor: theme.colors.border,
               }}
-            >
-              <Input
-                value={lastName}
-                onChangeText={setLastName}
-                onFocus={() => setIsExpanded(true)}
-                onBlur={() => setIsExpanded(false)}
-                placeholder="Enter your last name"
-                style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  fontSize: 16,
-                  color: theme.colors.text,
-                  backgroundColor: "transparent",
-                  borderWidth: 0,
-                }}
-                placeholderTextColor={theme.colors.text + "60"}
-              />
-            </View>
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                fontSize: 16,
+                color: theme.colors.text,
+                backgroundColor: "transparent",
+                borderWidth: 0,
+              }}
+              placeholderTextColor={theme.colors.text + "60"}
+            />
           </View>
 
           {/* Bio */}
@@ -224,36 +209,31 @@ export function PersonalInfoModal({ isOpen, onClose }: PersonalInfoModalProps) {
             >
               Bio
             </Text>
-            <View
-              style={{
+            <KeyboardAwareInput
+              value={bio}
+              onChangeText={setBio}
+              placeholder="Tell others about yourself..."
+              multiline
+              numberOfLines={4}
+              containerStyle={{
                 backgroundColor: theme.colors.card,
                 borderRadius: 12,
                 borderWidth: 1,
                 borderColor: theme.colors.border,
                 minHeight: 100,
               }}
-            >
-              <Input
-                value={bio}
-                onChangeText={setBio}
-                onFocus={() => setIsExpanded(true)}
-                onBlur={() => setIsExpanded(false)}
-                placeholder="Tell others about yourself..."
-                multiline
-                numberOfLines={4}
-                style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  fontSize: 16,
-                  color: theme.colors.text,
-                  backgroundColor: "transparent",
-                  borderWidth: 0,
-                  textAlignVertical: "top",
-                  minHeight: 100,
-                }}
-                placeholderTextColor={theme.colors.text + "60"}
-              />
-            </View>
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                fontSize: 16,
+                color: theme.colors.text,
+                backgroundColor: "transparent",
+                borderWidth: 0,
+                textAlignVertical: "top",
+                minHeight: 100,
+              }}
+              placeholderTextColor={theme.colors.text + "60"}
+            />
           </View>
         </View>
 
@@ -316,6 +296,6 @@ export function PersonalInfoModal({ isOpen, onClose }: PersonalInfoModalProps) {
           </TouchableOpacity>
         </View>
       </View>
-    </Sheet>
+    </KeyboardAwareSheet>
   );
 }

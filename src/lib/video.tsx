@@ -70,16 +70,32 @@ export function VideoProvider({ children }: { children: React.ReactNode }) {
     let currentClient: StreamVideoClient | null = null;
 
     const initVideo = async () => {
+      // If no session, make sure to clean up any existing client
       if (
         !session?.user?.id ||
         !STREAM_VIDEO_API_KEY ||
         !session?.access_token
       ) {
-        console.log("Missing required data, skipping video initialization", {
+        console.log("Missing required data, cleaning up video client", {
+          hasSession: !!session,
           hasUserId: !!session?.user?.id,
           hasApiKey: !!STREAM_VIDEO_API_KEY,
           hasAccessToken: !!session?.access_token,
         });
+
+        // Clean up existing client if session is gone
+        if (videoClient) {
+          console.log(
+            "Disconnecting existing Stream Video client due to missing session..."
+          );
+          try {
+            await videoClient.disconnectUser();
+          } catch (error) {
+            console.error("Error disconnecting Stream Video client:", error);
+          }
+          setVideoClient(null);
+          setIsConnected(false);
+        }
         return;
       }
 
@@ -169,7 +185,7 @@ export function VideoProvider({ children }: { children: React.ReactNode }) {
         setIsConnected(false);
       }
     };
-  }, [session?.user?.id, session?.access_token]);
+  }, [session?.user?.id, session?.access_token, session]);
 
   // Video service methods
   const createCall = async (

@@ -76,20 +76,24 @@ export async function fetchAllEvents() {
     // FIXED: Respect user location preference properly
     const eventData = {
       latitude:
-        user?.event_location_preference === 0 && currentDeviceLocation?.latitude != null
-          ? currentDeviceLocation.latitude  // Use device location only if user chose "Current Location"
-          : user?.event_location_preference === 1 && userLocation?.latitude != null
-          ? parseFloat(userLocation.latitude)  // Use orbit mode location if user chose "Orbit Mode"
+        user?.event_location_preference === 0 &&
+        currentDeviceLocation?.latitude != null
+          ? currentDeviceLocation.latitude // Use device location only if user chose "Current Location"
+          : user?.event_location_preference === 1 &&
+            userLocation?.latitude != null
+          ? parseFloat(userLocation.latitude) // Use orbit mode location if user chose "Orbit Mode"
           : currentDeviceLocation?.latitude != null
-          ? currentDeviceLocation.latitude  // Fallback to device location if no preference set
+          ? currentDeviceLocation.latitude // Fallback to device location if no preference set
           : null,
       longitude:
-        user?.event_location_preference === 0 && currentDeviceLocation?.longitude != null
-          ? currentDeviceLocation.longitude  // Use device location only if user chose "Current Location"
-          : user?.event_location_preference === 1 && userLocation?.longitude != null
-          ? parseFloat(userLocation.longitude)  // Use orbit mode location if user chose "Orbit Mode"
+        user?.event_location_preference === 0 &&
+        currentDeviceLocation?.longitude != null
+          ? currentDeviceLocation.longitude // Use device location only if user chose "Current Location"
+          : user?.event_location_preference === 1 &&
+            userLocation?.longitude != null
+          ? parseFloat(userLocation.longitude) // Use orbit mode location if user chose "Orbit Mode"
           : currentDeviceLocation?.longitude != null
-          ? currentDeviceLocation.longitude  // Fallback to device location if no preference set
+          ? currentDeviceLocation.longitude // Fallback to device location if no preference set
           : null,
     };
 
@@ -138,7 +142,6 @@ export async function fetchAllEvents() {
     }
 
     const data = await response.json();
-    console.log("All events API response:", data);
 
     // Return ALL events from the response (not just Ticketmaster)
     const allEvents = data.events || [];

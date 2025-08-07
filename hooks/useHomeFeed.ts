@@ -199,7 +199,7 @@ export function useHomeFeed() {
         })
         .slice(0, 5);
 
-      // Create sections
+      // Create sections (expandedSections would be passed from component)
       const sections = createHomeFeedSections(allContent, topics);
 
       // Create flat list data

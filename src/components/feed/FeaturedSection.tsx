@@ -194,6 +194,8 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "800",
     marginBottom: 6,
+    lineHeight: 30,
+    paddingVertical: 2,
   },
   sectionSubtitle: {
     fontSize: 14,

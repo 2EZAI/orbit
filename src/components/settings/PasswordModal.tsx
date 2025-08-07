@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { View, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
-import { Sheet } from "~/src/components/ui/sheet";
+import { KeyboardAwareSheet } from "./KeyboardAwareSheet";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useAuth } from "~/src/lib/auth";
 import { supabase } from "~/src/lib/supabase";
@@ -22,18 +22,24 @@ export function PasswordModal({ isOpen, onClose }: PasswordModalProps) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
 
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Reset expansion when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setIsExpanded(false);
-    }
-  }, [isOpen]);
+  // Memoize toggle functions to prevent unnecessary re-renders
+  const toggleCurrentPassword = useCallback(
+    () => setShowCurrentPassword(!showCurrentPassword),
+    [showCurrentPassword]
+  );
+  const toggleNewPassword = useCallback(
+    () => setShowNewPassword(!showNewPassword),
+    [showNewPassword]
+  );
+  const toggleConfirmPassword = useCallback(
+    () => setShowConfirmPassword(!showConfirmPassword),
+    [showConfirmPassword]
+  );
 
   const validatePassword = (password: string) => {
     if (password.length < 8)
@@ -117,61 +123,8 @@ export function PasswordModal({ isOpen, onClose }: PasswordModalProps) {
     newPassword === confirmPassword &&
     validatePassword(newPassword) === null;
 
-  const PasswordInput = ({
-    value,
-    onChangeText,
-    placeholder,
-    show,
-    onToggleShow,
-  }: {
-    value: string;
-    onChangeText: (text: string) => void;
-    placeholder: string;
-    show: boolean;
-    onToggleShow: () => void;
-  }) => (
-    <View
-      style={{
-        backgroundColor: theme.colors.card,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        flexDirection: "row",
-        alignItems: "center",
-      }}
-    >
-      <Input
-        value={value}
-        onChangeText={onChangeText}
-        onFocus={() => setIsExpanded(true)}
-        onBlur={() => setIsExpanded(false)}
-        placeholder={placeholder}
-        secureTextEntry={!show}
-        autoCapitalize="none"
-        autoCorrect={false}
-        style={{
-          flex: 1,
-          paddingHorizontal: 16,
-          paddingVertical: 14,
-          fontSize: 16,
-          color: theme.colors.text,
-          backgroundColor: "transparent",
-          borderWidth: 0,
-        }}
-        placeholderTextColor={theme.colors.text + "60"}
-      />
-      <TouchableOpacity onPress={onToggleShow} style={{ paddingRight: 16 }}>
-        {show ? (
-          <EyeOff size={18} color={theme.colors.text + "60"} />
-        ) : (
-          <Eye size={18} color={theme.colors.text + "60"} />
-        )}
-      </TouchableOpacity>
-    </View>
-  );
-
   return (
-    <Sheet isOpen={isOpen} onClose={onClose} expanded={isExpanded}>
+    <KeyboardAwareSheet isOpen={isOpen} onClose={onClose}>
       <View style={{ padding: 20 }}>
         {/* Header */}
         <View
@@ -201,6 +154,8 @@ export function PasswordModal({ isOpen, onClose }: PasswordModalProps) {
                 fontSize: 20,
                 fontWeight: "800",
                 color: theme.colors.text,
+                lineHeight: 25,
+                paddingVertical: 2,
               }}
             >
               Update Password
@@ -236,13 +191,45 @@ export function PasswordModal({ isOpen, onClose }: PasswordModalProps) {
             >
               Current Password
             </Text>
-            <PasswordInput
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              placeholder="Enter your current password"
-              show={showCurrentPassword}
-              onToggleShow={() => setShowCurrentPassword(!showCurrentPassword)}
-            />
+            <View
+              style={{
+                backgroundColor: theme.colors.card,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                flexDirection: "row",
+                alignItems: "center",
+              }}
+            >
+              <Input
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                placeholder="Enter your current password"
+                secureTextEntry={!showCurrentPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={{
+                  flex: 1,
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  fontSize: 16,
+                  color: theme.colors.text,
+                  backgroundColor: "transparent",
+                  borderWidth: 0,
+                }}
+                placeholderTextColor={theme.colors.text + "60"}
+              />
+              <TouchableOpacity
+                onPress={toggleCurrentPassword}
+                style={{ paddingRight: 16 }}
+              >
+                {showCurrentPassword ? (
+                  <EyeOff size={18} color={theme.colors.text + "60"} />
+                ) : (
+                  <Eye size={18} color={theme.colors.text + "60"} />
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* New Password */}
@@ -257,13 +244,45 @@ export function PasswordModal({ isOpen, onClose }: PasswordModalProps) {
             >
               New Password
             </Text>
-            <PasswordInput
-              value={newPassword}
-              onChangeText={setNewPassword}
-              placeholder="Enter your new password"
-              show={showNewPassword}
-              onToggleShow={() => setShowNewPassword(!showNewPassword)}
-            />
+            <View
+              style={{
+                backgroundColor: theme.colors.card,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                flexDirection: "row",
+                alignItems: "center",
+              }}
+            >
+              <Input
+                value={newPassword}
+                onChangeText={setNewPassword}
+                placeholder="Enter your new password"
+                secureTextEntry={!showNewPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={{
+                  flex: 1,
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  fontSize: 16,
+                  color: theme.colors.text,
+                  backgroundColor: "transparent",
+                  borderWidth: 0,
+                }}
+                placeholderTextColor={theme.colors.text + "60"}
+              />
+              <TouchableOpacity
+                onPress={toggleNewPassword}
+                style={{ paddingRight: 16 }}
+              >
+                {showNewPassword ? (
+                  <EyeOff size={18} color={theme.colors.text + "60"} />
+                ) : (
+                  <Eye size={18} color={theme.colors.text + "60"} />
+                )}
+              </TouchableOpacity>
+            </View>
 
             {/* Password Requirements */}
             <View style={{ marginTop: 8 }}>
@@ -293,13 +312,45 @@ export function PasswordModal({ isOpen, onClose }: PasswordModalProps) {
             >
               Confirm New Password
             </Text>
-            <PasswordInput
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="Confirm your new password"
-              show={showConfirmPassword}
-              onToggleShow={() => setShowConfirmPassword(!showConfirmPassword)}
-            />
+            <View
+              style={{
+                backgroundColor: theme.colors.card,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                flexDirection: "row",
+                alignItems: "center",
+              }}
+            >
+              <Input
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Confirm your new password"
+                secureTextEntry={!showConfirmPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={{
+                  flex: 1,
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  fontSize: 16,
+                  color: theme.colors.text,
+                  backgroundColor: "transparent",
+                  borderWidth: 0,
+                }}
+                placeholderTextColor={theme.colors.text + "60"}
+              />
+              <TouchableOpacity
+                onPress={toggleConfirmPassword}
+                style={{ paddingRight: 16 }}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff size={18} color={theme.colors.text + "60"} />
+                ) : (
+                  <Eye size={18} color={theme.colors.text + "60"} />
+                )}
+              </TouchableOpacity>
+            </View>
 
             {/* Password Match Indicator */}
             {confirmPassword && (
@@ -382,6 +433,6 @@ export function PasswordModal({ isOpen, onClose }: PasswordModalProps) {
           </TouchableOpacity>
         </View>
       </View>
-    </Sheet>
+    </KeyboardAwareSheet>
   );
 }

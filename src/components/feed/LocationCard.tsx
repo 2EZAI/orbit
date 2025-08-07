@@ -23,7 +23,8 @@ export function LocationCard({ item, onPress }: LocationCardProps) {
         styles.modernLocationCard,
         {
           backgroundColor: theme.colors.card,
-          borderColor: theme.colors.border + "40",
+          borderColor: theme.colors.border,
+          shadowColor: theme.colors.primary,
         },
       ]}
       activeOpacity={0.96}
@@ -117,12 +118,11 @@ const styles = StyleSheet.create({
     width: LOCATION_CARD_WIDTH,
     minHeight: 140,
     borderRadius: 20,
-    borderWidth: 1,
-    shadowColor: "#8B5CF6",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 4,
+    borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 6,
     marginBottom: 16,
     overflow: "hidden",
     flexDirection: "row",

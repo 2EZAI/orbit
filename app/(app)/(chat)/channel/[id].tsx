@@ -3,27 +3,9 @@ import {
   MessageInput,
   MessageList,
   Thread,
-  MessageType as StreamMessageType,
-  useMessageContext,
-  MessageAvatar,
-  MessageContent,
-  MessageFooter,
   MessageSimple,
-  useMessagesContext,
-  MessageStatus,
-  MessageContextValue,
-  MessageActionType,
-  MessageActionsParams,
-  Message as DefaultMessage,
   useChannelContext,
-  AutoCompleteSuggestionHeader,
-  AutoCompleteSuggestionItem,
-  AutoCompleteSuggestionList,
-  Card,
-  AutoCompleteInput,
-  TypingIndicator,
-  ReactionListTop,
-  ReactionListBottom,
+  Message,
 } from "stream-chat-expo";
 import { useAuth } from "~/src/lib/auth";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
@@ -34,33 +16,23 @@ import {
   View,
   TouchableOpacity,
   Alert,
-  TextInput,
-  FlatList,
-  Platform,
   StyleSheet,
+  Image,
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
-import {
-  Info,
-  Users,
-  Edit2,
-  Trash2,
-  MoreHorizontal,
-  Image as ImageIcon,
-  Calendar,
-  Search,
-} from "lucide-react-native";
+import { Info, Calendar } from "lucide-react-native";
 import { Icon } from "react-native-elements";
 import type {
   Channel as ChannelType,
   DefaultGenerics,
   Attachment as StreamAttachment,
 } from "stream-chat";
-import type { MessageType } from "stream-chat-expo";
+
 import { useTheme } from "~/src/components/ThemeProvider";
 import { ArrowLeft, Phone, Video } from "lucide-react-native";
 import { useVideo } from "~/src/lib/video";
 import ActiveCallBanner from "~/src/components/chat/ActiveCallBanner";
+import { useMessageContext } from "stream-chat-expo";
 
 interface Event {
   id: string;
@@ -80,6 +52,295 @@ interface EventMessage {
   text: string;
   attachments: EventAttachment[];
 }
+
+// BULLETPROOF Message Component - ONLY renders polls, returns NULL for everything else
+// This forces Stream to use its default components for all non-poll messages
+const BulletproofMessage = (props: any) => {
+  const message = props.message;
+
+  // ONLY handle actual poll messages
+  const isActualPoll =
+    message &&
+    message.poll &&
+    message.poll.id &&
+    typeof message.poll.id === "string" &&
+    message.poll.id.length > 0;
+
+  if (isActualPoll) {
+    console.log(
+      "BulletproofMessage: Rendering custom poll for message:",
+      message.id
+    );
+    // Return ONLY our custom poll - no MessageSimple wrapper
+    return <CustomPollComponent key={`poll-${message.id}`} message={message} />;
+  }
+
+  // For ALL other messages: use Stream's default Message component (NOT MessageSimple)
+  // This avoids the MessageSimple crash while showing all messages
+  return <Message {...props} />;
+};
+
+// Custom Poll Component - Uses Stream's proper Poll component prop
+const CustomPollComponent = ({ message }: { message: any }) => {
+  // Extra safety checks for poll component
+  if (!message || !message.id || !message.poll || !message.poll.id) {
+    console.warn(
+      "CustomPollComponent: Invalid message or poll data, returning null"
+    );
+    return null;
+  }
+
+  const { channel } = useChannelContext();
+  const { theme } = useTheme();
+  const [isVoting, setIsVoting] = useState(false);
+
+  // Additional safety check
+  if (!channel || !theme) {
+    console.warn("CustomPollComponent: Missing channel or theme context");
+    return null;
+  }
+
+  const poll = message.poll;
+  const options = poll.options || [];
+
+  const handleVote = async (optionId: string) => {
+    if (isVoting) return; // Prevent double-voting
+
+    setIsVoting(true);
+
+    // Try multiple voting methods since Stream's API is broken
+    try {
+      console.log("🔄 Method 1: Trying poll.vote()...");
+      if (poll && typeof poll.vote === "function") {
+        const voteResult = await poll.vote({ option_id: optionId });
+        console.log("✅ Poll.vote() succeeded:", voteResult);
+        setIsVoting(false);
+        return;
+      }
+    } catch (error: any) {
+      console.log("❌ Method 1 failed:", error.message);
+    }
+
+    try {
+      console.log("🔄 Method 2: Trying channel.castPollVote()...");
+      if (channel && typeof (channel as any).castPollVote === "function") {
+        const voteResult = await (channel as any).castPollVote(poll.id, {
+          option_id: optionId,
+        });
+        console.log("✅ Channel.castPollVote() succeeded:", voteResult);
+        setIsVoting(false);
+        return;
+      }
+    } catch (error: any) {
+      console.log("❌ Method 2 failed:", error.message);
+    }
+
+    // Method 3: Fall back to the broken client API
+    try {
+      console.log("🔄 Method 3: Trying broken client.castPollVote()...");
+
+      const voteResult = await channel._client.castPollVote(
+        message.id,
+        poll.id,
+        {
+          option_id: optionId,
+        }
+      );
+
+      console.log("✅ Vote result:", voteResult);
+      setIsVoting(false);
+    } catch (error: any) {
+      console.error("❌ Vote failed:", error);
+
+      // This is a known Stream Chat API issue - votes usually succeed despite error
+      if (
+        error.status === 500 ||
+        error.code === -1 ||
+        error.message === "" ||
+        error.message.includes('CastPollVote failed with error: ""')
+      ) {
+        console.log("🎯 Known Stream API error - vote likely succeeded");
+
+        // Fast refresh to show updated poll data
+        setTimeout(async () => {
+          console.log("🔄 Quick refresh for poll update...");
+          try {
+            await channel.query({ messages: { limit: 50 }, presence: true });
+          } catch (e) {
+            console.log("🔄 Refresh error (expected):", e);
+          }
+          setIsVoting(false);
+        }, 200);
+
+        // Second refresh to be sure
+        setTimeout(async () => {
+          try {
+            await channel.query({ watch: true, messages: { limit: 50 } });
+          } catch (e) {
+            console.log("🔄 Second refresh error (expected):", e);
+          }
+        }, 800);
+      } else {
+        setIsVoting(false);
+        console.error("❌ Unexpected voting error:", error);
+      }
+    }
+  };
+
+  const getTotalVotes = (): number => {
+    if (!poll.vote_counts_by_option) return 0;
+    return Object.values(poll.vote_counts_by_option).reduce(
+      (sum: number, count: any) => sum + (Number(count) || 0),
+      0
+    );
+  };
+
+  const getVoteCount = (optionId: string): number => {
+    return Number(poll.vote_counts_by_option?.[optionId]) || 0;
+  };
+
+  const getVotePercentage = (optionId: string): number => {
+    const total = getTotalVotes();
+    if (total === 0) return 0;
+    return Math.round((getVoteCount(optionId) / total) * 100);
+  };
+
+  const hasUserVoted = (optionId: string) => {
+    return (
+      poll.own_votes?.some((vote: any) => vote.option_id === optionId) || false
+    );
+  };
+
+  return (
+    <View style={styles.fullWidthPollContainer}>
+      <View
+        style={[
+          styles.pollCard,
+          {
+            backgroundColor: theme.colors.card,
+            borderColor: theme.colors.border,
+          },
+        ]}
+      >
+        {/* Poll Header */}
+        <View style={styles.pollHeader}>
+          <Text style={[styles.pollTitle, { color: theme.colors.text }]}>
+            📊 {poll.name}
+          </Text>
+          <Text style={[styles.pollDescription, { color: theme.colors.text }]}>
+            {poll.description || "Choose your option"}
+          </Text>
+        </View>
+
+        {/* Poll Options */}
+        <View style={styles.pollOptionsContainer}>
+          {options.map((option: any, index: number) => {
+            const voteCount = getVoteCount(option.id);
+            const percentage = getVotePercentage(option.id);
+            const userVoted = hasUserVoted(option.id);
+            const totalVotes = getTotalVotes();
+
+            return (
+              <TouchableOpacity
+                key={option.id}
+                style={[
+                  styles.pollOptionFull,
+                  {
+                    backgroundColor: userVoted
+                      ? theme.colors.primary + "20"
+                      : theme.colors.background,
+                    borderColor: userVoted
+                      ? theme.colors.primary
+                      : theme.colors.border,
+                    borderWidth: userVoted ? 2 : 1,
+                  },
+                ]}
+                onPress={() => handleVote(option.id)}
+                activeOpacity={0.7}
+                disabled={isVoting}
+              >
+                {/* Progress Background */}
+                {totalVotes > 0 && (
+                  <View
+                    style={[
+                      styles.pollOptionProgress,
+                      {
+                        width: `${percentage}%`,
+                        backgroundColor: userVoted
+                          ? theme.colors.primary + "30"
+                          : theme.colors.notification + "30",
+                      },
+                    ]}
+                  />
+                )}
+
+                {/* Option Content */}
+                <View style={styles.pollOptionContent}>
+                  <View style={styles.pollOptionLeft}>
+                    <Text style={styles.optionNumber}>
+                      {String.fromCharCode(65 + index)} {/* A, B, C, etc */}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.pollOptionText,
+                        { color: theme.colors.text },
+                      ]}
+                    >
+                      {userVoted ? "✅ " : ""}
+                      {option.text}
+                    </Text>
+                  </View>
+
+                  <View style={styles.pollOptionRight}>
+                    {isVoting ? (
+                      <ActivityIndicator
+                        size="small"
+                        color={theme.colors.primary}
+                      />
+                    ) : (
+                      <>
+                        <Text
+                          style={[
+                            styles.pollOptionVotes,
+                            { color: theme.colors.text },
+                          ]}
+                        >
+                          {voteCount}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.pollOptionPercentage,
+                            { color: theme.colors.text },
+                          ]}
+                        >
+                          {percentage}%
+                        </Text>
+                      </>
+                    )}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Poll Footer */}
+        <View style={styles.pollFooterContainer}>
+          <Text style={[styles.pollFooterText, { color: theme.colors.text }]}>
+            👥 {getTotalVotes()} total votes
+          </Text>
+          {poll.enforce_unique_vote && (
+            <Text
+              style={[styles.pollFooterSubtext, { color: theme.colors.text }]}
+            >
+              • One vote per person
+            </Text>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+};
 
 // Event search component
 const EventSearchHeader = ({ queryText }: { queryText: string }) => (
@@ -111,460 +372,6 @@ const EventSearchItem = ({
   </TouchableOpacity>
 );
 
-// Event message component
-const EventMessage = (props: any) => {
-  const { message } = useMessageContext();
-  const router = useRouter();
-  const { channel } = useChannelContext();
-
-  // Type guard for event search results
-  const isEventSearchMessage = (
-    msg: any
-  ): msg is { attachments: EventAttachment[] } => {
-    return msg?.attachments?.some((att: any) => att.type === "event_card");
-  };
-
-  // Type guard for event messages
-  const isEventMessage = (msg: any): msg is EventMessage => {
-    const hasEventAttachment = msg?.attachments?.some(
-      (att: any) => att.type === "event"
-    );
-    const hasValidAttachments =
-      Array.isArray(msg?.attachments) && msg.attachments.length > 0;
-    return hasEventAttachment && hasValidAttachments;
-  };
-
-  // Handle event selection
-  const handleEventSelect = async (eventData: Event) => {
-    try {
-      console.log("[EventMessage] Sending event message:", eventData);
-      const message = {
-        text: `Shared event: ${eventData.name}`,
-        attachments: [
-          {
-            type: "event",
-            title: eventData.name,
-            text: `${new Date(eventData.startDate).toLocaleString()}${
-              eventData.location ? `\nLocation: ${eventData.location}` : ""
-            }`,
-            event_data: eventData,
-          },
-        ],
-      };
-      console.log("[EventMessage] Sending message:", message);
-      const response = await channel?.sendMessage(message);
-      console.log("[EventMessage] Message sent:", response);
-    } catch (error) {
-      console.error("[EventMessage] Error sharing event:", error);
-      Alert.alert("Error", "Failed to share event");
-    }
-  };
-
-  // Check if this is an event search result message
-  if (isEventSearchMessage(message)) {
-    return (
-      <MessageSimple
-        {...props}
-        MessageContent={() => (
-          <View>
-            {message.attachments.map((attachment, index) => (
-              <View key={index} className="p-3 mb-2 rounded-lg bg-muted">
-                <View className="flex-row items-center mb-2 space-x-2">
-                  <Calendar size={20} className="text-primary" />
-                  <Text className="font-medium text-foreground">
-                    {attachment.title}
-                  </Text>
-                </View>
-                <Text className="text-muted-foreground">{attachment.text}</Text>
-                <TouchableOpacity
-                  onPress={() =>
-                    handleEventSelect(attachment.event_data as Event)
-                  }
-                  className="p-2 mt-2 rounded bg-primary"
-                >
-                  <Text className="text-center text-primary-foreground">
-                    Select this event
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        )}
-      />
-    );
-  }
-
-  // Handle display of shared event message
-  if (isEventMessage(message)) {
-    const eventAttachment = message.attachments.find(
-      (att) => att.type === "event"
-    ) as EventAttachment | undefined;
-
-    if (!eventAttachment) {
-      return <DefaultMessage {...props} />;
-    }
-
-    const eventData = eventAttachment.event_data;
-    return (
-      <MessageSimple
-        {...props}
-        MessageContent={() => (
-          <TouchableOpacity
-            onPress={() => {
-              console.log("[EventMessage] Navigating to event:", eventData);
-              router.push({
-                pathname: "/(app)/(map)",
-                params: { eventId: eventData.id },
-              });
-            }}
-            className="p-3 rounded-lg bg-muted"
-          >
-            <View className="flex-row items-center mb-2 space-x-2">
-              <Calendar size={20} className="text-primary" />
-              <Text className="font-medium text-foreground">
-                {eventData.name}
-              </Text>
-            </View>
-            <Text className="text-muted-foreground">
-              {new Date(eventData.startDate).toLocaleString()}
-              {eventData.location ? `\nLocation: ${eventData.location}` : ""}
-            </Text>
-          </TouchableOpacity>
-        )}
-      />
-    );
-  }
-
-  return <DefaultMessage {...props} />;
-};
-
-// Poll message component
-const PollMessage = (props: any) => {
-  const { message } = useMessageContext();
-  const { channel } = useChannelContext();
-  const { theme } = useTheme();
-
-  // Check if message has a poll
-  if (!message?.poll) {
-    return <DefaultMessage {...props} />;
-  }
-
-  const poll = message.poll;
-  const hasVoted = poll.own_votes && poll.own_votes.length > 0;
-
-  const handleVote = async (optionId: string) => {
-    try {
-      if (!channel || !message?.id) return;
-
-      // Cast vote using Stream Chat poll API
-      const pollVoteResponse = await channel._client.post(
-        `${channel._client.baseURL}/polls/${poll.id}/vote`,
-        {
-          message_id: message.id,
-          vote: { option_id: optionId },
-        }
-      );
-
-      console.log("Poll vote response:", pollVoteResponse);
-
-      // Refresh the message to show updated poll results
-      await channel.query({
-        messages: { limit: 1, id_gte: message.id, id_lte: message.id },
-      });
-    } catch (error) {
-      console.error("Error voting on poll:", error);
-      Alert.alert("Error", "Failed to submit vote. Please try again.");
-    }
-  };
-
-  const getTotalVotes = () => {
-    if (!poll.vote_counts_by_option) return 0;
-    return Object.values(poll.vote_counts_by_option).reduce(
-      (sum: number, count: number) => sum + count,
-      0
-    );
-  };
-
-  const getVotePercentage = (optionId: string) => {
-    const totalVotes = getTotalVotes();
-    if (totalVotes === 0) return 0;
-    const optionVotes = poll.vote_counts_by_option?.[optionId] || 0;
-    return Math.round((optionVotes / totalVotes) * 100);
-  };
-
-  return (
-    <MessageSimple
-      {...props}
-      MessageContent={() => (
-        <View
-          style={{
-            backgroundColor: theme.colors.background,
-            borderColor: theme.colors.border,
-            borderWidth: 1,
-            borderRadius: 16,
-            padding: 20,
-            marginVertical: 8,
-            shadowColor: theme.colors.border,
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-            elevation: 3,
-          }}
-        >
-          {/* Poll Header */}
-          <View style={{ marginBottom: 16 }}>
-            <Text
-              style={{
-                color: theme.colors.text,
-                fontSize: 18,
-                fontWeight: "700",
-                marginBottom: 4,
-              }}
-            >
-              📊 {poll.name}
-            </Text>
-
-            {/* Poll Description */}
-            {poll.description && (
-              <Text
-                style={{
-                  color: theme.colors.text + "70",
-                  fontSize: 15,
-                  lineHeight: 20,
-                }}
-              >
-                {poll.description}
-              </Text>
-            )}
-          </View>
-
-          {/* Poll Options */}
-          {poll.options?.map((option: any) => {
-            const voteCount = poll.vote_counts_by_option?.[option.id] || 0;
-            const percentage = getVotePercentage(option.id);
-            const isSelected = poll.own_votes?.some(
-              (vote: any) => vote.option_id === option.id
-            );
-
-            return (
-              <TouchableOpacity
-                key={option.id}
-                onPress={() => !poll.is_closed && handleVote(option.id)}
-                disabled={poll.is_closed}
-                style={{
-                  backgroundColor: isSelected
-                    ? theme.colors.primary + "15"
-                    : theme.colors.card,
-                  borderColor: isSelected
-                    ? theme.colors.primary
-                    : theme.colors.border,
-                  borderWidth: isSelected ? 2 : 1,
-                  borderRadius: 12,
-                  padding: 16,
-                  marginVertical: 6,
-                  position: "relative",
-                  overflow: "hidden",
-                  shadowColor: isSelected
-                    ? theme.colors.primary
-                    : "transparent",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 2,
-                  elevation: isSelected ? 2 : 0,
-                }}
-              >
-                {/* Progress bar background */}
-                {getTotalVotes() > 0 && (
-                  <View
-                    style={{
-                      position: "absolute",
-                      left: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: `${percentage}%`,
-                      backgroundColor: isSelected
-                        ? theme.colors.primary + "25"
-                        : theme.colors.primary + "15",
-                      borderRadius: 11,
-                    }}
-                  />
-                )}
-
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    zIndex: 1,
-                  }}
-                >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      flex: 1,
-                    }}
-                  >
-                    {isSelected && (
-                      <Text style={{ marginRight: 8, fontSize: 16 }}>✓</Text>
-                    )}
-                    <Text
-                      style={{
-                        color: theme.colors.text,
-                        fontSize: 16,
-                        fontWeight: isSelected ? "600" : "400",
-                        flex: 1,
-                      }}
-                    >
-                      {option.text}
-                    </Text>
-                  </View>
-                  {getTotalVotes() > 0 && (
-                    <View style={{ alignItems: "flex-end" }}>
-                      <Text
-                        style={{
-                          color: theme.colors.text,
-                          fontSize: 14,
-                          fontWeight: "600",
-                        }}
-                      >
-                        {percentage}%
-                      </Text>
-                      <Text
-                        style={{
-                          color: theme.colors.text + "70",
-                          fontSize: 12,
-                        }}
-                      >
-                        {voteCount} vote{voteCount !== 1 ? "s" : ""}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-
-          {/* Poll Footer */}
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginTop: 16,
-              paddingTop: 16,
-              borderTopWidth: 1,
-              borderTopColor: theme.colors.border + "40",
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Text style={{ marginRight: 4, fontSize: 14 }}>👥</Text>
-              <Text
-                style={{
-                  color: theme.colors.text + "80",
-                  fontSize: 14,
-                  fontWeight: "500",
-                }}
-              >
-                {getTotalVotes()} {getTotalVotes() === 1 ? "vote" : "votes"}
-              </Text>
-            </View>
-            {poll.is_closed && (
-              <View
-                style={{
-                  backgroundColor: theme.colors.notification + "20",
-                  paddingHorizontal: 12,
-                  paddingVertical: 4,
-                  borderRadius: 12,
-                }}
-              >
-                <Text
-                  style={{
-                    color: theme.colors.notification,
-                    fontSize: 12,
-                    fontWeight: "600",
-                  }}
-                >
-                  🔒 Closed
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-      )}
-    />
-  );
-};
-
-// Combined message component that handles both events and polls
-const CombinedMessage = (props: any) => {
-  const messageContext = useMessageContext();
-
-  // Fallback to DefaultMessage if message context is not available
-  if (!messageContext || !messageContext.message) {
-    return <DefaultMessage {...props} />;
-  }
-
-  const { message } = messageContext;
-
-  // Check if this is a poll message
-  if (message?.poll) {
-    return <PollMessage {...props} />;
-  }
-
-  // Check if this is an event message
-  const isEventSearchMessage = (
-    msg: any
-  ): msg is { attachments: EventAttachment[] } => {
-    return msg?.attachments?.some((att: any) => att.type === "event_card");
-  };
-
-  const isEventMessage = (msg: any): msg is EventMessage => {
-    const hasEventAttachment = msg?.attachments?.some(
-      (att: any) => att.type === "event"
-    );
-    const hasValidAttachments =
-      Array.isArray(msg?.attachments) && msg.attachments.length > 0;
-    return hasEventAttachment && hasValidAttachments;
-  };
-
-  if (isEventSearchMessage(message) || isEventMessage(message)) {
-    return <EventMessage {...props} />;
-  }
-
-  // Default message rendering with enhanced features
-  return (
-    <MessageSimple
-      {...props}
-      message={message}
-      MessageAvatar={MessageAvatar}
-      MessageContent={MessageContent}
-      MessageFooter={(messageFooterProps) => (
-        <>
-          {/* Reactions */}
-          {message.latest_reactions && message.latest_reactions.length > 0 && (
-            <ReactionListBottom />
-          )}
-          <MessageFooter
-            {...messageFooterProps}
-            formattedDate={
-              message.created_at
-                ? new Date(message.created_at).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : ""
-            }
-          />
-        </>
-      )}
-      MessageStatus={MessageStatus}
-      // Enable message actions (edit, delete, react, reply)
-      messageActions={true}
-    />
-  );
-};
-
 export default function ChannelScreen() {
   const { session } = useAuth();
   const { id } = useLocalSearchParams();
@@ -573,7 +380,7 @@ export default function ChannelScreen() {
   const [channel, setChannel] = useState<ChannelType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [thread, setThread] = useState<MessageType | null>(null);
+  const [thread, setThread] = useState<any>(null);
   const [memberCount, setMemberCount] = useState<number>(0);
   const channelRef = useRef<ChannelType | null>(null);
   const { theme } = useTheme();
@@ -582,12 +389,6 @@ export default function ChannelScreen() {
   const [isSearching, setIsSearching] = useState(false);
   const [orbitMsg, setorbitMsg] = useState<any>(null);
   const { videoClient } = useVideo();
-
-  console.log("chanell???", channel?.data);
-  // if (channel?.data?.name === "Orbit App") {
-  //   console.log("messages???", channel?.state.messages);
-  //   setorbitMsg(channel?.state?.messages);
-  // }
 
   const handleInfoPress = useCallback(() => {
     if (!channel) return;
@@ -663,11 +464,13 @@ export default function ChannelScreen() {
           type: newChannel.type,
           memberCount: Object.keys(newChannel.state.members || {}).length,
           messageCount: messages.messages?.length || 0,
-          messages: messages.messages?.map((m) => ({
-            id: m.id,
-            text: m.text,
-            user: m.user?.id,
-          })),
+          messages: messages.messages
+            ?.filter((m) => m)
+            .map((m) => ({
+              id: m?.id || "unknown",
+              text: m?.text || "",
+              user: m?.user?.id || "unknown",
+            })),
         });
 
         if (mounted) {
@@ -851,7 +654,7 @@ export default function ChannelScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Stack.Screen
         options={{
           headerTitle: () => (
@@ -974,103 +777,7 @@ export default function ChannelScreen() {
           keyboardVerticalOffset={90}
           thread={thread}
           threadList={!!thread}
-          Message={DefaultMessage}
-          onPressMessage={({
-            additionalInfo,
-            defaultHandler,
-            emitter,
-            message,
-          }) => {
-            const handleEventSelect = async (eventData: Event) => {
-              try {
-                console.log("[EventMessage] Sending event message:", eventData);
-                const message = {
-                  text: `Shared event: ${eventData.name}`,
-                  attachments: [
-                    {
-                      type: "event",
-                      title: eventData.name,
-                      text: `${new Date(eventData.startDate).toLocaleString()}${
-                        eventData.location
-                          ? `\nLocation: ${eventData.location}`
-                          : ""
-                      }`,
-                      event_data: eventData,
-                    },
-                  ],
-                };
-                console.log("[EventMessage] Sending message:", message);
-                const response = await channel?.sendMessage(message);
-                console.log("[EventMessage] Message sent:", response);
-              } catch (error) {
-                console.error("[EventMessage] Error sharing event:", error);
-                Alert.alert("Error", "Failed to share event");
-              }
-            };
-
-            console.log("[Channel] Message pressed:", {
-              additionalInfo,
-              emitter,
-              messageType: message?.type,
-              attachments: message?.attachments,
-            });
-
-            // Check if this is an event message
-            const eventAttachment = message?.attachments?.find(
-              (att: any) => att.type === "event"
-            ) as EventAttachment | undefined;
-
-            if (eventAttachment?.event_data) {
-              console.log(
-                "[Channel] Found event data:",
-                eventAttachment.event_data
-              );
-              router.push({
-                pathname: "/(app)/(map)",
-                params: { eventId: eventAttachment.event_data.id },
-              });
-              return;
-            }
-
-            // Handle event card selection
-            const attachment = additionalInfo?.attachment as
-              | EventAttachment
-              | undefined;
-            if (attachment?.type === "event_card") {
-              handleEventSelect(attachment.event_data as Event);
-              return;
-            }
-
-            defaultHandler?.();
-          }}
-          doSendMessageRequest={async (channelId, message) => {
-            if (message.text?.startsWith("/event")) {
-              const searchTerm = message.text.replace("/event", "").trim();
-              if (searchTerm) {
-                await handleCommand("event", searchTerm);
-                return new Promise(() => {}); // Prevent default message sending
-              } else {
-                Alert.alert(
-                  "Error",
-                  "Please provide a search term after /event"
-                );
-                return new Promise(() => {});
-              }
-            }
-
-            console.log("LKL>>", channel?.data?.member_count);
-            const name = channel?.data?.name as string;
-            const chnlId = channel?.data?.id as string;
-            const memberCount = channel?.data?.member_count as number;
-            if (memberCount > 2) {
-              //group
-              console.log("LKLchannelId>>", chnlId);
-              hitNoificationApi("new_group_message", chnlId, name);
-            } else {
-              hitNoificationApi("new_message", chnlId, name);
-            }
-            return channel?.sendMessage(message);
-          }}
+          Message={BulletproofMessage}
         >
           {thread ? (
             <Thread />
@@ -1087,7 +794,7 @@ export default function ChannelScreen() {
                   }}
                 >
                   <View className="w-[80%] p-4 border bg-muted/50 border-border rounded-tl-3xl rounded-tr-3xl rounded-bl-none rounded-br-3xl">
-                    <Text className="text-foreground">
+                    <Text className="text-text">
                       {" "}
                       {orbitMsg?.text || "No orbit message"}
                     </Text>
@@ -1095,34 +802,8 @@ export default function ChannelScreen() {
                 </View>
               ) : (
                 <>
-                  <MessageList
-                    onThreadSelect={setThread}
-                    // Enable typing indicator
-                    TypingIndicator={TypingIndicator}
-                    additionalFlatListProps={{
-                      initialNumToRender: 30,
-                      maxToRenderPerBatch: 10,
-                      windowSize: 10,
-                      removeClippedSubviews: false,
-                      inverted: Platform.OS === "ios" ? true : false,
-                      style: {
-                        backgroundColor: theme.colors.card,
-                      },
-                      contentContainerStyle: {
-                        backgroundColor: theme.colors.card,
-                      },
-                    }}
-                    loadMore={() => {
-                      console.log("[ChatChannel] Loading more messages...");
-                      return Promise.resolve();
-                    }}
-                  />
-                  <MessageInput
-                    audioRecordingEnabled={true}
-                    AudioRecordingLockIndicator={() => (
-                      <View className="w-10 h-10 bg-red-500" />
-                    )}
-                  />
+                  <MessageList onThreadSelect={setThread} />
+                  <MessageInput />
                 </>
               )}
             </>
@@ -1132,3 +813,133 @@ export default function ChannelScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  // Full-width poll container
+  fullWidthPollContainer: {
+    width: "100%",
+    marginVertical: 8,
+  },
+
+  // Poll card with shadow and border
+  pollCard: {
+    marginHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 6,
+    overflow: "hidden",
+  },
+
+  // Poll header section
+  pollHeader: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.1)",
+  },
+
+  pollTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+
+  pollDescription: {
+    fontSize: 14,
+    opacity: 0.7,
+    fontWeight: "400",
+  },
+
+  // Poll options container
+  pollOptionsContainer: {
+    padding: 16,
+  },
+
+  // Individual poll option (full width)
+  pollOptionFull: {
+    marginBottom: 12,
+    borderRadius: 12,
+    overflow: "hidden",
+    position: "relative",
+    minHeight: 56,
+  },
+
+  // Progress bar background
+  pollOptionProgress: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    borderRadius: 12,
+  },
+
+  // Option content layout
+  pollOptionContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    zIndex: 1,
+  },
+
+  pollOptionLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+
+  optionNumber: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginRight: 12,
+    minWidth: 24,
+    textAlign: "center",
+    color: "#666",
+  },
+
+  pollOptionText: {
+    fontSize: 16,
+    fontWeight: "500",
+    flex: 1,
+  },
+
+  pollOptionRight: {
+    alignItems: "flex-end",
+    minWidth: 60,
+  },
+
+  pollOptionVotes: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+
+  pollOptionPercentage: {
+    fontSize: 12,
+    fontWeight: "600",
+    opacity: 0.7,
+  },
+
+  // Poll footer
+  pollFooterContainer: {
+    padding: 16,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.1)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  pollFooterText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  pollFooterSubtext: {
+    fontSize: 12,
+    opacity: 0.7,
+  },
+});

@@ -39,11 +39,7 @@ export default function AppLayout() {
         initialRouteName="(map)"
         tabBar={(props: BottomTabBarProps) => {
           const currentRoute = props.state.routes[props.state.index];
-          console.log(
-            "[TabBar] Current route:",
-            currentRoute.name,
-            currentRoute.path
-          );
+
           // Show tab bar everywhere except notifications and specific chat messages
           const isSpecificChatRoute =
             currentRoute.name === "(webview)" ||

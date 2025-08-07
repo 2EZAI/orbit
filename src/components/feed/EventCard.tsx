@@ -22,8 +22,9 @@ export function EventCard({ item, onPress }: EventCardProps) {
       style={[
         styles.modernEventCard,
         {
-          backgroundColor: theme.colors.card,
-          borderColor: theme.colors.border + "40",
+          backgroundColor: theme.colors.border,
+          borderColor: theme.colors.border,
+          shadowColor: theme.colors.primary,
         },
       ]}
       activeOpacity={0.95}
@@ -110,12 +111,11 @@ const styles = StyleSheet.create({
   modernEventCard: {
     width: CARD_WIDTH,
     borderRadius: 20,
-    borderWidth: 1,
-    shadowColor: "#8B5CF6",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 6,
     marginRight: 16,
     overflow: "hidden",
   },

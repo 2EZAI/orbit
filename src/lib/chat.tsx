@@ -40,12 +40,28 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     let currentClient: StreamChat | null = null;
 
     const initChat = async () => {
+      // If no session, make sure to clean up any existing client
       if (!session?.user?.id || !STREAM_API_KEY || !session?.access_token) {
-        console.log("Missing required data, skipping chat initialization", {
+        console.log("Missing required data, cleaning up chat client", {
+          hasSession: !!session,
           hasUserId: !!session?.user?.id,
           hasApiKey: !!STREAM_API_KEY,
           hasAccessToken: !!session?.access_token,
         });
+
+        // Clean up existing client if session is gone
+        if (client) {
+          console.log(
+            "Disconnecting existing Stream client due to missing session..."
+          );
+          try {
+            await client.disconnectUser();
+          } catch (error) {
+            console.error("Error disconnecting Stream client:", error);
+          }
+          setClient(null);
+          setIsConnected(false);
+        }
         return;
       }
 
@@ -145,7 +161,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         setIsConnected(false);
       }
     };
-  }, [session?.user?.id, session?.access_token]);
+  }, [session?.user?.id, session?.access_token, session]);
 
   // Monitor connection state
   useEffect(() => {

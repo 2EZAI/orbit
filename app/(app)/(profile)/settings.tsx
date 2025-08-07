@@ -1,5 +1,11 @@
 import React, { useState } from "react";
-import { View, TouchableOpacity, ScrollView, SafeAreaView } from "react-native";
+import {
+  View,
+  TouchableOpacity,
+  ScrollView,
+  SafeAreaView,
+  ActivityIndicator,
+} from "react-native";
 import { router } from "expo-router";
 import { Text } from "~/src/components/ui/text";
 import { supabase } from "~/src/lib/supabase";
@@ -36,6 +42,7 @@ interface SettingItemProps {
   title: string;
   onPress: () => void;
   destructive?: boolean;
+  loading?: boolean;
 }
 
 function SettingItem({
@@ -43,12 +50,14 @@ function SettingItem({
   title,
   onPress,
   destructive = false,
+  loading = false,
 }: SettingItemProps) {
   const { theme } = useTheme();
 
   return (
     <TouchableOpacity
-      onPress={onPress}
+      onPress={loading ? undefined : onPress}
+      disabled={loading}
       style={{
         flexDirection: "row",
         alignItems: "center",
@@ -89,10 +98,17 @@ function SettingItem({
         {title}
       </Text>
 
-      <ChevronRight
-        size={20}
-        color={destructive ? "#FF3B30" : theme.colors.text + "60"}
-      />
+      {loading ? (
+        <ActivityIndicator
+          size="small"
+          color={destructive ? "#FF3B30" : theme.colors.primary}
+        />
+      ) : (
+        <ChevronRight
+          size={20}
+          color={destructive ? "#FF3B30" : theme.colors.text + "60"}
+        />
+      )}
     </TouchableOpacity>
   );
 }
@@ -113,6 +129,8 @@ function SectionHeader({ title }: SectionHeaderProps) {
         marginHorizontal: 16,
         marginTop: 24,
         marginBottom: 12,
+        lineHeight: 25,
+        paddingVertical: 2,
       }}
     >
       {title}
@@ -137,13 +155,24 @@ export default function SettingsScreen() {
     router.back();
   };
 
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
   const handleLogout = async () => {
+    if (isLoggingOut) return; // Prevent multiple logout attempts
+
+    setIsLoggingOut(true);
     try {
       console.log("Initiating logout...");
+
+      // Clear any navigation state first to prevent navigation errors
+      router.dismissAll?.();
+
+      // Sign out from Supabase
       await supabase.auth.signOut();
       console.log("Logout successful - app layout will handle redirect");
     } catch (error) {
       console.error("Error logging out:", error);
+      setIsLoggingOut(false); // Reset on error
     }
   };
 
@@ -187,6 +216,8 @@ export default function SettingsScreen() {
             flex: 1,
             textAlign: "center",
             marginRight: 44, // Compensate for back button
+            lineHeight: 30,
+            paddingVertical: 4,
           }}
         >
           Settings
@@ -240,6 +271,7 @@ export default function SettingsScreen() {
           icon={<LogOut size={20} color={theme.colors.primary} />}
           title="Log Out"
           onPress={handleLogout}
+          loading={isLoggingOut}
         />
         <SettingItem
           icon={<Trash2 size={20} color="#FF3B30" />}

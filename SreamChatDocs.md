@@ -1,1024 +1,665 @@
-# Stream Chat API Backend Documentation
+# Stream Chat API Documentation
 
-## Overview
+## 📋 Table of Contents
 
-This documentation provides comprehensive instructions for frontend developers to integrate chat messaging functionality using our Stream Chat backend API. The backend is built with Node.js, Express, and integrates with Stream's Chat SDK for React Native.
+1. [🏗️ Your Current Backend (What You Have)](#your-current-backend-what-you-have)
+2. [🌟 Stream Chat Complete Capabilities (What&#39;s Possible)](#stream-chat-complete-capabilities-whats-possible)
+3. [📱 React Native Integration Examples](#react-native-integration-examples)
+4. [🚧 Implementation Roadmap (What to Build Next)](#implementation-roadmap-what-to-build-next)
+5. [❌ Error Handling](#error-handling)
 
-## Table of Contents
+---
 
-1. [Authentication](#authentication)
-2. [API Endpoints](#api-endpoints)
-3. [React Native Integration](#react-native-integration)
-4. [Environment Setup](#environment-setup)
-5. [Usage Examples](#usage-examples)
-6. [Database Schema](#database-schema)
-7. [Error Handling](#error-handling)
-8. [Best Practices](#best-practices)
-9. [Troubleshooting](#troubleshooting)
+## 🏗️ Your Current Backend (What You Have)
 
-## Authentication
+### **Base URL:** `https://your-domain.com`
 
-All chat API endpoints require authentication using a Bearer token obtained from your main authentication flow.
+### **Authentication:** `Authorization: Bearer <supabase_jwt_token>`
 
-### Headers Required
+### ✅ **Available Endpoints (7 total):**
+
+#### 🔑 **Chat Authentication**
+
+```http
+POST /chat/token              # Generate Stream Chat token
+DELETE /chat/user             # Cleanup user from Stream
+```
+
+#### 📢 **Channel Management**
+
+```http
+POST /channels                # Create new channel
+GET /channels                 # Get user's channels
+POST /channels/:id/members    # Add members to channel
+DELETE /channels/:id/members  # Remove members from channel
+DELETE /channels/:id          # Delete channel
+```
+
+#### ⚡ **Custom Commands & Testing**
+
+```http
+POST /commands                # Handle /event command only
+POST /chat/test-polls         # Test polls functionality
+```
+
+### 📝 **Current Usage Examples:**
+
+#### Generate Chat Token:
 
 ```javascript
-{
-  "Authorization": "Bearer <your_auth_token>",
-  "Content-Type": "application/json"
-}
-```
-
-## API Endpoints
-
-### Base URL
-
-```
- ENV const: BACKEND_CHAT_URL
-https://orbit-chat-backend-old-9d2b903ab237.herokuapp.com
-```
-
----
-
-### 1. Get Chat Token
-
-**Endpoint:** `POST /chat/token`
-
-**Description:** Generates a Stream Chat token for the authenticated user.
-
-**Headers:**
-
-- `Authorization: Bearer <auth_token>`
-- `Content-Type: application/json`
-
-**Request Body:** None
-
-**Response:**
-
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user_id": "user-123",
-  "api_key": "your-stream-api-key",
-  "expires_at": 1703808000
-}
-```
-
-**Error Response:**
-
-```json
-{
-  "error": "Failed to generate chat token",
-  "message": "Token generation failed"
-}
-```
-
----
-
-### 2. Create Channel
-
-**Endpoint:** `POST /channels`
-
-**Description:** Creates a new chat channel.
-
-**Headers:**
-
-- `Authorization: Bearer <auth_token>`
-- `Content-Type: application/json`
-
-**Request Body:**
-
-```json
-{
-  "channel_id": "unique-channel-id",
-  "channel_type": "messaging", // Optional: "messaging", "team", "gaming"
-  "name": "Channel Name",
-  "members": ["user-456", "user-789"],
-  "custom_data": {
-    "description": "Channel description",
-    "category": "general"
-  },
-  "event_id": "event-uuid" // Optional: link to an event
-}
-```
-
-**Response:**
-
-```json
-{
-  "id": "channel-uuid",
-  "stream_channel_id": "unique-channel-id",
-  "channel_type": "messaging",
-  "name": "Channel Name",
-  "created_by": "user-123",
-  "members": ["user-123", "user-456", "user-789"],
-  "created_at": "2023-12-01T12:00:00.000Z",
-  "custom_data": {
-    "description": "Channel description",
-    "category": "general"
-  },
-  "stream_response": {
-    "channel": {
-      "id": "unique-channel-id",
-      "type": "messaging",
-      "created_at": "2023-12-01T12:00:00.000Z"
-    }
-  }
-}
-```
-
----
-
-### 3. Join Channel
-
-**Endpoint:** `POST /channels/:channelId/join`
-
-**Description:** Adds the authenticated user to an existing channel.
-
-**Headers:**
-
-- `Authorization: Bearer <auth_token>`
-- `Content-Type: application/json`
-
-**URL Parameters:**
-
-- `channelId`: The Stream channel ID
-
-**Request Body:**
-
-```json
-{
-  "role": "member" // Optional: "admin", "moderator", "member"
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "channel_id": "unique-channel-id",
-  "user_id": "user-123",
-  "role": "member",
-  "joined_at": "2023-12-01T12:00:00.000Z"
-}
-```
-
----
-
-### 4. Leave Channel
-
-**Endpoint:** `DELETE /channels/:channelId/leave`
-
-**Description:** Removes the authenticated user from a channel.
-
-**Headers:**
-
-- `Authorization: Bearer <auth_token>`
-
-**URL Parameters:**
-
-- `channelId`: The Stream channel ID
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Successfully left channel",
-  "channel_id": "unique-channel-id",
-  "user_id": "user-123"
-}
-```
-
----
-
-### 5. Get User's Channels
-
-**Endpoint:** `GET /channels`
-
-**Description:** Retrieves all channels the authenticated user is a member of.
-
-**Headers:**
-
-- `Authorization: Bearer <auth_token>`
-
-**Query Parameters:**
-
-- `limit`: Number of channels to return (default: 25)
-- `offset`: Number of channels to skip (default: 0)
-- `type`: Filter by channel type (optional)
-
-**Response:**
-
-```json
-{
-  "channels": [
-    {
-      "id": "channel-uuid",
-      "stream_channel_id": "unique-channel-id",
-      "channel_type": "messaging",
-      "name": "Channel Name",
-      "created_by": "user-123",
-      "created_at": "2023-12-01T12:00:00.000Z",
-      "member_count": 3,
-      "last_message_at": "2023-12-01T14:30:00.000Z"
-    }
-  ],
-  "total_count": 15,
-  "has_more": true
-}
-```
-
----
-
-### 6. Get Channel Details
-
-**Endpoint:** `GET /channels/:channelId`
-
-**Description:** Retrieves detailed information about a specific channel.
-
-**Headers:**
-
-- `Authorization: Bearer <auth_token>`
-
-**URL Parameters:**
-
-- `channelId`: The Stream channel ID
-
-**Response:**
-
-```json
-{
-  "id": "channel-uuid",
-  "stream_channel_id": "unique-channel-id",
-  "channel_type": "messaging",
-  "name": "Channel Name",
-  "created_by": "user-123",
-  "created_at": "2023-12-01T12:00:00.000Z",
-  "members": [
-    {
-      "user_id": "user-123",
-      "role": "admin",
-      "joined_at": "2023-12-01T12:00:00.000Z"
-    },
-    {
-      "user_id": "user-456",
-      "role": "member",
-      "joined_at": "2023-12-01T12:05:00.000Z"
-    }
-  ],
-  "custom_data": {
-    "description": "Channel description",
-    "category": "general"
-  }
-}
-```
-
----
-
-### 7. Update Channel
-
-**Endpoint:** `PATCH /channels/:channelId`
-
-**Description:** Updates channel information (admin/creator only).
-
-**Headers:**
-
-- `Authorization: Bearer <auth_token>`
-- `Content-Type: application/json`
-
-**URL Parameters:**
-
-- `channelId`: The Stream channel ID
-
-**Request Body:**
-
-```json
-{
-  "name": "Updated Channel Name",
-  "custom_data": {
-    "description": "Updated description",
-    "category": "announcements"
-  }
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "channel": {
-    "id": "channel-uuid",
-    "stream_channel_id": "unique-channel-id",
-    "name": "Updated Channel Name",
-    "updated_at": "2023-12-01T15:00:00.000Z"
-  }
-}
-```
-
----
-
-### 8. Delete Channel
-
-**Endpoint:** `DELETE /channels/:channelId`
-
-**Description:** Deletes a channel (creator only).
-
-**Headers:**
-
-- `Authorization: Bearer <auth_token>`
-
-**URL Parameters:**
-
-- `channelId`: The Stream channel ID
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Channel deleted successfully",
-  "channel_id": "unique-channel-id"
-}
-```
-
----
-
-### 9. Add Members to Channel
-
-**Endpoint:** `POST /channels/:channelId/members`
-
-**Description:** Adds new members to a channel.
-
-**Headers:**
-
-- `Authorization: Bearer <auth_token>`
-- `Content-Type: application/json`
-
-**URL Parameters:**
-
-- `channelId`: The Stream channel ID
-
-**Request Body:**
-
-```json
-{
-  "user_ids": ["user-789", "user-101"],
-  "role": "member" // Optional: default role for new members
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "added_members": [
-    {
-      "user_id": "user-789",
-      "role": "member",
-      "added_at": "2023-12-01T16:00:00.000Z"
-    },
-    {
-      "user_id": "user-101",
-      "role": "member",
-      "added_at": "2023-12-01T16:00:00.000Z"
-    }
-  ]
-}
-```
-
----
-
-### 10. Remove Members from Channel
-
-**Endpoint:** `DELETE /channels/:channelId/members`
-
-**Description:** Removes members from a channel.
-
-**Headers:**
-
-- `Authorization: Bearer <auth_token>`
-- `Content-Type: application/json`
-
-**URL Parameters:**
-
-- `channelId`: The Stream channel ID
-
-**Request Body:**
-
-```json
-{
-  "user_ids": ["user-789"]
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "removed_members": ["user-789"],
-  "removed_at": "2023-12-01T16:30:00.000Z"
-}
-```
-
----
-
-### 11. Chat Service Health Check
-
-**Endpoint:** `GET /chat/health`
-
-**Description:** Checks if the chat service is running properly.
-
-**Headers:** None required
-
-**Response:**
-
-```json
-{
-  "status": "ok",
-  "service": "chat",
-  "timestamp": "2023-12-01T12:00:00.000Z",
-  "env": {
-    "streamApiKey": true,
-    "streamApiSecret": true
-  }
-}
-```
-
-## React Native Integration
-
-### Installation
-
-Install the required packages in your React Native project:
-
-```bash
-npm install stream-chat-react-native stream-chat
-# For React Native CLI projects
-npm install react-native-svg react-native-image-picker react-native-document-picker
-cd ios && pod install
-
-# For Expo projects
-expo install react-native-svg expo-image-picker expo-document-picker
-```
-
-### Basic Setup
-
-#### 1. Initialize Stream Chat Client
-
-```javascript
-// ChatService.js
-import { StreamChat } from "stream-chat";
-
-class ChatService {
-  constructor() {
-    this.client = null;
-    this.user = null;
-  }
-
-  async initialize(authToken) {
-    try {
-      // Get chat token from backend
-      const response = await fetch("/chat/token", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      const { token, api_key, user_id } = await response.json();
-
-      // Initialize Stream Chat client
-      this.client = StreamChat.getInstance(api_key);
-
-      // Connect user
-      await this.client.connectUser(
-        {
-          id: user_id,
-          name: "User Name", // Get from your user data
-          image: "https://example.com/avatar.jpg", // User avatar
-        },
-        token
-      );
-
-      this.user = this.client.user;
-      return this.client;
-    } catch (error) {
-      console.error("Failed to initialize chat service:", error);
-      throw error;
-    }
-  }
-
-  getClient() {
-    return this.client;
-  }
-
-  getUser() {
-    return this.user;
-  }
-
-  async disconnect() {
-    if (this.client) {
-      await this.client.disconnectUser();
-      this.client = null;
-      this.user = null;
-    }
-  }
-}
-
-export default new ChatService();
-```
-
-#### 2. Chat List Component
-
-```jsx
-// ChatListScreen.jsx
-import React, { useEffect, useState } from "react";
-import { View, StyleSheet } from "react-native";
-import { ChannelList, Chat } from "stream-chat-react-native";
-import ChatService from "./ChatService";
-
-const ChatListScreen = ({ navigation }) => {
-  const [client, setClient] = useState(null);
-
-  useEffect(() => {
-    initializeChat();
-    return () => {
-      ChatService.disconnect();
-    };
-  }, []);
-
-  const initializeChat = async () => {
-    try {
-      const chatClient = await ChatService.initialize(authToken);
-      setClient(chatClient);
-    } catch (error) {
-      console.error("Failed to initialize chat:", error);
-    }
-  };
-
-  const onSelectChannel = (channel) => {
-    navigation.navigate("ChatChannel", { channel });
-  };
-
-  if (!client) {
-    return (
-      <View style={styles.loading}>
-        <Text>Loading chats...</Text>
-      </View>
-    );
-  }
-
-  return (
-    <Chat client={client}>
-      <View style={styles.container}>
-        <ChannelList
-          onSelect={onSelectChannel}
-          filters={{ members: { $in: [client.userID] } }}
-          sort={{ last_message_at: -1 }}
-        />
-      </View>
-    </Chat>
-  );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  loading: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+const response = await fetch("/chat/token", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${supabaseToken}`,
+    "Content-Type": "application/json",
   },
 });
-
-export default ChatListScreen;
+const { token, expiresIn } = await response.json();
 ```
 
-#### 3. Chat Channel Component
+#### Create Channel:
 
-```jsx
-// ChatChannelScreen.jsx
-import React from "react";
-import { View, SafeAreaView } from "react-native";
+```javascript
+const response = await fetch("/channels", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${supabaseToken}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    name: "general-chat",
+    type: "messaging",
+    members: ["user-1", "user-2"],
+  }),
+});
+```
+
+### ⚠️ **Important Note:**
+
+Your backend currently only handles **basic authentication and channel management**. All other features (messaging, reactions, files, etc.) happen **directly on the frontend** using the Stream Chat React Native SDK.
+
+---
+
+## 🌟 Stream Chat Complete Capabilities (What's Possible)
+
+### 🔥 **ALL Stream Chat Features Available:**
+
+#### **📱 Core Messaging**
+
+- ✅ Real-time messaging with WebSocket connections
+- ✅ Message threads and replies
+- ✅ Message reactions and emoji responses
+- ✅ Message editing and deletion
+- ✅ Message pinning and starring
+- ✅ Message search across channels
+- ✅ Message quotation and forwarding
+- ✅ Rich text formatting and markdown
+- ✅ Message translation (50+ languages)
+
+#### **📎 Media & Files**
+
+- ✅ Image, video, and file uploads
+- ✅ Image and video thumbnails
+- ✅ File preview and download
+- ✅ GIF integration (Giphy)
+- ✅ Custom attachments and cards
+- ✅ URL preview and link unfurling
+- ✅ Audio message recording
+
+#### **👥 User Features**
+
+- ✅ Real-time presence indicators
+- ✅ Custom user status messages
+- ✅ User roles and permissions
+- ✅ User mentions and @notifications
+- ✅ Typing indicators
+- ✅ User blocking and reporting
+- ✅ Read receipts and unread counts
+
+#### **🏢 Channel Management**
+
+- ✅ Public and private channels
+- ✅ Direct messages (1-on-1)
+- ✅ Group chats (multiple users)
+- ✅ Channel creation and deletion
+- ✅ Member management (add/remove)
+- ✅ Channel muting and notifications
+- ✅ Channel search and discovery
+- ✅ Channel categories and organization
+
+#### **🛡️ Moderation & Safety**
+
+- ✅ User banning and timeouts
+- ✅ Message flagging and reporting
+- ✅ Auto-moderation and content filtering
+- ✅ Custom moderation rules
+- ✅ Shadow banning
+- ✅ IP blocking and rate limiting
+
+#### **🔔 Notifications**
+
+- ✅ Push notifications (iOS/Android)
+- ✅ In-app notifications
+- ✅ Email notifications
+- ✅ Custom notification sounds
+- ✅ Notification scheduling
+- ✅ Do not disturb settings
+
+#### **⚡ Advanced Features**
+
+- ✅ Custom slash commands
+- ✅ Webhooks and event handling
+- ✅ Message scheduling
+- ✅ Auto-translation
+- ✅ Message templates
+- ✅ Channel freeze/unfreeze
+- ✅ Slow mode (rate limiting)
+
+#### **🎮 Interactive Elements**
+
+- ✅ **Polls and voting**
+- ✅ Custom message actions
+- ✅ Message buttons and cards
+- ✅ Rich interactive attachments
+- ✅ Forms and surveys
+- ✅ Custom UI components
+
+#### **🔧 Developer Tools**
+
+- ✅ REST API and GraphQL
+- ✅ Real-time WebSocket events
+- ✅ Comprehensive analytics
+- ✅ Export and backup tools
+- ✅ GDPR compliance tools
+- ✅ Multi-tenant support
+
+---
+
+## 📱 React Native Integration Examples
+
+### **Basic Setup (What You Can Do Now):**
+
+```javascript
+import { StreamChat } from "stream-chat";
 import {
+  Chat,
+  ChannelList,
   Channel,
   MessageList,
   MessageInput,
-  Chat,
 } from "stream-chat-react-native";
-import ChatService from "./ChatService";
 
-const ChatChannelScreen = ({ route, navigation }) => {
-  const { channel } = route.params;
-  const client = ChatService.getClient();
+// Initialize client
+const client = StreamChat.getInstance("YOUR_API_KEY");
 
-  if (!client) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text>Loading...</Text>
-      </View>
-    );
-  }
+// Connect user (using your backend token)
+const connectUser = async () => {
+  const tokenResponse = await fetch("/chat/token", {
+    headers: { Authorization: `Bearer ${supabaseToken}` },
+  });
+  const { token } = await tokenResponse.json();
 
-  return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <Chat client={client}>
-        <Channel channel={channel}>
-          <View style={{ flex: 1 }}>
-            <MessageList />
-            <MessageInput />
-          </View>
-        </Channel>
-      </Chat>
-    </SafeAreaView>
+  await client.connectUser(
+    {
+      id: user.id,
+      name: user.name,
+      image: user.avatar,
+    },
+    token
   );
 };
 
-export default ChatChannelScreen;
+// Basic Chat UI
+const ChatScreen = () => (
+  <Chat client={client}>
+    <ChannelList />
+  </Chat>
+);
+
+const ChannelScreen = ({ channel }) => (
+  <Chat client={client}>
+    <Channel channel={channel}>
+      <MessageList />
+      <MessageInput />
+    </Channel>
+  </Chat>
+);
 ```
 
-#### 4. Create Channel Component
+### **Advanced Features You Can Use (Frontend Only):**
 
-```jsx
-// CreateChannelScreen.jsx
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-} from "react-native";
+#### **Message Reactions:**
 
-const CreateChannelScreen = ({ navigation }) => {
-  const [channelName, setChannelName] = useState("");
-  const [loading, setLoading] = useState(false);
+```javascript
+// Add reaction
+await message.react("like");
 
-  const createChannel = async () => {
-    if (!channelName.trim()) {
-      Alert.alert("Error", "Please enter a channel name");
-      return;
-    }
+// Remove reaction
+await message.deleteReaction("like");
 
-    setLoading(true);
-    try {
-      const response = await fetch("/channels", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          channel_id: `channel-${Date.now()}`,
-          name: channelName,
-          members: [], // Add member selection logic here
-        }),
-      });
+// Custom reactions
+await message.react("🔥");
+```
 
-      const result = await response.json();
+#### **File Uploads:**
 
-      if (response.ok) {
-        Alert.alert("Success", "Channel created successfully");
-        navigation.goBack();
-      } else {
-        Alert.alert("Error", result.error || "Failed to create channel");
-      }
-    } catch (error) {
-      Alert.alert("Error", "Network error occurred");
-    } finally {
-      setLoading(false);
-    }
-  };
+```javascript
+// Upload image
+const response = await channel.sendImage(imageFile);
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Create New Channel</Text>
+// Upload file
+const response = await channel.sendFile(file);
 
-      <TextInput
-        style={styles.input}
-        placeholder="Channel Name"
-        value={channelName}
-        onChangeText={setChannelName}
-      />
+// Custom attachments
+await channel.sendMessage({
+  text: "Check this out!",
+  attachments: [
+    {
+      type: "image",
+      image_url: "https://example.com/image.jpg",
+      title: "Cool Image",
+    },
+  ],
+});
+```
 
-      <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={createChannel}
-        disabled={loading}
-      >
-        <Text style={styles.buttonText}>
-          {loading ? "Creating..." : "Create Channel"}
-        </Text>
-      </TouchableOpacity>
-    </View>
+#### **Message Threading:**
+
+```javascript
+// Reply to message
+await channel.sendMessage({
+  text: "This is a reply",
+  parent_id: originalMessage.id,
+});
+
+// Get thread replies
+const thread = await client.getThread(parentMessageId);
+```
+
+#### **User Presence:**
+
+```javascript
+// Update user presence
+await client.upsertUser({
+  id: userId,
+  online: true,
+  last_active: new Date(),
+});
+
+// Custom status
+await client.upsertUser({
+  id: userId,
+  status: "In a meeting",
+  emoji: "📞",
+});
+```
+
+#### **Real-time Events:**
+
+```javascript
+// Listen to typing
+channel.on("typing.start", (event) => {
+  console.log(`${event.user.name} is typing...`);
+});
+
+// Listen to new messages
+channel.on("message.new", (event) => {
+  console.log("New message:", event.message);
+});
+
+// Listen to user presence
+client.on("user.presence.changed", (event) => {
+  console.log(
+    `${event.user.name} is ${event.user.online ? "online" : "offline"}`
   );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 30,
-    textAlign: "center",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 20,
-    fontSize: 16,
-  },
-  button: {
-    backgroundColor: "#007AFF",
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  buttonDisabled: {
-    backgroundColor: "#ccc",
-  },
-  buttonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-});
-
-export default CreateChannelScreen;
-```
-
-## Database Schema
-
-The following tables are used to manage chat data in Supabase:
-
-### 1. stream_chat_users
-
-Stores Stream Chat tokens for users.
-
-```sql
-CREATE TABLE public.stream_chat_users (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  stream_chat_token text NULL,
-  token_expires_at timestamp with time zone NULL,
-  created_at timestamp with time zone NULL DEFAULT now(),
-  updated_at timestamp with time zone NULL DEFAULT now(),
-  CONSTRAINT stream_chat_users_pkey PRIMARY KEY (id),
-  CONSTRAINT stream_chat_users_user_id_key UNIQUE (user_id),
-  CONSTRAINT stream_chat_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-);
-```
-
-### 2. chat_channels
-
-Stores channel metadata and links to Stream Chat channels.
-
-```sql
-CREATE TABLE public.chat_channels (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  stream_channel_id text NOT NULL,
-  channel_type text NOT NULL DEFAULT 'messaging'::text,
-  created_by uuid NOT NULL,
-  name text NULL,
-  created_at timestamp with time zone NULL DEFAULT now(),
-  updated_at timestamp with time zone NULL DEFAULT now(),
-  event_id uuid NULL,
-  CONSTRAINT chat_channels_pkey PRIMARY KEY (id),
-  CONSTRAINT chat_channels_stream_id_key UNIQUE (stream_channel_id),
-  CONSTRAINT chat_channels_created_by_fkey FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE CASCADE,
-  CONSTRAINT chat_channels_event_id_fkey FOREIGN KEY (event_id) REFERENCES events (id)
-);
-```
-
-### 3. chat_channel_members
-
-Tracks channel membership and roles.
-
-```sql
-CREATE TABLE public.chat_channel_members (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  channel_id uuid NOT NULL,
-  user_id uuid NOT NULL,
-  role text NOT NULL DEFAULT 'member'::text,
-  created_at timestamp with time zone NULL DEFAULT now(),
-  updated_at timestamp with time zone NULL DEFAULT now(),
-  CONSTRAINT chat_channel_members_pkey PRIMARY KEY (id),
-  CONSTRAINT chat_channel_members_unique UNIQUE (channel_id, user_id),
-  CONSTRAINT chat_channel_members_channel_id_fkey FOREIGN KEY (channel_id) REFERENCES chat_channels (id) ON DELETE CASCADE,
-  CONSTRAINT chat_channel_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-);
-```
-
-## Usage Examples
-
-### 1. Creating a Direct Message
-
-```javascript
-const createDirectMessage = async (otherUserId) => {
-  try {
-    const response = await fetch("/channels", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        channel_id: `dm-${currentUserId}-${otherUserId}`,
-        channel_type: "messaging",
-        members: [otherUserId],
-      }),
-    });
-
-    const result = await response.json();
-    return result;
-  } catch (error) {
-    console.error("Failed to create DM:", error);
-  }
-};
-```
-
-### 2. Joining a Channel
-
-```javascript
-const joinChannel = async (channelId) => {
-  try {
-    const response = await fetch(`/channels/${channelId}/join`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        role: "member",
-      }),
-    });
-
-    const result = await response.json();
-    return result;
-  } catch (error) {
-    console.error("Failed to join channel:", error);
-  }
-};
-```
-
-### 3. Loading User's Channels
-
-```javascript
-const loadUserChannels = async () => {
-  try {
-    const response = await fetch("/channels", {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-      },
-    });
-
-    const { channels } = await response.json();
-    return channels;
-  } catch (error) {
-    console.error("Failed to load channels:", error);
-  }
-};
-```
-
-## Error Handling
-
-### Common Error Scenarios
-
-1. **Authentication Errors (401)**
-
-```javascript
-if (response.status === 401) {
-  // Token expired or invalid
-  await refreshAuthToken();
-  // Retry the request
-}
-```
-
-2. **Channel Not Found (404)**
-
-```javascript
-if (response.status === 404) {
-  // Channel doesn't exist or user doesn't have access
-  Alert.alert("Error", "Channel not found or access denied");
-}
-```
-
-3. **Permission Errors (403)**
-
-```javascript
-if (response.status === 403) {
-  // User doesn't have permission
-  Alert.alert("Error", "You don't have permission to perform this action");
-}
-```
-
-### Error Response Format
-
-All API errors follow this format:
-
-```json
-{
-  "error": "Error type description",
-  "message": "Detailed error message"
-}
-```
-
-## Best Practices
-
-### 1. Token Management
-
-- Store chat tokens securely
-- Refresh tokens before expiration
-- Handle token refresh during active chats
-
-### 2. Channel Management
-
-- Use meaningful channel IDs
-- Handle channel state changes gracefully
-- Implement proper cleanup when leaving channels
-
-### 3. Performance
-
-- Initialize chat service on app start
-- Reuse chat client instances
-- Implement pagination for channel lists
-
-### 4. User Experience
-
-- Show loading states during operations
-- Provide clear error messages
-- Handle offline scenarios gracefully
-
-## Troubleshooting
-
-### Common Issues
-
-1. **"Chat client not initialized"**
-
-   - Ensure ChatService.initialize() is called before using chat features
-   - Check authentication token validity
-
-2. **Messages not appearing**
-
-   - Verify user is connected to Stream Chat
-   - Check channel membership
-   - Ensure proper event listeners
-
-3. **Channel creation failures**
-
-   - Verify unique channel IDs
-   - Check user permissions
-   - Ensure backend endpoint availability
-
-### Debug Mode
-
-Enable debug logging in development:
-
-```javascript
-// Add this when initializing the Stream Chat client
-const client = StreamChat.getInstance(api_key, {
-  logger: console, // Enable debug logging
 });
 ```
 
-### Backend Debugging
+#### **Search Messages:**
 
-Check backend logs for chat-related requests:
-
-```bash
-# Look for chat token generation logs
-[timestamp] Generating chat token
-[timestamp] Chat token generated successfully for user: user-123
-
-# Look for channel creation logs
-[timestamp] Creating channel
-[timestamp] Channel created successfully: channel-456
+```javascript
+// Search across channels
+const results = await client.search(
+  {
+    query: "hello world",
+  },
+  {
+    channels: [channel.cid],
+  }
+);
 ```
 
-## Support
+#### **Moderation:**
 
-For additional support:
+```javascript
+// Ban user
+await channel.banUser(userId, {
+  timeout: 3600, // 1 hour
+  reason: "Spam",
+});
 
-1. Check Stream Chat React Native documentation: https://getstream.io/chat/docs/react-native/
-2. Review backend logs for specific error messages
-3. Test API endpoints using tools like Postman or curl
-4. Ensure all environment variables are properly configured
+// Mute user
+await channel.muteUser(userId);
+
+// Flag message
+await client.flagMessage(messageId);
+```
+
+#### **🗳️ Polls (READY TO USE!):**
+
+```javascript
+// Create and send a poll
+const poll = await client.createPoll({
+  name: "Where should we host our next company event?",
+  options: [
+    {
+      text: "Amsterdam, The Netherlands",
+    },
+    {
+      text: "Boulder, CO",
+    },
+  ],
+  voting_visibility: "public", // or "anonymous"
+  enforce_unique_vote: true,
+  max_votes_allowed: 1,
+  allow_user_suggested_options: false,
+  allow_answers: false,
+});
+
+// Send message with poll
+const { message } = await channel.sendMessage({
+  text: "We want to know your opinion!",
+  poll_id: poll.id,
+});
+
+// Cast a vote
+await poll.castVote({ option_id: "option-uuid" });
+
+// Remove a vote
+await poll.removeVote({ vote_id: "vote-uuid" });
+
+// Close a poll
+await poll.close();
+
+// Listen to poll events
+channel.on("poll.vote_casted", (event) => {
+  console.log("New vote:", event.poll_vote);
+});
+
+channel.on("poll.vote_changed", (event) => {
+  console.log("Vote changed:", event.poll_vote);
+});
+
+channel.on("poll.closed", (event) => {
+  console.log("Poll closed:", event.poll);
+});
+```
 
 ---
 
-**Last Updated:** December 2024
-**API Version:** v1.0
-**Backend Version:** Node.js + Express + Stream Chat
+## 🚧 Implementation Roadmap (What to Build Next)
+
+### **🔥 HIGH PRIORITY - Build These Backend Endpoints:**
+
+#### **1. Message Reactions**
+
+```http
+POST   /chat/messages/:messageId/reactions
+DELETE /chat/messages/:messageId/reactions/:type
+```
+
+#### **2. File Upload Support**
+
+```http
+POST   /chat/channels/:channelId/files
+POST   /chat/channels/:channelId/images
+```
+
+#### **3. Message Management**
+
+```http
+POST   /chat/messages/:messageId/pin
+POST   /chat/messages/:messageId/translate
+GET    /chat/messages/:messageId/replies
+```
+
+#### **4. User Features**
+
+```http
+POST   /chat/users/:userId/status
+POST   /chat/users/:userId/block
+POST   /chat/users/:userId/mute
+```
+
+#### **5. Push Notifications**
+
+```http
+POST   /chat/push-tokens
+POST   /chat/notifications/send
+```
+
+### **⚡ MEDIUM PRIORITY:**
+
+#### **6. Search & Analytics**
+
+```http
+GET    /chat/search
+GET    /chat/analytics/usage
+GET    /chat/analytics/messages
+```
+
+#### **7. Advanced Moderation**
+
+```http
+POST   /chat/channels/:channelId/moderation/ban
+POST   /chat/channels/:channelId/moderation/timeout
+POST   /chat/channels/:channelId/moderation/flag
+```
+
+#### **8. Custom Commands**
+
+```http
+POST   /chat/commands/register
+GET    /chat/commands/list
+```
+
+### **🎯 LOW PRIORITY (Nice to Have):**
+
+#### **9. Advanced Features**
+
+```http
+POST   /chat/webhooks
+GET    /chat/export
+POST   /chat/polls
+```
+
+### **💡 Quick Implementation Example:**
+
+```javascript
+// Add Message Reactions Endpoint
+router.post(
+  "/messages/:messageId/reactions",
+  validateToken,
+  async (req, res) => {
+    const { messageId } = req.params;
+    const { type } = req.body; // 'like', 'love', 'laugh', etc.
+    const user = req.user;
+
+    try {
+      // Use Stream SDK to add reaction
+      const response = await streamClient.sendReaction(
+        messageId,
+        { type },
+        user.id
+      );
+      res.json(response);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to add reaction" });
+    }
+  }
+);
+
+// Add File Upload Endpoint
+router.post(
+  "/channels/:channelId/files",
+  validateToken,
+  upload.single("file"),
+  async (req, res) => {
+    const { channelId } = req.params;
+    const file = req.file;
+
+    try {
+      // Upload to Stream
+      const uploadResponse = await streamClient.uploadFile(
+        file.buffer,
+        file.originalname,
+        file.mimetype
+      );
+
+      // Send message with attachment
+      const channel = streamClient.channel("messaging", channelId);
+      await channel.sendMessage({
+        text: `Shared a ${file.mimetype.includes("image") ? "photo" : "file"}`,
+        attachments: [
+          {
+            type: file.mimetype.includes("image") ? "image" : "file",
+            file_url: uploadResponse.file,
+            title: file.originalname,
+          },
+        ],
+      });
+
+      res.json(uploadResponse);
+    } catch (error) {
+      res.status(500).json({ error: "File upload failed" });
+    }
+  }
+);
+```
+
+---
+
+## ❌ Error Handling
+
+### **Common Errors:**
+
+```javascript
+// Token expired
+{
+  "error": "JWT token expired",
+  "code": 401
+}
+
+// Invalid channel
+{
+  "error": "Channel not found",
+  "code": 404
+}
+
+// Rate limited
+{
+  "error": "Too many requests",
+  "code": 429,
+  "retry_after": 60
+}
+
+// Polls not enabled
+{
+  "error": "Polls are not enabled for this application",
+  "code": 403
+}
+```
+
+### **🗳️ Polls Troubleshooting:**
+
+If polls aren't working on the frontend, try these steps:
+
+#### **1. Test Backend Configuration:**
+
+```javascript
+// Test if polls are enabled on your backend
+const response = await fetch("/chat/test-polls", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${supabaseToken}`,
+    "Content-Type": "application/json",
+  },
+});
+const result = await response.json();
+console.log("Polls test result:", result);
+```
+
+#### **2. Check Frontend Permissions:**
+
+```javascript
+// Make sure your user has the right permissions
+const client = StreamChat.getInstance("YOUR_API_KEY");
+await client.connectUser(userdata, token);
+
+// Test creating a poll
+try {
+  const poll = await client.createPoll({
+    name: "Test Poll",
+    options: [{ text: "Option 1" }, { text: "Option 2" }],
+  });
+  console.log("Poll created:", poll);
+} catch (error) {
+  console.error("Poll creation failed:", error);
+}
+```
+
+#### **3. Common Issues:**
+
+- **"Polls not enabled"** - Your backend configuration isn't applied yet. Restart your server.
+- **"Permission denied"** - User doesn't have CreatePoll permission. Check your app permissions in Stream dashboard.
+- **"Invalid poll options"** - Poll needs at least 2 options with text content.
+- **"Channel doesn't support polls"** - Channel type 'messaging' needs `polls: true` in configuration.
+
+### **Frontend Error Handling:**
+
+```javascript
+const handleChatError = (error) => {
+  switch (error.code) {
+    case 401:
+      // Refresh token
+      refreshChatToken();
+      break;
+    case 404:
+      // Channel not found
+      navigateToChannelList();
+      break;
+    case 429:
+      // Rate limited
+      showMessage("Please slow down");
+      break;
+    default:
+      showMessage("Something went wrong");
+  }
+};
+```
+
+---
+
+## 🎯 Summary
+
+### **What You Have Now:**
+
+- ✅ Basic authentication (token generation)
+- ✅ Basic channel management (create, join, leave)
+- ✅ One custom command (/event)
+
+### **What Stream Chat Can Do:**
+
+- 🌟 **60+ advanced features** for complete chat experience
+- 🚀 **Real-time messaging** with reactions, files, threads
+- 🔧 **Advanced moderation** and user management
+- 📱 **Rich UI components** for React Native
+
+### **Next Steps:**
+
+1. **Pick 3-5 high priority features** from the roadmap
+2. **Implement backend endpoints** for those features
+3. **Update frontend** to use new capabilities
+4. **Test and iterate** based on user feedback
+
+The beauty of Stream Chat is that **most features work out-of-the-box** on the frontend. You only need backend endpoints for **server-side operations** like file uploads, moderation, and push notifications!

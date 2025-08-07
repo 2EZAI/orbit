@@ -13,12 +13,15 @@ import { useTheme } from "~/src/components/ThemeProvider";
 interface SectionProps {
   title: string;
   data: any[];
-  layout: "horizontal" | "grid";
+  layout: "horizontal" | "grid" | "list";
   onSeeAll: () => void;
   renderItem: ({ item }: { item: any }) => React.ReactElement;
   loading: boolean;
   subtitle?: string;
   icon?: React.ReactNode;
+  onLoadMore?: () => void;
+  hasMoreData?: boolean;
+  isLoadingMore?: boolean;
 }
 
 export function FeedSection({
@@ -30,6 +33,9 @@ export function FeedSection({
   loading,
   subtitle,
   icon,
+  onLoadMore,
+  hasMoreData = false,
+  isLoadingMore = false,
 }: SectionProps) {
   const { theme } = useTheme();
 
@@ -108,6 +114,16 @@ export function FeedSection({
           contentContainerStyle={styles.gridContainer}
           columnWrapperStyle={styles.gridRow}
         />
+      ) : layout === "list" ? (
+        <FlatList
+          data={data.slice(0, 5)} // Show only first 5 in compact list
+          key={"list"}
+          showsVerticalScrollIndicator={false}
+          keyExtractor={(_, idx) => `list-${idx}`}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContainer}
+          scrollEnabled={false} // No scrolling, fixed height
+        />
       ) : (
         <FlatList
           data={data}
@@ -119,6 +135,28 @@ export function FeedSection({
           contentContainerStyle={styles.horizontalContainer}
           snapToInterval={280} // Assuming card width + margin
           decelerationRate="fast"
+          snapToAlignment="start"
+          onEndReached={() => {
+            if (hasMoreData && !isLoadingMore && onLoadMore) {
+              onLoadMore();
+            }
+          }}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={
+            hasMoreData && isLoadingMore ? (
+              <View style={styles.loadMoreIndicator}>
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+                <Text
+                  style={[
+                    styles.loadMoreText,
+                    { color: theme.colors.text + "60" },
+                  ]}
+                >
+                  Loading more...
+                </Text>
+              </View>
+            ) : null
+          }
         />
       )}
 
@@ -217,5 +255,22 @@ const styles = StyleSheet.create({
   dataIndicatorText: {
     fontSize: 12,
     fontWeight: "500",
+  },
+  listContainer: {
+    paddingHorizontal: 20,
+  },
+  loadMoreIndicator: {
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    width: 120,
+  },
+  loadMoreText: {
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 8,
+    textAlign: "center",
   },
 });

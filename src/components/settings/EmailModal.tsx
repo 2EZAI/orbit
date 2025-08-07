@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
-import { Sheet } from "~/src/components/ui/sheet";
+import { KeyboardAwareSheet } from "./KeyboardAwareSheet";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useAuth } from "~/src/lib/auth";
 import { supabase } from "~/src/lib/supabase";
@@ -20,14 +20,6 @@ export function EmailModal({ isOpen, onClose }: EmailModalProps) {
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  // Reset expansion when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setIsExpanded(false);
-    }
-  }, [isOpen]);
 
   // Load user data
   useEffect(() => {
@@ -114,7 +106,7 @@ export function EmailModal({ isOpen, onClose }: EmailModalProps) {
     validateEmail(email.trim());
 
   return (
-    <Sheet isOpen={isOpen} onClose={onClose} expanded={isExpanded}>
+    <KeyboardAwareSheet isOpen={isOpen} onClose={onClose}>
       <View style={{ padding: 20 }}>
         {/* Header */}
         <View
@@ -144,6 +136,8 @@ export function EmailModal({ isOpen, onClose }: EmailModalProps) {
                 fontSize: 20,
                 fontWeight: "800",
                 color: theme.colors.text,
+                lineHeight: 25,
+                paddingVertical: 2,
               }}
             >
               Update Email
@@ -211,8 +205,6 @@ export function EmailModal({ isOpen, onClose }: EmailModalProps) {
             <Input
               value={email}
               onChangeText={setEmail}
-              onFocus={() => setIsExpanded(true)}
-              onBlur={() => setIsExpanded(false)}
               placeholder="your.email@example.com"
               keyboardType="email-address"
               autoCapitalize="none"
@@ -307,6 +299,6 @@ export function EmailModal({ isOpen, onClose }: EmailModalProps) {
           </TouchableOpacity>
         </View>
       </View>
-    </Sheet>
+    </KeyboardAwareSheet>
   );
 }

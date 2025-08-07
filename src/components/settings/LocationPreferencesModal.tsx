@@ -7,7 +7,7 @@ import {
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
-import { Sheet } from "~/src/components/ui/sheet";
+import { KeyboardAwareSheet } from "./KeyboardAwareSheet";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useAuth } from "~/src/lib/auth";
 import { useUser } from "~/hooks/useUserData";
@@ -53,7 +53,6 @@ export function LocationPreferencesModal({
     "current"
   );
   const [saving, setSaving] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
 
   // Orbit mode states
   const [searchText, setSearchText] = useState("");
@@ -63,13 +62,6 @@ export function LocationPreferencesModal({
   const [orbitLocation, setOrbitLocation] = useState<OrbitLocation | null>(
     null
   );
-
-  // Reset expansion when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setIsExpanded(false);
-    }
-  }, [isOpen]);
 
   // Load user data
   useEffect(() => {
@@ -290,7 +282,7 @@ export function LocationPreferencesModal({
   );
 
   return (
-    <Sheet isOpen={isOpen} onClose={onClose} expanded={isExpanded}>
+    <KeyboardAwareSheet isOpen={isOpen} onClose={onClose}>
       <View style={{ padding: 20 }}>
         {/* Header */}
         <View
@@ -320,6 +312,8 @@ export function LocationPreferencesModal({
                 fontSize: 20,
                 fontWeight: "800",
                 color: theme.colors.text,
+                lineHeight: 25,
+                paddingVertical: 2,
               }}
             >
               Location Preferences
@@ -454,8 +448,6 @@ export function LocationPreferencesModal({
                       setShowResults(false);
                     }
                   }}
-                  onFocus={() => setIsExpanded(true)}
-                  onBlur={() => setIsExpanded(false)}
                   placeholder="Search for a city..."
                   style={{
                     flex: 1,
@@ -583,6 +575,6 @@ export function LocationPreferencesModal({
           </TouchableOpacity>
         </View>
       </View>
-    </Sheet>
+    </KeyboardAwareSheet>
   );
 }

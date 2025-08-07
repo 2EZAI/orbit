@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
-import { Sheet } from "~/src/components/ui/sheet";
+import { KeyboardAwareSheet } from "./KeyboardAwareSheet";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useAuth } from "~/src/lib/auth";
 import { useUser } from "~/hooks/useUserData";
@@ -24,14 +24,6 @@ export function UsernameModal({ isOpen, onClose }: UsernameModalProps) {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  // Reset expansion when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setIsExpanded(false);
-    }
-  }, [isOpen]);
 
   // Load user data
   useEffect(() => {
@@ -163,7 +155,7 @@ export function UsernameModal({ isOpen, onClose }: UsernameModalProps) {
     !checking;
 
   return (
-    <Sheet isOpen={isOpen} onClose={onClose} expanded={isExpanded}>
+    <KeyboardAwareSheet isOpen={isOpen} onClose={onClose}>
       <View style={{ padding: 20 }}>
         {/* Header */}
         <View
@@ -193,6 +185,8 @@ export function UsernameModal({ isOpen, onClose }: UsernameModalProps) {
                 fontSize: 20,
                 fontWeight: "800",
                 color: theme.colors.text,
+                lineHeight: 25,
+                paddingVertical: 2,
               }}
             >
               Update Username
@@ -271,8 +265,6 @@ export function UsernameModal({ isOpen, onClose }: UsernameModalProps) {
               <Input
                 value={username}
                 onChangeText={setUsername}
-                onFocus={() => setIsExpanded(true)}
-                onBlur={() => setIsExpanded(false)}
                 placeholder="choose_username"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -417,6 +409,6 @@ export function UsernameModal({ isOpen, onClose }: UsernameModalProps) {
           </TouchableOpacity>
         </View>
       </View>
-    </Sheet>
+    </KeyboardAwareSheet>
   );
 }

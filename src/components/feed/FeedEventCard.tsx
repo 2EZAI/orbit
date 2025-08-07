@@ -35,7 +35,8 @@ export function FeedEventCard({
           styles.eventCard,
           {
             backgroundColor: theme.colors.card,
-            borderColor: theme.colors.border + "40",
+            borderColor: theme.colors.border,
+            shadowColor: theme.colors.primary,
           },
         ]}
         onPress={() => {
@@ -209,12 +210,11 @@ const styles = StyleSheet.create({
   eventCard: {
     width: CARD_WIDTH,
     borderRadius: 24,
-    borderWidth: 1,
-    shadowColor: "#8B5CF6",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 6,
     marginHorizontal: 16,
     marginBottom: 20,
     overflow: "hidden",
