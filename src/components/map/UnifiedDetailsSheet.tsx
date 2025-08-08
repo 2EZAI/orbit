@@ -33,7 +33,7 @@ import {
 } from "lucide-react-native";
 import { format } from "date-fns";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
-import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import BottomSheetModal, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 import { useLocationEvents } from "~/hooks/useLocationEvents";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

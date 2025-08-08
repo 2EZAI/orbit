@@ -710,7 +710,7 @@ console.log("error_catch>",e);
           <View
             style={{
               padding: 16,
-              marginBottom: 56,
+              marginBottom: Platform.OS==='ios' ? 56 : 90 ,
               borderTopWidth: 1,
               borderTopColor: theme.colors.border,
               backgroundColor: theme.colors.card,

@@ -8,6 +8,9 @@ import {
   Platform,
   DeviceEventEmitter,
   ActivityIndicator,
+  Modal,
+  TextInput,
+  Button,
 } from "react-native";
 import { Category, Prompt } from "~/hooks/useMapEvents";
 import { Text } from "~/src/components/ui/text";
@@ -116,7 +119,9 @@ export default function CreateEvent() {
   const params = useLocalSearchParams();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-
+  const [input, setInput] = useState("");
+  const [isStartDate, setIsStartDate] = useState(true);
+  const [showDateModal, setShowDateModal] = useState(false);
   // Form state
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
@@ -245,7 +250,23 @@ export default function CreateEvent() {
         }
         return locationDetails.city !== "" && locationDetails.state !== "";
       case 5: // Date & Time
-        return startDate < endDate;
+        // Truncate both to "minute" level
+        function truncateToMinute(date) {
+          return new Date(
+            date.getFullYear(),
+            date.getMonth(),
+            date.getDate(),
+            date.getHours(),
+            date.getMinutes()
+          );
+        }
+
+        const startTruncated = truncateToMinute(startDate);
+        const endTruncated = truncateToMinute(endDate);
+        console.log(startTruncated , endTruncated);
+        // console.log("startDate > endDate>", startDate, endDate);
+        return startTruncated < endTruncated;
+      // return startDate > endDate;
       case 6: // Additional (optional)
         return true;
       default:
@@ -255,12 +276,27 @@ export default function CreateEvent() {
 
   const handleNext = () => {
     if (!validateCurrentStep()) {
+      console.log("currentStep>",currentStep);
+      if(currentStep === 5 && endDate.getTime() <= startDate.getTime())
+      {
+        console.log("ffff");
+        Toast.show({
+          type: "error",
+          text1: "End Date-Time Start Date-Time error",
+          text2: "End Date-Time cannot be the same or earlier than Start Date-Time",
+        });
+        return;
+      
+      }
+      else{
       Toast.show({
         type: "error",
         text1: "Please complete all required fields",
         text2: "Fill in the missing information to continue",
       });
       return;
+      }
+     
     }
 
     // Mark current step as completed
@@ -282,6 +318,7 @@ export default function CreateEvent() {
   };
 
   const showDatePicker = (isStart: boolean) => {
+    setIsStartDate(isStart);
     const currentDate = isStart ? startDate : endDate;
     const options = [
       "Today",
@@ -310,26 +347,62 @@ export default function CreateEvent() {
         } else if (selectedIndex === 2) {
           // In 2 days
           newDate.setDate(newDate.getDate() + 2);
+          console.log("tomorroew>", newDate);
         } else if (selectedIndex === 3) {
           // In 3 days
           newDate.setDate(newDate.getDate() + 3);
         } else if (selectedIndex === 4) {
-          // Show date input alert
-          Alert.prompt("Enter Date", "Format: MM/DD/YYYY", (text) => {
-            const date = new Date(text);
-            if (isNaN(date.getTime())) {
-              Alert.alert(
-                "Invalid Date",
-                "Please enter a valid date in MM/DD/YYYY format"
-              );
-              return;
-            }
-            if (isStart) {
-              setStartDate(date);
-            } else {
-              setEndDate(date);
-            }
-          });
+          if (Platform.OS === "android") {
+            setShowDateModal(true);
+          } else {
+            // Show date input alert
+            Alert.prompt("Enter Date", "Format: MM/DD/YYYY", (text) => {
+              console.log("datetext>", text);
+
+              // Validate MM/DD/YYYY format using regex
+              const datePattern =
+                /^(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\/\d{4}$/;
+
+              if (!datePattern.test(text)) {
+                Alert.alert("Invalid Format", "Please use MM/DD/YYYY format");
+                return;
+              }
+
+              // Parse components
+              const [month, day, year] = text.split("/");
+              const date = new Date(`${year}-${month}-${day}T00:00:00Z`); // UTC start of day
+
+              if (isNaN(date.getTime())) {
+                Alert.alert("Invalid Date", "Please enter a valid date");
+                return;
+              }
+
+              // Convert to ISO string
+              const isoString = date.toISOString(); // e.g., 2025-08-09T00:00:00.000Z
+              console.log("ISO date>", isoString);
+              const dateObject = new Date(isoString);
+              // Set state
+              if (isStart) {
+                setStartDate(dateObject);
+              } else {
+                setEndDate(dateObject);
+              }
+              // const date = new Date(text);
+              // console.log('date>',date);
+              // if (isNaN(date.getTime())) {
+              //   Alert.alert(
+              //     "Invalid Date",
+              //     "Please enter a valid date in MM/DD/YYYY format"
+              //   );
+              //   return;
+              // }
+              // if (isStart) {
+              //   setStartDate(date);
+              // } else {
+              //   setEndDate(date);
+              // }
+            });
+          }
           return;
         }
 
@@ -344,6 +417,38 @@ export default function CreateEvent() {
         }
       }
     );
+  };
+
+  const handleSubmit = () => {
+    // Validate MM/DD/YYYY format using regex
+    const datePattern = /^(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\/\d{4}$/;
+
+    if (!datePattern.test(input)) {
+      Alert.alert("Invalid Format", "Please use MM/DD/YYYY format");
+      return;
+    }
+
+    // Parse components
+    const [month, day, year] = input.split("/");
+    const date = new Date(`${year}-${month}-${day}T00:00:00Z`); // UTC start of day
+
+    if (isNaN(date.getTime())) {
+      Alert.alert("Invalid Date", "Please enter a valid date");
+      return;
+    }
+
+    // Convert to ISO string
+    const isoString = date.toISOString(); // e.g., 2025-08-09T00:00:00.000Z
+    console.log("ISO date>", isoString);
+    const dateObject = new Date(isoString);
+    setInput("");
+    setShowDateModal(false);
+    // Set state
+    if (isStartDate) {
+      setStartDate(dateObject);
+    } else {
+      setEndDate(dateObject);
+    }
   };
 
   const showTimePicker = (isStart: boolean) => {
@@ -877,12 +982,7 @@ export default function CreateEvent() {
         />
 
         {/* Current Step Content */}
-        <View
-          
-          style={{ flex: 1 }}
-        >
-          {renderCurrentStep()}
-        </View>
+        <View style={{ flex: 1 }}>{renderCurrentStep()}</View>
 
         {/* Navigation Buttons */}
         <View
@@ -965,6 +1065,39 @@ export default function CreateEvent() {
 
       {/* Toast Component */}
       <Toast />
+      {showDateModal && (
+        <Modal visible={showDateModal} transparent animationType="slide">
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              padding: 20,
+              backgroundColor: "rgba(0,0,0,0.5)",
+            }}
+          >
+            <View
+              style={{ backgroundColor: "#fff", padding: 20, borderRadius: 10 }}
+            >
+              <Text>Enter Date (MM/DD/YYYY):</Text>
+              <TextInput
+                value={input}
+                onChangeText={setInput}
+                placeholder="MM/DD/YYYY"
+                keyboardType="numbers-and-punctuation"
+                style={{ borderBottomWidth: 1, marginVertical: 10 }}
+              />
+              <Button title="Submit" onPress={handleSubmit} />
+              <Button
+                title="Cancel"
+                onPress={() => {
+                  setShowDateModal(false);
+                }}
+                color="gray"
+              />
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }

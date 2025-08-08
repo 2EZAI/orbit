@@ -19,7 +19,7 @@ export default function DateTimeSection({
   onShowTimePicker,
 }: DateTimeSectionProps) {
   const { theme } = useTheme();
-
+console.log("startDate>>",startDate)
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
@@ -165,7 +165,7 @@ export default function DateTimeSection({
                 <Text style={{ color: theme.colors.text }}>Date</Text>
               </View>
               <Text style={{ color: "#8B5CF6", fontWeight: "600" }}>
-                {startDate.toLocaleDateString()}
+                {startDate?.toLocaleDateString()}
               </Text>
             </TouchableOpacity>
 

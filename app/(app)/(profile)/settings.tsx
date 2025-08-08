@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, TouchableOpacity, ScrollView, SafeAreaView } from "react-native";
+import { View, TouchableOpacity, ScrollView } from "react-native";
 import { router } from "expo-router";
 import { Text } from "~/src/components/ui/text";
 import { supabase } from "~/src/lib/supabase";
@@ -31,6 +31,7 @@ import { LocationPreferencesModal } from "~/src/components/settings/LocationPref
 import { AddressModal } from "~/src/components/settings/AddressModal";
 import { InterestsModal } from "~/src/components/settings/InterestsModal";
 import { PrivacyModal } from "~/src/components/settings/PrivacyModal";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface SettingItemProps {
   icon: React.ReactNode;
@@ -195,7 +196,7 @@ export default function SettingsScreen() {
         </Text>
       </View>
 
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+      <ScrollView style={{ flex: 1, marginBottom:80 }} showsVerticalScrollIndicator={false}>
         {/* Profile Settings */}
         <SectionHeader title="Profile Settings" />
 

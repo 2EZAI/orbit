@@ -162,7 +162,7 @@ export default function SocialFeed() {
 
       const response_ = await response.json();
       const postsData = response_?.data;
-
+// console.log("postsData>",postsData);
       const transformedPosts =
         postsData?.map((post: any) => ({
           id: post.id,
@@ -172,8 +172,8 @@ export default function SocialFeed() {
           address: post.address,
           city: post.city,
           state: post.state,
-          like_count: Math.max(0, post.like_count || 0),
-          comment_count: Math.max(0, post.comment_count || 0),
+          like_count: Math.max(0, post?.likes?.count || 0),
+          comment_count: Math.max(0, post?.comments?.count || 0),
           user: post.created_by || {
             id: post.id,
             username: post.username,
