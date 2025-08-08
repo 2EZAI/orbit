@@ -1,19 +1,13 @@
 import React from "react";
-import { TouchableOpacity, View, StyleSheet } from "react-native";
+import { TouchableOpacity, View, StyleSheet, Dimensions } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { OptimizedImage } from "~/src/components/ui/optimized-image";
 import { useTheme } from "~/src/components/ThemeProvider";
+import { MapPin, Star, ArrowRight } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
-const FALLBACK_IMAGE =
-  "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80";
-
-function isValidImage(url: string | undefined | null) {
-  if (!url) return false;
-  if (typeof url !== "string") return false;
-  if (url.trim() === "") return false;
-  if (url.includes("placehold.co") || url.includes("fpoimg.com")) return false;
-  return true;
-}
+const { width: screenWidth } = Dimensions.get("window");
+const LOCATION_CARD_WIDTH = screenWidth - 40; // Full width with margins
 
 interface LocationCardProps {
   item: any;
@@ -26,78 +20,191 @@ export function LocationCard({ item, onPress }: LocationCardProps) {
   return (
     <TouchableOpacity
       style={[
-        styles.airbnbLocationCard,
-        { backgroundColor: theme.colors.card },
+        styles.modernLocationCard,
+        {
+          backgroundColor: theme.colors.card,
+          borderColor: theme.colors.border,
+          shadowColor: theme.colors.primary,
+        },
       ]}
-      activeOpacity={0.9}
+      activeOpacity={0.96}
       onPress={onPress}
     >
-      {/* Location Image */}
-      <OptimizedImage
-        uri={item.image_urls?.[0]}
-        width={280}
-        height={120}
-        quality={75}
-        thumbnail={true}
-        lazy={true}
-        style={styles.airbnbLocationImage}
-        resizeMode="cover"
-      />
-      <View style={styles.airbnbLocationContent}>
+      {/* Location Image with Overlay */}
+      <View style={styles.imageSection}>
+        <OptimizedImage
+          uri={item.image_urls?.[0]}
+          width={140}
+          height={120}
+          quality={85}
+          thumbnail={true}
+          lazy={true}
+          style={styles.locationImage}
+          resizeMode="cover"
+        />
+
+        {/* Subtle overlay for image */}
+        <LinearGradient
+          colors={["transparent", "rgba(0,0,0,0.1)"]}
+          style={styles.imageOverlay}
+        />
+
+        {/* Rating/Popularity Badge - Only show if rating exists */}
+        {item.rating && (
+          <View
+            style={[
+              styles.ratingBadge,
+              { backgroundColor: theme.colors.primary },
+            ]}
+          >
+            <Star size={10} color="white" fill="white" />
+            <Text style={styles.ratingText}>{item.rating}</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Content Section with Better Layout */}
+      <View style={styles.contentSection}>
+        {/* Location Category */}
+        <View
+          style={[
+            styles.categoryBadge,
+            { backgroundColor: theme.colors.primary + "15" },
+          ]}
+        >
+          <MapPin size={12} color={theme.colors.primary} />
+          <Text style={[styles.categoryText, { color: theme.colors.primary }]}>
+            {item.category || item.type || "Place"}
+          </Text>
+        </View>
+
+        {/* Location Title - More space */}
         <Text
-          style={[styles.airbnbLocationTitle, { color: theme.colors.text }]}
+          style={[styles.locationTitle, { color: theme.colors.text }]}
           numberOfLines={2}
         >
-          {item.title}
+          {item.title || item.name}
         </Text>
-        {item.location && (
+
+        {/* Location Address/Description */}
+        {(item.location || item.address || item.description) && (
           <Text
             style={[
-              styles.airbnbLocationSubtitle,
-              { color: theme.colors.text + "CC" },
+              styles.locationSubtitle,
+              { color: theme.colors.text + "80" },
             ]}
-            numberOfLines={1}
+            numberOfLines={2}
           >
-            {item.location}
+            {item.location || item.address || item.description}
           </Text>
         )}
+
+        {/* Action Section */}
+        <View style={styles.actionSection}>
+          <Text
+            style={[styles.actionText, { color: theme.colors.text + "60" }]}
+          >
+            Explore location
+          </Text>
+          <ArrowRight size={14} color={theme.colors.text + "60"} />
+        </View>
       </View>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  airbnbLocationCard: {
-    width: "100%",
-    height: 120,
-    borderRadius: 18,
-    shadowColor: "#8B5CF6",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-    marginBottom: 12,
+  modernLocationCard: {
+    width: LOCATION_CARD_WIDTH,
+    minHeight: 140,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 6,
+    marginBottom: 16,
     overflow: "hidden",
     flexDirection: "row",
-    alignItems: "center",
   },
-  airbnbLocationImage: {
-    width: 100,
+  imageSection: {
+    position: "relative",
+    width: 140,
+  },
+  locationImage: {
+    width: 140,
     height: "100%",
-    borderTopLeftRadius: 18,
-    borderBottomLeftRadius: 18,
+    borderTopLeftRadius: 20,
+    borderBottomLeftRadius: 20,
   },
-  airbnbLocationContent: {
+  imageOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopLeftRadius: 20,
+    borderBottomLeftRadius: 20,
+  },
+  ratingBadge: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  ratingText: {
+    color: "white",
+    fontSize: 10,
+    fontWeight: "600",
+    marginLeft: 2,
+  },
+  contentSection: {
     flex: 1,
-    paddingLeft: 12,
+    padding: 16,
+    justifyContent: "space-between",
   },
-  airbnbLocationTitle: {
+  categoryBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    marginBottom: 8,
+  },
+  categoryText: {
+    fontSize: 11,
+    fontWeight: "600",
+    marginLeft: 4,
+  },
+  locationTitle: {
     fontSize: 16,
     fontWeight: "700",
-    marginBottom: 2,
+    lineHeight: 22,
+    marginBottom: 6,
   },
-  airbnbLocationSubtitle: {
+  locationSubtitle: {
     fontSize: 13,
+    fontWeight: "500",
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  actionSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  actionText: {
+    fontSize: 12,
     fontWeight: "500",
   },
 });

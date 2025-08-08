@@ -8,11 +8,13 @@ import {
   Image,
   Platform,
   ScrollView,
+  KeyboardAvoidingView,
 } from "react-native";
 import { router } from "expo-router";
 import { supabase } from "~/src/lib/supabase";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
+import { KeyboardAwareInput } from "~/src/components/ui/keyboard-aware-input";
 import { useUser } from "~/hooks/useUserData";
 import { Check, X, Camera, Mail, Phone, User } from "lucide-react-native";
 import { useDebouncedCallback } from "~/src/hooks/useDebounce";
@@ -21,6 +23,7 @@ import { useAuth } from "~/src/lib/auth";
 import { useChat } from "~/src/lib/chat";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useKeyboardAware } from "~/src/hooks/useKeyboardAware";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 
@@ -43,6 +46,8 @@ export default function UsernameScreen() {
   const { session } = useAuth();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const { keyboardState, scrollViewRef, scrollToInput, ScrollToInputContext } =
+    useKeyboardAware();
 
   // Form state
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -57,6 +62,7 @@ export default function UsernameScreen() {
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
 
   useEffect(() => {
     // Only check user on initial load, not on every user state change
@@ -127,6 +133,10 @@ export default function UsernameScreen() {
 
     if (!result.canceled) {
       setProfileImage(result.assets[0].uri);
+      // Clear validation errors when image is selected
+      if (showValidationErrors) {
+        setShowValidationErrors(false);
+      }
     }
   }
 
@@ -287,13 +297,14 @@ This platform helps you discover and join amazing events near you. Let's get sta
     if (!user || !username || !isAvailable || isSubmitting) return;
 
     if (!profileImage || !firstName || !lastName) {
+      setShowValidationErrors(true);
       setError(
         "Please fill in all required fields and select a profile picture"
       );
       Toast.show({
         type: "error",
-        text1: "Error",
-        text2: "Please fill in all required fields",
+        text1: "Missing Required Fields",
+        text2: "Please complete all required fields before continuing",
       });
       return;
     }
@@ -354,556 +365,700 @@ This platform helps you discover and join amazing events near you. Let's get sta
     profileImage && firstName && lastName && username && isAvailable;
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: theme.dark ? "#1a1a2e" : "#f8fafc",
-      }}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
     >
-      <StatusBar
-        barStyle={theme.dark ? "light-content" : "dark-content"}
-        backgroundColor="transparent"
-        translucent
-      />
-
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingTop: Math.max(insets.top + 40, 60),
-          paddingHorizontal: 24,
-          paddingBottom: Math.max(insets.bottom + 40, 60),
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: theme.dark ? "#1a1a2e" : "#f8fafc",
         }}
-        showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={{ marginBottom: 48 }}>
-          <Text
-            style={{
-              fontSize: 42,
-              fontWeight: "900",
-              color: theme.colors.text,
-              marginBottom: 16,
-              lineHeight: 50,
-              textAlign: "center",
-            }}
-          >
-            Complete Your Profile ✨
-          </Text>
-          <Text
-            style={{
-              fontSize: 18,
-              color: theme.colors.text + "CC",
-              lineHeight: 26,
-              textAlign: "center",
-              maxWidth: 320,
-              alignSelf: "center",
-            }}
-          >
-            Tell us a bit about yourself to get started on your cosmic journey
-          </Text>
-        </View>
+        <StatusBar
+          barStyle={theme.dark ? "light-content" : "dark-content"}
+          backgroundColor="transparent"
+          translucent
+        />
 
-        {/* Error Message */}
-        {error && (
-          <View
-            style={{
-              padding: 20,
-              marginBottom: 32,
-              backgroundColor: theme.dark
-                ? "rgba(239, 68, 68, 0.15)"
-                : "rgba(239, 68, 68, 0.1)",
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: theme.dark
-                ? "rgba(239, 68, 68, 0.3)"
-                : "rgba(239, 68, 68, 0.2)",
-              marginHorizontal: 8,
+        <ScrollToInputContext.Provider value={{ scrollToInput }}>
+          <ScrollView
+            ref={scrollViewRef}
+            style={{ flex: 1 }}
+            contentContainerStyle={{
+              paddingTop: Math.max(insets.top + 40, 60),
+              paddingHorizontal: 24,
+              paddingBottom: Math.max(
+                insets.bottom +
+                  40 +
+                  (keyboardState.isKeyboardVisible ? 100 : 0),
+                60
+              ),
             }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            scrollEventThrottle={16}
           >
-            <Text
-              style={{ fontSize: 16, color: "#EF4444", textAlign: "center" }}
-            >
-              {error}
-            </Text>
-          </View>
-        )}
+            {/* Header */}
+            <View style={{ marginBottom: 48 }}>
+              <Text
+                style={{
+                  fontSize: 42,
+                  fontWeight: "900",
+                  color: theme.colors.text,
+                  marginBottom: 16,
+                  lineHeight: 50,
+                  textAlign: "center",
+                }}
+              >
+                Complete Your Profile ✨
+              </Text>
+              <Text
+                style={{
+                  fontSize: 18,
+                  color: theme.colors.text + "CC",
+                  lineHeight: 26,
+                  textAlign: "center",
+                  maxWidth: 320,
+                  alignSelf: "center",
+                }}
+              >
+                Tell us a bit about yourself to get started on your cosmic
+                journey
+              </Text>
+            </View>
 
-        {/* Profile Picture */}
-        <View style={{ alignItems: "center", marginBottom: 40 }}>
-          <TouchableOpacity onPress={pickImage}>
-            <View
-              style={{
-                width: 140,
-                height: 140,
-                borderRadius: 70,
-                backgroundColor: theme.dark
-                  ? "rgba(139, 92, 246, 0.2)"
-                  : "rgba(139, 92, 246, 0.1)",
-                borderWidth: 4,
-                borderColor: "#8B5CF6",
-                justifyContent: "center",
-                alignItems: "center",
-                overflow: "hidden",
-                shadowColor: "#8B5CF6",
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.3,
-                shadowRadius: 20,
-                elevation: 12,
-              }}
-            >
-              {profileImage ? (
-                <Image
-                  source={{ uri: profileImage }}
-                  style={{ width: 140, height: 140, borderRadius: 70 }}
-                  resizeMode="cover"
+            {/* Error Message */}
+            {error && (
+              <View
+                style={{
+                  padding: 20,
+                  marginBottom: 32,
+                  backgroundColor: theme.dark
+                    ? "rgba(239, 68, 68, 0.15)"
+                    : "rgba(239, 68, 68, 0.1)",
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: theme.dark
+                    ? "rgba(239, 68, 68, 0.3)"
+                    : "rgba(239, 68, 68, 0.2)",
+                  marginHorizontal: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 16,
+                    color: "#EF4444",
+                    textAlign: "center",
+                  }}
+                >
+                  {error}
+                </Text>
+              </View>
+            )}
+
+            {/* Profile Picture */}
+            <View style={{ alignItems: "center", marginBottom: 40 }}>
+              <TouchableOpacity onPress={pickImage}>
+                <View
+                  style={{
+                    width: 140,
+                    height: 140,
+                    borderRadius: 70,
+                    backgroundColor: profileImage
+                      ? theme.dark
+                        ? "rgba(139, 92, 246, 0.2)"
+                        : "rgba(139, 92, 246, 0.1)"
+                      : showValidationErrors && !profileImage
+                      ? theme.dark
+                        ? "rgba(239, 68, 68, 0.15)"
+                        : "rgba(239, 68, 68, 0.1)"
+                      : theme.dark
+                      ? "rgba(139, 92, 246, 0.2)"
+                      : "rgba(139, 92, 246, 0.1)",
+                    borderWidth: 4,
+                    borderColor: profileImage
+                      ? "#10B981"
+                      : showValidationErrors && !profileImage
+                      ? "#EF4444"
+                      : "#8B5CF6",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    overflow: "hidden",
+                    shadowColor: profileImage
+                      ? "#10B981"
+                      : showValidationErrors && !profileImage
+                      ? "#EF4444"
+                      : "#8B5CF6",
+                    shadowOffset: { width: 0, height: 8 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 20,
+                    elevation: 12,
+                  }}
+                >
+                  {profileImage ? (
+                    <Image
+                      source={{ uri: profileImage }}
+                      style={{ width: 140, height: 140, borderRadius: 70 }}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <User
+                      size={56}
+                      color={
+                        showValidationErrors && !profileImage
+                          ? "#EF4444"
+                          : "#8B5CF6"
+                      }
+                    />
+                  )}
+                </View>
+                <View
+                  style={{
+                    position: "absolute",
+                    bottom: 8,
+                    right: 8,
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    backgroundColor: profileImage
+                      ? "#10B981"
+                      : showValidationErrors && !profileImage
+                      ? "#EF4444"
+                      : "#8B5CF6",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    borderWidth: 4,
+                    borderColor: theme.dark ? "#1a1a2e" : "#f8fafc",
+                    shadowColor: profileImage
+                      ? "#10B981"
+                      : showValidationErrors && !profileImage
+                      ? "#EF4444"
+                      : "#8B5CF6",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.4,
+                    shadowRadius: 12,
+                    elevation: 8,
+                  }}
+                >
+                  <Camera size={20} color="white" />
+                </View>
+              </TouchableOpacity>
+              <Text
+                style={{
+                  marginTop: 16,
+                  fontSize: 16,
+                  color:
+                    showValidationErrors && !profileImage
+                      ? "#EF4444"
+                      : profileImage
+                      ? "#10B981"
+                      : theme.colors.text + "CC",
+                  textAlign: "center",
+                  fontWeight: "600",
+                }}
+              >
+                {profileImage
+                  ? "✓ Profile picture added"
+                  : showValidationErrors && !profileImage
+                  ? "⚠️ Profile picture required"
+                  : "Tap to add profile picture *"}
+              </Text>
+            </View>
+
+            {/* Name Fields */}
+            <View style={{ marginBottom: 32 }}>
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: "700",
+                  color: theme.colors.text,
+                  marginBottom: 20,
+                  textAlign: "center",
+                }}
+              >
+                What should we call you?
+              </Text>
+              <View style={{ flexDirection: "row", gap: 16 }}>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: "600",
+                      color:
+                        showValidationErrors && !firstName
+                          ? "#EF4444"
+                          : theme.colors.text,
+                      marginBottom: 12,
+                    }}
+                  >
+                    First Name *
+                    {showValidationErrors && !firstName && (
+                      <Text style={{ color: "#EF4444" }}> - Required</Text>
+                    )}
+                  </Text>
+                  <View
+                    style={{
+                      height: 60,
+                      backgroundColor: theme.dark
+                        ? "rgba(255, 255, 255, 0.08)"
+                        : "rgba(255, 255, 255, 0.9)",
+                      borderRadius: 20,
+                      borderWidth: 2,
+                      borderColor: firstName
+                        ? "#10B981"
+                        : showValidationErrors && !firstName
+                        ? "#EF4444"
+                        : theme.dark
+                        ? "rgba(139, 92, 246, 0.3)"
+                        : "rgba(139, 92, 246, 0.2)",
+                      paddingHorizontal: 20,
+                      justifyContent: "center",
+                      shadowColor: firstName
+                        ? "#10B981"
+                        : showValidationErrors && !firstName
+                        ? "#EF4444"
+                        : firstName
+                        ? "#8B5CF6"
+                        : "transparent",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.2,
+                      shadowRadius: 12,
+                      elevation:
+                        firstName || (showValidationErrors && !firstName)
+                          ? 6
+                          : 0,
+                    }}
+                  >
+                    <KeyboardAwareInput
+                      placeholder="John"
+                      placeholderTextColor={theme.colors.text + "66"}
+                      value={firstName}
+                      onChangeText={(text) => {
+                        setFirstName(text);
+                        if (showValidationErrors && text) {
+                          setShowValidationErrors(false);
+                        }
+                      }}
+                      autoCapitalize="words"
+                      style={{
+                        backgroundColor: "transparent",
+                        borderWidth: 0,
+                        height: 60,
+                        fontSize: 18,
+                        color: theme.colors.text,
+                        fontWeight: "500",
+                      }}
+                    />
+                  </View>
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: "600",
+                      color:
+                        showValidationErrors && !lastName
+                          ? "#EF4444"
+                          : theme.colors.text,
+                      marginBottom: 12,
+                    }}
+                  >
+                    Last Name *
+                    {showValidationErrors && !lastName && (
+                      <Text style={{ color: "#EF4444" }}> - Required</Text>
+                    )}
+                  </Text>
+                  <View
+                    style={{
+                      height: 60,
+                      backgroundColor: theme.dark
+                        ? "rgba(255, 255, 255, 0.08)"
+                        : "rgba(255, 255, 255, 0.9)",
+                      borderRadius: 20,
+                      borderWidth: 2,
+                      borderColor: lastName
+                        ? "#10B981"
+                        : showValidationErrors && !lastName
+                        ? "#EF4444"
+                        : theme.dark
+                        ? "rgba(139, 92, 246, 0.3)"
+                        : "rgba(139, 92, 246, 0.2)",
+                      paddingHorizontal: 20,
+                      justifyContent: "center",
+                      shadowColor: lastName
+                        ? "#10B981"
+                        : showValidationErrors && !lastName
+                        ? "#EF4444"
+                        : lastName
+                        ? "#8B5CF6"
+                        : "transparent",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.2,
+                      shadowRadius: 12,
+                      elevation:
+                        lastName || (showValidationErrors && !lastName) ? 6 : 0,
+                    }}
+                  >
+                    <KeyboardAwareInput
+                      placeholder="Doe"
+                      placeholderTextColor={theme.colors.text + "66"}
+                      value={lastName}
+                      onChangeText={(text) => {
+                        setLastName(text);
+                        if (showValidationErrors && text) {
+                          setShowValidationErrors(false);
+                        }
+                      }}
+                      autoCapitalize="words"
+                      style={{
+                        backgroundColor: "transparent",
+                        borderWidth: 0,
+                        height: 60,
+                        fontSize: 18,
+                        color: theme.colors.text,
+                        fontWeight: "500",
+                      }}
+                    />
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            {/* Contact Information */}
+            <View style={{ marginBottom: 32 }}>
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: "700",
+                  color: theme.colors.text,
+                  marginBottom: 20,
+                  textAlign: "center",
+                }}
+              >
+                Contact Information
+              </Text>
+
+              {/* Email (Read-only) */}
+              <View style={{ marginBottom: 20 }}>
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "600",
+                    color: theme.colors.text,
+                    marginBottom: 12,
+                  }}
+                >
+                  Email Address
+                </Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    height: 60,
+                    backgroundColor: theme.dark
+                      ? "rgba(255, 255, 255, 0.05)"
+                      : "rgba(255, 255, 255, 0.6)",
+                    borderRadius: 20,
+                    borderWidth: 2,
+                    borderColor: theme.dark
+                      ? "rgba(139, 92, 246, 0.2)"
+                      : "rgba(139, 92, 246, 0.15)",
+                    paddingHorizontal: 20,
+                  }}
+                >
+                  <Mail
+                    size={24}
+                    color={theme.colors.text + "66"}
+                    style={{ marginRight: 16 }}
+                  />
+                  <Text
+                    style={{
+                      flex: 1,
+                      fontSize: 18,
+                      color: theme.colors.text + "77",
+                      fontWeight: "500",
+                    }}
+                  >
+                    {email}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Phone */}
+              <View>
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "600",
+                    color: theme.colors.text,
+                    marginBottom: 12,
+                  }}
+                >
+                  Phone Number (Optional)
+                </Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    height: 60,
+                    backgroundColor: theme.dark
+                      ? "rgba(255, 255, 255, 0.08)"
+                      : "rgba(255, 255, 255, 0.9)",
+                    borderRadius: 20,
+                    borderWidth: 2,
+                    borderColor: phone
+                      ? "#8B5CF6"
+                      : theme.dark
+                      ? "rgba(139, 92, 246, 0.3)"
+                      : "rgba(139, 92, 246, 0.2)",
+                    paddingHorizontal: 20,
+                    shadowColor: phone ? "#8B5CF6" : "transparent",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 12,
+                    elevation: phone ? 6 : 0,
+                  }}
+                >
+                  <Phone
+                    size={24}
+                    color="#8B5CF6"
+                    style={{ marginRight: 16 }}
+                  />
+                  <KeyboardAwareInput
+                    placeholder="+1 (555) 000-0000"
+                    placeholderTextColor={theme.colors.text + "66"}
+                    value={phone}
+                    onChangeText={setPhone}
+                    keyboardType="phone-pad"
+                    style={{
+                      flex: 1,
+                      backgroundColor: "transparent",
+                      borderWidth: 0,
+                      height: 60,
+                      fontSize: 18,
+                      color: theme.colors.text,
+                      fontWeight: "500",
+                    }}
+                  />
+                </View>
+              </View>
+            </View>
+
+            {/* Username */}
+            <View style={{ marginBottom: 48 }}>
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: "700",
+                  color: theme.colors.text,
+                  marginBottom: 20,
+                  textAlign: "center",
+                }}
+              >
+                Choose Your Username
+              </Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  height: 60,
+                  backgroundColor: theme.dark
+                    ? "rgba(255, 255, 255, 0.08)"
+                    : "rgba(255, 255, 255, 0.9)",
+                  borderRadius: 20,
+                  borderWidth: 2,
+                  borderColor:
+                    username && isAvailable
+                      ? "#10B981"
+                      : username && isAvailable === false
+                      ? "#EF4444"
+                      : username
+                      ? "#8B5CF6"
+                      : theme.dark
+                      ? "rgba(139, 92, 246, 0.3)"
+                      : "rgba(139, 92, 246, 0.2)",
+                  paddingHorizontal: 20,
+                  shadowColor:
+                    username && isAvailable
+                      ? "#10B981"
+                      : username && isAvailable === false
+                      ? "#EF4444"
+                      : username
+                      ? "#8B5CF6"
+                      : "transparent",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 12,
+                  elevation: username ? 6 : 0,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 20,
+                    color: "#8B5CF6",
+                    marginRight: 12,
+                    fontWeight: "700",
+                  }}
+                >
+                  @
+                </Text>
+                <KeyboardAwareInput
+                  placeholder="username"
+                  placeholderTextColor={theme.colors.text + "66"}
+                  value={username}
+                  onChangeText={handleUsernameChange}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={{
+                    flex: 1,
+                    backgroundColor: "transparent",
+                    borderWidth: 0,
+                    height: 60,
+                    fontSize: 18,
+                    color: theme.colors.text,
+                    fontWeight: "500",
+                  }}
                 />
-              ) : (
-                <User size={56} color="#8B5CF6" />
+                <View style={{ marginLeft: 12 }}>
+                  {isChecking ? (
+                    <ActivityIndicator size="small" color="#8B5CF6" />
+                  ) : username ? (
+                    isAvailable ? (
+                      <Check size={24} color="#10B981" />
+                    ) : (
+                      <X size={24} color="#EF4444" />
+                    )
+                  ) : null}
+                </View>
+              </View>
+              {error && (
+                <Text
+                  style={{
+                    marginTop: 12,
+                    fontSize: 16,
+                    color: "#EF4444",
+                    textAlign: "center",
+                  }}
+                >
+                  {error}
+                </Text>
+              )}
+              {isAvailable === false && !error && (
+                <Text
+                  style={{
+                    marginTop: 12,
+                    fontSize: 16,
+                    color: "#EF4444",
+                    textAlign: "center",
+                  }}
+                >
+                  This username is already taken
+                </Text>
+              )}
+              {isAvailable === true && (
+                <Text
+                  style={{
+                    marginTop: 12,
+                    fontSize: 16,
+                    color: "#10B981",
+                    textAlign: "center",
+                  }}
+                >
+                  ✓ Username is available!
+                </Text>
+              )}
+              {username && (
+                <Text
+                  style={{
+                    marginTop: 8,
+                    fontSize: 14,
+                    color: theme.colors.text + "66",
+                    textAlign: "center",
+                  }}
+                >
+                  Letters, numbers, and underscores only
+                </Text>
               )}
             </View>
-            <View
+
+            {/* Continue Button */}
+            <TouchableOpacity
+              onPress={handleContinue}
+              disabled={!isFormValid || isChecking || isSubmitting}
               style={{
-                position: "absolute",
-                bottom: 8,
-                right: 8,
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: "#8B5CF6",
+                height: 64,
+                backgroundColor:
+                  isFormValid && !isChecking
+                    ? "#8B5CF6"
+                    : theme.colors.text + "33",
+                borderRadius: 20,
                 justifyContent: "center",
                 alignItems: "center",
-                borderWidth: 4,
-                borderColor: theme.dark ? "#1a1a2e" : "#f8fafc",
                 shadowColor: "#8B5CF6",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.4,
-                shadowRadius: 12,
-                elevation: 8,
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: isFormValid ? 0.4 : 0,
+                shadowRadius: 16,
+                elevation: isFormValid ? 12 : 0,
+                marginHorizontal: 8,
               }}
             >
-              <Camera size={20} color="white" />
-            </View>
-          </TouchableOpacity>
-          <Text
-            style={{
-              marginTop: 16,
-              fontSize: 16,
-              color: theme.colors.text + "CC",
-              textAlign: "center",
-              fontWeight: "500",
-            }}
-          >
-            Tap to add profile picture *
-          </Text>
-        </View>
-
-        {/* Name Fields */}
-        <View style={{ marginBottom: 32 }}>
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "700",
-              color: theme.colors.text,
-              marginBottom: 20,
-              textAlign: "center",
-            }}
-          >
-            What should we call you?
-          </Text>
-          <View style={{ flexDirection: "row", gap: 16 }}>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: "600",
-                  color: theme.colors.text,
-                  marginBottom: 12,
-                }}
-              >
-                First Name *
-              </Text>
-              <View
-                style={{
-                  height: 60,
-                  backgroundColor: theme.dark
-                    ? "rgba(255, 255, 255, 0.08)"
-                    : "rgba(255, 255, 255, 0.9)",
-                  borderRadius: 20,
-                  borderWidth: 2,
-                  borderColor: firstName
-                    ? "#8B5CF6"
-                    : theme.dark
-                    ? "rgba(139, 92, 246, 0.3)"
-                    : "rgba(139, 92, 246, 0.2)",
-                  paddingHorizontal: 20,
-                  justifyContent: "center",
-                  shadowColor: firstName ? "#8B5CF6" : "transparent",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 12,
-                  elevation: firstName ? 6 : 0,
-                }}
-              >
-                <Input
-                  placeholder="John"
-                  placeholderTextColor={theme.colors.text + "66"}
-                  value={firstName}
-                  onChangeText={setFirstName}
-                  autoCapitalize="words"
+              {isSubmitting ? (
+                <ActivityIndicator color="white" size="large" />
+              ) : (
+                <Text
                   style={{
-                    backgroundColor: "transparent",
-                    borderWidth: 0,
-                    height: 60,
-                    fontSize: 18,
-                    color: theme.colors.text,
-                    fontWeight: "500",
+                    fontSize: 20,
+                    fontWeight: "800",
+                    color: isFormValid ? "white" : theme.colors.text + "66",
                   }}
-                />
-              </View>
-            </View>
+                >
+                  {!isFormValid
+                    ? `Complete All Fields ${
+                        !profileImage
+                          ? "📸"
+                          : !firstName || !lastName
+                          ? "👤"
+                          : !username || !isAvailable
+                          ? "@"
+                          : ""
+                      }`
+                    : "Continue to Topics ✨"}
+                </Text>
+              )}
+            </TouchableOpacity>
 
-            <View style={{ flex: 1 }}>
+            {/* Help Text */}
+            {!isFormValid && (
               <Text
                 style={{
-                  fontSize: 16,
-                  fontWeight: "600",
-                  color: theme.colors.text,
-                  marginBottom: 12,
+                  marginTop: 16,
+                  fontSize: 14,
+                  color: theme.colors.text + "88",
+                  textAlign: "center",
+                  lineHeight: 20,
                 }}
               >
-                Last Name *
+                Please complete all required fields:{" "}
+                {!profileImage && "Profile Picture"}
+                {!profileImage && (!firstName || !lastName) && ", "}
+                {!firstName && "First Name"}
+                {!firstName && !lastName && ", "}
+                {!lastName && "Last Name"}
+                {(!profileImage || !firstName || !lastName) &&
+                  (!username || !isAvailable) &&
+                  ", "}
+                {!username && "Username"}
+                {username && !isAvailable && "Valid Username"}
               </Text>
-              <View
-                style={{
-                  height: 60,
-                  backgroundColor: theme.dark
-                    ? "rgba(255, 255, 255, 0.08)"
-                    : "rgba(255, 255, 255, 0.9)",
-                  borderRadius: 20,
-                  borderWidth: 2,
-                  borderColor: lastName
-                    ? "#8B5CF6"
-                    : theme.dark
-                    ? "rgba(139, 92, 246, 0.3)"
-                    : "rgba(139, 92, 246, 0.2)",
-                  paddingHorizontal: 20,
-                  justifyContent: "center",
-                  shadowColor: lastName ? "#8B5CF6" : "transparent",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 12,
-                  elevation: lastName ? 6 : 0,
-                }}
-              >
-                <Input
-                  placeholder="Doe"
-                  placeholderTextColor={theme.colors.text + "66"}
-                  value={lastName}
-                  onChangeText={setLastName}
-                  autoCapitalize="words"
-                  style={{
-                    backgroundColor: "transparent",
-                    borderWidth: 0,
-                    height: 60,
-                    fontSize: 18,
-                    color: theme.colors.text,
-                    fontWeight: "500",
-                  }}
-                />
-              </View>
-            </View>
-          </View>
-        </View>
+            )}
+          </ScrollView>
+        </ScrollToInputContext.Provider>
 
-        {/* Contact Information */}
-        <View style={{ marginBottom: 32 }}>
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "700",
-              color: theme.colors.text,
-              marginBottom: 20,
-              textAlign: "center",
-            }}
-          >
-            Contact Information
-          </Text>
-
-          {/* Email (Read-only) */}
-          <View style={{ marginBottom: 20 }}>
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "600",
-                color: theme.colors.text,
-                marginBottom: 12,
-              }}
-            >
-              Email Address
-            </Text>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                height: 60,
-                backgroundColor: theme.dark
-                  ? "rgba(255, 255, 255, 0.05)"
-                  : "rgba(255, 255, 255, 0.6)",
-                borderRadius: 20,
-                borderWidth: 2,
-                borderColor: theme.dark
-                  ? "rgba(139, 92, 246, 0.2)"
-                  : "rgba(139, 92, 246, 0.15)",
-                paddingHorizontal: 20,
-              }}
-            >
-              <Mail
-                size={24}
-                color={theme.colors.text + "66"}
-                style={{ marginRight: 16 }}
-              />
-              <Text
-                style={{
-                  flex: 1,
-                  fontSize: 18,
-                  color: theme.colors.text + "77",
-                  fontWeight: "500",
-                }}
-              >
-                {email}
-              </Text>
-            </View>
-          </View>
-
-          {/* Phone */}
-          <View>
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "600",
-                color: theme.colors.text,
-                marginBottom: 12,
-              }}
-            >
-              Phone Number (Optional)
-            </Text>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                height: 60,
-                backgroundColor: theme.dark
-                  ? "rgba(255, 255, 255, 0.08)"
-                  : "rgba(255, 255, 255, 0.9)",
-                borderRadius: 20,
-                borderWidth: 2,
-                borderColor: phone
-                  ? "#8B5CF6"
-                  : theme.dark
-                  ? "rgba(139, 92, 246, 0.3)"
-                  : "rgba(139, 92, 246, 0.2)",
-                paddingHorizontal: 20,
-                shadowColor: phone ? "#8B5CF6" : "transparent",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.2,
-                shadowRadius: 12,
-                elevation: phone ? 6 : 0,
-              }}
-            >
-              <Phone size={24} color="#8B5CF6" style={{ marginRight: 16 }} />
-              <Input
-                placeholder="+1 (555) 000-0000"
-                placeholderTextColor={theme.colors.text + "66"}
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-                style={{
-                  flex: 1,
-                  backgroundColor: "transparent",
-                  borderWidth: 0,
-                  height: 60,
-                  fontSize: 18,
-                  color: theme.colors.text,
-                  fontWeight: "500",
-                }}
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* Username */}
-        <View style={{ marginBottom: 48 }}>
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "700",
-              color: theme.colors.text,
-              marginBottom: 20,
-              textAlign: "center",
-            }}
-          >
-            Choose Your Username
-          </Text>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              height: 60,
-              backgroundColor: theme.dark
-                ? "rgba(255, 255, 255, 0.08)"
-                : "rgba(255, 255, 255, 0.9)",
-              borderRadius: 20,
-              borderWidth: 2,
-              borderColor:
-                username && isAvailable
-                  ? "#10B981"
-                  : username && isAvailable === false
-                  ? "#EF4444"
-                  : username
-                  ? "#8B5CF6"
-                  : theme.dark
-                  ? "rgba(139, 92, 246, 0.3)"
-                  : "rgba(139, 92, 246, 0.2)",
-              paddingHorizontal: 20,
-              shadowColor:
-                username && isAvailable
-                  ? "#10B981"
-                  : username && isAvailable === false
-                  ? "#EF4444"
-                  : username
-                  ? "#8B5CF6"
-                  : "transparent",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.2,
-              shadowRadius: 12,
-              elevation: username ? 6 : 0,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 20,
-                color: "#8B5CF6",
-                marginRight: 12,
-                fontWeight: "700",
-              }}
-            >
-              @
-            </Text>
-            <Input
-              placeholder="username"
-              placeholderTextColor={theme.colors.text + "66"}
-              value={username}
-              onChangeText={handleUsernameChange}
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={{
-                flex: 1,
-                backgroundColor: "transparent",
-                borderWidth: 0,
-                height: 60,
-                fontSize: 18,
-                color: theme.colors.text,
-                fontWeight: "500",
-              }}
-            />
-            <View style={{ marginLeft: 12 }}>
-              {isChecking ? (
-                <ActivityIndicator size="small" color="#8B5CF6" />
-              ) : username ? (
-                isAvailable ? (
-                  <Check size={24} color="#10B981" />
-                ) : (
-                  <X size={24} color="#EF4444" />
-                )
-              ) : null}
-            </View>
-          </View>
-          {error && (
-            <Text
-              style={{
-                marginTop: 12,
-                fontSize: 16,
-                color: "#EF4444",
-                textAlign: "center",
-              }}
-            >
-              {error}
-            </Text>
-          )}
-          {isAvailable === false && !error && (
-            <Text
-              style={{
-                marginTop: 12,
-                fontSize: 16,
-                color: "#EF4444",
-                textAlign: "center",
-              }}
-            >
-              This username is already taken
-            </Text>
-          )}
-          {isAvailable === true && (
-            <Text
-              style={{
-                marginTop: 12,
-                fontSize: 16,
-                color: "#10B981",
-                textAlign: "center",
-              }}
-            >
-              ✓ Username is available!
-            </Text>
-          )}
-          {username && (
-            <Text
-              style={{
-                marginTop: 8,
-                fontSize: 14,
-                color: theme.colors.text + "66",
-                textAlign: "center",
-              }}
-            >
-              Letters, numbers, and underscores only
-            </Text>
-          )}
-        </View>
-
-        {/* Continue Button */}
-        <TouchableOpacity
-          onPress={handleContinue}
-          disabled={!isFormValid || isChecking || isSubmitting}
-          style={{
-            height: 64,
-            backgroundColor:
-              isFormValid && !isChecking ? "#8B5CF6" : theme.colors.text + "33",
-            borderRadius: 20,
-            justifyContent: "center",
-            alignItems: "center",
-            shadowColor: "#8B5CF6",
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: isFormValid ? 0.4 : 0,
-            shadowRadius: 16,
-            elevation: isFormValid ? 12 : 0,
-            marginHorizontal: 8,
-          }}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator color="white" size="large" />
-          ) : (
-            <Text
-              style={{
-                fontSize: 20,
-                fontWeight: "800",
-                color: isFormValid ? "white" : theme.colors.text + "66",
-              }}
-            >
-              Continue to Topics ✨
-            </Text>
-          )}
-        </TouchableOpacity>
-      </ScrollView>
-
-      <Toast />
-    </View>
+        <Toast />
+      </View>
+    </KeyboardAvoidingView>
   );
 }

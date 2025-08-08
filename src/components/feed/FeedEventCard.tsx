@@ -1,11 +1,16 @@
 import React, { useState } from "react";
-import { View, TouchableOpacity } from "react-native";
+import { View, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { OptimizedImage } from "~/src/components/ui/optimized-image";
 import { MapEvent } from "~/hooks/useMapEvents";
-import { Clock, MapPin } from "lucide-react-native";
+import { Clock, MapPin, User, Calendar, Users } from "lucide-react-native";
 import { format } from "date-fns";
 import { UnifiedDetailsSheet } from "../map/UnifiedDetailsSheet";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { LinearGradient } from "expo-linear-gradient";
+
+const { width: screenWidth } = Dimensions.get("window");
+const CARD_WIDTH = screenWidth - 32; // Full width with margins
 
 interface FeedEventCardProps {
   event: MapEvent;
@@ -18,111 +23,171 @@ export function FeedEventCard({
   onEventSelect,
   nearbyEvents,
 }: FeedEventCardProps) {
-  // console.log(">event>",event);
+  const { theme } = useTheme();
   const [showDetails, setShowDetails] = useState(false);
   const startTime = new Date(event?.start_datetime);
   const endTime = new Date(event?.end_datetime);
 
-  // console.log("event>",event)
-
   return (
     <>
       <TouchableOpacity
-        className="overflow-hidden mx-4 mb-4 rounded-3xl border border-border"
+        style={[
+          styles.eventCard,
+          {
+            backgroundColor: theme.colors.card,
+            borderColor: theme.colors.border,
+            shadowColor: theme.colors.primary,
+          },
+        ]}
         onPress={() => {
           setShowDetails(true);
           onEventSelect?.(event, false);
         }}
+        activeOpacity={0.96}
       >
-        <View className="relative">
-          {event?.image_urls?.[0] && (
+        {/* Event Image Section */}
+        {event?.image_urls?.[0] && (
+          <View style={styles.imageContainer}>
             <OptimizedImage
               uri={event?.image_urls[0]}
-              width={400}
-              height={192}
-              quality={75}
+              width={CARD_WIDTH}
+              height={200}
+              quality={85}
               thumbnail={true}
               lazy={true}
-              className="w-full h-48"
+              style={styles.eventImage}
               resizeMode="cover"
             />
-          )}
-          <View className="absolute top-4 left-4 px-3 py-1 rounded-lg bg-white/90">
-            <Text className="font-medium">{format(startTime, "MMM d")}</Text>
-            <Text className="text-xs text-center text-muted-foreground">
-              {format(startTime, "EEE")}
-            </Text>
-          </View>
-          <View className="absolute top-4 right-4 px-3 py-1 rounded-full bg-white/90">
-            <Text className="text-sm font-medium">
-              {event?.attendees?.count}
-            </Text>
-          </View>
-        </View>
 
-        <View className="p-4">
-          {/* Host */}
-          <Text className="mb-1 text-sm text-muted-foreground">
-            @{event.created_by?.name || event?.created_by?.username}
+            {/* Image overlay for better badge visibility */}
+            <LinearGradient
+              colors={["transparent", "rgba(0,0,0,0.1)"]}
+              style={styles.imageOverlay}
+            />
+
+            {/* Date Badge */}
+            <View style={styles.dateBadge}>
+              <Text style={styles.dateBadgeDay}>{format(startTime, "d")}</Text>
+              <Text style={styles.dateBadgeMonth}>
+                {format(startTime, "MMM")}
+              </Text>
+            </View>
+
+            {/* Attendees Badge */}
+            {event?.attendees?.count > 0 && (
+              <View
+                style={[
+                  styles.attendeesBadge,
+                  { backgroundColor: theme.colors.primary },
+                ]}
+              >
+                <Users size={12} color="white" />
+                <Text style={styles.attendeesBadgeText}>
+                  {event?.attendees?.count || 0}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Content Section */}
+        <View style={styles.contentContainer}>
+          {/* Host Information */}
+          <View style={styles.hostSection}>
+            <User size={14} color={theme.colors.text + "60"} />
+            <Text
+              style={[styles.hostText, { color: theme.colors.text + "60" }]}
+            >
+              @
+              {event.created_by?.name ||
+                event?.created_by?.username ||
+                "Unknown"}
+            </Text>
+          </View>
+
+          {/* Event Title */}
+          <Text style={[styles.eventTitle, { color: theme.colors.text }]}>
+            {event?.name || "Untitled Event"}
           </Text>
 
-          {/* Title */}
-          <Text className="mb-2 text-xl font-semibold">{event?.name}</Text>
-
-          {/* Time */}
-          <View className="flex-row items-center mb-2">
-            <Clock size={16} className="mr-2 text-muted-foreground" />
-            <Text className="text-muted-foreground">
-              {format(startTime, "h:mm a")} - {format(endTime, "h:mm a")}
+          {/* Time Information */}
+          <View style={styles.timeSection}>
+            <Clock size={16} color={theme.colors.text + "80"} />
+            <Text
+              style={[styles.timeText, { color: theme.colors.text + "80" }]}
+            >
+              {startTime && endTime
+                ? `${format(startTime, "h:mm a")} - ${format(
+                    endTime,
+                    "h:mm a"
+                  )}`
+                : "Time TBD"}
             </Text>
           </View>
 
-          {/* Location */}
-          {/* <View className="flex-row items-center mb-3">
-            <MapPin size={16} className="mr-2 text-muted-foreground" />
-            <Text className="text-muted-foreground">{event.venue_name}</Text>
-            
-         </View>*/}
-          {/* Location */}
+          {/* Location Section - Clickable */}
           <TouchableOpacity
+            style={styles.locationSection}
             onPress={() => {
               setShowDetails(true);
               onEventSelect?.(event, true);
             }}
+            activeOpacity={0.7}
           >
-            <View className="flex-row items-center mb-3">
-              <MapPin size={16} className="mr-2 text-muted-foreground" />
-              <View className="flex-1">
-                {event?.venue_name ? (
-                  <>
-                    <Text className="text-muted-foreground">
-                      {event?.venue_name}
-                    </Text>
-                    <Text className="text-sm text-muted-foreground">
-                      {event?.address}
-                    </Text>
-                  </>
-                ) : (
-                  <Text className="text-sm text-muted-foreground">
+            <MapPin size={16} color={theme.colors.primary} />
+            <View style={styles.locationTextContainer}>
+              {event?.venue_name ? (
+                <>
+                  <Text
+                    style={[styles.venueText, { color: theme.colors.text }]}
+                  >
+                    {event?.venue_name}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.addressText,
+                      { color: theme.colors.text + "80" },
+                    ]}
+                  >
                     {event?.address}
                   </Text>
-                )}
-              </View>
+                </>
+              ) : (
+                <Text
+                  style={[
+                    styles.addressText,
+                    { color: theme.colors.text + "80" },
+                  ]}
+                >
+                  {event?.address}
+                </Text>
+              )}
             </View>
           </TouchableOpacity>
+
           {/* Categories */}
-          <View className="flex-row flex-wrap gap-2">
-            {event?.categories?.map((category) => (
-              <View
-                key={category.id}
-                className="px-3 py-1 rounded-full bg-purple-100/50"
-              >
-                <Text className="text-sm font-medium text-purple-700">
-                  {category?.name}
-                </Text>
-              </View>
-            ))}
-          </View>
+          {event?.categories && event.categories.length > 0 && (
+            <View style={styles.categoriesContainer}>
+              {event.categories.map((category) => (
+                <View
+                  key={category.id}
+                  style={[
+                    styles.categoryChip,
+                    { backgroundColor: theme.colors.primary + "15" },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.categoryText,
+                      { color: theme.colors.primary },
+                    ]}
+                  >
+                    {category?.name}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       </TouchableOpacity>
 
@@ -140,3 +205,151 @@ export function FeedEventCard({
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  eventCard: {
+    width: CARD_WIDTH,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 6,
+    marginHorizontal: 16,
+    marginBottom: 20,
+    overflow: "hidden",
+  },
+  imageContainer: {
+    position: "relative",
+  },
+  eventImage: {
+    width: "100%",
+    height: 200,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  imageOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  dateBadge: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  dateBadgeDay: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#333",
+    lineHeight: 18,
+  },
+  dateBadgeMonth: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#666",
+    marginTop: 1,
+  },
+  attendeesBadge: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  attendeesBadgeText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "600",
+    marginLeft: 4,
+  },
+  contentContainer: {
+    padding: 20,
+  },
+  hostSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  hostText: {
+    fontSize: 13,
+    fontWeight: "500",
+    marginLeft: 6,
+  },
+  eventTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    lineHeight: 26,
+    marginBottom: 16,
+  },
+  timeSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  timeText: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginLeft: 8,
+  },
+  locationSection: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: "rgba(139, 92, 246, 0.05)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(139, 92, 246, 0.1)",
+  },
+  locationTextContainer: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  venueText: {
+    fontSize: 15,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  addressText: {
+    fontSize: 13,
+    fontWeight: "500",
+    lineHeight: 18,
+  },
+  categoriesContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  categoryChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  categoryText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+});

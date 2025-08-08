@@ -1868,6 +1868,8 @@ PODS:
     - React-logger (= 0.76.7)
     - React-perflogger (= 0.76.7)
     - React-utils (= 0.76.7)
+  - ReactNativeIncallManager (4.2.1):
+    - React-Core
   - RNCAsyncStorage (1.23.1):
     - React-Core
   - RNDateTimePicker (8.3.0):
@@ -2026,6 +2028,32 @@ PODS:
     - libwebp (~> 1.0)
     - SDWebImage/Core (~> 5.10)
   - SocketRocket (0.7.1)
+  - stream-react-native-webrtc (125.4.1):
+    - React-Core
+    - StreamWebRTC (~> 125.6422.070)
+  - stream-video-react-native (1.20.1):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.01.01.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - stream-react-native-webrtc
+    - Yoga
+  - StreamWebRTC (125.6422.070)
   - Turf (2.8.0)
   - Yoga (0.0.0)
 
@@ -2131,6 +2159,7 @@ DEPENDENCIES:
   - React-utils (from `../node_modules/react-native/ReactCommon/react/utils`)
   - ReactCodegen (from `build/generated/ios`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
+  - ReactNativeIncallManager (from `../node_modules/react-native-incall-manager`)
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - "RNDateTimePicker (from `../node_modules/@react-native-community/datetimepicker`)"
   - RNFastImage (from `../node_modules/react-native-fast-image`)
@@ -2139,6 +2168,8 @@ DEPENDENCIES:
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSVG (from `../node_modules/react-native-svg`)
+  - "stream-react-native-webrtc (from `../node_modules/@stream-io/react-native-webrtc`)"
+  - "stream-video-react-native (from `../node_modules/@stream-io/video-react-native-sdk`)"
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
@@ -2151,6 +2182,7 @@ SPEC REPOS:
     - SDWebImage
     - SDWebImageWebPCoder
     - SocketRocket
+    - StreamWebRTC
     - Turf
 
 EXTERNAL SOURCES:
@@ -2353,6 +2385,8 @@ EXTERNAL SOURCES:
     :path: build/generated/ios
   ReactCommon:
     :path: "../node_modules/react-native/ReactCommon"
+  ReactNativeIncallManager:
+    :path: "../node_modules/react-native-incall-manager"
   RNCAsyncStorage:
     :path: "../node_modules/@react-native-async-storage/async-storage"
   RNDateTimePicker:
@@ -2369,6 +2403,10 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-screens"
   RNSVG:
     :path: "../node_modules/react-native-svg"
+  stream-react-native-webrtc:
+    :path: "../node_modules/@stream-io/react-native-webrtc"
+  stream-video-react-native:
+    :path: "../node_modules/@stream-io/video-react-native-sdk"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
@@ -2477,6 +2515,7 @@ SPEC CHECKSUMS:
   React-utils: 0342746d2cf989cf5e0d1b84c98cfa152edbdf3f
   ReactCodegen: e1c019dc68733dd2c5d3b263b4a6dc72002c0045
   ReactCommon: 81e0744ee33adfd6d586141b927024f488bc49ea
+  ReactNativeIncallManager: dccd3e7499caa3bb73d3acfedf4fb0360f1a87d5
   RNCAsyncStorage: aa75595c1aefa18f868452091fa0c411a516ce11
   RNDateTimePicker: 29264364ea7b8cc0fb355b3843cf276a4ff78966
   RNFastImage: 462a183c4b0b6b26fdfd639e1ed6ba37536c3b87
@@ -2488,6 +2527,9 @@ SPEC CHECKSUMS:
   SDWebImage: a7f831e1a65eb5e285e3fb046a23fcfbf08e696d
   SDWebImageWebPCoder: 908b83b6adda48effe7667cd2b7f78c897e5111d
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
+  stream-react-native-webrtc: 3b627461be05c52d860d7b757d72ca7d4324dc9b
+  stream-video-react-native: 16af1b14853e26b6b99c6f6c78fd516ad97df335
+  StreamWebRTC: a50ebd8beba4def8f4e378b4895824c3520f9889
   Turf: aa2ede4298009639d10db36aba1a7ebaad072a5e
   Yoga: 90d80701b27946c4b23461c00a7207f300a6ff71
 

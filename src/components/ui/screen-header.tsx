@@ -40,7 +40,8 @@ export function ScreenHeader({ title, actions = [] }: ScreenHeaderProps) {
             fontWeight: "bold",
             color: theme.colors.text,
             letterSpacing: -0.5,
-            lineHeight: 40,
+            lineHeight: 50,
+            paddingVertical: 8,
           }}
         >
           {title}

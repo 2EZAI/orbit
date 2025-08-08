@@ -7,15 +7,18 @@ import {
   Modal,
   StyleSheet,
   DeviceEventEmitter,
+  StatusBar,
 } from "react-native";
 import { ArrowLeft } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { Icon } from "react-native-elements";
 import { Sheet } from "~/src/components/ui/sheet";
 import { useState } from "react";
+import { useTheme } from "~/src/components/ThemeProvider";
 
 export default function NotificationViewLayout() {
   const router = useRouter();
+  const { theme, isDarkMode } = useTheme();
   // const [showOverlay, setShowOverlay] = useState(false);
 
   const handleBackPress = () => {
@@ -25,7 +28,18 @@ export default function NotificationViewLayout() {
 
   return (
     <>
-      <Stack>
+      <StatusBar
+        barStyle={isDarkMode ? "light-content" : "dark-content"}
+        backgroundColor="transparent"
+        translucent
+      />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          gestureEnabled: false,
+          animation: Platform.OS === "ios" ? "slide_from_right" : "none",
+        }}
+      >
         <Stack.Screen
           name="index"
           options={{
@@ -37,33 +51,5 @@ export default function NotificationViewLayout() {
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.85)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  content: {
-    backgroundColor: "white",
-    padding: 24,
-    borderRadius: 12,
-    width: "80%",
-    alignItems: "center",
-  },
-  message: {
-    fontSize: 16,
-    marginBottom: 20,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginHorizontal: 20,
-    color: "#007AFF",
-  },
-});
+// Theme-aware styles will be defined inline using theme.colors
+// This ensures proper dark/light mode support

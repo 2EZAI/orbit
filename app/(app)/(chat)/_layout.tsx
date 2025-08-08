@@ -1,5 +1,5 @@
 import { Stack, usePathname } from "expo-router";
-import { Chat, OverlayProvider } from "stream-chat-expo";
+import { Chat } from "stream-chat-expo";
 import { ChatThemeProvider } from "~/src/components/chat/ChatThemeProvider";
 import { useChat } from "~/src/lib/chat";
 import { View, Text, ActivityIndicator } from "react-native";
@@ -69,56 +69,71 @@ export default function ChatLayout() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.card }}>
       <ChatThemeProvider>
-        <OverlayProvider>
-          <Chat client={client}>
-            <LiveLocationContextProvider>
-              <Stack
-                screenOptions={{
-                  headerShown: true,
-                  animation: "slide_from_right",
-                  headerStyle: {
-                    backgroundColor: theme.colors.card,
-                  },
-                  headerTitleStyle: {
-                    color: theme.colors.text,
-                  },
-                  headerTintColor: theme.colors.text,
+        <Chat client={client}>
+          <LiveLocationContextProvider>
+            <Stack
+              screenOptions={{
+                headerShown: true,
+                animation: "slide_from_right",
+                headerStyle: {
+                  backgroundColor: theme.colors.card,
+                },
+                headerTitleStyle: {
+                  color: theme.colors.text,
+                },
+                headerTintColor: theme.colors.text,
+              }}
+            >
+              <Stack.Screen
+                name="index"
+                options={{
+                  title: "Messages",
+                  headerShown: false,
+                  headerBackTitle: "Back",
+                  headerBackVisible: true,
                 }}
-              >
-                <Stack.Screen
-                  name="index"
-                  options={{
-                    title: "Messages",
-                    headerShown: false,
-                    headerBackTitle: "Back",
-                    headerBackVisible: true,
-                  }}
-                />
-                <Stack.Screen
-                  name="channel/[id]"
-                  options={{
-                    title: "Chat",
-                    headerShown: true,
-                    headerTitleAlign: "center",
-                    headerBackTitle: "Chats",
-                    headerBackVisible: true,
-                  }}
-                />
-                <Stack.Screen
-                  name="new"
-                  options={{
-                    title: "New Message",
-                    headerShown: false,
-                    headerTitleAlign: "center",
-                    headerBackTitle: "Chats",
-                    presentation: "modal",
-                    animation: "slide_from_bottom",
-                  }}
-                />
-              </Stack>
-            </LiveLocationContextProvider>
-          </Chat>
-        </OverlayProvider>
+              />
+              <Stack.Screen
+                name="channel/[id]"
+                options={{
+                  title: "Chat",
+                  headerShown: true,
+                  headerTitleAlign: "center",
+                  headerBackTitle: "Chats",
+                  headerBackVisible: true,
+                }}
+              />
+              <Stack.Screen
+                name="new"
+                options={{
+                  title: "New Message",
+                  headerShown: false,
+                  headerTitleAlign: "center",
+                  headerBackTitle: "Chats",
+                  presentation: "modal",
+                  animation: "slide_from_bottom",
+                }}
+              />
+              <Stack.Screen
+                name="call/[id]"
+                options={{
+                  title: "Call",
+                  headerShown: false,
+                  presentation: "modal",
+                  animation: "slide_from_bottom",
+                }}
+              />
+              <Stack.Screen
+                name="channel/[id]/settings"
+                options={{
+                  headerShown: false,
+                  presentation: "modal",
+                  animation: "slide_from_right",
+                }}
+              />
+            </Stack>
+          </LiveLocationContextProvider>
+        </Chat>
       </ChatThemeProvider>
     </SafeAreaView>
   );

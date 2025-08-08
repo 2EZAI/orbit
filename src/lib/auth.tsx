@@ -35,7 +35,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Only redirect on sign out - let app layout handle authenticated routing
       if (event === "SIGNED_OUT") {
         console.log("User signed out, redirecting to landing page");
-        router.replace("/");
+        // Small delay to allow providers to clean up
+        setTimeout(() => {
+          router.replace("/");
+        }, 100);
       }
       // Don't redirect on SIGNED_IN - causes issues with session persistence
     });

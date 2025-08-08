@@ -9,7 +9,11 @@ function shuffleArray(array: any[]) {
 }
 
 // Create dynamic sections - NO DUPLICATES, RANDOMIZED CONTENT
-export function createHomeFeedSections(allContent: any[], topics: any[]) {
+export function createHomeFeedSections(
+  allContent: any[],
+  topics: any[],
+  expandedSections: Set<string> = new Set()
+) {
   const sections: any[] = [];
   const now = new Date();
   const usedItems = new Set(); // Track what we've used
@@ -31,19 +35,37 @@ export function createHomeFeedSections(allContent: any[], topics: any[]) {
     console.log(`🎯 Total sections: ${sections.length}`);
   };
 
+  // Allow more reuse in later sections for maximum content variety
+  const shouldAllowReuse = (sectionIndex: number) =>
+    sectionIndex >= allowReuseAfterSection;
+
   // Helper function to get unique items (allow reuse across sections for better variety)
-  const getUniqueItems = (items: any[], count: number, allowReuse = false) => {
+  const getUniqueItems = (
+    items: any[],
+    count: number,
+    allowReuse = false,
+    sectionKey?: string
+  ) => {
     const shuffled = shuffleArray([...items]);
+
+    // If this section is expanded, return more items
+    const expandedCount = expandedSections.has(sectionKey || "")
+      ? Math.min(count * 3, items.length)
+      : count;
+
     if (allowReuse) {
-      return shuffled.slice(0, count);
+      return shuffled.slice(0, expandedCount);
     } else {
       const unique = shuffled
         .filter((item) => !usedItems.has(item.id))
-        .slice(0, count);
+        .slice(0, expandedCount);
       unique.forEach((item) => usedItems.add(item.id));
       return unique;
     }
   };
+
+  // Helper to allow reuse in later sections (after initial unique distribution)
+  const allowReuseAfterSection = 10; // After 10 sections, allow reuse for maximum variety
 
   // Separate events and locations for better distribution
   const events = allContent.filter((item) => !item.isLocation);
@@ -66,13 +88,36 @@ export function createHomeFeedSections(allContent: any[], topics: any[]) {
   );
 
   // 1. FEATURED MIXED - Events + Locations together (larger section)
-  const mixedContent = getUniqueItems([...events, ...locations], 200);
+  const mixedContent = getUniqueItems(
+    [...events, ...locations],
+    500,
+    false,
+    "mixed"
+  );
   if (mixedContent.length > 0) {
     sections.push({
       key: "mixed",
       title: "🌟 Discover",
       data: mixedContent,
       layout: "horizontal",
+      hasMoreData:
+        mixedContent.length >= 500 &&
+        [...events, ...locations].length > mixedContent.length,
+    });
+  }
+
+  // 1.5. QUICK BROWSE - Compact list format for more visibility
+  const quickBrowseContent = getUniqueItems(
+    [...events, ...locations],
+    200,
+    true
+  );
+  if (quickBrowseContent.length > 0) {
+    sections.push({
+      key: "quick-browse",
+      title: "⚡ Quick Browse",
+      data: quickBrowseContent,
+      layout: "list",
     });
   }
 
@@ -84,7 +129,7 @@ export function createHomeFeedSections(allContent: any[], topics: any[]) {
     return daysUntil >= 0 && daysUntil <= 30;
   });
 
-  const uniqueUpcoming = getUniqueItems(upcomingEvents, 150);
+  const uniqueUpcoming = getUniqueItems(upcomingEvents, 300);
   if (uniqueUpcoming.length > 0) {
     sections.push({
       key: "upcoming",
@@ -94,7 +139,7 @@ export function createHomeFeedSections(allContent: any[], topics: any[]) {
     });
   } else if (locations.length > 0) {
     // If no upcoming events, show popular locations instead
-    const popularLocations = getUniqueItems(locations, 80);
+    const popularLocations = getUniqueItems(locations, 200);
     sections.push({
       key: "upcoming",
       title: "🔥 Popular Now",
@@ -104,7 +149,7 @@ export function createHomeFeedSections(allContent: any[], topics: any[]) {
   }
 
   // 3. POPULAR PLACES - Only locations (increased limit)
-  const uniqueLocations = getUniqueItems(locations, 120);
+  const uniqueLocations = getUniqueItems(locations, 300);
   if (uniqueLocations.length > 0) {
     sections.push({
       key: "popular-places",
@@ -114,8 +159,19 @@ export function createHomeFeedSections(allContent: any[], topics: any[]) {
     });
   }
 
+  // 3.2. MORE EVENTS LIST - Compact vertical view
+  const moreEventsList = getUniqueItems(events, 150, true);
+  if (moreEventsList.length > 0) {
+    sections.push({
+      key: "more-events-list",
+      title: "🎪 More Events",
+      data: moreEventsList,
+      layout: "list",
+    });
+  }
+
   // 3.5. TRENDING LOCATIONS - Additional location section
-  const trendingLocations = getUniqueItems(locations, 100);
+  const trendingLocations = getUniqueItems(locations, 250);
   if (trendingLocations.length > 0) {
     sections.push({
       key: "trending-locations",
@@ -134,7 +190,7 @@ export function createHomeFeedSections(allContent: any[], topics: any[]) {
     );
   });
 
-  const uniqueThisMonth = getUniqueItems(thisMonthEvents, 100);
+  const uniqueThisMonth = getUniqueItems(thisMonthEvents, 250);
   if (uniqueThisMonth.length > 0) {
     sections.push({
       key: "this-month",
@@ -144,7 +200,7 @@ export function createHomeFeedSections(allContent: any[], topics: any[]) {
     });
   } else if (locations.length > 0) {
     // If no this month events, show new locations
-    const newLocations = getUniqueItems(locations, 80);
+    const newLocations = getUniqueItems(locations, 200);
     sections.push({
       key: "this-month",
       title: "📅 New Places",
@@ -155,7 +211,7 @@ export function createHomeFeedSections(allContent: any[], topics: any[]) {
 
   // 5. TICKETMASTER EVENTS (increased limit)
   const ticketmasterEvents = events.filter((event) => event.is_ticketmaster);
-  const uniqueTicketmaster = getUniqueItems(ticketmasterEvents, 80);
+  const uniqueTicketmaster = getUniqueItems(ticketmasterEvents, 200);
   if (uniqueTicketmaster.length > 0) {
     sections.push({
       key: "ticketmaster",
@@ -165,7 +221,7 @@ export function createHomeFeedSections(allContent: any[], topics: any[]) {
     });
   } else if (locations.length > 0) {
     // If no ticketmaster events, show trending locations
-    const trendingLocations = getUniqueItems(locations, 60);
+    const trendingLocations = getUniqueItems(locations, 150);
     sections.push({
       key: "ticketmaster",
       title: "🎫 Trending Places",
@@ -185,7 +241,7 @@ export function createHomeFeedSections(allContent: any[], topics: any[]) {
     );
   });
 
-  const uniqueNextMonth = getUniqueItems(nextMonthEvents, 100);
+  const uniqueNextMonth = getUniqueItems(nextMonthEvents, 250);
   if (uniqueNextMonth.length > 0) {
     sections.push({
       key: "next-month",
@@ -195,7 +251,7 @@ export function createHomeFeedSections(allContent: any[], topics: any[]) {
     });
   } else if (locations.length > 0) {
     // If no next month events, show featured locations
-    const featuredLocations = getUniqueItems(locations, 80);
+    const featuredLocations = getUniqueItems(locations, 200);
     sections.push({
       key: "next-month",
       title: "🗓️ Featured Places",
@@ -218,19 +274,21 @@ export function createHomeFeedSections(allContent: any[], topics: any[]) {
     }
   });
 
-  // Add top 15 category sections with unique items (increased from 8)
+  // Add top 20 category sections with unique items (increased from 15)
   Array.from(categoriesWithEvents.values())
     .filter((cat) => cat.events.length >= 1)
     .sort((a, b) => b.events.length - a.events.length)
-    .slice(0, 15)
-    .forEach(({ topic, events }) => {
-      const uniqueCategoryItems = getUniqueItems(events, 60);
+    .slice(0, 20)
+    .forEach(({ topic, events }, index) => {
+      const uniqueCategoryItems = getUniqueItems(events, 150);
       if (uniqueCategoryItems.length > 0) {
+        // Alternate between horizontal and list layouts for variety
+        const layout = index % 3 === 2 ? "list" : "horizontal";
         sections.push({
           key: `category-${topic.id}`,
           title: `${topic.icon || "📅"} ${topic.name}`,
           data: uniqueCategoryItems,
-          layout: "horizontal",
+          layout: layout,
         });
       }
     });
@@ -245,7 +303,7 @@ export function createHomeFeedSections(allContent: any[], topics: any[]) {
     return daysUntil >= 0 && daysUntil <= 7; // This weekend + next few days
   });
 
-  const uniqueThisWeekend = getUniqueItems(thisWeekendEvents, 80);
+  const uniqueThisWeekend = getUniqueItems(thisWeekendEvents, 200);
   if (uniqueThisWeekend.length > 0) {
     sections.push({
       key: "this-weekend",
@@ -255,7 +313,7 @@ export function createHomeFeedSections(allContent: any[], topics: any[]) {
     });
   } else if (locations.length > 0) {
     // If no weekend events, show weekend locations
-    const weekendLocations = getUniqueItems(locations, 80);
+    const weekendLocations = getUniqueItems(locations, 200);
     sections.push({
       key: "this-weekend",
       title: "🎉 Weekend Spots",
@@ -273,7 +331,7 @@ export function createHomeFeedSections(allContent: any[], topics: any[]) {
     })
     .slice(0, 100);
 
-  const uniquePopular = getUniqueItems(popularEvents, 80);
+  const uniquePopular = getUniqueItems(popularEvents, 200);
   if (uniquePopular.length > 0) {
     sections.push({
       key: "popular-events",
@@ -806,6 +864,57 @@ export function createHomeFeedSections(allContent: any[], topics: any[]) {
       title: "✨ More For You",
       data: uniqueRemaining,
       layout: "horizontal",
+    });
+  }
+
+  // BONUS SECTIONS - Maximum content with reuse allowed for discovery
+  const bonusEvents1 = getUniqueItems(events, 100, true);
+  if (bonusEvents1.length > 0) {
+    sections.push({
+      key: "bonus-events-1",
+      title: "🎪 More Discoveries",
+      data: bonusEvents1,
+      layout: "list",
+    });
+  }
+
+  const bonusLocations1 = getUniqueItems(locations, 150, true);
+  if (bonusLocations1.length > 0) {
+    sections.push({
+      key: "bonus-locations-1",
+      title: "🗺️ Hidden Gems",
+      data: bonusLocations1,
+      layout: "horizontal",
+    });
+  }
+
+  const bonusMixed1 = getUniqueItems([...events, ...locations], 200, true);
+  if (bonusMixed1.length > 0) {
+    sections.push({
+      key: "bonus-mixed-1",
+      title: "🎯 Don't Miss These",
+      data: bonusMixed1,
+      layout: "list",
+    });
+  }
+
+  const bonusEvents2 = getUniqueItems(events, 120, true);
+  if (bonusEvents2.length > 0) {
+    sections.push({
+      key: "bonus-events-2",
+      title: "🎊 Last Call Events",
+      data: bonusEvents2,
+      layout: "horizontal",
+    });
+  }
+
+  const bonusLocations2 = getUniqueItems(locations, 100, true);
+  if (bonusLocations2.length > 0) {
+    sections.push({
+      key: "bonus-locations-2",
+      title: "📍 Final Recommendations",
+      data: bonusLocations2,
+      layout: "grid",
     });
   }
 

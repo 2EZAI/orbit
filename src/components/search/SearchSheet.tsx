@@ -11,12 +11,15 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { Sheet } from "../ui/sheet";
+import { OptimizedImage } from "../ui/optimized-image";
 import { supabase } from "../../lib/supabase";
 import { Input } from "../ui/input";
 import { Calendar, MapPin, Users, Search, X } from "lucide-react-native";
 import { debounce } from "lodash";
 import { useAuth } from "../../lib/auth";
 import { useTheme } from "../ThemeProvider";
+import { useUser } from "~/hooks/useUserData";
+import * as Location from "expo-location";
 
 // Types
 interface User {
@@ -91,6 +94,7 @@ export function SearchSheet({
 }: SearchSheetProps) {
   const { theme } = useTheme();
   const { session } = useAuth();
+  const { user, userlocation } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState<SearchResults>({
     events: [],
@@ -101,6 +105,7 @@ export function SearchSheet({
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("users");
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
 
   // Tab configuration
@@ -118,10 +123,24 @@ export function SearchSheet({
       setTicketmasterEvents([]);
       setActiveTab("users");
       setIsExpanded(false);
+      setIsFocused(false);
       // Focus search input after a brief delay
       setTimeout(() => searchInputRef.current?.focus(), 100);
     }
   }, [isOpen]);
+
+  // Auto-expand when user starts searching
+  useEffect(() => {
+    if (searchQuery.length >= 1) {
+      // Delay the expansion slightly to avoid layout conflicts
+      const timer = setTimeout(() => {
+        setIsExpanded(true);
+      }, 150);
+      return () => clearTimeout(timer);
+    } else {
+      setIsExpanded(false);
+    }
+  }, [searchQuery.length]);
 
   // Search function with both RPC and Ticketmaster
   const handleSearch = async (query: string) => {
@@ -134,15 +153,26 @@ export function SearchSheet({
 
     setIsLoading(true);
     try {
+      // Get user's location coordinates based on their preference
+      const userCoordinates = await getUserLocationCoordinates();
+
+      if (!userCoordinates) {
+        console.log("No user coordinates available, search limited");
+        setResults({ events: [], users: [], locations: [] });
+        setTicketmasterEvents([]);
+        setIsLoading(false);
+        // Note: We could show a message to the user here about needing location access
+        return;
+      }
+
+      console.log("Searching with user coordinates:", userCoordinates);
+
       // Call RPC for Supabase data + Ticketmaster search API in parallel
       const [rpcResults, ticketmasterResults] = await Promise.all([
-        // Supabase RPC search
-        supabase.rpc("search_comprehensive", {
-          search_query: query,
-          result_limit: 15,
-        }),
-        // Ticketmaster API search
-        searchTicketmaster(query),
+        // Try location-aware search first, fall back to regular search
+        searchSupabaseData(query, userCoordinates),
+        // Ticketmaster API search with user location
+        searchTicketmaster(query, userCoordinates),
       ]);
 
       // Handle RPC results
@@ -232,21 +262,55 @@ export function SearchSheet({
     }
   };
 
-  // Search Ticketmaster events via backend - fetch all events then filter for Ticketmaster
-  const searchTicketmaster = async (query: string): Promise<MapEvent[]> => {
+  // Search Supabase data with location filtering
+  const searchSupabaseData = async (
+    query: string,
+    coordinates: { latitude: number; longitude: number }
+  ) => {
+    try {
+      // Try location-aware search first if it exists
+      let rpcResult = await supabase.rpc("search_comprehensive_with_location", {
+        search_query: query,
+        user_latitude: coordinates.latitude,
+        user_longitude: coordinates.longitude,
+        radius_km: 50, // 50km radius like the map
+        result_limit: 15,
+      });
+
+      // If location-aware RPC doesn't exist, fall back to regular search
+      if (rpcResult.error && rpcResult.error.code === "42883") {
+        console.log(
+          "Location-aware search not available, using regular search"
+        );
+        rpcResult = await supabase.rpc("search_comprehensive", {
+          search_query: query,
+          result_limit: 15,
+        });
+      }
+
+      return rpcResult;
+    } catch (error) {
+      console.error("Supabase search error:", error);
+      // Fall back to regular search
+      return await supabase.rpc("search_comprehensive", {
+        search_query: query,
+        result_limit: 15,
+      });
+    }
+  };
+
+  // Search Ticketmaster events via backend - fetch events in user's location area
+  const searchTicketmaster = async (
+    query: string,
+    coordinates: { latitude: number; longitude: number }
+  ): Promise<MapEvent[]> => {
     try {
       if (!session?.access_token) return [];
 
-      // Use default center coordinates (matching how the map works)
-      const defaultCenter = {
-        latitude: 40.7128, // NYC as default
-        longitude: -74.006,
-      };
-
-      // Fetch all events (same as map) - don't use source parameter
+      // Use user's coordinates instead of default NYC coordinates
       const eventData = {
-        latitude: defaultCenter.latitude,
-        longitude: defaultCenter.longitude,
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
         category: "", // empty for all categories
       };
 
@@ -322,6 +386,7 @@ export function SearchSheet({
       console.log(
         `Matching Ticketmaster events for "${query}": ${ticketmasterEvents.length}`
       );
+      console.log("Searched Ticketmaster events near:", coordinates);
 
       return ticketmasterEvents;
     } catch (error) {
@@ -330,7 +395,54 @@ export function SearchSheet({
     }
   };
 
-  const debouncedSearch = useCallback(debounce(handleSearch, 300), [session]);
+  // Get user's location coordinates based on their preference
+  const getUserLocationCoordinates = async () => {
+    try {
+      // First check if user has location preferences
+      if (!user) return null;
+
+      let coordinates = null;
+
+      // If user prefers orbit mode and has saved coordinates
+      if (user.event_location_preference === 1 && userlocation) {
+        coordinates = {
+          latitude: parseFloat(userlocation.latitude || "0"),
+          longitude: parseFloat(userlocation.longitude || "0"),
+        };
+        console.log("Using orbit mode coordinates:", coordinates);
+        return coordinates;
+      }
+
+      // If user prefers current location or orbit coordinates not available
+      if (user.event_location_preference === 0 || !coordinates) {
+        try {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status === "granted") {
+            const location = await Location.getCurrentPositionAsync({});
+            coordinates = {
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+            };
+            console.log("Using current device location:", coordinates);
+            return coordinates;
+          }
+        } catch (locationError) {
+          console.log("Could not get current location:", locationError);
+        }
+      }
+
+      return coordinates;
+    } catch (error) {
+      console.error("Error getting user location:", error);
+      return null;
+    }
+  };
+
+  const debouncedSearch = useCallback(debounce(handleSearch, 300), [
+    session,
+    user,
+    userlocation,
+  ]);
 
   // Handle result selection
   const handleSelectResult = (
@@ -453,16 +565,29 @@ export function SearchSheet({
             paddingBottom: 16,
             borderBottomWidth: 1,
             borderBottomColor: theme.colors.border,
+            backgroundColor: theme.colors.background,
           }}
         >
           <View style={{ flex: 1 }}>
             <Input
               ref={searchInputRef}
-              placeholder="Search events, places, and people..."
+              placeholder={
+                user?.event_location_preference === 1 && userlocation
+                  ? `Search in ${userlocation.city || "your orbit location"}...`
+                  : "Search events, places, and people..."
+              }
               value={searchQuery}
               onChangeText={(text: string) => {
                 setSearchQuery(text);
                 debouncedSearch(text);
+              }}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => {
+                // Only set focus to false if there's no search query
+                // This prevents premature collapse while user is still searching
+                if (searchQuery.length === 0) {
+                  setIsFocused(false);
+                }
               }}
               placeholderTextColor={theme.colors.text + "80"}
               style={{
@@ -478,6 +603,8 @@ export function SearchSheet({
                 setSearchQuery("");
                 setResults({ events: [], users: [], locations: [] });
                 setTicketmasterEvents([]);
+                setIsFocused(false);
+                searchInputRef.current?.blur();
               }}
               style={{
                 marginLeft: 12,
@@ -492,7 +619,9 @@ export function SearchSheet({
           {/* Expand/Collapse Button */}
           {searchQuery.length > 1 && (
             <TouchableOpacity
-              onPress={() => setIsExpanded(!isExpanded)}
+              onPress={() => {
+                setIsExpanded(!isExpanded);
+              }}
               style={{
                 marginLeft: 8,
                 padding: 8,
@@ -621,8 +750,9 @@ export function SearchSheet({
                   lineHeight: 20,
                 }}
               >
-                Search for events, places, and people in your area. Find
-                concerts, restaurants, parks, and connect with friends.
+                {user?.event_location_preference === 1 && userlocation
+                  ? `Search for events, places, and people in ${userlocation.city}, ${userlocation.state}. Find concerts, restaurants, parks, and connect with friends.`
+                  : "Search for events, places, and people in your area. Find concerts, restaurants, parks, and connect with friends."}
               </Text>
             </View>
           )}
@@ -725,19 +855,19 @@ export function SearchSheet({
                           marginRight: 12,
                         }}
                       >
-                        {event.image_urls && event.image_urls.length > 0 ? (
-                          <Image
-                            source={{ uri: event.image_urls[0] }}
-                            style={{
-                              width: 56,
-                              height: 56,
-                              borderRadius: 8,
-                            }}
-                            resizeMode="cover"
-                          />
-                        ) : (
-                          <Calendar size={24} color={theme.colors.primary} />
-                        )}
+                        <OptimizedImage
+                          uri={event.image_urls?.[0] || ""}
+                          width={56}
+                          height={56}
+                          quality={80}
+                          style={{
+                            width: 56,
+                            height: 56,
+                            borderRadius: 8,
+                          }}
+                          resizeMode="cover"
+                          fallbackUri="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=56&q=80"
+                        />
                       </View>
                       <View style={{ flex: 1, justifyContent: "center" }}>
                         <View

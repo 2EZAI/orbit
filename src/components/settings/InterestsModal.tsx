@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
-import { Sheet } from "~/src/components/ui/sheet";
+import { KeyboardAwareSheet } from "./KeyboardAwareSheet";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useAuth } from "~/src/lib/auth";
 import { useUser } from "~/hooks/useUserData";
@@ -43,6 +43,7 @@ export function InterestsModal({ isOpen, onClose }: InterestsModalProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Load user data
   useEffect(() => {
     if (isOpen) {
       loadTopics();
@@ -243,7 +244,7 @@ export function InterestsModal({ isOpen, onClose }: InterestsModalProps) {
   };
 
   return (
-    <Sheet isOpen={isOpen} onClose={onClose}>
+    <KeyboardAwareSheet isOpen={isOpen} onClose={onClose}>
       <View style={{ flex: 1, maxHeight: "85%" }}>
         {/* Fixed Header Section */}
         <View
@@ -283,6 +284,8 @@ export function InterestsModal({ isOpen, onClose }: InterestsModalProps) {
                   fontSize: 20,
                   fontWeight: "800",
                   color: theme.colors.text,
+                  lineHeight: 25,
+                  paddingVertical: 2,
                 }}
               >
                 Update Interests
@@ -452,6 +455,6 @@ export function InterestsModal({ isOpen, onClose }: InterestsModalProps) {
           </View>
         </View>
       </View>
-    </Sheet>
+    </KeyboardAwareSheet>
   );
 }

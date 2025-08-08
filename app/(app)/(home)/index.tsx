@@ -43,14 +43,20 @@ import { FeaturedSection } from "~/src/components/feed/FeaturedSection";
 import { FeedSection } from "~/src/components/feed/FeedSection";
 import { EventCard } from "~/src/components/feed/EventCard";
 import { LocationCard } from "~/src/components/feed/LocationCard";
-import { FilterModal } from "~/src/components/FilterModal";
+import { CompactEventCard } from "~/src/components/feed/CompactEventCard";
+import { MarkerFilter } from "~/src/components/map/MarkerFilter";
 import { SectionViewSheet } from "~/src/components/SectionViewSheet";
 import { UnifiedDetailsSheet } from "~/src/components/map/UnifiedDetailsSheet";
 import { SearchSheet } from "~/src/components/search/SearchSheet";
 import { ScreenHeader } from "~/src/components/ui/screen-header";
+import { HomeLoadingScreen } from "~/src/components/feed/HomeLoadingScreen";
 
 // Utils
 import { handleSectionViewMore } from "~/src/lib/utils/sectionViewMore";
+import {
+  FilterState,
+  generateDefaultFilters,
+} from "~/src/components/map/MarkerFilter";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const STORY_CARD_WIDTH = screenWidth * 0.8;
@@ -366,15 +372,21 @@ export default function Home() {
   const [isSelectedItemLocation, setIsSelectedItemLocation] = useState(false);
   const [currentFeaturedIndex, setCurrentFeaturedIndex] = useState(0);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [activeQuickFilter, setActiveQuickFilter] = useState("All");
+  const [isQuickFiltering, setIsQuickFiltering] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    new Set()
+  );
+  const [loadingMoreSections, setLoadingMoreSections] = useState<Set<string>>(
+    new Set()
+  );
+  const [sectionEngagement, setSectionEngagement] = useState<
+    Map<string, number>
+  >(new Map());
 
-  // Filter state
+  // Filter state - using the same sophisticated filtering as the map
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [filters, setFilters] = useState({
-    categories: [] as string[],
-    dateRange: "all",
-    minAttendees: 0,
-    maxAttendees: 1000,
-  });
+  const [filters, setFilters] = useState<FilterState>({});
   const [filteredData, setFilteredData] = useState<any[]>([]);
 
   // Section view sheet state
@@ -395,6 +407,17 @@ export default function Home() {
     fetchAllNoifications(1, 20);
   }, []);
 
+  // Initialize filters when data changes
+  useEffect(() => {
+    if (data.allContent.length > 0 && Object.keys(filters).length === 0) {
+      const defaultFilters = generateDefaultFilters(
+        data.allContent.filter((item: any) => !item.isLocation),
+        data.allContent.filter((item: any) => item.isLocation)
+      );
+      setFilters(defaultFilters);
+    }
+  }, [data.allContent]);
+
   const handleViewMore = async (section: any) => {
     const allSectionData = await handleSectionViewMore(section);
     setSectionViewSheet({
@@ -404,10 +427,489 @@ export default function Home() {
     });
   };
 
-  const applyFilters = (newFilters: any) => {
-    // Filter logic here if needed
+  // Get count for each quick filter
+  const getQuickFilterCount = (filterType: string) => {
+    if (filterType === "All") return null;
+
+    const filterFunctions = {
+      Today: (item: any) => {
+        if (item.isLocation) return false;
+        try {
+          const eventDate = new Date(item.start_datetime);
+          const today = new Date();
+          return eventDate.toDateString() === today.toDateString();
+        } catch {
+          return false;
+        }
+      },
+      "This Weekend": (item: any) => {
+        if (item.isLocation) return false;
+        try {
+          const eventDate = new Date(item.start_datetime);
+          const today = new Date();
+          const daysUntil = Math.floor(
+            (eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          return daysUntil >= 0 && daysUntil <= 7;
+        } catch {
+          return false;
+        }
+      },
+      Free: (item: any) => {
+        if (item.isLocation) return false;
+        const name = item.name?.toLowerCase() || "";
+        const description = item.description?.toLowerCase() || "";
+        return (
+          name.includes("free") ||
+          description.includes("free") ||
+          name.includes("no cost") ||
+          description.includes("no cost")
+        );
+      },
+      Music: (item: any) => {
+        const name = item.name?.toLowerCase() || "";
+        const description = item.description?.toLowerCase() || "";
+        const category =
+          typeof item.category === "string" ? item.category.toLowerCase() : "";
+        return (
+          name.includes("music") ||
+          description.includes("music") ||
+          name.includes("concert") ||
+          description.includes("concert") ||
+          category.includes("music") ||
+          category.includes("concert")
+        );
+      },
+      Food: (item: any) => {
+        const name = item.name?.toLowerCase() || "";
+        const description = item.description?.toLowerCase() || "";
+        const category =
+          typeof item.category === "string" ? item.category.toLowerCase() : "";
+        return (
+          name.includes("food") ||
+          description.includes("food") ||
+          name.includes("restaurant") ||
+          description.includes("restaurant") ||
+          name.includes("dining") ||
+          description.includes("dining") ||
+          category.includes("food") ||
+          category.includes("restaurant") ||
+          category.includes("dining")
+        );
+      },
+      Outdoor: (item: any) => {
+        const name = item.name?.toLowerCase() || "";
+        const description = item.description?.toLowerCase() || "";
+        const venue = item.venue_name?.toLowerCase() || "";
+        return (
+          name.includes("outdoor") ||
+          description.includes("outdoor") ||
+          name.includes("park") ||
+          description.includes("park") ||
+          venue.includes("park") ||
+          venue.includes("outdoor")
+        );
+      },
+      Art: (item: any) => {
+        const name = item.name?.toLowerCase() || "";
+        const description = item.description?.toLowerCase() || "";
+        const category =
+          typeof item.category === "string" ? item.category.toLowerCase() : "";
+        return (
+          name.includes("art") ||
+          description.includes("art") ||
+          name.includes("gallery") ||
+          description.includes("gallery") ||
+          name.includes("museum") ||
+          description.includes("museum") ||
+          category.includes("art") ||
+          category.includes("gallery")
+        );
+      },
+    };
+
+    const filterFunc =
+      filterFunctions[filterType as keyof typeof filterFunctions];
+    if (!filterFunc) return 0;
+
+    return data.allContent?.filter(filterFunc).length || 0;
+  };
+
+  // Quick filter functionality
+  const applyQuickFilter = (filterType: string) => {
+    setIsQuickFiltering(true);
+    setActiveQuickFilter(filterType);
+
+    if (filterType === "All") {
+      setFilteredData([]);
+      setIsQuickFiltering(false);
+      return;
+    }
+
+    const filterFunctions = {
+      Today: (item: any) => {
+        if (item.isLocation) return false;
+        try {
+          const eventDate = new Date(item.start_datetime);
+          const today = new Date();
+          return eventDate.toDateString() === today.toDateString();
+        } catch {
+          return false;
+        }
+      },
+      "This Weekend": (item: any) => {
+        if (item.isLocation) return false;
+        try {
+          const eventDate = new Date(item.start_datetime);
+          const today = new Date();
+          const daysUntil = Math.floor(
+            (eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          return daysUntil >= 0 && daysUntil <= 7;
+        } catch {
+          return false;
+        }
+      },
+      Free: (item: any) => {
+        if (item.isLocation) return false;
+        const name = item.name?.toLowerCase() || "";
+        const description = item.description?.toLowerCase() || "";
+        return (
+          name.includes("free") ||
+          description.includes("free") ||
+          name.includes("no cost") ||
+          description.includes("no cost")
+        );
+      },
+      Music: (item: any) => {
+        const name = item.name?.toLowerCase() || "";
+        const description = item.description?.toLowerCase() || "";
+        const category =
+          typeof item.category === "string" ? item.category.toLowerCase() : "";
+        return (
+          name.includes("music") ||
+          description.includes("music") ||
+          name.includes("concert") ||
+          description.includes("concert") ||
+          category.includes("music") ||
+          category.includes("concert")
+        );
+      },
+      Food: (item: any) => {
+        const name = item.name?.toLowerCase() || "";
+        const description = item.description?.toLowerCase() || "";
+        const category =
+          typeof item.category === "string" ? item.category.toLowerCase() : "";
+        return (
+          name.includes("food") ||
+          description.includes("food") ||
+          name.includes("restaurant") ||
+          description.includes("restaurant") ||
+          name.includes("dining") ||
+          description.includes("dining") ||
+          category.includes("food") ||
+          category.includes("restaurant") ||
+          category.includes("dining")
+        );
+      },
+      Outdoor: (item: any) => {
+        const name = item.name?.toLowerCase() || "";
+        const description = item.description?.toLowerCase() || "";
+        const venue = item.venue_name?.toLowerCase() || "";
+        return (
+          name.includes("outdoor") ||
+          description.includes("outdoor") ||
+          name.includes("park") ||
+          description.includes("park") ||
+          venue.includes("park") ||
+          venue.includes("outdoor")
+        );
+      },
+      Art: (item: any) => {
+        const name = item.name?.toLowerCase() || "";
+        const description = item.description?.toLowerCase() || "";
+        const category =
+          typeof item.category === "string" ? item.category.toLowerCase() : "";
+        return (
+          name.includes("art") ||
+          description.includes("art") ||
+          name.includes("gallery") ||
+          description.includes("gallery") ||
+          name.includes("museum") ||
+          description.includes("museum") ||
+          category.includes("art") ||
+          category.includes("gallery")
+        );
+      },
+    };
+
+    const filterFunc =
+      filterFunctions[filterType as keyof typeof filterFunctions];
+    if (!filterFunc) return;
+
+    // Apply filter to all sections
+    const quickFilteredSections = data.flatListData
+      .map((section) => {
+        if (section.type === "section") {
+          const filteredSectionData = section.data.data.filter(filterFunc);
+          return {
+            ...section,
+            data: {
+              ...section.data,
+              data: filteredSectionData,
+            },
+          };
+        }
+        return section;
+      })
+      .filter((section) => {
+        // Remove sections with no data after filtering
+        if (section.type === "section") {
+          return section.data.data.length > 0;
+        }
+        return true;
+      });
+
+    setFilteredData(quickFilteredSections);
+    setIsQuickFiltering(false);
+  };
+
+  // Handle loading more content for infinite scroll
+  const handleLoadMore = (sectionKey: string) => {
+    if (loadingMoreSections.has(sectionKey)) return;
+
+    setLoadingMoreSections((prev) => new Set([...prev, sectionKey]));
+
+    // Simulate loading delay (in real app, this would be an API call)
+    setTimeout(() => {
+      setExpandedSections((prev) => new Set([...prev, sectionKey]));
+      setLoadingMoreSections((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(sectionKey);
+        return newSet;
+      });
+    }, 1000);
+  };
+
+  // Track section engagement
+  const trackSectionEngagement = (
+    sectionKey: string,
+    engagementType: "view" | "scroll" | "click"
+  ) => {
+    setSectionEngagement((prev) => {
+      const newMap = new Map(prev);
+      const currentEngagement = newMap.get(sectionKey) || 0;
+      const engagementValues = { view: 1, scroll: 2, click: 3 };
+      newMap.set(
+        sectionKey,
+        currentEngagement + engagementValues[engagementType]
+      );
+      return newMap;
+    });
+  };
+
+  // Reorder sections based on engagement
+  const reorderSectionsByEngagement = (sections: any[]) => {
+    return [...sections].sort((a, b) => {
+      const engagementA = sectionEngagement.get(a.data.key) || 0;
+      const engagementB = sectionEngagement.get(b.data.key) || 0;
+
+      // Higher engagement comes first, but preserve featured section at top
+      if (a.type === "stories") return -1;
+      if (b.type === "stories") return 1;
+
+      return engagementB - engagementA;
+    });
+  };
+
+  // Dynamic filter functions - same logic as the map
+  const shouldShowItem = (item: any): boolean => {
+    // If no filters are set yet, show everything
+    if (Object.keys(filters).length === 0) return true;
+
+    // If all filters are false, hide everything
+    const hasAnyFilterEnabled = Object.values(filters).some(
+      (value) => value === true
+    );
+    if (!hasAnyFilterEnabled) return false;
+
+    let shouldShow = false;
+
+    // Check event source type filters for events
+    if (!item.isLocation && "source" in item && item.source) {
+      const sourceKey =
+        item.source === "user"
+          ? "community-events"
+          : (typeof item.source === "string" &&
+              item.source.includes("ticket")) ||
+            item.source === "ticketmaster"
+          ? "ticketed-events"
+          : "featured-events";
+
+      if (filters.hasOwnProperty(sourceKey) && filters[sourceKey]) {
+        shouldShow = true;
+      }
+    }
+
+    // Check event category filters
+    if (
+      !item.isLocation &&
+      "categories" in item &&
+      item.categories &&
+      Array.isArray(item.categories)
+    ) {
+      for (const cat of item.categories) {
+        if (cat && cat.name && typeof cat.name === "string") {
+          const catKey = `event-${cat.name.toLowerCase().replace(/\s+/g, "-")}`;
+          if (filters.hasOwnProperty(catKey) && filters[catKey]) {
+            shouldShow = true;
+            break;
+          }
+        }
+      }
+    }
+
+    // Check location category filters
+    if (
+      item.isLocation &&
+      "category" in item &&
+      item.category &&
+      typeof item.category === "string"
+    ) {
+      const catKey = `location-${item.category
+        .toLowerCase()
+        .replace(/\s+/g, "-")}`;
+      if (filters.hasOwnProperty(catKey) && filters[catKey]) {
+        shouldShow = true;
+      }
+    }
+
+    // Check location type filters
+    if (
+      item.isLocation &&
+      "type" in item &&
+      item.type &&
+      typeof item.type === "string"
+    ) {
+      const typeKey = `type-${item.type.toLowerCase().replace(/\s+/g, "-")}`;
+      if (filters.hasOwnProperty(typeKey) && filters[typeKey]) {
+        shouldShow = true;
+      }
+    }
+
+    return shouldShow;
+  };
+
+  const applyFilters = (newFilters: FilterState) => {
     setFilters(newFilters);
-    setFilteredData(data.flatListData); // Simplified for now
+    setActiveQuickFilter("All"); // Reset quick filter when advanced filters are applied
+
+    // Create a filtering function with the new filters
+    const shouldShowItemWithNewFilters = (item: any): boolean => {
+      // If no filters are set yet, show everything
+      if (Object.keys(newFilters).length === 0) return true;
+
+      // If all filters are false, hide everything
+      const hasAnyFilterEnabled = Object.values(newFilters).some(
+        (value) => value === true
+      );
+      if (!hasAnyFilterEnabled) return false;
+
+      let shouldShow = false;
+
+      // Check event source type filters for events
+      if (!item.isLocation && "source" in item && item.source) {
+        const sourceKey =
+          item.source === "user"
+            ? "community-events"
+            : (typeof item.source === "string" &&
+                item.source.includes("ticket")) ||
+              item.source === "ticketmaster"
+            ? "ticketed-events"
+            : "featured-events";
+
+        if (newFilters.hasOwnProperty(sourceKey) && newFilters[sourceKey]) {
+          shouldShow = true;
+        }
+      }
+
+      // Check event category filters
+      if (
+        !item.isLocation &&
+        "categories" in item &&
+        item.categories &&
+        Array.isArray(item.categories)
+      ) {
+        for (const cat of item.categories) {
+          if (cat && cat.name && typeof cat.name === "string") {
+            const catKey = `event-${cat.name
+              .toLowerCase()
+              .replace(/\s+/g, "-")}`;
+            if (newFilters.hasOwnProperty(catKey) && newFilters[catKey]) {
+              shouldShow = true;
+              break;
+            }
+          }
+        }
+      }
+
+      // Check location category filters
+      if (
+        item.isLocation &&
+        "category" in item &&
+        item.category &&
+        typeof item.category === "string"
+      ) {
+        const catKey = `location-${item.category
+          .toLowerCase()
+          .replace(/\s+/g, "-")}`;
+        if (newFilters.hasOwnProperty(catKey) && newFilters[catKey]) {
+          shouldShow = true;
+        }
+      }
+
+      // Check location type filters
+      if (
+        item.isLocation &&
+        "type" in item &&
+        item.type &&
+        typeof item.type === "string"
+      ) {
+        const typeKey = `type-${item.type.toLowerCase().replace(/\s+/g, "-")}`;
+        if (newFilters.hasOwnProperty(typeKey) && newFilters[typeKey]) {
+          shouldShow = true;
+        }
+      }
+
+      return shouldShow;
+    };
+
+    // Apply filters to all content
+    const filteredSections = data.flatListData
+      .map((section) => {
+        if (section.type === "section") {
+          const filteredData = section.data.data.filter(
+            shouldShowItemWithNewFilters
+          );
+          return {
+            ...section,
+            data: {
+              ...section.data,
+              data: filteredData,
+            },
+          };
+        }
+        return section;
+      })
+      .filter((section) => {
+        // Remove sections with no data after filtering
+        if (section.type === "section") {
+          return section.data.data.length > 0;
+        }
+        return true;
+      });
+
+    setFilteredData(filteredSections);
   };
 
   const renderItem = ({ item }: { item: any }) => {
@@ -438,22 +940,47 @@ export default function Home() {
         );
       } else {
         // Regular event sections
+        const currentLayout = item.data.layout;
         return (
           <FeedSection
             title={item.data.title}
             data={item.data.data}
-            layout={item.data.layout}
+            layout={currentLayout}
             onSeeAll={() => handleViewMore(item.data)}
-            renderItem={({ item: eventItem }: { item: any }) => (
-              <EventCard
-                item={eventItem}
-                onPress={() => {
-                  setSelectedEvent(eventItem);
-                  setIsSelectedItemLocation(false);
-                }}
-              />
-            )}
+            renderItem={({ item: eventItem }: { item: any }) =>
+              currentLayout === "list" ? (
+                <CompactEventCard
+                  item={eventItem}
+                  onPress={() => {
+                    setSelectedEvent(eventItem);
+                    setIsSelectedItemLocation(false);
+                    trackSectionEngagement(item.data.key, "click");
+                  }}
+                />
+              ) : (
+                <EventCard
+                  item={eventItem}
+                  onPress={() => {
+                    setSelectedEvent(eventItem);
+                    setIsSelectedItemLocation(false);
+                    trackSectionEngagement(item.data.key, "click");
+                  }}
+                />
+              )
+            }
             loading={false}
+            onLoadMore={
+              currentLayout === "horizontal"
+                ? () => {
+                    handleLoadMore(item.data.key);
+                    trackSectionEngagement(item.data.key, "scroll");
+                  }
+                : undefined
+            }
+            hasMoreData={
+              item.data.hasMoreData && currentLayout === "horizontal"
+            }
+            isLoadingMore={loadingMoreSections.has(item.data.key)}
           />
         );
       }
@@ -465,33 +992,42 @@ export default function Home() {
   const enhancedFlatListData = React.useMemo(() => {
     const flatList = [];
 
-    // Add story section at the top if we have featured events
-    if (data.featuredEvents?.length > 0) {
+    // Add story section at the top if we have featured events (only for "All" filter)
+    if (data.featuredEvents?.length > 0 && activeQuickFilter === "All") {
       flatList.push({ type: "stories", data: data.featuredEvents });
     }
 
-    // Add the rest of the original data
-    if (filteredData.length > 0) {
-      flatList.push(...filteredData);
+    // Use quick filtered data if a quick filter is active, otherwise use regular filtered data
+    let sectionsToDisplay = [];
+    if (activeQuickFilter !== "All" && filteredData.length > 0) {
+      sectionsToDisplay = [...filteredData];
+    } else if (activeQuickFilter === "All" && filteredData.length > 0) {
+      sectionsToDisplay = [...filteredData];
     } else {
-      flatList.push(...data.flatListData);
+      sectionsToDisplay = [...data.flatListData];
     }
 
+    // Apply engagement-based reordering for "All" filter
+    if (activeQuickFilter === "All" && sectionEngagement.size > 0) {
+      sectionsToDisplay = reorderSectionsByEngagement(sectionsToDisplay);
+    }
+
+    flatList.push(...sectionsToDisplay);
     return flatList;
-  }, [data, filteredData]);
+  }, [data, filteredData, activeQuickFilter, sectionEngagement]);
 
   if (loading) {
     return (
-      <View
-        style={[
-          styles.loadingContainer,
-          { backgroundColor: theme.colors.card },
-        ]}
-      >
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={[styles.loadingText, { color: theme.colors.primary }]}>
-          Discovering amazing events...
-        </Text>
+      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+        <StatusBar
+          barStyle={isDarkMode ? "light-content" : "dark-content"}
+          backgroundColor={theme.colors.background}
+        />
+        <HomeLoadingScreen
+          isVisible={loading}
+          loadingText="Discovering Amazing Events"
+          subtitle="Finding the best events and experiences in your area..."
+        />
       </View>
     );
   }
@@ -646,15 +1182,17 @@ export default function Home() {
 
         {/* Filter Modal */}
         {showFilterModal && (
-          <FilterModal
-            isVisible={showFilterModal}
+          <MarkerFilter
+            isOpen={showFilterModal}
             onClose={() => setShowFilterModal(false)}
             filters={filters}
-            onApplyFilters={(newFilters) => {
+            onFilterChange={(newFilters) => {
               applyFilters(newFilters);
-              setShowFilterModal(false);
             }}
-            theme={theme}
+            eventsList={data.allContent.filter((item: any) => !item.isLocation)}
+            locationsList={data.allContent.filter(
+              (item: any) => item.isLocation
+            )}
           />
         )}
 
@@ -763,6 +1301,72 @@ export default function Home() {
             </TouchableOpacity>
           </TouchableOpacity>
         </View>
+
+        {/* Quick Filter Chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.quickFiltersContainer}
+        >
+          {[
+            "All",
+            "Today",
+            "This Weekend",
+            "Free",
+            "Music",
+            "Food",
+            "Outdoor",
+            "Art",
+          ].map((filter) => (
+            <TouchableOpacity
+              key={filter}
+              style={[
+                styles.quickFilterChip,
+                {
+                  backgroundColor:
+                    filter === activeQuickFilter
+                      ? theme.colors.primary
+                      : theme.colors.card,
+                  borderColor:
+                    filter === activeQuickFilter
+                      ? theme.colors.primary
+                      : theme.colors.border,
+                },
+              ]}
+              onPress={() => applyQuickFilter(filter)}
+            >
+              <Text
+                style={[
+                  styles.quickFilterText,
+                  {
+                    color:
+                      filter === activeQuickFilter
+                        ? "white"
+                        : theme.colors.text,
+                  },
+                ]}
+              >
+                {filter}
+                {filter !== "All" && (
+                  <Text
+                    style={[
+                      styles.filterCount,
+                      {
+                        color:
+                          filter === activeQuickFilter
+                            ? "white"
+                            : theme.colors.text + "60",
+                      },
+                    ]}
+                  >
+                    {" "}
+                    ({getQuickFilterCount(filter)})
+                  </Text>
+                )}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </SafeAreaView>
 
       {/* Main Feed with Enhanced Data */}
@@ -789,15 +1393,15 @@ export default function Home() {
 
       {/* Modals */}
       {showFilterModal && (
-        <FilterModal
-          isVisible={showFilterModal}
+        <MarkerFilter
+          isOpen={showFilterModal}
           onClose={() => setShowFilterModal(false)}
           filters={filters}
-          onApplyFilters={(newFilters) => {
+          onFilterChange={(newFilters) => {
             applyFilters(newFilters);
-            setShowFilterModal(false);
           }}
-          theme={theme}
+          eventsList={data.allContent.filter((item: any) => !item.isLocation)}
+          locationsList={data.allContent.filter((item: any) => item.isLocation)}
         />
       )}
 
@@ -860,15 +1464,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-  },
+
   errorContainer: {
     flex: 1,
     justifyContent: "center",
@@ -951,6 +1547,8 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "bold",
     marginBottom: 5,
+    lineHeight: 30,
+    paddingVertical: 2,
   },
   storySectionSubtitle: {
     fontSize: 14,
@@ -1019,6 +1617,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 8,
+    lineHeight: 22,
     textShadowColor: "rgba(0,0,0,0.5)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -1173,6 +1772,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
     marginBottom: 8,
+    lineHeight: 25,
     textShadowColor: "rgba(0,0,0,0.5)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -1213,6 +1813,8 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "bold",
     marginBottom: 5,
+    lineHeight: 30,
+    paddingVertical: 2,
   },
   tiktokSectionSubtitle: {
     fontSize: 14,
@@ -1227,5 +1829,25 @@ const styles = StyleSheet.create({
   },
   tiktokScrollIndicatorText: {
     fontSize: 12,
+  },
+  quickFiltersContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  quickFilterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginRight: 8,
+  },
+  quickFilterText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  filterCount: {
+    fontSize: 12,
+    fontWeight: "500",
   },
 });

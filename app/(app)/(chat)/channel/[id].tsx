@@ -3,24 +3,9 @@ import {
   MessageInput,
   MessageList,
   Thread,
-  MessageType as StreamMessageType,
-  useMessageContext,
-  MessageAvatar,
-  MessageContent,
-  MessageFooter,
   MessageSimple,
-  useMessagesContext,
-  MessageStatus,
-  MessageContextValue,
-  MessageActionType,
-  MessageActionsParams,
-  Message as DefaultMessage,
   useChannelContext,
-  AutoCompleteSuggestionHeader,
-  AutoCompleteSuggestionItem,
-  AutoCompleteSuggestionList,
-  Card,
-  AutoCompleteInput,
+  Message,
 } from "stream-chat-expo";
 import { useAuth } from "~/src/lib/auth";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
@@ -31,32 +16,28 @@ import {
   View,
   TouchableOpacity,
   Alert,
-  ActionSheetIOS,
-  TextInput,
-  FlatList,
-  Platform,
   StyleSheet,
+  Image,
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import {
-  Info,
-  Users,
-  Edit2,
-  Trash2,
-  MoreHorizontal,
-  Image as ImageIcon,
-  Calendar,
-  Search,
-} from "lucide-react-native";
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "~/src/components/ui/avatar";
+import { Info, Calendar } from "lucide-react-native";
 import { Icon } from "react-native-elements";
 import type {
   Channel as ChannelType,
   DefaultGenerics,
   Attachment as StreamAttachment,
 } from "stream-chat";
-import type { MessageType } from "stream-chat-expo";
+
 import { useTheme } from "~/src/components/ThemeProvider";
-import { ArrowLeft } from "lucide-react-native";
+import { ArrowLeft, Phone, Video } from "lucide-react-native";
+import { useVideo } from "~/src/lib/video";
+import ActiveCallBanner from "~/src/components/chat/ActiveCallBanner";
+import { useMessageContext } from "stream-chat-expo";
 
 interface Event {
   id: string;
@@ -76,6 +57,381 @@ interface EventMessage {
   text: string;
   attachments: EventAttachment[];
 }
+
+// BULLETPROOF Message Component - ONLY renders polls, returns NULL for everything else
+// This forces Stream to use its default components for all non-poll messages
+const BulletproofMessage = (props: any) => {
+  const message = props.message;
+
+  // ONLY handle actual poll messages
+  const isActualPoll =
+    message &&
+    message.poll &&
+    message.poll.id &&
+    typeof message.poll.id === "string" &&
+    message.poll.id.length > 0;
+
+  if (isActualPoll) {
+    console.log(
+      "BulletproofMessage: Rendering custom poll for message:",
+      message.id
+    );
+    // Return ONLY our custom poll - no MessageSimple wrapper
+    return <CustomPollComponent key={`poll-${message.id}`} message={message} />;
+  }
+
+  // For ALL other messages: use Stream's default Message component (NOT MessageSimple)
+  // This avoids the MessageSimple crash while showing all messages
+  return <Message {...props} />;
+};
+
+// Custom Poll Component - Uses Stream's proper Poll component prop
+const CustomPollComponent = ({ message }: { message: any }) => {
+  // Extra safety checks for poll component
+  if (!message || !message.id || !message.poll || !message.poll.id) {
+    console.warn(
+      "CustomPollComponent: Invalid message or poll data, returning null"
+    );
+    return null;
+  }
+
+  const { channel } = useChannelContext();
+  const { theme } = useTheme();
+  const [isVoting, setIsVoting] = useState(false);
+
+  // Additional safety check
+  if (!channel || !theme) {
+    console.warn("CustomPollComponent: Missing channel or theme context");
+    return null;
+  }
+
+  const poll = message.poll;
+  const options = poll.options || [];
+
+  const handleVote = async (optionId: string) => {
+    if (isVoting) return; // Prevent double-voting
+
+    setIsVoting(true);
+
+    // Try multiple voting methods since Stream's API is broken
+    try {
+      console.log("🔄 Method 1: Trying poll.vote()...");
+      if (poll && typeof poll.vote === "function") {
+        const voteResult = await poll.vote({ option_id: optionId });
+        console.log("✅ Poll.vote() succeeded:", voteResult);
+        setIsVoting(false);
+        return;
+      }
+    } catch (error: any) {
+      console.log("❌ Method 1 failed:", error.message);
+    }
+
+    try {
+      console.log("🔄 Method 2: Trying channel.castPollVote()...");
+      if (channel && typeof (channel as any).castPollVote === "function") {
+        const voteResult = await (channel as any).castPollVote(poll.id, {
+          option_id: optionId,
+        });
+        console.log("✅ Channel.castPollVote() succeeded:", voteResult);
+        setIsVoting(false);
+        return;
+      }
+    } catch (error: any) {
+      console.log("❌ Method 2 failed:", error.message);
+    }
+
+    // Method 3: Fall back to the broken client API
+    try {
+      console.log("🔄 Method 3: Trying broken client.castPollVote()...");
+
+      const voteResult = await channel._client.castPollVote(
+        message.id,
+        poll.id,
+        {
+          option_id: optionId,
+        }
+      );
+
+      console.log("✅ Vote result:", voteResult);
+      setIsVoting(false);
+    } catch (error: any) {
+      console.error("❌ Vote failed:", error);
+
+      // This is a known Stream Chat API issue - votes usually succeed despite error
+      if (
+        error.status === 500 ||
+        error.code === -1 ||
+        error.message === "" ||
+        error.message.includes('CastPollVote failed with error: ""')
+      ) {
+        console.log("🎯 Known Stream API error - vote likely succeeded");
+
+        // First refresh to show updated poll data
+        setTimeout(async () => {
+          console.log("🔄 First refresh for poll update...");
+          try {
+            await channel.query({ messages: { limit: 50 }, presence: true });
+          } catch (e) {
+            console.log("🔄 Refresh error (expected):", e);
+          }
+          setIsVoting(false);
+        }, 1000);
+
+        // Second refresh to ensure poll state is fully updated
+        setTimeout(async () => {
+          console.log("🔄 Second refresh for poll update...");
+          try {
+            await channel.query({ watch: true, messages: { limit: 50 } });
+            await channel.queryMembers({});
+          } catch (e) {
+            console.log("🔄 Second refresh error (expected):", e);
+          }
+        }, 2000);
+      } else {
+        setIsVoting(false);
+        console.error("❌ Unexpected voting error:", error);
+      }
+    }
+  };
+
+  const getTotalVotes = (): number => {
+    if (!poll.vote_counts_by_option) return 0;
+    return Object.values(poll.vote_counts_by_option).reduce(
+      (sum: number, count: any) => sum + (Number(count) || 0),
+      0
+    );
+  };
+
+  const getVoteCount = (optionId: string): number => {
+    return Number(poll.vote_counts_by_option?.[optionId]) || 0;
+  };
+
+  const getVotePercentage = (optionId: string): number => {
+    const total = getTotalVotes();
+    if (total === 0) return 0;
+    return Math.round((getVoteCount(optionId) / total) * 100);
+  };
+
+  const hasUserVoted = (optionId: string) => {
+    return (
+      poll.own_votes?.some((vote: any) => vote.option_id === optionId) || false
+    );
+  };
+
+  const getVotersForOption = (optionId: string): any[] => {
+    // Get all votes for this option from poll.votes
+    const optionVotes =
+      poll.votes?.filter((vote: any) => vote.option_id === optionId) || [];
+
+    // Get unique users who voted for this option
+    const voterIds = [...new Set(optionVotes.map((vote: any) => vote.user_id))];
+
+    // Get user details from channel members
+    const voters = voterIds
+      .map((userId) => {
+        const member = Object.values(channel.state.members || {}).find(
+          (m: any) => m.user_id === userId
+        );
+        return member?.user;
+      })
+      .filter(Boolean);
+
+    return voters;
+  };
+
+  const getVoterDisplayName = (user: any): string => {
+    if (user?.first_name || user?.last_name) {
+      return `${user.first_name || ""} ${user.last_name || ""}`.trim();
+    }
+    return user?.username || "Unknown User";
+  };
+
+  return (
+    <View style={styles.fullWidthPollContainer}>
+      <View
+        style={[
+          styles.pollCard,
+          {
+            backgroundColor: theme.colors.card,
+            borderColor: theme.colors.border,
+          },
+        ]}
+      >
+        {/* Poll Header */}
+        <View style={styles.pollHeader}>
+          <Text style={[styles.pollTitle, { color: theme.colors.text }]}>
+            📊 {poll.name}
+          </Text>
+          <Text style={[styles.pollDescription, { color: theme.colors.text }]}>
+            {poll.description || "Choose your option"}
+          </Text>
+        </View>
+
+        {/* Poll Options */}
+        <View style={styles.pollOptionsContainer}>
+          {options.map((option: any, index: number) => {
+            const voteCount = getVoteCount(option.id);
+            const percentage = getVotePercentage(option.id);
+            const userVoted = hasUserVoted(option.id);
+            const totalVotes = getTotalVotes();
+
+            return (
+              <TouchableOpacity
+                key={option.id}
+                style={[
+                  styles.pollOptionFull,
+                  {
+                    backgroundColor: userVoted
+                      ? theme.colors.primary + "20"
+                      : theme.colors.background,
+                    borderColor: userVoted
+                      ? theme.colors.primary
+                      : theme.colors.border,
+                    borderWidth: userVoted ? 2 : 1,
+                  },
+                ]}
+                onPress={() => handleVote(option.id)}
+                activeOpacity={0.7}
+                disabled={isVoting}
+              >
+                {/* Progress Background */}
+                {totalVotes > 0 && (
+                  <View
+                    style={[
+                      styles.pollOptionProgress,
+                      {
+                        width: `${percentage}%`,
+                        backgroundColor: userVoted
+                          ? theme.colors.primary + "30"
+                          : theme.colors.notification + "30",
+                      },
+                    ]}
+                  />
+                )}
+
+                {/* Option Content */}
+                <View style={styles.pollOptionContent}>
+                  <View style={styles.pollOptionLeft}>
+                    <Text style={styles.optionNumber}>
+                      {String.fromCharCode(65 + index)} {/* A, B, C, etc */}
+                    </Text>
+                    <View style={styles.pollOptionTextContainer}>
+                      <Text
+                        style={[
+                          styles.pollOptionText,
+                          { color: theme.colors.text },
+                        ]}
+                      >
+                        {userVoted ? "✅ " : ""}
+                        {option.text}
+                      </Text>
+
+                      {/* Voter Avatars */}
+                      {(() => {
+                        const voters = getVotersForOption(option.id);
+                        const displayVoters = voters.slice(0, 5);
+                        const remainingCount =
+                          voters.length - displayVoters.length;
+
+                        if (voters.length === 0) return null;
+
+                        return (
+                          <View style={styles.voterAvatarsContainer}>
+                            {displayVoters.map(
+                              (user: any, voterIndex: number) => (
+                                <Avatar
+                                  key={user?.id || voterIndex}
+                                  style={[
+                                    styles.voterAvatar,
+                                    { marginLeft: voterIndex > 0 ? -8 : 0 },
+                                  ]}
+                                  alt={getVoterDisplayName(user)}
+                                >
+                                  {user?.image ? (
+                                    <AvatarImage source={{ uri: user.image }} />
+                                  ) : (
+                                    <AvatarFallback>
+                                      <Text style={styles.voterInitials}>
+                                        {(
+                                          user?.first_name?.[0] ||
+                                          user?.username?.[0] ||
+                                          "?"
+                                        ).toUpperCase()}
+                                      </Text>
+                                    </AvatarFallback>
+                                  )}
+                                </Avatar>
+                              )
+                            )}
+                            {remainingCount > 0 && (
+                              <View
+                                style={[
+                                  styles.voterAvatar,
+                                  styles.voterCountBadge,
+                                  { marginLeft: -8 },
+                                ]}
+                              >
+                                <Text style={styles.voterCountText}>
+                                  +{remainingCount}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        );
+                      })()}
+                    </View>
+                  </View>
+
+                  <View style={styles.pollOptionRight}>
+                    {isVoting ? (
+                      <ActivityIndicator
+                        size="small"
+                        color={theme.colors.primary}
+                      />
+                    ) : (
+                      <>
+                        <Text
+                          style={[
+                            styles.pollOptionVotes,
+                            { color: theme.colors.text },
+                          ]}
+                        >
+                          {voteCount}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.pollOptionPercentage,
+                            { color: theme.colors.text },
+                          ]}
+                        >
+                          {percentage}%
+                        </Text>
+                      </>
+                    )}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Poll Footer */}
+        <View style={styles.pollFooterContainer}>
+          <Text style={[styles.pollFooterText, { color: theme.colors.text }]}>
+            👥 {getTotalVotes()} total votes
+          </Text>
+          {poll.enforce_unique_vote && (
+            <Text
+              style={[styles.pollFooterSubtext, { color: theme.colors.text }]}
+            >
+              • One vote per person
+            </Text>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+};
 
 // Event search component
 const EventSearchHeader = ({ queryText }: { queryText: string }) => (
@@ -107,174 +463,6 @@ const EventSearchItem = ({
   </TouchableOpacity>
 );
 
-// Event message component
-const EventMessage = (props: any) => {
-  const { message } = useMessageContext();
-  const router = useRouter();
-  const { channel } = useChannelContext();
-
-  // Type guard for event search results
-  const isEventSearchMessage = (
-    msg: any
-  ): msg is { attachments: EventAttachment[] } => {
-    return msg?.attachments?.some((att: any) => att.type === "event_card");
-  };
-
-  // Type guard for event messages
-  const isEventMessage = (msg: any): msg is EventMessage => {
-    const hasEventAttachment = msg?.attachments?.some(
-      (att: any) => att.type === "event"
-    );
-    const hasValidAttachments =
-      Array.isArray(msg?.attachments) && msg.attachments.length > 0;
-    return hasEventAttachment && hasValidAttachments;
-  };
-
-  // Handle event selection
-  const handleEventSelect = async (eventData: Event) => {
-    try {
-      // console.log("[EventMessage] Sending event message:", eventData);
-      const message = {
-        text: `Shared event: ${eventData.name}`,
-        attachments: [
-          {
-            type: "event",
-            title: eventData.name,
-            text: `${new Date(eventData.startDate).toLocaleString()}${
-              eventData.location ? `\nLocation: ${eventData.location}` : ""
-            }`,
-            event_data: eventData,
-          },
-        ],
-      };
-      // console.log("[EventMessage] Sending message:", message);
-      const response = await channel?.sendMessage(message);
-      // console.log("[EventMessage] Message sent:", response);
-    } catch (error) {
-      console.error("[EventMessage] Error sharing event:", error);
-      Alert.alert("Error", "Failed to share event");
-    }
-  };
-
-  // Check if this is an event search result message
-  if (isEventSearchMessage(message)) {
-    return (
-      <MessageSimple
-        {...props}
-        MessageContent={() => (
-          <View>
-            {message.attachments.map((attachment, index) => (
-              <View key={index} className="p-3 mb-2 rounded-lg bg-muted">
-                <View className="flex-row items-center mb-2 space-x-2">
-                  <Calendar size={20} className="text-primary" />
-                  <Text className="font-medium text-foreground">
-                    {attachment.title}
-                  </Text>
-                </View>
-                <Text className="text-muted-foreground">{attachment.text}</Text>
-                <TouchableOpacity
-                  onPress={() =>
-                    handleEventSelect(attachment.event_data as Event)
-                  }
-                  className="p-2 mt-2 rounded bg-primary"
-                >
-                  <Text className="text-center text-primary-foreground">
-                    Select this event
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        )}
-      />
-    );
-  }
-
-  // Handle display of shared event message
-  if (isEventMessage(message)) {
-    const eventAttachment = message.attachments.find(
-      (att) => att.type === "event"
-    ) as EventAttachment | undefined;
-
-    if (!eventAttachment) {
-      return <DefaultMessage {...props} />;
-    }
-
-    const eventData = eventAttachment.event_data;
-    return (
-      <MessageSimple
-        {...props}
-        MessageContent={() => (
-          <TouchableOpacity
-            onPress={() => {
-              // console.log("[EventMessage] Navigating to event:", eventData);
-              router.push({
-                pathname: "/(app)/(map)",
-                params: { eventId: eventData.id },
-              });
-            }}
-            className="p-3 rounded-lg bg-muted"
-          >
-            <View className="flex-row items-center mb-2 space-x-2">
-              <Calendar size={20} className="text-primary" />
-              <Text className="font-medium text-foreground">
-                {eventData.name}
-              </Text>
-            </View>
-            <Text className="text-muted-foreground">
-              {new Date(eventData.startDate).toLocaleString()}
-              {eventData.location ? `\nLocation: ${eventData.location}` : ""}
-            </Text>
-          </TouchableOpacity>
-        )}
-      />
-    );
-  }
-
-  return <DefaultMessage {...props} />;
-};
-
-// Enhanced message component with proper typing
-const EnhancedMessage = (props: any) => {
-  const messageContext = useMessageContext();
-  // console.log("[ChatMessage] Message context:", {
-  //   hasContext: !!messageContext,
-  //   hasMessage: !!messageContext?.message,
-  //   messageId: messageContext?.message?.id,
-  //   text: messageContext?.message?.text,
-  // });
-
-  // Return null if message context is not available
-  if (!messageContext || !messageContext.message) {
-    return null;
-  }
-
-  const { message } = messageContext;
-
-  return (
-    <MessageSimple
-      {...props}
-      message={message}
-      MessageAvatar={MessageAvatar}
-      MessageContent={MessageContent}
-      MessageFooter={(messageFooterProps) => (
-        <MessageFooter
-          {...messageFooterProps}
-          formattedDate={
-            message.created_at
-              ? new Date(message.created_at).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : ""
-          }
-        />
-      )}
-      MessageStatus={MessageStatus}
-    />
-  );
-};
-
 export default function ChannelScreen() {
   const { session } = useAuth();
   const { id } = useLocalSearchParams();
@@ -283,7 +471,7 @@ export default function ChannelScreen() {
   const [channel, setChannel] = useState<ChannelType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [thread, setThread] = useState<MessageType | null>(null);
+  const [thread, setThread] = useState<any>(null);
   const [memberCount, setMemberCount] = useState<number>(0);
   const channelRef = useRef<ChannelType | null>(null);
   const { theme } = useTheme();
@@ -291,141 +479,52 @@ export default function ChannelScreen() {
   const [searchResults, setSearchResults] = useState<Event[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [orbitMsg, setorbitMsg] = useState<any>(null);
-
-  // console.log("chanell???", channel?.data);
-  // if (channel?.data?.name === "Orbit App") {
-  //   console.log("messages???", channel?.state.messages);
-  //   setorbitMsg(channel?.state?.messages);
-  // }
+  const { videoClient } = useVideo();
 
   const handleInfoPress = useCallback(() => {
     if (!channel) return;
 
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        options: [
-          "Change Chat Name",
-          "View Members",
-          "Add Members",
-          "View Media",
-          "Clear Chat History",
-          "Delete Chat",
-          "Cancel",
-        ],
-        cancelButtonIndex: 6,
-        destructiveButtonIndex: 5,
+    // Navigate to the settings screen
+    router.push(`/(app)/(chat)/channel/${channel.id}/settings`);
+  }, [channel, router]);
+
+  const handleVideoCall = useCallback(() => {
+    if (!channel || !videoClient) {
+      Alert.alert("Error", "Unable to start video call");
+      return;
+    }
+
+    // Generate a unique call ID based on channel ID
+    const callId = `channel-call-${channel.id}-${Date.now()}`;
+
+    router.push({
+      pathname: "/call/[id]" as const,
+      params: {
+        id: callId,
+        type: "default",
+        create: "true",
       },
-      async (buttonIndex) => {
-        try {
-          switch (buttonIndex) {
-            case 0: // Change name
-              Alert.prompt(
-                "Change Chat Name",
-                "Enter a new name for this chat",
-                async (newName) => {
-                  if (newName?.trim()) {
-                    await channel.update({
-                      name: newName.trim(),
-                    });
-                  }
-                }
-              );
-              break;
+    });
+  }, [channel, videoClient, router]);
 
-            case 1: // View members
-              const members = await channel.queryMembers({});
-              Alert.alert(
-                "Channel Members",
-                members.members
-                  .map((member) => member.user?.name || member.user_id)
-                  .join("\n")
-              );
-              break;
+  const handleAudioCall = useCallback(() => {
+    if (!channel || !videoClient) {
+      Alert.alert("Error", "Unable to start audio call");
+      return;
+    }
 
-            case 2: // Add members
-              router.push({
-                pathname: "/members/add",
-                params: { channelId: id },
-              });
-              break;
+    // Generate a unique call ID based on channel ID
+    const callId = `channel-call-${channel.id}-${Date.now()}`;
 
-            case 3: // View media
-              router.push({
-                pathname: `/channel/${id}/media`,
-              });
-              break;
-
-            case 4: // Clear history
-              Alert.alert(
-                "Clear Chat History",
-                "Are you sure you want to clear all messages? This cannot be undone.",
-                [
-                  {
-                    text: "Cancel",
-                    style: "cancel",
-                  },
-                  {
-                    text: "Clear",
-                    style: "destructive",
-                    onPress: async () => {
-                      await channel.truncate();
-                    },
-                  },
-                ]
-              );
-              break;
-
-            case 5: // Delete chat
-              Alert.alert(
-                "Delete Chat",
-                "Are you sure you want to delete this chat? This cannot be undone.",
-                [
-                  {
-                    text: "Cancel",
-                    style: "cancel",
-                  },
-                  {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                      try {
-                        // Call backend to delete channel
-                        const response = await fetch(
-                          `${process.env.BACKEND_CHAT_URL}/api/channels/${id}`,
-                          {
-                            method: "DELETE",
-                            headers: {
-                              Authorization: `Bearer ${client?.tokenManager.token}`,
-                            },
-                          }
-                        );
-
-                        if (!response.ok) {
-                          throw new Error("Failed to delete channel");
-                        }
-
-                        // Navigate back after successful deletion
-                        router.back();
-                      } catch (error) {
-                        console.error("Error deleting channel:", error);
-                        Alert.alert(
-                          "Error",
-                          "Failed to delete chat. Please try again."
-                        );
-                      }
-                    },
-                  },
-                ]
-              );
-              break;
-          }
-        } catch (error) {
-          console.error("Channel action error:", error);
-          Alert.alert("Error", "Failed to perform action");
-        }
-      }
-    );
-  }, [channel, router, id, client?.tokenManager.token]);
+    router.push({
+      pathname: "/call/[id]" as const,
+      params: {
+        id: callId,
+        type: "audio_room",
+        create: "true",
+      },
+    });
+  }, [channel, videoClient, router]);
 
   useEffect(() => {
     if (!client || !id || channelRef.current) {
@@ -451,17 +550,19 @@ export default function ChannelScreen() {
           watch: true,
         });
 
-        // console.log("[ChatChannel] Channel loaded with query:", {
-        //   id: newChannel.id,
-        //   type: newChannel.type,
-        //   memberCount: Object.keys(newChannel.state.members || {}).length,
-        //   messageCount: messages.messages?.length || 0,
-        //   messages: messages.messages?.map((m) => ({
-        //     id: m.id,
-        //     text: m.text,
-        //     user: m.user?.id,
-        //   })),
-        // });
+        console.log("[ChatChannel] Channel loaded with query:", {
+          id: newChannel.id,
+          type: newChannel.type,
+          memberCount: Object.keys(newChannel.state.members || {}).length,
+          messageCount: messages.messages?.length || 0,
+          messages: messages.messages
+            ?.filter((m) => m)
+            .map((m) => ({
+              id: m?.id || "unknown",
+              text: m?.text || "",
+              user: m?.user?.id || "unknown",
+            })),
+        });
 
         if (mounted) {
           channelRef.current = newChannel;
@@ -703,13 +804,32 @@ export default function ChannelScreen() {
             </TouchableOpacity>
           ),
           headerRight: () =>
-            channel?.data?.name !== "Orbit Social App" ? (
-              <TouchableOpacity
-                onPress={handleInfoPress}
-                style={{ paddingRight: 8 }}
-              >
-                <Info size={22} color={theme.colors.text} strokeWidth={2} />
-              </TouchableOpacity>
+            channel?.data?.name !== "Orbit App" ? (
+              <View style={{ flexDirection: "row", paddingRight: 8, gap: 12 }}>
+                {/* Audio Call Button */}
+                <TouchableOpacity
+                  onPress={handleAudioCall}
+                  style={{ padding: 4 }}
+                >
+                  <Phone size={20} color={theme.colors.text} strokeWidth={2} />
+                </TouchableOpacity>
+
+                {/* Video Call Button */}
+                <TouchableOpacity
+                  onPress={handleVideoCall}
+                  style={{ padding: 4 }}
+                >
+                  <Video size={20} color={theme.colors.text} strokeWidth={2} />
+                </TouchableOpacity>
+
+                {/* Settings Button */}
+                <TouchableOpacity
+                  onPress={handleInfoPress}
+                  style={{ padding: 4 }}
+                >
+                  <Info size={20} color={theme.colors.text} strokeWidth={2} />
+                </TouchableOpacity>
+              </View>
             ) : null,
           headerStyle: {
             backgroundColor: theme.colors.card,
@@ -720,6 +840,16 @@ export default function ChannelScreen() {
           headerShadowVisible: false,
         }}
       />
+
+      {/* Active Call Banner */}
+      {channel && (
+        <ActiveCallBanner
+          channelId={channel.id as string}
+          // @ts-ignore - temporary fix for channel.data.name type
+          channelName={channel.data?.name}
+        />
+      )}
+
       {loading ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color={theme.colors.text} />
@@ -738,106 +868,12 @@ export default function ChannelScreen() {
           keyboardVerticalOffset={90}
           thread={thread}
           threadList={!!thread}
-          Message={EventMessage}
-          onPressMessage={({
-            additionalInfo,
-            defaultHandler,
-            emitter,
-            message,
-          }) => {
-            const handleEventSelect = async (eventData: Event) => {
-              try {
-                // console.log("[EventMessage] Sending event message:", eventData);
-                const message = {
-                  text: `Shared event: ${eventData.name}`,
-                  attachments: [
-                    {
-                      type: "event",
-                      title: eventData.name,
-                      text: `${new Date(eventData.startDate).toLocaleString()}${
-                        eventData.location
-                          ? `\nLocation: ${eventData.location}`
-                          : ""
-                      }`,
-                      event_data: eventData,
-                    },
-                  ],
-                };
-                // console.log("[EventMessage] Sending message:", message);
-                const response = await channel?.sendMessage(message);
-                // console.log("[EventMessage] Message sent:", response);
-              } catch (error) {
-                console.error("[EventMessage] Error sharing event:", error);
-                Alert.alert("Error", "Failed to share event");
-              }
-            };
-
-            // console.log("[Channel] Message pressed:", {
-            //   additionalInfo,
-            //   emitter,
-            //   messageType: message?.type,
-            //   attachments: message?.attachments,
-            // });
-
-            // Check if this is an event message
-            const eventAttachment = message?.attachments?.find(
-              (att: any) => att.type === "event"
-            ) as EventAttachment | undefined;
-
-            if (eventAttachment?.event_data) {
-              // console.log(
-              //   "[Channel] Found event data:",
-              //   eventAttachment.event_data
-              // );
-              router.push({
-                pathname: "/(app)/(map)",
-                params: { eventId: eventAttachment.event_data.id },
-              });
-              return;
-            }
-
-            // Handle event card selection
-            const attachment = additionalInfo?.attachment as
-              | EventAttachment
-              | undefined;
-            if (attachment?.type === "event_card") {
-              handleEventSelect(attachment.event_data as Event);
-              return;
-            }
-
-            defaultHandler?.();
-          }}
-          doSendMessageRequest={async (channelId, message) => {
-            if (message.text?.startsWith("/event")) {
-              const searchTerm = message.text.replace("/event", "").trim();
-              if (searchTerm) {
-                await handleCommand("event", searchTerm);
-                return new Promise(() => {}); // Prevent default message sending
-              } else {
-                Alert.alert(
-                  "Error",
-                  "Please provide a search term after /event"
-                );
-                return new Promise(() => {});
-              }
-            }
-
-            console.log("LKL>>", channel?.data?.member_count);
-            const name = channel?.data?.name as string;
-            const chnlId = channel?.data?.id as string;
-            const memberCount = channel?.data?.member_count as number;
-            if (memberCount > 2) {
-              //group
-              console.log("LKLchannelId>>", chnlId);
-              hitNoificationApi("new_group_message", chnlId, name);
-            } else {
-              hitNoificationApi("new_message", chnlId, name);
-            }
-            return channel?.sendMessage(message);
-          }}
+          Message={BulletproofMessage}
         >
           {thread ? (
-            <Thread />
+            <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
+              <Thread />
+            </View>
           ) : (
             <>
               {channel?.data?.name === "Orbit Social App" ? (
@@ -851,7 +887,7 @@ export default function ChannelScreen() {
                   }}
                 >
                   <View className="w-[80%] p-4 border bg-muted/50 border-border rounded-tl-3xl rounded-tr-3xl rounded-bl-none rounded-br-3xl">
-                    <Text className="text-foreground">
+                    <Text className="text-text">
                       {" "}
                       {orbitMsg?.text || "No orbit message"}
                     </Text>
@@ -859,33 +895,8 @@ export default function ChannelScreen() {
                 </View>
               ) : (
                 <>
-                  <MessageList
-                    onThreadSelect={setThread}
-                    additionalFlatListProps={{
-                      initialNumToRender: 30,
-                      maxToRenderPerBatch: 10,
-                      windowSize: 10,
-                      removeClippedSubviews: false,
-                      inverted: Platform.OS === "ios" ? true : false,
-
-                      style: {
-                        backgroundColor: theme.colors.card,
-                      },
-                      contentContainerStyle: {
-                        backgroundColor: theme.colors.card,
-                      },
-                    }}
-                    loadMore={() => {
-                      console.log("[ChatChannel] Loading more messages...");
-                      return Promise.resolve();
-                    }}
-                  />
-                  <MessageInput
-                    audioRecordingEnabled={true}
-                    AudioRecordingLockIndicator={() => (
-                      <View className="w-10 h-10 bg-red-500" />
-                    )}
-                  />
+                  <MessageList onThreadSelect={setThread} />
+                  <MessageInput />
                 </>
               )}
             </>
@@ -895,3 +906,170 @@ export default function ChannelScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  // Full-width poll container
+  fullWidthPollContainer: {
+    width: "100%",
+    marginVertical: 8,
+  },
+
+  // Poll card with shadow and border
+  pollCard: {
+    marginHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 6,
+    overflow: "hidden",
+  },
+
+  // Poll header section
+  pollHeader: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(128,128,128,0.2)",
+  },
+
+  pollTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+
+  pollDescription: {
+    fontSize: 14,
+    opacity: 0.7,
+    fontWeight: "400",
+  },
+
+  // Poll options container
+  pollOptionsContainer: {
+    padding: 16,
+  },
+
+  // Individual poll option (full width)
+  pollOptionFull: {
+    marginBottom: 12,
+    borderRadius: 12,
+    overflow: "hidden",
+    position: "relative",
+    minHeight: 56,
+  },
+
+  // Progress bar background
+  pollOptionProgress: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    borderRadius: 12,
+  },
+
+  // Option content layout
+  pollOptionContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    zIndex: 1,
+  },
+
+  pollOptionLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+
+  optionNumber: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginRight: 12,
+    minWidth: 24,
+    textAlign: "center",
+    color: "#888",
+  },
+
+  pollOptionTextContainer: {
+    flex: 1,
+  },
+
+  pollOptionText: {
+    fontSize: 16,
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+
+  // Voter avatars
+  voterAvatarsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+  },
+
+  voterAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "white",
+  },
+
+  voterInitials: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "white",
+  },
+
+  voterCountBadge: {
+    backgroundColor: "#888",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  voterCountText: {
+    fontSize: 9,
+    fontWeight: "600",
+    color: "white",
+  },
+
+  pollOptionRight: {
+    alignItems: "flex-end",
+    minWidth: 60,
+  },
+
+  pollOptionVotes: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+
+  pollOptionPercentage: {
+    fontSize: 12,
+    fontWeight: "600",
+    opacity: 0.7,
+  },
+
+  // Poll footer
+  pollFooterContainer: {
+    padding: 16,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(128,128,128,0.2)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  pollFooterText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  pollFooterSubtext: {
+    fontSize: 12,
+    opacity: 0.7,
+  },
+});

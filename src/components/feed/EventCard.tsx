@@ -1,20 +1,13 @@
 import React from "react";
-import { View, TouchableOpacity, StyleSheet } from "react-native";
+import { View, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { OptimizedImage } from "~/src/components/ui/optimized-image";
-import { MapPin, Clock, Users } from "lucide-react-native";
+import { MapPin, Users, Calendar } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
+import { LinearGradient } from "expo-linear-gradient";
 
-const FALLBACK_IMAGE =
-  "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80";
-
-function isValidImage(url: string | undefined | null) {
-  if (!url) return false;
-  if (typeof url !== "string") return false;
-  if (url.trim() === "") return false;
-  if (url.includes("placehold.co") || url.includes("fpoimg.com")) return false;
-  return true;
-}
+const { width: screenWidth } = Dimensions.get("window");
+const CARD_WIDTH = screenWidth * 0.72; // More responsive card width
 
 interface EventCardProps {
   item: any;
@@ -26,59 +19,87 @@ export function EventCard({ item, onPress }: EventCardProps) {
 
   return (
     <TouchableOpacity
-      style={[styles.airbnbEventCard, { backgroundColor: theme.colors.card }]}
-      activeOpacity={0.9}
+      style={[
+        styles.modernEventCard,
+        {
+          backgroundColor: theme.colors.border,
+          borderColor: theme.colors.border,
+          shadowColor: theme.colors.primary,
+        },
+      ]}
+      activeOpacity={0.95}
       onPress={onPress}
     >
-      {/* Event Image */}
-      <OptimizedImage
-        uri={item.image_urls?.[0]}
-        width={280}
-        height={120}
-        quality={75}
-        thumbnail={true}
-        lazy={true}
-        style={styles.airbnbEventImage}
-        resizeMode="cover"
-      />
-      <View style={styles.airbnbEventContent}>
-        <Text
-          style={[styles.airbnbEventTitle, { color: theme.colors.text }]}
-          numberOfLines={2}
-        >
-          {item.title}
-        </Text>
-        <View style={styles.airbnbEventMeta}>
-          <View style={styles.airbnbMetaRow}>
-            <Clock size={12} color="#666" />
-            <Text
+      {/* Event Image with Overlay */}
+      <View style={styles.imageContainer}>
+        <OptimizedImage
+          uri={item.image_urls?.[0]}
+          width={CARD_WIDTH}
+          height={160}
+          quality={85}
+          thumbnail={true}
+          lazy={true}
+          style={styles.eventImage}
+          resizeMode="cover"
+        />
+
+        {/* Subtle gradient overlay for better text readability */}
+        <LinearGradient
+          colors={["transparent", "rgba(0,0,0,0.1)"]}
+          style={styles.imageGradient}
+        />
+
+        {/* Attendees badge on image - Only for events */}
+        {!item.isLocation &&
+          typeof item.attendees === "number" &&
+          item.attendees > 0 && (
+            <View
               style={[
-                styles.airbnbEventMetaText,
-                { color: theme.colors.text + "CC" },
+                styles.attendeesBadge,
+                { backgroundColor: theme.colors.primary },
               ]}
             >
-              {item.date}
-            </Text>
-          </View>
-          {item.location && (
-            <View style={styles.airbnbMetaRow}>
-              <MapPin size={12} color="#666" />
-              <Text
-                style={[
-                  styles.airbnbEventMetaText,
-                  { color: theme.colors.text + "CC" },
-                ]}
-                numberOfLines={1}
-              >
-                {item.location}
-              </Text>
+              <Users size={12} color="white" />
+              <Text style={styles.attendeesBadgeText}>{item.attendees}</Text>
             </View>
           )}
-        </View>
-        {item.attendees > 0 && (
-          <View style={styles.airbnbAttendeesChip}>
-            <Users size={10} color="#8B5CF6" />
-            <Text style={styles.airbnbAttendeesText}>{item.attendees}</Text>
+      </View>
+
+      {/* Content Section with Better Spacing */}
+      <View style={styles.contentContainer}>
+        {/* Date Badge - Only for events */}
+        {!item.isLocation && (
+          <View
+            style={[
+              styles.dateBadge,
+              { backgroundColor: theme.colors.primary + "15" },
+            ]}
+          >
+            <Calendar size={14} color={theme.colors.primary} />
+            <Text style={[styles.dateText, { color: theme.colors.primary }]}>
+              {item.date || "TBD"}
+            </Text>
+          </View>
+        )}
+
+        {/* Event Title - More space, better line height */}
+        <Text
+          style={[styles.eventTitle, { color: theme.colors.text }]}
+          numberOfLines={2}
+        >
+          {item.title || item.name || "Untitled Event"}
+        </Text>
+
+        {/* Location with Icon */}
+        {item.location && (
+          <View style={styles.locationContainer}>
+            <MapPin size={14} color={theme.colors.text + "80"} />
+            <Text
+              style={[styles.locationText, { color: theme.colors.text + "80" }]}
+              numberOfLines={2}
+            >
+              {item.location}
+            </Text>
           </View>
         )}
       </View>
@@ -87,61 +108,100 @@ export function EventCard({ item, onPress }: EventCardProps) {
 }
 
 const styles = StyleSheet.create({
-  airbnbEventCard: {
-    width: 220,
-    borderRadius: 16,
-    shadowColor: "#8B5CF6",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-    marginRight: 12,
+  modernEventCard: {
+    width: CARD_WIDTH,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 6,
+    marginRight: 16,
     overflow: "hidden",
+  },
+  imageContainer: {
     position: "relative",
   },
-  airbnbEventImage: {
+  eventImage: {
     width: "100%",
-    height: 140,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    height: 160,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
-  airbnbEventContent: {
-    padding: 12,
+  imageGradient: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
-  airbnbEventTitle: {
-    fontSize: 15,
+  attendeesBadge: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  attendeesBadgeText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "600",
+    marginLeft: 4,
+  },
+  contentContainer: {
+    padding: 16,
+    paddingTop: 12,
+  },
+  dateBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  dateText: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginLeft: 4,
+  },
+  eventTitle: {
+    fontSize: 16,
     fontWeight: "700",
-    marginBottom: 6,
+    lineHeight: 22,
+    marginBottom: 10,
+    minHeight: 44, // Ensures consistent height for 2 lines
   },
-  airbnbEventMeta: {
+  locationContainer: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 8,
+  },
+  locationText: {
+    fontSize: 13,
+    fontWeight: "500",
+    marginLeft: 6,
+    flex: 1,
+    lineHeight: 18,
+  },
+  timeContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 3,
   },
-  airbnbMetaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  airbnbEventMetaText: {
+  timeText: {
     fontSize: 12,
     fontWeight: "500",
-    marginLeft: 3,
-  },
-  airbnbAttendeesChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    backgroundColor: "#8B5CF6" + "15",
-    alignSelf: "flex-start",
-    marginTop: 3,
-  },
-  airbnbAttendeesText: {
-    fontSize: 11,
-    color: "#8B5CF6",
-    fontWeight: "600",
-    marginLeft: 3,
+    marginLeft: 6,
   },
 });

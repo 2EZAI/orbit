@@ -13,11 +13,13 @@ import { Check, X, Search } from "lucide-react-native";
 import { Icon } from "react-native-elements";
 import { TextInput } from "react-native";
 import type { UserResponse } from "stream-chat";
+import { useTheme } from "~/src/components/ThemeProvider";
 
 export default function AddMembersScreen() {
   const router = useRouter();
   const { client } = useChat();
   const { channelId } = useLocalSearchParams();
+  const { theme } = useTheme();
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -40,7 +42,9 @@ export default function AddMembersScreen() {
             id: { $nin: existingMemberIds },
             $or: [
               { name: { $autocomplete: searchQuery } },
-              { id: { $autocomplete: searchQuery } },
+              { username: { $autocomplete: searchQuery } },
+              { first_name: { $autocomplete: searchQuery } },
+              { last_name: { $autocomplete: searchQuery } },
             ],
           },
           { id: 1 },
@@ -82,8 +86,32 @@ export default function AddMembersScreen() {
     }
   }, [client, channelId, selectedUsers, router]);
 
+  const getUserDisplayName = (user: any) => {
+    // Try to build full name from first_name and last_name
+    const firstName = user.first_name || "";
+    const lastName = user.last_name || "";
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    if (fullName) {
+      return fullName;
+    }
+
+    // Fall back to username
+    if (user.username) {
+      return user.username;
+    }
+
+    // Fall back to name property
+    if (user.name && user.name !== user.id) {
+      return user.name;
+    }
+
+    // Last resort: use "User" instead of email/id
+    return "Unknown User";
+  };
+
   return (
-    <View style={{ flex: 1, backgroundColor: "white" }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
       <Stack.Screen
         options={{
           title: "Add Members",
@@ -93,13 +121,13 @@ export default function AddMembersScreen() {
               style={{ marginLeft: 16 }}
             >
               {Platform.OS == "ios" ? (
-                <X size={24} color="#007AFF" />
+                <X size={24} color={theme.colors.primary} />
               ) : (
                 <Icon
                   name="close"
                   type="material-community"
                   size={24}
-                  color="#239ED0"
+                  color={theme.colors.primary}
                 />
               )}
             </TouchableOpacity>
@@ -113,7 +141,9 @@ export default function AddMembersScreen() {
                 opacity: selectedUsers.size === 0 ? 0.5 : 1,
               }}
             >
-              <Text style={{ color: "#007AFF", fontSize: 17 }}>Add</Text>
+              <Text style={{ color: theme.colors.primary, fontSize: 17 }}>
+                Add
+              </Text>
             </TouchableOpacity>
           ),
         }}
@@ -124,27 +154,32 @@ export default function AddMembersScreen() {
           style={{
             flexDirection: "row",
             alignItems: "center",
-            backgroundColor: "rgba(139, 92, 246, 0.1)",
+            backgroundColor: theme.colors.border,
             borderRadius: 10,
             padding: 8,
             marginBottom: 16,
           }}
         >
           {Platform.OS == "ios" ? (
-            <Search size={20} color="#666" style={{ marginRight: 8 }} />
+            <Search
+              size={20}
+              color={theme.colors.text + "80"}
+              style={{ marginRight: 8 }}
+            />
           ) : (
             <Icon
               name="Search"
               type="material-community"
               size={20}
-              color="#239ED0"
+              color={theme.colors.primary}
             />
           )}
           <TextInput
             placeholder="Search users..."
+            placeholderTextColor={theme.colors.text + "60"}
             value={searchQuery}
             onChangeText={setSearchQuery}
-            style={{ flex: 1 }}
+            style={{ flex: 1, color: theme.colors.text }}
           />
         </View>
       </View>
@@ -167,14 +202,27 @@ export default function AddMembersScreen() {
                 alignItems: "center",
                 padding: 16,
                 borderBottomWidth: 1,
-                borderBottomColor: "#f0f0f0",
+                borderBottomColor: theme.colors.border,
               }}
             >
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 16 }}>{item.name || item.id}</Text>
+                <Text style={{ fontSize: 16, color: theme.colors.text }}>
+                  {getUserDisplayName(item)}
+                </Text>
+                {item.username && (
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      color: theme.colors.text + "80",
+                      marginTop: 2,
+                    }}
+                  >
+                    @{item.username}
+                  </Text>
+                )}
               </View>
               {selectedUsers.has(item.id) && (
-                <Check size={24} color="#007AFF" />
+                <Check size={24} color={theme.colors.primary} />
               )}
             </TouchableOpacity>
           )}

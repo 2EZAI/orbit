@@ -7,7 +7,7 @@ import {
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
-import { Sheet } from "~/src/components/ui/sheet";
+import { KeyboardAwareSheet } from "./KeyboardAwareSheet";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useAuth } from "~/src/lib/auth";
 import { useUser } from "~/hooks/useUserData";
@@ -48,7 +48,7 @@ export function LocationPreferencesModal({
 }: LocationPreferencesModalProps) {
   const { theme } = useTheme();
   const { session } = useAuth();
-  const { user, updateUser ,updateUserLocations} = useUser();
+  const { user, updateUser, updateUserLocations, userlocation } = useUser();
 
   const [selectedMode, setSelectedMode] = useState<"current" | "orbit">(
     "current"
@@ -64,14 +64,30 @@ export function LocationPreferencesModal({
     null
   );
 
+  // Load user data
   useEffect(() => {
     if (user && isOpen) {
-      // Assuming we add a field to track this preference
       setSelectedMode(
         user.event_location_preference === 1 ? "orbit" : "current"
       );
+
+      // If user is in orbit mode and has location data, load it
+      if (user.event_location_preference === 1 && userlocation) {
+        const existingOrbitLocation: OrbitLocation = {
+          city: userlocation.city || "",
+          state: userlocation.state || "",
+          coordinates: [
+            parseFloat(userlocation.longitude || "0"),
+            parseFloat(userlocation.latitude || "0"),
+          ],
+        };
+        setOrbitLocation(existingOrbitLocation);
+        setSearchText(
+          `${existingOrbitLocation.city}, ${existingOrbitLocation.state}`
+        );
+      }
     }
-  }, [user, isOpen]);
+  }, [user, userlocation, isOpen]);
 
   const searchAddress = async (query: string) => {
     if (!query.trim() || !MAPBOX_ACCESS_TOKEN) {
@@ -139,22 +155,17 @@ export function LocationPreferencesModal({
       await updateUser({
         event_location_preference: selectedMode === "orbit" ? 1 : 0,
       });
-  console.log("selectedMode",selectedMode,orbitLocation);
-      // If orbit mode, save the orbit location (you may want to add a separate table for this)
+
+      // If orbit mode, save the orbit location to user_locations table
       if (selectedMode === "orbit" && orbitLocation) {
-      
-        // For now, we could store this in user preferences or create a new table
-        // This is a placeholder - you might want to add orbit_location fields to the user table
-        console.log("Orbit location selected:", orbitLocation);
-        
         await updateUserLocations({
-        city: orbitLocation.city,
-        state: orbitLocation.state,
-        postal_code: orbitLocation.zip,
-        address: orbitLocation.address1,
-        latitude: orbitLocation.coordinates?.[1]?.toString() || "0",
-        longitude: orbitLocation.coordinates?.[0]?.toString() || "0",
-      });
+          city: orbitLocation.city,
+          state: orbitLocation.state,
+          latitude: orbitLocation.coordinates[1].toString(),
+          longitude: orbitLocation.coordinates[0].toString(),
+          location: `${orbitLocation.city}, ${orbitLocation.state}`,
+        });
+        console.log("Orbit location saved:", orbitLocation);
       }
 
       Toast.show({
@@ -275,7 +286,7 @@ export function LocationPreferencesModal({
   );
 
   return (
-    <Sheet isOpen={isOpen} onClose={onClose}>
+    <KeyboardAwareSheet isOpen={isOpen} onClose={onClose}>
       <View style={{ padding: 20 }}>
         {/* Header */}
         <View
@@ -305,6 +316,8 @@ export function LocationPreferencesModal({
                 fontSize: 20,
                 fontWeight: "800",
                 color: theme.colors.text,
+                lineHeight: 25,
+                paddingVertical: 2,
               }}
             >
               Location Preferences
@@ -566,6 +579,6 @@ export function LocationPreferencesModal({
           </TouchableOpacity>
         </View>
       </View>
-    </Sheet>
+    </KeyboardAwareSheet>
   );
 }

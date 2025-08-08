@@ -1,19 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
+import { View, TouchableOpacity, Pressable, Image } from "react-native";
 import {
-  View,
-  TouchableOpacity,
-  Pressable,
-  Platform,
-  Image,
-} from "react-native";
-import { Search, Navigation2, Plus, Minus, Bell, X } from "lucide-react-native";
+  Search,
+  Navigation2,
+  Plus,
+  Minus,
+  Bell,
+  Info,
+} from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { Icon } from "react-native-elements";
 import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 import { useUser } from "~/hooks/useUserData";
 import { SearchSheet } from "~/src/components/search/SearchSheet";
+import { MarkerLegend } from "~/src/components/map/MarkerLegend";
+import { MarkerFilter, FilterState } from "~/src/components/map/MarkerFilter";
 
 type TimeFrame = "Today" | "Week" | "Weekend";
 
@@ -28,6 +31,8 @@ interface MapControlsProps {
   eventsList: any[];
   locationsList?: any[];
   onShowControler: (show: boolean) => void;
+  filters: FilterState;
+  onFilterChange: (filters: FilterState) => void;
 }
 
 export function MapControls({
@@ -41,11 +46,15 @@ export function MapControls({
   eventsList,
   locationsList = [],
   onShowControler,
+  filters,
+  onFilterChange,
 }: MapControlsProps) {
   const router = useRouter();
   const { theme, isDarkMode } = useTheme();
   const { user } = useUser();
   const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [isLegendVisible, setIsLegendVisible] = useState(false);
+  const [isFilterVisible, setIsFilterVisible] = useState(false);
   const [selectedTimeFrame, setSelectedTimeFrame] =
     useState<TimeFrame>(timeFrame);
   const { fetchAllNoifications, unReadCount } = useNotificationsApi();
@@ -73,7 +82,7 @@ export function MapControls({
       <View
         style={{
           position: "absolute",
-          top: 80,
+          top: 70,
           left: 0,
           right: 0,
           zIndex: 40,
@@ -88,72 +97,148 @@ export function MapControls({
             alignItems: "center",
           }}
         >
-          {/* Left Pill - Search Only */}
+          {/* Left Section - Search + Filter */}
           <View
             style={{
-              backgroundColor: theme.colors.card,
-              borderRadius: 20,
-              padding: 6,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 8,
-              elevation: 5,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
             }}
           >
-            <TouchableOpacity
-              onPress={toggleSearch}
+            {/* Search Pill */}
+            <View
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 16,
-                backgroundColor: isDarkMode
-                  ? theme.colors.background
-                  : "#F5F5F5",
-                justifyContent: "center",
-                alignItems: "center",
+                backgroundColor: theme.colors.card,
+                borderRadius: 22,
+                padding: 6,
+                borderWidth: 1,
+                borderColor: isDarkMode
+                  ? "rgba(255,255,255,0.1)"
+                  : "rgba(0,0,0,0.08)",
+                shadowColor: isDarkMode ? "#000" : "#000",
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: isDarkMode ? 0.6 : 0.15,
+                shadowRadius: 16,
+                elevation: 12,
               }}
             >
-              <Search size={16} color={theme.colors.text} strokeWidth={3} />
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={toggleSearch}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 18,
+                  borderWidth: 1.5,
+                  borderColor: isDarkMode
+                    ? "rgba(255,255,255,0.15)"
+                    : "rgba(0,0,0,0.12)",
+                  backgroundColor: isDarkMode
+                    ? "rgba(255,255,255,0.08)"
+                    : "rgba(255,255,255,0.9)",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+                activeOpacity={0.7}
+              >
+                <Search size={18} color={theme.colors.text} strokeWidth={2.5} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Filter Pill */}
+            <View
+              style={{
+                backgroundColor: theme.colors.card,
+                borderRadius: 22,
+                padding: 6,
+                borderWidth: 1,
+                borderColor: isDarkMode
+                  ? "rgba(255,255,255,0.1)"
+                  : "rgba(0,0,0,0.08)",
+                shadowColor: isDarkMode ? "#000" : "#000",
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: isDarkMode ? 0.6 : 0.15,
+                shadowRadius: 16,
+                elevation: 12,
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => setIsFilterVisible(true)}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 18,
+                  borderWidth: 1.5,
+                  borderColor: isDarkMode
+                    ? "rgba(255,255,255,0.15)"
+                    : "rgba(0,0,0,0.12)",
+                  backgroundColor: isDarkMode
+                    ? "rgba(255,255,255,0.08)"
+                    : "rgba(255,255,255,0.9)",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+                activeOpacity={0.7}
+              >
+                <Icon
+                  name="tune"
+                  type="material"
+                  size={20}
+                  color={theme.colors.text}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Right Pill - Avatar + Notification */}
           <View
             style={{
               backgroundColor: theme.colors.card,
-              borderRadius: 20,
-              paddingHorizontal: 8,
-              paddingVertical: 6,
+              borderRadius: 22,
+              paddingHorizontal: 10,
+              paddingVertical: 8,
               flexDirection: "row",
               alignItems: "center",
-              gap: 8,
-              shadowColor: isDarkMode ? theme.colors.border : "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: isDarkMode ? 0.3 : 0.1,
-              shadowRadius: 8,
-              elevation: 5,
+              gap: 10,
+              borderWidth: 1,
+              borderColor: isDarkMode
+                ? "rgba(255,255,255,0.1)"
+                : "rgba(0,0,0,0.08)",
+              shadowColor: isDarkMode ? "#000" : "#000",
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: isDarkMode ? 0.6 : 0.15,
+              shadowRadius: 16,
+              elevation: 12,
             }}
           >
             {/* Notification */}
             <TouchableOpacity
               onPress={() => router.push("/(app)/(notification)")}
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 16,
+                width: 42,
+                height: 42,
+                borderRadius: 18,
                 backgroundColor: theme.colors.primary,
                 justifyContent: "center",
                 alignItems: "center",
+                borderWidth: 2,
+                borderColor: isDarkMode
+                  ? "rgba(255,255,255,0.15)"
+                  : "rgba(255,255,255,0.8)",
+                shadowColor: theme.colors.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 6,
               }}
+              activeOpacity={0.8}
             >
               <Bell size={16} color="white" />
               {!!(unReadCount && unReadCount > 0) && (
                 <View
                   style={{
                     position: "absolute",
-                    top: -4,
-                    right: -4,
+                    top: -6,
+                    right: -6,
                     backgroundColor: "#ff3b30",
                     borderRadius: 10,
                     minWidth: 20,
@@ -165,7 +250,12 @@ export function MapControls({
                   }}
                 >
                   <Text
-                    style={{ color: "white", fontSize: 12, fontWeight: "bold" }}
+                    style={{
+                      color: "white",
+                      fontSize: 9,
+                      fontWeight: "700",
+                      lineHeight: 12,
+                    }}
                   >
                     {unReadCount > 99 ? "99+" : String(unReadCount)}
                   </Text>
@@ -174,7 +264,20 @@ export function MapControls({
             </TouchableOpacity>
 
             {/* User Avatar */}
-            <TouchableOpacity onPress={() => router.push("/(app)/(profile)")}>
+            <TouchableOpacity
+              onPress={() => router.push("/(app)/(profile)")}
+              activeOpacity={0.8}
+              style={{
+                borderRadius: 18,
+                borderWidth: 2.5,
+                borderColor: theme.colors.primary,
+                shadowColor: theme.colors.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.25,
+                shadowRadius: 8,
+                elevation: 6,
+              }}
+            >
               <Image
                 source={
                   user?.avatar_url
@@ -182,11 +285,9 @@ export function MapControls({
                     : require("~/assets/favicon.png")
                 }
                 style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 16,
-                  borderWidth: 2,
-                  borderColor: theme.colors.primary,
+                  width: 42,
+                  height: 42,
+                  borderRadius: 18,
                 }}
               />
             </TouchableOpacity>
@@ -198,7 +299,7 @@ export function MapControls({
       <View
         style={{
           position: "absolute",
-          top: 130,
+          top: 140,
           left: 0,
           right: 0,
           zIndex: 35,
@@ -208,14 +309,18 @@ export function MapControls({
           style={{
             backgroundColor: theme.colors.card,
             marginHorizontal: 12,
-            marginTop: 10,
-            borderRadius: 14,
-            padding: 3,
-            shadowColor: isDarkMode ? theme.colors.border : "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDarkMode ? 0.3 : 0.1,
-            shadowRadius: 8,
-            elevation: 5,
+            marginTop: 12,
+            borderRadius: 18,
+            padding: 4,
+            borderWidth: 1,
+            borderColor: isDarkMode
+              ? "rgba(255,255,255,0.1)"
+              : "rgba(0,0,0,0.08)",
+            shadowColor: isDarkMode ? "#000" : "#000",
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: isDarkMode ? 0.6 : 0.12,
+            shadowRadius: 16,
+            elevation: 10,
           }}
         >
           <View className="flex-row">
@@ -232,11 +337,24 @@ export function MapControls({
                     selectedTimeFrame === frame
                       ? theme.colors.primary
                       : "transparent",
-                  borderRadius: 10,
-                  paddingVertical: 8,
-                  paddingHorizontal: 12,
-                  marginHorizontal: 1,
+                  borderRadius: 14,
+                  paddingVertical: 10,
+                  paddingHorizontal: 16,
+                  marginHorizontal: 2,
+                  borderWidth: selectedTimeFrame === frame ? 0 : 1,
+                  borderColor: isDarkMode
+                    ? "rgba(255,255,255,0.1)"
+                    : "rgba(0,0,0,0.06)",
+                  shadowColor:
+                    selectedTimeFrame === frame
+                      ? theme.colors.primary
+                      : "transparent",
+                  shadowOffset: { width: 0, height: 3 },
+                  shadowOpacity: selectedTimeFrame === frame ? 0.3 : 0,
+                  shadowRadius: 6,
+                  elevation: selectedTimeFrame === frame ? 4 : 0,
                 }}
+                android_ripple={{ color: "rgba(255,255,255,0.1)" }}
               >
                 <Text
                   style={{
@@ -255,60 +373,146 @@ export function MapControls({
         </View>
       </View>
 
-      {/* Bottom Controls */}
-      <View className="absolute left-0 right-0 bottom-20 mb-[125px] shadow-xs">
-        {/* Zoom Controls */}
+      {/* Side Controls - 5px above menu bar */}
+      <View
+        style={{
+          position: "absolute",
+          right: 16,
+          bottom: 105, // 5px above the menu bar
+          zIndex: 30,
+        }}
+      >
+        {/* Vertical Controls Container */}
         <View
           style={{
-            position: "absolute",
-            left: 16,
             backgroundColor: theme.colors.card,
-            borderRadius: 12,
-            shadowColor: isDarkMode ? theme.colors.border : "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDarkMode ? 0.3 : 0.1,
-            shadowRadius: 4,
-            elevation: 3,
+            borderRadius: 28,
+            padding: 10,
+            borderWidth: 1,
+            borderColor: isDarkMode
+              ? "rgba(255,255,255,0.12)"
+              : "rgba(0,0,0,0.08)",
+            shadowColor: isDarkMode ? "#000" : "#000",
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: isDarkMode ? 0.7 : 0.18,
+            shadowRadius: 20,
+            elevation: 15,
           }}
         >
           <TouchableOpacity
             onPress={onZoomIn}
             style={{
-              padding: 12,
-              borderBottomWidth: 1,
-              borderBottomColor: theme.colors.border,
-            }}
-          >
-            <Plus size={20} color={theme.colors.text} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onZoomOut} style={{ padding: 12 }}>
-            <Minus size={20} color={theme.colors.text} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Recenter Button */}
-        {!isFollowingUser && (
-          <TouchableOpacity
-            onPress={onRecenter}
-            style={{
-              position: "absolute",
-              right: 16,
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              backgroundColor: theme.colors.card,
+              width: 38,
+              height: 38,
+              borderRadius: 19,
+              backgroundColor: isDarkMode
+                ? "rgba(255,255,255,0.12)"
+                : "rgba(255,255,255,0.9)",
+              borderWidth: 1,
+              borderColor: isDarkMode
+                ? "rgba(255,255,255,0.15)"
+                : "rgba(0,0,0,0.1)",
               justifyContent: "center",
               alignItems: "center",
-              shadowColor: isDarkMode ? theme.colors.border : "#000",
+              marginBottom: 6,
+              shadowColor: isDarkMode
+                ? "rgba(255,255,255,0.1)"
+                : "rgba(0,0,0,0.1)",
               shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: isDarkMode ? 0.3 : 0.1,
+              shadowOpacity: 0.8,
               shadowRadius: 4,
               elevation: 3,
             }}
+            activeOpacity={0.7}
           >
-            <Navigation2 size={20} color={theme.colors.text} />
+            <Plus size={18} color={theme.colors.text} strokeWidth={2.5} />
           </TouchableOpacity>
-        )}
+
+          <TouchableOpacity
+            onPress={onZoomOut}
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 19,
+              backgroundColor: isDarkMode
+                ? "rgba(255,255,255,0.12)"
+                : "rgba(255,255,255,0.9)",
+              borderWidth: 1,
+              borderColor: isDarkMode
+                ? "rgba(255,255,255,0.15)"
+                : "rgba(0,0,0,0.1)",
+              justifyContent: "center",
+              alignItems: "center",
+              marginBottom: 6,
+              shadowColor: isDarkMode
+                ? "rgba(255,255,255,0.1)"
+                : "rgba(0,0,0,0.1)",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.8,
+              shadowRadius: 4,
+              elevation: 3,
+            }}
+            activeOpacity={0.7}
+          >
+            <Minus size={18} color={theme.colors.text} strokeWidth={2.5} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setIsLegendVisible(true)}
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 19,
+              backgroundColor: isDarkMode
+                ? "rgba(255,255,255,0.12)"
+                : "rgba(255,255,255,0.9)",
+              borderWidth: 1,
+              borderColor: isDarkMode
+                ? "rgba(255,255,255,0.15)"
+                : "rgba(0,0,0,0.1)",
+              justifyContent: "center",
+              alignItems: "center",
+              marginBottom: 6,
+              shadowColor: isDarkMode
+                ? "rgba(255,255,255,0.1)"
+                : "rgba(0,0,0,0.1)",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.8,
+              shadowRadius: 4,
+              elevation: 3,
+            }}
+            activeOpacity={0.7}
+          >
+            <Info size={18} color={theme.colors.text} strokeWidth={2.5} />
+          </TouchableOpacity>
+
+          {/* Recenter Button - integrated into the vertical stack */}
+          {!isFollowingUser && (
+            <TouchableOpacity
+              onPress={onRecenter}
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 19,
+                backgroundColor: theme.colors.primary,
+                borderWidth: 1.5,
+                borderColor: isDarkMode
+                  ? "rgba(255,255,255,0.2)"
+                  : "rgba(255,255,255,0.9)",
+                justifyContent: "center",
+                alignItems: "center",
+                shadowColor: theme.colors.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.4,
+                shadowRadius: 8,
+                elevation: 6,
+              }}
+              activeOpacity={0.8}
+            >
+              <Navigation2 size={18} color="white" strokeWidth={2.5} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Search Sheet */}
@@ -318,6 +522,22 @@ export function MapControls({
         eventsList={eventsList}
         locationsList={locationsList}
         onShowControler={() => onShowControler(true)}
+      />
+
+      {/* Marker Legend */}
+      <MarkerLegend
+        isOpen={isLegendVisible}
+        onClose={() => setIsLegendVisible(false)}
+      />
+
+      {/* Marker Filter */}
+      <MarkerFilter
+        eventsList={eventsList}
+        locationsList={locationsList}
+        isOpen={isFilterVisible}
+        onClose={() => setIsFilterVisible(false)}
+        filters={filters}
+        onFilterChange={onFilterChange}
       />
     </>
   );

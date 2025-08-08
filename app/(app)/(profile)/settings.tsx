@@ -1,5 +1,10 @@
 import React, { useState } from "react";
-import { View, TouchableOpacity, ScrollView } from "react-native";
+import {
+  View,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+} from "react-native";
 import { router } from "expo-router";
 import { Text } from "~/src/components/ui/text";
 import { supabase } from "~/src/lib/supabase";
@@ -28,7 +33,6 @@ import { PasswordModal } from "~/src/components/settings/PasswordModal";
 import { DeleteAccountModal } from "~/src/components/settings/DeleteAccountModal";
 import { EmailModal } from "~/src/components/settings/EmailModal";
 import { LocationPreferencesModal } from "~/src/components/settings/LocationPreferencesModal";
-import { AddressModal } from "~/src/components/settings/AddressModal";
 import { InterestsModal } from "~/src/components/settings/InterestsModal";
 import { PrivacyModal } from "~/src/components/settings/PrivacyModal";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -38,6 +42,7 @@ interface SettingItemProps {
   title: string;
   onPress: () => void;
   destructive?: boolean;
+  loading?: boolean;
 }
 
 function SettingItem({
@@ -45,12 +50,14 @@ function SettingItem({
   title,
   onPress,
   destructive = false,
+  loading = false,
 }: SettingItemProps) {
   const { theme } = useTheme();
 
   return (
     <TouchableOpacity
-      onPress={onPress}
+      onPress={loading ? undefined : onPress}
+      disabled={loading}
       style={{
         flexDirection: "row",
         alignItems: "center",
@@ -91,10 +98,17 @@ function SettingItem({
         {title}
       </Text>
 
-      <ChevronRight
-        size={20}
-        color={destructive ? "#FF3B30" : theme.colors.text + "60"}
-      />
+      {loading ? (
+        <ActivityIndicator
+          size="small"
+          color={destructive ? "#FF3B30" : theme.colors.primary}
+        />
+      ) : (
+        <ChevronRight
+          size={20}
+          color={destructive ? "#FF3B30" : theme.colors.text + "60"}
+        />
+      )}
     </TouchableOpacity>
   );
 }
@@ -115,6 +129,8 @@ function SectionHeader({ title }: SectionHeaderProps) {
         marginHorizontal: 16,
         marginTop: 24,
         marginBottom: 12,
+        lineHeight: 25,
+        paddingVertical: 2,
       }}
     >
       {title}
@@ -131,7 +147,6 @@ export default function SettingsScreen() {
   const [showEmail, setShowEmail] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showLocationPreferences, setShowLocationPreferences] = useState(false);
-  const [showAddress, setShowAddress] = useState(false);
   const [showInterests, setShowInterests] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
@@ -140,13 +155,24 @@ export default function SettingsScreen() {
     router.back();
   };
 
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
   const handleLogout = async () => {
+    if (isLoggingOut) return; // Prevent multiple logout attempts
+
+    setIsLoggingOut(true);
     try {
       console.log("Initiating logout...");
+
+      // Clear any navigation state first to prevent navigation errors
+      router.dismissAll?.();
+
+      // Sign out from Supabase
       await supabase.auth.signOut();
       console.log("Logout successful - app layout will handle redirect");
     } catch (error) {
       console.error("Error logging out:", error);
+      setIsLoggingOut(false); // Reset on error
     }
   };
 
@@ -190,6 +216,8 @@ export default function SettingsScreen() {
             flex: 1,
             textAlign: "center",
             marginRight: 44, // Compensate for back button
+            lineHeight: 30,
+            paddingVertical: 4,
           }}
         >
           Settings
@@ -199,34 +227,28 @@ export default function SettingsScreen() {
       <ScrollView style={{ flex: 1, marginBottom:80 }} showsVerticalScrollIndicator={false}>
         {/* Profile Settings */}
         <SectionHeader title="Profile Settings" />
-
         <SettingItem
           icon={<User size={20} color={theme.colors.primary} />}
           title="Update Personal Information"
           onPress={() => setShowPersonalInfo(true)}
         />
-
         <SettingItem
           icon={<Edit3 size={20} color={theme.colors.primary} />}
           title="Update User Name"
           onPress={() => setShowUsername(true)}
         />
-
         <SettingItem
           icon={<Mail size={20} color={theme.colors.primary} />}
           title="Update Email"
           onPress={() => setShowEmail(true)}
         />
-
         <SettingItem
           icon={<Lock size={20} color={theme.colors.primary} />}
           title="Update Password"
           onPress={() => setShowPassword(true)}
         />
-
         {/* Event & Maps Settings */}
         <SectionHeader title="Event & Maps Settings" />
-
         <SettingItem
           icon={<MapPin size={20} color={theme.colors.primary} />}
           title="Location Preferences"
@@ -234,39 +256,29 @@ export default function SettingsScreen() {
         />
 
         <SettingItem
-          icon={<Map size={20} color={theme.colors.primary} />}
-          title="Main Location"
-          onPress={() => setShowAddress(true)}
-        />
-
-        <SettingItem
           icon={<Heart size={20} color={theme.colors.primary} />}
           title="Update Interests"
           onPress={() => setShowInterests(true)}
         />
-
         <SettingItem
           icon={<Shield size={20} color={theme.colors.primary} />}
           title="Map & Location Privacy"
           onPress={() => setShowPrivacy(true)}
         />
-
         {/* Privacy & more */}
         <SectionHeader title="Privacy & more" />
-
         <SettingItem
           icon={<LogOut size={20} color={theme.colors.primary} />}
           title="Log Out"
           onPress={handleLogout}
+          loading={isLoggingOut}
         />
-
         <SettingItem
           icon={<Trash2 size={20} color="#FF3B30" />}
           title="Delete My Account"
           onPress={() => setShowDeleteAccount(true)}
           destructive
         />
-
         <SettingItem
           icon={<FileText size={20} color={theme.colors.primary} />}
           title="Terms & Conditions"
@@ -274,7 +286,6 @@ export default function SettingsScreen() {
             openWebview("https://yourapp.com/terms", "Terms & Conditions")
           }
         />
-
         <SettingItem
           icon={<FileText size={20} color={theme.colors.primary} />}
           title="Privacy Policy"
@@ -282,7 +293,6 @@ export default function SettingsScreen() {
             openWebview("https://yourapp.com/privacy", "Privacy Policy")
           }
         />
-
         {/* Bottom spacing */}
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -308,11 +318,6 @@ export default function SettingsScreen() {
       <LocationPreferencesModal
         isOpen={showLocationPreferences}
         onClose={() => setShowLocationPreferences(false)}
-      />
-
-      <AddressModal
-        isOpen={showAddress}
-        onClose={() => setShowAddress(false)}
       />
 
       <InterestsModal

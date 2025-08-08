@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
-import { Sheet } from "~/src/components/ui/sheet";
+import { KeyboardAwareSheet } from "./KeyboardAwareSheet";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useAuth } from "~/src/lib/auth";
 import { useUser } from "~/hooks/useUserData";
@@ -25,6 +25,7 @@ export function UsernameModal({ isOpen, onClose }: UsernameModalProps) {
   const [checking, setChecking] = useState(false);
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
 
+  // Load user data
   useEffect(() => {
     if (user && isOpen) {
       setUsername(user.username || "");
@@ -154,7 +155,7 @@ export function UsernameModal({ isOpen, onClose }: UsernameModalProps) {
     !checking;
 
   return (
-    <Sheet isOpen={isOpen} onClose={onClose}>
+    <KeyboardAwareSheet isOpen={isOpen} onClose={onClose}>
       <View style={{ padding: 20 }}>
         {/* Header */}
         <View
@@ -184,6 +185,8 @@ export function UsernameModal({ isOpen, onClose }: UsernameModalProps) {
                 fontSize: 20,
                 fontWeight: "800",
                 color: theme.colors.text,
+                lineHeight: 25,
+                paddingVertical: 2,
               }}
             >
               Update Username
@@ -406,6 +409,6 @@ export function UsernameModal({ isOpen, onClose }: UsernameModalProps) {
           </TouchableOpacity>
         </View>
       </View>
-    </Sheet>
+    </KeyboardAwareSheet>
   );
 }

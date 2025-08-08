@@ -13,16 +13,12 @@
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.dovydmcnugget.orbit",
       "infoPlist": {
-        "UIBackgroundModes": [
-          "remote-notification"
-        ],
+        "UIBackgroundModes": ["remote-notification"],
         "NSUserTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you.",
         "NSUserNotificationUsageDescription": "This app uses notifications to keep you informed."
       }
@@ -37,6 +33,15 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "@stream-io/video-react-native-sdk",
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          // add your explanations for camera and microphone
+          "cameraPermission": "Orbit requires camera access in order to capture and transmit video",
+          "microphonePermission": "Orbit requires microphone access in order to capture and transmit audio"
+        }
+      ],
       "expo-router",
       [
         "expo-av",
@@ -58,6 +63,11 @@
           "savePhotosPermission": "Allow Orbit Social App to save photos from messages to your gallery."
         }
       ]
-    ]
+    ],
+    "expo-build-properties": {
+      "android": {
+        "minSdkVersion": 24
+      }
+    }
   }
 }

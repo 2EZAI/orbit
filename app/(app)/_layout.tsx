@@ -17,6 +17,9 @@ export default function AppLayout() {
   const { session, loading } = useAuth();
   const lastSessionState = useRef<boolean | null>(null);
 
+  // Call hooks before any conditional returns to follow Rules of Hooks
+  useNotifications();
+
   useEffect(() => {
     const hasSession = !!session;
     if (lastSessionState.current !== hasSession) {
@@ -32,7 +35,6 @@ export default function AppLayout() {
   if (!session) {
     return <Redirect href="/" />;
   }
-  useNotifications();
   return (
   
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -43,12 +45,8 @@ export default function AppLayout() {
         initialRouteName="(map)"
         tabBar={(props: BottomTabBarProps) => {
           const currentRoute = props.state.routes[props.state.index];
-          // console.log(
-          //   "[TabBar] Current route:",
-          //   currentRoute.name,
-          //   currentRoute.path
-          // );
-          // Show tab bar everywhere except onboarding and specific chat messages
+
+          // Show tab bar everywhere except notifications and specific chat messages
           const isSpecificChatRoute =
             currentRoute.name === "(webview)" ||
             currentRoute.name === "(create)" ||

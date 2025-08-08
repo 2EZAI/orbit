@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
-import { Sheet } from "~/src/components/ui/sheet";
+import { KeyboardAwareSheet } from "./KeyboardAwareSheet";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useAuth } from "~/src/lib/auth";
 import { useUser } from "~/hooks/useUserData";
@@ -138,7 +138,7 @@ export function PrivacyModal({ isOpen, onClose }: PrivacyModalProps) {
   );
 
   return (
-    <Sheet isOpen={isOpen} onClose={onClose}>
+    <KeyboardAwareSheet isOpen={isOpen} onClose={onClose}>
       <View style={{ padding: 20 }}>
         {/* Header */}
         <View
@@ -168,6 +168,8 @@ export function PrivacyModal({ isOpen, onClose }: PrivacyModalProps) {
                 fontSize: 20,
                 fontWeight: "800",
                 color: theme.colors.text,
+                lineHeight: 25,
+                paddingVertical: 2,
               }}
             >
               Map & Location Privacy
@@ -351,6 +353,6 @@ export function PrivacyModal({ isOpen, onClose }: PrivacyModalProps) {
           </TouchableOpacity>
         </View>
       </View>
-    </Sheet>
+    </KeyboardAwareSheet>
   );
 }

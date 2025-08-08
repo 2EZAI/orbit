@@ -340,12 +340,12 @@ export default function SocialFeed() {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity className="p-2">
+         {/*  <TouchableOpacity className="p-2">
             <MoreHorizontal
               size={20}
               color={isDarkMode ? "#9CA3AF" : "#6B7280"}
             />
-          </TouchableOpacity>
+          </TouchableOpacity>*/}
         </View>
 
         {/* Post Content */}

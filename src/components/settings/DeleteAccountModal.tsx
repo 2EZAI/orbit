@@ -1,7 +1,7 @@
 import React from "react";
 import { View, TouchableOpacity } from "react-native";
 import { Text } from "~/src/components/ui/text";
-import { Sheet } from "~/src/components/ui/sheet";
+import { KeyboardAwareSheet } from "./KeyboardAwareSheet";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Trash2, X, AlertTriangle } from "lucide-react-native";
 
@@ -17,7 +17,7 @@ export function DeleteAccountModal({
   const { theme } = useTheme();
 
   return (
-    <Sheet isOpen={isOpen} onClose={onClose}>
+    <KeyboardAwareSheet isOpen={isOpen} onClose={onClose}>
       <View style={{ padding: 20 }}>
         <View
           style={{
@@ -45,6 +45,8 @@ export function DeleteAccountModal({
               style={{
                 fontSize: 20,
                 fontWeight: "800",
+                lineHeight: 25,
+                paddingVertical: 2,
                 color: "#FF3B30",
               }}
             >
@@ -159,6 +161,6 @@ export function DeleteAccountModal({
           </TouchableOpacity>
         </View>
       </View>
-    </Sheet>
+    </KeyboardAwareSheet>
   );
 }
