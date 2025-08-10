@@ -598,6 +598,8 @@ export default function ChatListScreen() {
             <View
               style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
             >
+              {/* Video Calls Button - HIDDEN during development */}
+              {/* 
               <TouchableOpacity
                 onPress={handleVideoCalls}
                 style={{
@@ -611,6 +613,7 @@ export default function ChatListScreen() {
               >
                 <Video size={18} color={theme.colors.text} strokeWidth={2.5} />
               </TouchableOpacity>
+              */}
               <TouchableOpacity
                 onPress={handleSearch}
                 style={{

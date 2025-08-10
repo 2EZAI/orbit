@@ -4,13 +4,14 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
+  DeviceEventEmitter,
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
 import { KeyboardAwareSheet } from "./KeyboardAwareSheet";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useAuth } from "~/src/lib/auth";
-import { useUser } from "~/hooks/useUserData";
+import { useUser } from "~/src/lib/UserProvider";
 import { supabase } from "~/src/lib/supabase";
 import Constants from "expo-constants";
 import Toast from "react-native-toast-message";
@@ -47,7 +48,13 @@ export function LocationPreferencesModal({
 }: LocationPreferencesModalProps) {
   const { theme } = useTheme();
   const { session } = useAuth();
-  const { user, updateUser, updateUserLocations, userlocation } = useUser();
+  const {
+    user,
+    updateUser,
+    updateUserLocations,
+    userlocation,
+    fetchUserLocation,
+  } = useUser();
 
   const [selectedMode, setSelectedMode] = useState<"current" | "orbit">(
     "current"
@@ -63,9 +70,16 @@ export function LocationPreferencesModal({
     null
   );
 
-  // Load user data
+  // Load user data - only when modal first opens
   useEffect(() => {
-    if (user && isOpen) {
+    // Only run when modal is first opened, not on every user/location change
+    if (user && isOpen && !orbitLocation) {
+      console.log("🔧 [LocationModal] Initial load - Loading user data");
+      console.log(
+        "🔧 [LocationModal] User preference:",
+        user.event_location_preference
+      );
+
       setSelectedMode(
         user.event_location_preference === 1 ? "orbit" : "current"
       );
@@ -80,13 +94,27 @@ export function LocationPreferencesModal({
             parseFloat(userlocation.latitude || "0"),
           ],
         };
+        console.log(
+          "🔧 [LocationModal] Loading existing orbit location:",
+          existingOrbitLocation
+        );
+
         setOrbitLocation(existingOrbitLocation);
         setSearchText(
           `${existingOrbitLocation.city}, ${existingOrbitLocation.state}`
         );
       }
     }
-  }, [user, userlocation, isOpen]);
+
+    // Reset state when modal closes
+    if (!isOpen) {
+      console.log("🔧 [LocationModal] Modal closed, resetting state");
+      setSearchResults([]);
+      setShowResults(false);
+      setLoading(false);
+      // Don't reset orbitLocation here to preserve user's selection
+    }
+  }, [user?.event_location_preference, isOpen]); // Only depend on essential changes
 
   const searchAddress = async (query: string) => {
     if (!query.trim() || !MAPBOX_ACCESS_TOKEN) {
@@ -120,8 +148,17 @@ export function LocationPreferencesModal({
   const debouncedSearch = debounce(searchAddress, 300);
 
   const handleLocationSelect = (feature: MapboxFeature) => {
+    console.log(
+      "🔧 [LocationModal] handleLocationSelect called with feature:",
+      feature
+    );
+
     const contextMap = new Map<string, string>(
       feature.context?.map((item) => [item.id.split(".")[0], item.text]) || []
+    );
+    console.log(
+      "🔧 [LocationModal] Context map:",
+      Array.from(contextMap.entries())
     );
 
     const newOrbitLocation: OrbitLocation = {
@@ -130,16 +167,39 @@ export function LocationPreferencesModal({
       coordinates: feature.center,
     };
 
+    console.log(
+      "🔧 [LocationModal] Created new orbit location:",
+      newOrbitLocation
+    );
+    console.log(
+      "🔧 [LocationModal] Setting search text to:",
+      `${newOrbitLocation.city}, ${newOrbitLocation.state}`
+    );
+
     setOrbitLocation(newOrbitLocation);
     setSearchText(`${newOrbitLocation.city}, ${newOrbitLocation.state}`);
     setShowResults(false);
+
+    console.log("🔧 [LocationModal] Location selection complete");
   };
 
   const handleSave = async () => {
+    console.log("🔧 [LocationModal] handleSave called");
+    console.log(
+      "🔧 [LocationModal] Current session user ID:",
+      session?.user?.id
+    );
+    console.log("🔧 [LocationModal] Selected mode:", selectedMode);
+    console.log("🔧 [LocationModal] Current orbitLocation:", orbitLocation);
+    console.log("🔧 [LocationModal] Current searchText:", searchText);
+
     if (!session?.user?.id) return;
 
     // Validate orbit mode selection
     if (selectedMode === "orbit" && !orbitLocation) {
+      console.log(
+        "❌ [LocationModal] Validation failed: No orbit location selected"
+      );
       Toast.show({
         type: "error",
         text1: "Please select a location",
@@ -150,21 +210,42 @@ export function LocationPreferencesModal({
 
     setSaving(true);
     try {
+      console.log(
+        "🔧 [LocationModal] About to update user preference to:",
+        selectedMode === "orbit" ? 1 : 0
+      );
+
       // Update user preference
-      await updateUser({
+      const userUpdateResult = await updateUser({
         event_location_preference: selectedMode === "orbit" ? 1 : 0,
       });
+      console.log(
+        "🔧 [LocationModal] User preference update result:",
+        userUpdateResult
+      );
 
       // If orbit mode, save the orbit location to user_locations table
       if (selectedMode === "orbit" && orbitLocation) {
-        await updateUserLocations({
+        const locationData = {
           city: orbitLocation.city,
           state: orbitLocation.state,
           latitude: orbitLocation.coordinates[1].toString(),
           longitude: orbitLocation.coordinates[0].toString(),
-          location: `${orbitLocation.city}, ${orbitLocation.state}`,
-        });
-        console.log("Orbit location saved:", orbitLocation);
+          // Removed 'location' field to avoid geography column conflicts
+        };
+        console.log(
+          "🔧 [LocationModal] About to save location data:",
+          locationData
+        );
+
+        const locationUpdateResult = await updateUserLocations(locationData);
+        console.log(
+          "🔧 [LocationModal] Location update result:",
+          locationUpdateResult
+        );
+        console.log("🔧 [LocationModal] Orbit location saved:", orbitLocation);
+
+        // No need to wait - we'll force refresh immediately after the event
       }
 
       Toast.show({
@@ -176,6 +257,36 @@ export function LocationPreferencesModal({
             : `Map location set to ${orbitLocation?.city}, ${orbitLocation?.state}`,
       });
 
+      // Notify app to update map/feed immediately
+      try {
+        const eventPayload = {
+          mode: selectedMode,
+          latitude:
+            selectedMode === "orbit" && orbitLocation
+              ? orbitLocation.coordinates[1]
+              : null,
+          longitude:
+            selectedMode === "orbit" && orbitLocation
+              ? orbitLocation.coordinates[0]
+              : null,
+        };
+        console.log(
+          "📍 Emitting locationPreferenceUpdated event:",
+          eventPayload
+        );
+        // CRITICAL: Force immediate user location refresh BEFORE emitting event
+        console.log("📍 Forcing immediate user location refresh for sync");
+        await fetchUserLocation(); // This will immediately update userlocation state
+        console.log("📍 User location state refreshed!");
+
+        // Emit event immediately - no need for delay as state is already synced
+        console.log("📍 🚀 Emitting event with payload:", eventPayload);
+        DeviceEventEmitter.emit("locationPreferenceUpdated", eventPayload);
+      } catch (e) {
+        console.error("Error emitting location preference update:", e);
+      }
+
+      // Close immediately since state is already synced
       onClose();
     } catch (error) {
       console.error("Error updating location preferences:", error);

@@ -9,7 +9,7 @@ import { Text } from "~/src/components/ui/text";
 import { KeyboardAwareSheet } from "./KeyboardAwareSheet";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useAuth } from "~/src/lib/auth";
-import { useUser } from "~/hooks/useUserData";
+import { useUser } from "~/src/lib/UserProvider";
 import Toast from "react-native-toast-message";
 import { Shield, X, Eye, EyeOff, MapPin, Users } from "lucide-react-native";
 

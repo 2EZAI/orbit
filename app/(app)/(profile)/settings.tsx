@@ -10,6 +10,7 @@ import { router } from "expo-router";
 import { Text } from "~/src/components/ui/text";
 import { supabase } from "~/src/lib/supabase";
 import { useTheme } from "~/src/components/ThemeProvider";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ArrowLeft,
   ChevronRight,
@@ -140,6 +141,7 @@ function SectionHeader({ title }: SectionHeaderProps) {
 
 export default function SettingsScreen() {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
 
   // Modal states
   const [showPersonalInfo, setShowPersonalInfo] = useState(false);
@@ -224,7 +226,16 @@ export default function SettingsScreen() {
         </Text>
       </View>
 
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        // iOS page-sheet modals add large automatic bottom insets for scroll views.
+        // Disable that and pad manually using the device safe-area bottom inset.
+        contentInsetAdjustmentBehavior="never"
+        contentInset={{ bottom: 0, top: 0, left: 0, right: 0 }}
+        scrollIndicatorInsets={{ bottom: 0, top: 0, left: 0, right: 0 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
+      >
         {/* Profile Settings */}
         <SectionHeader title="Profile Settings" />
         <SettingItem
@@ -293,8 +304,6 @@ export default function SettingsScreen() {
             openWebview("https://yourapp.com/privacy", "Privacy Policy")
           }
         />
-        {/* Bottom spacing */}
-        <View style={{ height: 40 }} />
       </ScrollView>
 
       {/* Modals */}

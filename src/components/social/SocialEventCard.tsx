@@ -15,7 +15,7 @@ import { Users, MapPin, Calendar, Star } from "lucide-react-native";
 
 import { useRouter } from "expo-router";
 import { supabase } from "~/src/lib/supabase";
-import { useUser } from "~/hooks/useUserData";
+import { useUser } from "~/src/lib/UserProvider";
 import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 import { useTheme } from "~/src/components/ThemeProvider";
 

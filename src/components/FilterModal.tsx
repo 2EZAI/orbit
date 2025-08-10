@@ -9,30 +9,34 @@ import {
   Dimensions,
 } from "react-native";
 import { X, Calendar, Users, Tag } from "lucide-react-native";
+import { useTheme } from "~/src/components/ThemeProvider";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
+// Simple filter state to match existing MapControls interface
+interface FilterState {
+  [key: string]: boolean;
+}
+
 interface FilterModalProps {
-  isVisible: boolean;
+  isOpen: boolean;
   onClose: () => void;
-  filters: {
-    categories: string[];
-    dateRange: string;
-    minAttendees: number;
-    maxAttendees: number;
-  };
-  onApplyFilters: (filters: any) => void;
-  theme: any;
+  filters: FilterState;
+  onFilterChange: (filters: FilterState) => void;
+  eventsList?: any[];
+  locationsList?: any[];
 }
 
 export function FilterModal({
-  isVisible,
+  isOpen,
   onClose,
   filters,
-  onApplyFilters,
-  theme,
+  onFilterChange,
+  eventsList = [],
+  locationsList = [],
 }: FilterModalProps) {
-  const [localFilters, setLocalFilters] = useState(filters);
+  const { theme } = useTheme();
+  const [localFilters, setLocalFilters] = useState<FilterState>(filters);
 
   const dateRangeOptions = [
     { key: "all", label: "Any time", icon: "📅" },
@@ -41,16 +45,261 @@ export function FilterModal({
     { key: "month", label: "This month", icon: "📆" },
   ];
 
-  const categoryOptions = [
-    { key: "music", label: "Music", icon: "🎵" },
-    { key: "food", label: "Food & Drink", icon: "🍽️" },
-    { key: "sports", label: "Sports", icon: "⚽" },
-    { key: "art", label: "Art & Culture", icon: "🎨" },
-    { key: "business", label: "Business", icon: "💼" },
-    { key: "tech", label: "Technology", icon: "💻" },
-    { key: "health", label: "Health & Fitness", icon: "💪" },
-    { key: "entertainment", label: "Entertainment", icon: "🎭" },
-  ];
+  // Dynamic icon mapping for categories
+  const getCategoryIcon = (category: string): string => {
+    const cat = category.toLowerCase();
+    if (cat.includes("music") || cat.includes("concert")) return "🎵";
+    if (
+      cat.includes("food") ||
+      cat.includes("dining") ||
+      cat.includes("restaurant")
+    )
+      return "🍽️";
+    if (cat.includes("sport") || cat.includes("fitness") || cat.includes("gym"))
+      return "⚽";
+    if (
+      cat.includes("business") ||
+      cat.includes("work") ||
+      cat.includes("professional")
+    )
+      return "💼";
+    if (
+      cat.includes("art") ||
+      cat.includes("culture") ||
+      cat.includes("museum")
+    )
+      return "🎨";
+    if (
+      cat.includes("tech") ||
+      cat.includes("technology") ||
+      cat.includes("digital")
+    )
+      return "💻";
+    if (
+      cat.includes("health") ||
+      cat.includes("fitness") ||
+      cat.includes("wellness")
+    )
+      return "💪";
+    if (
+      cat.includes("party") ||
+      cat.includes("nightlife") ||
+      cat.includes("club") ||
+      cat.includes("bar")
+    )
+      return "🌙";
+    if (
+      cat.includes("entertainment") ||
+      cat.includes("theater") ||
+      cat.includes("show")
+    )
+      return "🎭";
+    if (cat.includes("beach") || cat.includes("water")) return "🏖️";
+    if (
+      cat.includes("park") ||
+      cat.includes("outdoor") ||
+      cat.includes("nature")
+    )
+      return "🌳";
+    if (cat.includes("shopping") || cat.includes("retail")) return "🛍️";
+    if (cat.includes("travel") || cat.includes("tourism")) return "✈️";
+    if (cat.includes("education") || cat.includes("learning")) return "📚";
+    return "🏷️"; // Default icon
+  };
+
+  // Extract dynamic categories from location categories
+  const locationCategoryOptions = React.useMemo(() => {
+    const categorySet = new Set<string>();
+    const categoryCounts = new Map<string, number>();
+
+    locationsList.forEach((location: any) => {
+      if (location.category?.name) {
+        categorySet.add(location.category.name);
+        categoryCounts.set(
+          location.category.name,
+          (categoryCounts.get(location.category.name) || 0) + 1
+        );
+      }
+    });
+
+    return Array.from(categorySet)
+      .map((category) => ({
+        key: category,
+        label: category,
+        icon: getCategoryIcon(category),
+        type: "location-category" as const,
+        count: categoryCounts.get(category) || 0,
+      }))
+      .sort((a, b) => b.count - a.count); // Sort by count descending
+  }, [locationsList]);
+
+  // Extract dynamic types from locations (this is where "Places" likely comes from)
+  const locationTypeOptions = React.useMemo(() => {
+    const typeSet = new Set<string>();
+    const typeCounts = new Map<string, number>();
+    const categorizedCount = new Map<string, number>();
+    const uncategorizedCount = new Map<string, number>();
+
+    locationsList.forEach((location: any) => {
+      if (location.type) {
+        typeSet.add(location.type);
+        typeCounts.set(location.type, (typeCounts.get(location.type) || 0) + 1);
+
+        // Track if this type has proper categories or not
+        if (location.category?.name) {
+          categorizedCount.set(
+            location.type,
+            (categorizedCount.get(location.type) || 0) + 1
+          );
+        } else {
+          uncategorizedCount.set(
+            location.type,
+            (uncategorizedCount.get(location.type) || 0) + 1
+          );
+        }
+      }
+    });
+
+    return Array.from(typeSet)
+      .map((type) => ({
+        key: type,
+        label: type,
+        icon: getCategoryIcon(type),
+        type: "location-type" as const,
+        count: typeCounts.get(type) || 0,
+        categorized: categorizedCount.get(type) || 0,
+        uncategorized: uncategorizedCount.get(type) || 0,
+      }))
+      .sort((a, b) => b.count - a.count); // Sort by count descending
+  }, [locationsList]);
+
+  // Extract dynamic topics from events
+  const eventTopicOptions = React.useMemo(() => {
+    const topicSet = new Set<string>();
+    eventsList.forEach((event: any) => {
+      if (event.event_topics) {
+        event.event_topics.forEach((eventTopic: any) => {
+          if (eventTopic.topics?.name) {
+            topicSet.add(eventTopic.topics.name);
+          }
+        });
+      }
+      // Also include event category if available
+      if (event.category?.name) {
+        topicSet.add(event.category.name);
+      }
+    });
+    return Array.from(topicSet)
+      .map((topic) => ({
+        key: topic,
+        label: topic,
+        icon: getCategoryIcon(topic),
+        type: "event-topic" as const,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [eventsList]);
+
+  // Extract uncategorized locations (locations without proper category.name)
+  const uncategorizedLocationOptions = React.useMemo(() => {
+    const typeSet = new Set<string>();
+    const typeCounts = new Map<string, number>();
+
+    locationsList.forEach((location: any) => {
+      // Only include locations that don't have a proper category.name
+      if (!location.category?.name && location.type) {
+        typeSet.add(location.type);
+        typeCounts.set(location.type, (typeCounts.get(location.type) || 0) + 1);
+      }
+    });
+
+    return Array.from(typeSet)
+      .map((type) => ({
+        key: `uncategorized-${type}`,
+        label: `${type} (Uncategorized)`,
+        icon: getCategoryIcon(type),
+        type: "uncategorized" as const,
+        count: typeCounts.get(type) || 0,
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [locationsList]);
+
+  // Debug: Log the data structure to understand what's happening
+  React.useEffect(() => {
+    if (locationsList.length > 0) {
+      console.log("🔍 DETAILED FILTER DEBUG:");
+      console.log("📊 Total locations received:", locationsList.length);
+
+      // Analyze all locations, not just first 5
+      const categoryAnalysis = {
+        withCategoryName: 0,
+        withCategoryId: 0,
+        withBoth: 0,
+        withNeither: 0,
+        categoryNameValues: new Set<string>(),
+        typeValues: new Set<string>(),
+        sampleLocations: [] as Array<{
+          name: any;
+          type: any;
+          categoryId: any;
+          categoryName: any;
+          fullCategory: any;
+        }>,
+      };
+
+      locationsList.forEach((loc, index) => {
+        const hasCategoryName = !!loc.category?.name;
+        const hasCategoryId = !!loc.category_id;
+
+        if (hasCategoryName) categoryAnalysis.withCategoryName++;
+        if (hasCategoryId) categoryAnalysis.withCategoryId++;
+        if (hasCategoryName && hasCategoryId) categoryAnalysis.withBoth++;
+        if (!hasCategoryName && !hasCategoryId) categoryAnalysis.withNeither++;
+
+        if (loc.category?.name)
+          categoryAnalysis.categoryNameValues.add(loc.category.name);
+        if (loc.type) categoryAnalysis.typeValues.add(loc.type);
+
+        // Sample first 10 locations for detailed inspection
+        if (index < 10) {
+          categoryAnalysis.sampleLocations.push({
+            name: loc.name,
+            type: loc.type,
+            categoryId: loc.category_id,
+            categoryName: loc.category?.name,
+            fullCategory: loc.category,
+          });
+        }
+      });
+
+      console.log("📊 Category Analysis:", {
+        ...categoryAnalysis,
+        categoryNameValues: Array.from(categoryAnalysis.categoryNameValues),
+        typeValues: Array.from(categoryAnalysis.typeValues),
+      });
+
+      console.log("📊 Filter Results:");
+      console.log(
+        "  - Location Categories:",
+        locationCategoryOptions.length,
+        locationCategoryOptions
+      );
+      console.log(
+        "  - Location Types:",
+        locationTypeOptions.length,
+        locationTypeOptions.slice(0, 10)
+      );
+      console.log(
+        "  - Uncategorized:",
+        uncategorizedLocationOptions.length,
+        uncategorizedLocationOptions
+      );
+    }
+  }, [
+    locationsList,
+    locationCategoryOptions,
+    locationTypeOptions,
+    uncategorizedLocationOptions,
+  ]);
 
   const attendeeRanges = [
     { key: "any", label: "Any size", min: 0, max: 1000 },
@@ -60,57 +309,38 @@ export function FilterModal({
   ];
 
   const handleCategoryToggle = (categoryKey: string) => {
-    const newCategories = localFilters.categories.includes(categoryKey)
-      ? localFilters.categories.filter((c) => c !== categoryKey)
-      : [...localFilters.categories, categoryKey];
-
-    setLocalFilters({
-      ...localFilters,
-      categories: newCategories,
-    });
+    setLocalFilters((prev) => ({
+      ...prev,
+      [categoryKey]: !prev[categoryKey],
+    }));
   };
 
   const handleDateRangeSelect = (dateRange: string) => {
-    setLocalFilters({
-      ...localFilters,
-      dateRange,
-    });
+    // For now, just log it since we're using simple boolean filters
+    console.log("Date range selected:", dateRange);
   };
 
   const handleAttendeeRangeSelect = (range: { min: number; max: number }) => {
-    setLocalFilters({
-      ...localFilters,
-      minAttendees: range.min,
-      maxAttendees: range.max,
-    });
+    // For now, just log it since we're using simple boolean filters
+    console.log("Attendee range selected:", range);
   };
 
   const clearFilters = () => {
-    setLocalFilters({
-      categories: [],
-      dateRange: "all",
-      minAttendees: 0,
-      maxAttendees: 1000,
-    });
+    setLocalFilters({});
   };
 
   const applyFilters = () => {
-    onApplyFilters(localFilters);
+    onFilterChange(localFilters);
   };
 
   const getCurrentAttendeeRange = () => {
-    return (
-      attendeeRanges.find(
-        (range) =>
-          range.min === localFilters.minAttendees &&
-          range.max === localFilters.maxAttendees
-      )?.key || "custom"
-    );
+    // For now, just return "any" since we're using simple boolean filters
+    return "any";
   };
 
   return (
     <Modal
-      visible={isVisible}
+      visible={isOpen}
       animationType="slide"
       presentationStyle="pageSheet"
       onRequestClose={onClose}
@@ -151,10 +381,9 @@ export function FilterModal({
                   style={[
                     styles.optionChip,
                     {
-                      backgroundColor:
-                        localFilters.dateRange === option.key
-                          ? theme.colors.primary
-                          : theme.colors.card,
+                      backgroundColor: localFilters[option.key]
+                        ? theme.colors.primary
+                        : theme.colors.card,
                       borderColor: theme.colors.border,
                     },
                   ]}
@@ -179,48 +408,197 @@ export function FilterModal({
             </View>
           </View>
 
-          {/* Categories Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Tag size={20} color={theme.colors.text} />
-              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-                Categories
-              </Text>
-            </View>
-            <View style={styles.optionsGrid}>
-              {categoryOptions.map((option) => (
-                <TouchableOpacity
-                  key={option.key}
-                  style={[
-                    styles.optionChip,
-                    {
-                      backgroundColor: localFilters.categories.includes(
-                        option.key
-                      )
-                        ? theme.colors.primary
-                        : theme.colors.card,
-                      borderColor: theme.colors.border,
-                    },
-                  ]}
-                  onPress={() => handleCategoryToggle(option.key)}
+          {/* Location Categories Section */}
+          {locationCategoryOptions.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Tag size={20} color={theme.colors.text} />
+                <Text
+                  style={[styles.sectionTitle, { color: theme.colors.text }]}
                 >
-                  <Text style={styles.optionEmoji}>{option.icon}</Text>
-                  <Text
+                  Location Categories (
+                  {locationCategoryOptions.reduce(
+                    (sum, opt) => sum + opt.count,
+                    0
+                  )}
+                  )
+                </Text>
+              </View>
+              <View style={styles.optionsGrid}>
+                {locationCategoryOptions.map((option) => (
+                  <TouchableOpacity
+                    key={option.key}
                     style={[
-                      styles.optionText,
+                      styles.optionChip,
                       {
-                        color: localFilters.categories.includes(option.key)
-                          ? "#fff"
-                          : theme.colors.text,
+                        backgroundColor: localFilters[option.key]
+                          ? theme.colors.primary
+                          : theme.colors.card,
+                        borderColor: theme.colors.border,
                       },
                     ]}
+                    onPress={() => handleCategoryToggle(option.key)}
                   >
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text style={styles.optionEmoji}>{option.icon}</Text>
+                    <Text
+                      style={[
+                        styles.optionText,
+                        {
+                          color: localFilters[option.key]
+                            ? "#fff"
+                            : theme.colors.text,
+                        },
+                      ]}
+                    >
+                      {option.label} ({option.count})
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
-          </View>
+          )}
+
+          {/* Location Types Section */}
+          {locationTypeOptions.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Tag size={20} color={theme.colors.text} />
+                <Text
+                  style={[styles.sectionTitle, { color: theme.colors.text }]}
+                >
+                  Location Types (
+                  {locationTypeOptions.reduce((sum, opt) => sum + opt.count, 0)}
+                  )
+                </Text>
+              </View>
+              <View style={styles.optionsGrid}>
+                {locationTypeOptions.map((option) => (
+                  <TouchableOpacity
+                    key={option.key}
+                    style={[
+                      styles.optionChip,
+                      {
+                        backgroundColor: localFilters[option.key]
+                          ? theme.colors.primary
+                          : theme.colors.card,
+                        borderColor: theme.colors.border,
+                      },
+                    ]}
+                    onPress={() => handleCategoryToggle(option.key)}
+                  >
+                    <Text style={styles.optionEmoji}>{option.icon}</Text>
+                    <Text
+                      style={[
+                        styles.optionText,
+                        {
+                          color: localFilters[option.key]
+                            ? "#fff"
+                            : theme.colors.text,
+                        },
+                      ]}
+                    >
+                      {option.label} ({option.count})
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Uncategorized Places Section */}
+          {uncategorizedLocationOptions.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Tag size={20} color={theme.colors.text} />
+                <Text
+                  style={[styles.sectionTitle, { color: theme.colors.text }]}
+                >
+                  Uncategorized Places (
+                  {uncategorizedLocationOptions.reduce(
+                    (sum, opt) => sum + opt.count,
+                    0
+                  )}
+                  )
+                </Text>
+              </View>
+              <View style={styles.optionsGrid}>
+                {uncategorizedLocationOptions.map((option) => (
+                  <TouchableOpacity
+                    key={option.key}
+                    style={[
+                      styles.optionChip,
+                      {
+                        backgroundColor: localFilters[option.key]
+                          ? theme.colors.primary
+                          : theme.colors.card,
+                        borderColor: theme.colors.border,
+                      },
+                    ]}
+                    onPress={() => handleCategoryToggle(option.key)}
+                  >
+                    <Text style={styles.optionEmoji}>{option.icon}</Text>
+                    <Text
+                      style={[
+                        styles.optionText,
+                        {
+                          color: localFilters[option.key]
+                            ? "#fff"
+                            : theme.colors.text,
+                        },
+                      ]}
+                    >
+                      {option.label} ({option.count})
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Event Topics Section */}
+          {eventTopicOptions.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Tag size={20} color={theme.colors.text} />
+                <Text
+                  style={[styles.sectionTitle, { color: theme.colors.text }]}
+                >
+                  Event Topics
+                </Text>
+              </View>
+              <View style={styles.optionsGrid}>
+                {eventTopicOptions.map((option) => (
+                  <TouchableOpacity
+                    key={option.key}
+                    style={[
+                      styles.optionChip,
+                      {
+                        backgroundColor: localFilters[option.key]
+                          ? theme.colors.primary
+                          : theme.colors.card,
+                        borderColor: theme.colors.border,
+                      },
+                    ]}
+                    onPress={() => handleCategoryToggle(option.key)}
+                  >
+                    <Text style={styles.optionEmoji}>{option.icon}</Text>
+                    <Text
+                      style={[
+                        styles.optionText,
+                        {
+                          color: localFilters[option.key]
+                            ? "#fff"
+                            : theme.colors.text,
+                        },
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
 
           {/* Attendees Section */}
           <View style={styles.section}>

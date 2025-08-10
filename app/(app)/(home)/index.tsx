@@ -19,7 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import { OptimizedImage } from "~/src/components/ui/optimized-image";
 import { useTheme } from "~/src/components/ThemeProvider";
-import { useUser } from "~/hooks/useUserData";
+import { useUser } from "~/src/lib/UserProvider";
 import { useHomeFeed } from "~/hooks/useHomeFeed";
 import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 import {
@@ -912,16 +912,27 @@ export default function Home() {
     setFilteredData(filteredSections);
   };
 
+  // Add handlers like the map component
+  const handleEventSelect = (event: any) => {
+    setSelectedEvent(event);
+    setIsSelectedItemLocation(false);
+  };
+
+  const handleLocationSelect = (location: any) => {
+    console.log(
+      `[Home] handleLocationSelect called for: ${location.id}, setting isSelectedItemLocation=true`
+    );
+    setSelectedEvent(location);
+    setIsSelectedItemLocation(true);
+  };
+
   const renderItem = ({ item }: { item: any }) => {
     if (item.type === "stories") {
       return (
         <FeaturedSection
           events={item.data}
           currentIndex={currentFeaturedIndex}
-          onEventSelect={(event: any) => {
-            setSelectedEvent(event);
-            setIsSelectedItemLocation(false);
-          }}
+          onEventSelect={handleEventSelect}
           onIndexChange={setCurrentFeaturedIndex}
         />
       );
@@ -932,10 +943,7 @@ export default function Home() {
           <TikTokLocationSection
             locations={item.data.data}
             title={item.data.title}
-            onLocationSelect={(location: any) => {
-              setSelectedEvent(location);
-              setIsSelectedItemLocation(true);
-            }}
+            onLocationSelect={handleLocationSelect}
           />
         );
       } else {
@@ -952,8 +960,21 @@ export default function Home() {
                 <CompactEventCard
                   item={eventItem}
                   onPress={() => {
-                    setSelectedEvent(eventItem);
-                    setIsSelectedItemLocation(false);
+                    // Check if item is a location or event
+                    if (
+                      eventItem.isLocation ||
+                      eventItem.type === "googleApi"
+                    ) {
+                      console.log(
+                        `[Home] CompactEventCard clicked - calling handleLocationSelect for: ${eventItem.id}`
+                      );
+                      handleLocationSelect(eventItem);
+                    } else {
+                      console.log(
+                        `[Home] CompactEventCard clicked - calling handleEventSelect for: ${eventItem.id}`
+                      );
+                      handleEventSelect(eventItem);
+                    }
                     trackSectionEngagement(item.data.key, "click");
                   }}
                 />
@@ -961,8 +982,21 @@ export default function Home() {
                 <EventCard
                   item={eventItem}
                   onPress={() => {
-                    setSelectedEvent(eventItem);
-                    setIsSelectedItemLocation(false);
+                    // Check if item is a location or event
+                    if (
+                      eventItem.isLocation ||
+                      eventItem.type === "googleApi"
+                    ) {
+                      console.log(
+                        `[Home] EventCard clicked - calling handleLocationSelect for: ${eventItem.id}`
+                      );
+                      handleLocationSelect(eventItem);
+                    } else {
+                      console.log(
+                        `[Home] EventCard clicked - calling handleEventSelect for: ${eventItem.id}`
+                      );
+                      handleEventSelect(eventItem);
+                    }
                     trackSectionEngagement(item.data.key, "click");
                   }}
                 />
@@ -1436,15 +1470,24 @@ export default function Home() {
           isOpen={!!selectedEvent}
           onClose={() => {
             setSelectedEvent(null);
-            setIsSelectedItemLocation(false);
+            // Don't reset isSelectedItemLocation - it should keep its current state
           }}
           nearbyData={[]}
           onDataSelect={(data) => {
-            setSelectedEvent(data);
-            setIsSelectedItemLocation(false);
+            if (isSelectedItemLocation) {
+              handleLocationSelect(data);
+            } else {
+              handleEventSelect(data);
+            }
           }}
           onShowControler={() => {}}
-          isEvent={!isSelectedItemLocation}
+          isEvent={(() => {
+            const isEventValue = !isSelectedItemLocation;
+            console.log(
+              `[Home] Passing to UnifiedDetailsSheet: isSelectedItemLocation=${isSelectedItemLocation}, isEvent=${isEventValue}, selectedEvent.id=${selectedEvent.id}`
+            );
+            return isEventValue;
+          })()}
         />
       )}
 
@@ -1496,6 +1539,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 16,
     borderWidth: 1,
+    backgroundColor: "#FFFFFF",
     shadowColor: "#8B5CF6",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -1514,6 +1558,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#8B5CF6",
     shadowColor: "#8B5CF6",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
@@ -1530,6 +1575,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
     position: "relative",
+    backgroundColor: "#FFFFFF",
     shadowColor: "#8B5CF6",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -1664,6 +1710,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 25,
     borderRadius: 12,
+    backgroundColor: "#8B5CF6",
     shadowColor: "#8B5CF6",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -1681,6 +1728,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
     marginBottom: 10,
+    backgroundColor: "#FFFFFF",
     shadowColor: "#8B5CF6",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,

@@ -12,7 +12,7 @@ import { Input } from "~/src/components/ui/input";
 import { MapEvent } from "~/hooks/useMapEvents";
 import { useChat } from "~/src/lib/chat";
 import { supabase } from "~/src/lib/supabase";
-import { useUser } from "~/hooks/useUserData";
+import { useUser } from "~/src/lib/UserProvider";
 import { X, Users, Search, UserPlus, UserMinus } from "lucide-react-native";
 
 interface User {

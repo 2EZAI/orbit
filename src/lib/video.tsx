@@ -185,7 +185,7 @@ export function VideoProvider({ children }: { children: React.ReactNode }) {
         setIsConnected(false);
       }
     };
-  }, [session?.user?.id, session?.access_token, session]);
+  }, [session?.user?.id]); // Only reconnect when user changes, not on token refresh
 
   // Video service methods
   const createCall = async (

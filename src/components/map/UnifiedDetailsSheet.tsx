@@ -32,6 +32,9 @@ import {
   UserCheck,
   Shuffle,
   Clock,
+  Star,
+  DollarSign,
+  Phone,
 } from "lucide-react-native";
 import { format } from "date-fns";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
@@ -61,6 +64,9 @@ type UnifiedData = (MapEvent | MapLocation) & {
     }>;
   };
   rating?: number;
+  rating_count?: number;
+  price_level?: number;
+  phone?: string;
   type?: string;
   is_ticketmaster?: boolean;
 };
@@ -79,10 +85,26 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 // Type guards
 const isEventData = (data: UnifiedData, isEvent?: boolean): boolean => {
-  if (isEvent !== undefined) return isEvent;
-  return (
-    "start_datetime" in data || "venue_name" in data || "attendees" in data
+  if (isEvent !== undefined) {
+    console.log(
+      `[UnifiedDetailsSheet] isEventData: using explicit isEvent=${isEvent} for ID=${data.id}`
+    );
+    return isEvent;
+  }
+
+  const hasEventFields =
+    "start_datetime" in data || "venue_name" in data || "attendees" in data;
+  console.log(
+    `[UnifiedDetailsSheet] isEventData: no explicit isEvent, checking fields for ID=${data.id}:`,
+    {
+      start_datetime: "start_datetime" in data,
+      venue_name: "venue_name" in data,
+      attendees: "attendees" in data,
+      result: hasEventFields,
+    }
   );
+
+  return hasEventFields;
 };
 
 export function UnifiedDetailsSheet({
@@ -802,31 +824,292 @@ export function UnifiedDetailsSheet({
                   {/* Operation Hours - For static locations */}
                   {(currentData as any).operation_hours && (
                     <View
-                      className="flex-row items-center p-3 mb-3 rounded-xl"
+                      className="p-3 mb-3 rounded-xl"
                       style={{
                         backgroundColor: isDarkMode
                           ? "rgba(34, 197, 94, 0.1)"
                           : "rgb(240, 253, 244)",
                       }}
                     >
-                      <View className="justify-center items-center mr-3 w-10 h-10 bg-green-500 rounded-full">
-                        <Clock size={20} color="white" />
+                      <View className="flex-row items-center mb-3">
+                        <View className="justify-center items-center mr-3 w-10 h-10 bg-green-500 rounded-full">
+                          <Clock size={20} color="white" />
+                        </View>
+                        <Text className="text-xs font-medium tracking-wide text-green-600 uppercase">
+                          Hours of Operation
+                        </Text>
+                      </View>
+
+                      {(() => {
+                        const hours = (currentData as any).operation_hours;
+
+                        // If it's a string, show as is
+                        if (typeof hours === "string") {
+                          return (
+                            <Text
+                              className="text-base font-bold leading-tight ml-13"
+                              style={{ color: theme.colors.text }}
+                            >
+                              {hours}
+                            </Text>
+                          );
+                        }
+
+                        // If it's an object (JSON), parse and display structured hours
+                        if (typeof hours === "object" && hours !== null) {
+                          const dayOrder = [
+                            "monday",
+                            "tuesday",
+                            "wednesday",
+                            "thursday",
+                            "friday",
+                            "saturday",
+                            "sunday",
+                          ];
+                          const dayAbbrevs = {
+                            monday: "Mon",
+                            tuesday: "Tue",
+                            wednesday: "Wed",
+                            thursday: "Thu",
+                            friday: "Fri",
+                            saturday: "Sat",
+                            sunday: "Sun",
+                          };
+
+                          const formatTime = (time: string) => {
+                            if (!time) return "";
+                            const [hour, minute] = time.split(":");
+                            const hourNum = parseInt(hour);
+                            const ampm = hourNum >= 12 ? "PM" : "AM";
+                            const displayHour =
+                              hourNum === 0
+                                ? 12
+                                : hourNum > 12
+                                ? hourNum - 12
+                                : hourNum;
+                            return `${displayHour}:${minute} ${ampm}`;
+                          };
+
+                          // Group consecutive days with same hours
+                          const groupedHours = dayOrder
+                            .map((day) => {
+                              const dayHours = hours[day];
+                              if (!dayHours) return null;
+
+                              return {
+                                day,
+                                abbrev:
+                                  dayAbbrevs[day as keyof typeof dayAbbrevs],
+                                closed: dayHours.closed,
+                                open: dayHours.open,
+                                close: dayHours.close,
+                                display: dayHours.closed
+                                  ? "Closed"
+                                  : `${formatTime(
+                                      dayHours.open
+                                    )} - ${formatTime(dayHours.close)}`,
+                              };
+                            })
+                            .filter(Boolean);
+
+                          // Check if all days have the same hours
+                          const allSameHours = groupedHours.every(
+                            (day) => day?.display === groupedHours[0]?.display
+                          );
+
+                          if (allSameHours && groupedHours.length > 0) {
+                            return (
+                              <View className="ml-13">
+                                <Text
+                                  className="text-base font-bold leading-tight"
+                                  style={{ color: theme.colors.text }}
+                                >
+                                  Every day: {groupedHours[0]?.display}
+                                </Text>
+                              </View>
+                            );
+                          }
+
+                          return (
+                            <View className="ml-13 space-y-1">
+                              {groupedHours.map((dayInfo) => (
+                                <View
+                                  key={dayInfo?.day}
+                                  className="flex-row justify-between items-center py-0.5"
+                                >
+                                  <Text
+                                    className="text-sm font-medium w-12"
+                                    style={{
+                                      color: isDarkMode
+                                        ? theme.colors.text
+                                        : "#6B7280",
+                                    }}
+                                  >
+                                    {dayInfo?.abbrev}
+                                  </Text>
+                                  <Text
+                                    className={`text-sm flex-1 ml-3 ${
+                                      dayInfo?.closed ? "italic" : "font-medium"
+                                    }`}
+                                    style={{
+                                      color: dayInfo?.closed
+                                        ? isDarkMode
+                                          ? "#F87171"
+                                          : "#DC2626"
+                                        : theme.colors.text,
+                                    }}
+                                  >
+                                    {dayInfo?.display}
+                                  </Text>
+                                </View>
+                              ))}
+                            </View>
+                          );
+                        }
+
+                        // Fallback
+                        return (
+                          <Text
+                            className="text-base font-bold leading-tight ml-13"
+                            style={{ color: theme.colors.text }}
+                          >
+                            Open daily
+                          </Text>
+                        );
+                      })()}
+                    </View>
+                  )}
+
+                  {/* Rating & Reviews - For static locations */}
+                  {(currentData as any).rating && (
+                    <View
+                      className="flex-row items-center p-3 mb-3 rounded-xl"
+                      style={{
+                        backgroundColor: isDarkMode
+                          ? "rgba(245, 158, 11, 0.1)"
+                          : "rgb(255, 251, 235)",
+                      }}
+                    >
+                      <View className="justify-center items-center mr-3 w-10 h-10 bg-amber-500 rounded-full">
+                        <Star size={20} color="white" />
                       </View>
                       <View className="flex-1">
-                        <Text className="mb-1 text-xs font-medium tracking-wide text-green-600 uppercase">
-                          Hours
+                        <Text className="mb-1 text-xs font-medium tracking-wide text-amber-600 uppercase">
+                          Rating
+                        </Text>
+                        <View className="flex-row items-center">
+                          <Text
+                            className="mr-2 text-base font-bold leading-tight"
+                            style={{ color: theme.colors.text }}
+                          >
+                            {(currentData as any).rating.toFixed(1)} ★
+                          </Text>
+                          {(currentData as any).rating_count && (
+                            <Text
+                              className="text-sm"
+                              style={{
+                                color: isDarkMode
+                                  ? theme.colors.text
+                                  : "#6B7280",
+                              }}
+                            >
+                              (
+                              {(
+                                currentData as any
+                              ).rating_count.toLocaleString()}{" "}
+                              reviews)
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Price Level - For static locations */}
+                  {(currentData as any).price_level &&
+                    (currentData as any).price_level > 0 && (
+                      <View
+                        className="flex-row items-center p-3 mb-3 rounded-xl"
+                        style={{
+                          backgroundColor: isDarkMode
+                            ? "rgba(34, 197, 94, 0.1)"
+                            : "rgb(240, 253, 244)",
+                        }}
+                      >
+                        <View className="justify-center items-center mr-3 w-10 h-10 bg-green-500 rounded-full">
+                          <DollarSign size={20} color="white" />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="mb-1 text-xs font-medium tracking-wide text-green-600 uppercase">
+                            Price Range
+                          </Text>
+                          <Text
+                            className="text-base font-bold leading-tight"
+                            style={{ color: theme.colors.text }}
+                          >
+                            {"$".repeat((currentData as any).price_level)}
+                            <Text
+                              className="ml-1 text-sm font-normal"
+                              style={{
+                                color: isDarkMode
+                                  ? theme.colors.text
+                                  : "#6B7280",
+                              }}
+                            >
+                              (
+                              {(currentData as any).price_level === 1
+                                ? "Inexpensive"
+                                : (currentData as any).price_level === 2
+                                ? "Moderate"
+                                : (currentData as any).price_level === 3
+                                ? "Expensive"
+                                : "Very Expensive"}
+                              )
+                            </Text>
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+
+                  {/* Phone Number - For static locations */}
+                  {(currentData as any).phone && (
+                    <TouchableOpacity
+                      onPress={() =>
+                        Linking.openURL(`tel:${(currentData as any).phone}`)
+                      }
+                      className="flex-row items-center p-3 mb-3 rounded-xl"
+                      style={{
+                        backgroundColor: isDarkMode
+                          ? "rgba(59, 130, 246, 0.1)"
+                          : "rgb(239, 246, 255)",
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <View className="justify-center items-center mr-3 w-10 h-10 bg-blue-500 rounded-full">
+                        <Phone size={20} color="white" />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="mb-1 text-xs font-medium tracking-wide text-blue-600 uppercase">
+                          Phone
                         </Text>
                         <Text
                           className="text-base font-bold leading-tight"
                           style={{ color: theme.colors.text }}
                         >
-                          {typeof (currentData as any).operation_hours ===
-                          "string"
-                            ? (currentData as any).operation_hours
-                            : "Open daily"}
+                          {(currentData as any).phone}
+                        </Text>
+                        <Text
+                          className="text-xs mt-0.5"
+                          style={{
+                            color: isDarkMode
+                              ? "rgba(59, 130, 246, 0.8)"
+                              : "#3B82F6",
+                          }}
+                        >
+                          Tap to call
                         </Text>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   )}
 
                   {/* Location Prompts */}
@@ -1284,20 +1567,45 @@ export function UnifiedDetailsSheet({
                                 </Text>
                               </View>
                             )}
-                            {/* Show category for non-googleAPI items */}
+                            {/* Show category and rating for locations */}
                             {!isEventData(item) && (
-                              <Text
-                                className="mt-1 text-xs"
-                                style={{
-                                  color: isDarkMode
-                                    ? "rgba(255,255,255,0.7)"
-                                    : "#6B7280",
-                                }}
-                              >
-                                {getCategoryName(
-                                  item.category?.name || item.type
-                                ) || "Place"}
-                              </Text>
+                              <View className="mt-1">
+                                <Text
+                                  className="text-xs"
+                                  style={{
+                                    color: isDarkMode
+                                      ? "rgba(255,255,255,0.7)"
+                                      : "#6B7280",
+                                  }}
+                                >
+                                  {getCategoryName(
+                                    item.category?.name || item.type
+                                  ) || "Place"}
+                                </Text>
+                                {(item as any).rating && (
+                                  <View className="flex-row items-center mt-1">
+                                    <Star size={12} color="#F59E0B" />
+                                    <Text
+                                      className="ml-1 text-xs font-medium"
+                                      style={{ color: "#F59E0B" }}
+                                    >
+                                      {(item as any).rating.toFixed(1)}
+                                    </Text>
+                                    {(item as any).rating_count && (
+                                      <Text
+                                        className="ml-1 text-xs"
+                                        style={{
+                                          color: isDarkMode
+                                            ? "rgba(255,255,255,0.5)"
+                                            : "#9CA3AF",
+                                        }}
+                                      >
+                                        ({(item as any).rating_count})
+                                      </Text>
+                                    )}
+                                  </View>
+                                )}
+                              </View>
                             )}
                           </View>
                         </TouchableOpacity>

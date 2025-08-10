@@ -15,7 +15,7 @@ import { ArrowLeft, ArrowRight, Check } from "lucide-react-native";
 import { useActionSheet } from "@expo/react-native-action-sheet";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
-import { useUser } from "~/hooks/useUserData";
+import { useUser } from "~/src/lib/UserProvider";
 import { supabase } from "~/src/lib/supabase";
 import { router } from "expo-router";
 import { debounce } from "lodash";

@@ -155,6 +155,11 @@ export function useUpdateEvents(): UseUserReturn {
       const eventData = {
         source: event.is_ticketmaster ? "ticketmaster" : "supabase",
       };
+
+      console.log(
+        `[Event Detail] Event ID: ${event.id}, is_ticketmaster: ${event.is_ticketmaster}, detected source: ${eventData.source}`
+      );
+
       const response = await fetch(
         `${process.env.BACKEND_MAP_URL}/api/events/${event.id}`,
         {
@@ -168,7 +173,9 @@ export function useUpdateEvents(): UseUserReturn {
       );
 
       if (!response.ok) {
-        throw new Error(await response.text());
+        const errorText = await response.text();
+        console.log(`[Event Detail] Backend error response:`, errorText);
+        throw new Error(errorText);
       }
 
       const data = await response.json();

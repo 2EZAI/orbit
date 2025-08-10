@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import {
   View,
   StyleSheet,
@@ -8,6 +8,7 @@ import {
   DeviceEventEmitter,
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 
 type TimeFrame = "Today" | "Week" | "Weekend";
 import { supabase } from "~/src/lib/supabase";
@@ -16,7 +17,8 @@ import { Text } from "~/src/components/ui/text";
 import * as Location from "expo-location";
 import { useTheme } from "~/src/components/ThemeProvider";
 import MapboxGL, { UserTrackingMode } from "@rnmapbox/maps";
-import { useUser } from "~/hooks/useUserData";
+import { useUser } from "~/src/lib/UserProvider";
+import { debounce } from "lodash";
 import {
   useMapEvents,
   type MapEvent,
@@ -39,6 +41,7 @@ import { UnifiedDetailsSheet } from "~/src/components/map/UnifiedDetailsSheet";
 import { MapLoadingScreen } from "~/src/components/map/MapLoadingScreen";
 
 import { SearchSheet } from "~/src/components/search/SearchSheet";
+import { imagePreloader } from "~/src/lib/imagePreloader";
 
 // Replace with your Mapbox access token
 MapboxGL.setAccessToken(
@@ -65,6 +68,7 @@ const getFallbackStyle = (isDarkMode: boolean) =>
 
 export default function Map() {
   const params = useLocalSearchParams();
+  const isFocused = useIsFocused(); // Track if this screen is currently active
   const [selectedTimeFrame, setSelectedTimeFrame] =
     useState<TimeFrame>("Today");
   const [showDetails, setShowDetails] = useState(false);
@@ -94,6 +98,44 @@ export default function Map() {
     "initial" | "timeframe" | "filters" | "data"
   >("initial"); // Track why we're loading
   const markersReadyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastNavigationRef = useRef<{
+    eventId?: string;
+    locationId?: string;
+    timestamp: number;
+  }>({ timestamp: 0 });
+  const searchedLocationNameRef = useRef<string | null>(null);
+
+  // Helper to parse safe numbers
+  const parseNumber = (v: any): number | null => {
+    const n =
+      typeof v === "string" ? parseFloat(v) : typeof v === "number" ? v : NaN;
+    return Number.isFinite(n) ? n : null;
+  };
+
+  // Preferred coordinates (Orbit if selected and valid; otherwise device) - memoized to prevent infinite loops
+  const orbitLat = useMemo(
+    () =>
+      user?.event_location_preference === 1 && userlocation?.latitude
+        ? parseNumber(userlocation.latitude)
+        : null,
+    [user?.event_location_preference, userlocation?.latitude]
+  );
+  const orbitLng = useMemo(
+    () =>
+      user?.event_location_preference === 1 && userlocation?.longitude
+        ? parseNumber(userlocation.longitude)
+        : null,
+    [user?.event_location_preference, userlocation?.longitude]
+  );
+
+  const preferredLat = useMemo(
+    () => orbitLat ?? (location ? parseNumber(location.latitude) : null),
+    [orbitLat, location?.latitude]
+  );
+  const preferredLng = useMemo(
+    () => orbitLng ?? (location ? parseNumber(location.longitude) : null),
+    [orbitLng, location?.longitude]
+  );
 
   // Reset style error when theme changes to retry the correct style
   useEffect(() => {
@@ -137,12 +179,120 @@ export default function Map() {
     }
   };
 
-  // Add state to track current map center
+  // Add state to track current map center and dynamic radius
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
+  const [dynamicRadius, setDynamicRadius] = useState<number>(50000); // Default 50km
+  const [mapZoomLevel, setMapZoomLevel] = useState<number>(10); // Track zoom level for smart limits
 
   // Add debounced region change handler
   const regionChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastCenterRef = useRef<[number, number] | null>(null);
+
+  // Helper function to calculate distance between two points in km
+  const calculateDistance = (
+    lat1: number,
+    lng1: number,
+    lat2: number,
+    lng2: number
+  ): number => {
+    const R = 6371; // Earth's radius in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  // Function to dynamically adjust radius based on target location
+  const adjustRadiusForDistance = (
+    currentCenter: [number, number] | null,
+    targetLat: number,
+    targetLng: number
+  ) => {
+    if (!currentCenter) {
+      // If no current center, use a large radius to ensure we capture the target
+      const expandedRadius = Math.max(100000, dynamicRadius * 2); // At least 100km
+      console.log(
+        "[Map] No current center, expanding radius to:",
+        expandedRadius
+      );
+      setDynamicRadius(expandedRadius);
+      return expandedRadius;
+    }
+
+    const distance = calculateDistance(
+      currentCenter[0],
+      currentCenter[1],
+      targetLat,
+      targetLng
+    );
+    const distanceInMeters = distance * 1000;
+
+    // LONG DISTANCE NAVIGATION: If target is >500km away, switch to center-based loading
+    if (distance > 500) {
+      console.log(
+        `[Map] 🚀 LONG DISTANCE NAVIGATION: ${distance.toFixed(
+          1
+        )}km - switching to target-centered loading`
+      );
+
+      // For long distances, center the map on the target and use standard radius
+      // This is more efficient than trying to expand radius to cover huge distances
+      console.log(
+        `[Map] Setting new center to target location: [${targetLat}, ${targetLng}]`
+      );
+
+      // Reset to standard radius for the new location
+      setDynamicRadius(100000); // 100km radius at target location
+
+      // The map center will be updated by the calling function
+      return 100000;
+    }
+
+    // REGIONAL NAVIGATION: For distances <500km, use radius expansion as before
+    const requiredRadius = distanceInMeters + distanceInMeters * 0.2;
+    const newRadius = Math.max(50000, Math.min(requiredRadius, 200000)); // Min 50km, max 200km
+
+    if (newRadius > dynamicRadius) {
+      console.log(
+        `[Map] 📍 REGIONAL EXPANSION: from ${dynamicRadius / 1000}km to ${
+          newRadius / 1000
+        }km for distance ${distance.toFixed(1)}km`
+      );
+      setDynamicRadius(newRadius);
+      return newRadius;
+    }
+
+    return dynamicRadius;
+  };
+
+  // Function to reset radius when returning to home area
+  const resetRadiusIfNearHome = (currentLat: number, currentLng: number) => {
+    const homeCoords = centerForHooks;
+    if (homeCoords && homeCoords.length >= 2) {
+      const distanceFromHome = calculateDistance(
+        currentLat,
+        currentLng,
+        homeCoords[0],
+        homeCoords[1]
+      );
+
+      // If within 25km of home and radius is expanded, reset to default
+      if (distanceFromHome < 25 && dynamicRadius > 50000) {
+        console.log(
+          `[Map] Near home (${distanceFromHome.toFixed(
+            1
+          )}km), resetting radius to 50km`
+        );
+        setDynamicRadius(50000);
+      }
+    }
+  };
 
   // Helper function to determine marker type
   const getMarkerType = (
@@ -237,10 +387,45 @@ export default function Map() {
       }
     }
 
-    return shouldShow;
+    // If nothing matched any enabled filter, default to show (prevents empty map)
+    return shouldShow || !hasAnyFilterEnabled;
   };
 
-  const filterClusters = (clusters: any[]) => {
+  const filterClusters = (clusters: any[], zoomLevel?: number) => {
+    // Smart limit based on zoom level to prevent callback overflow
+    const getSmartLimit = (zoom: number = 10) => {
+      if (zoom >= 14) return 1000; // Close zoom: show everything
+      if (zoom >= 12) return 500; // Medium zoom: moderate limit
+      if (zoom >= 10) return 300; // Far zoom: fewer markers
+      return 150; // Very far: minimal markers
+    };
+
+    const smartLimit = getSmartLimit(zoomLevel);
+    // Reduced logging - only log significant changes
+    if (clusters.length > smartLimit) {
+      console.log(
+        `[Map] ⚡ SMART LIMIT: ${smartLimit} of ${
+          clusters.length
+        } clusters (zoom: ${zoomLevel || "unknown"})`
+      );
+    }
+
+    // If no filters are set, or all filters are enabled, don't hide anything
+    const hasAnyFilterEnabled = Object.values(filters).some((v) => v === true);
+    const areAllFiltersEnabled =
+      Object.keys(filters).length > 0 &&
+      Object.values(filters).every((v) => v === true);
+    if (!hasAnyFilterEnabled || areAllFiltersEnabled) {
+      // Search location debugging is now handled in the memoized hook
+
+      // Apply smart limit to prevent callback overflow
+      if (clusters.length > smartLimit) {
+        return clusters.slice(0, smartLimit);
+      }
+
+      return clusters;
+    }
+
     const filtered = clusters
       .filter((cluster) => {
         // Check if the main event should be shown
@@ -258,8 +443,14 @@ export default function Map() {
         events: cluster.events.filter(shouldShowMarker),
       }));
 
-    // Limit to maximum 200 markers to prevent callback overflow
-    return filtered.slice(0, 200);
+    // Search location debugging is now handled in the memoized hook
+
+    // Apply smart limit to filtered results too
+    if (filtered.length > smartLimit) {
+      return filtered.slice(0, smartLimit);
+    }
+
+    return filtered;
   };
 
   const handleRegionChange = useCallback((region: any) => {
@@ -275,21 +466,84 @@ export default function Map() {
       const zoomLevel = region?.properties?.zoomLevel;
 
       if (centerLat && centerLng && zoomLevel) {
+        // Update zoom level for smart filtering (debounced to prevent excessive updates)
+        const roundedZoom = Math.floor(zoomLevel);
+        if (Math.abs(mapZoomLevel - roundedZoom) >= 1) {
+          setMapZoomLevel(roundedZoom);
+        }
         // Check if the center has meaningfully changed (more than 0.01 degrees)
         const newCenter: [number, number] = [centerLat, centerLng];
         const lastCenter = lastCenterRef.current;
 
+        // Calculate distance moved and adjust threshold based on current radius
+        const radiusInKm = dynamicRadius / 1000;
+        const baseThreshold = 0.01; // 1km base threshold
+        const threshold = Math.min(
+          0.05,
+          Math.max(baseThreshold, radiusInKm / 1000)
+        ); // Scale with radius
+
         if (
           !lastCenter ||
-          Math.abs(newCenter[0] - lastCenter[0]) > 0.01 ||
-          Math.abs(newCenter[1] - lastCenter[1]) > 0.01
+          Math.abs(newCenter[0] - lastCenter[0]) > threshold ||
+          Math.abs(newCenter[1] - lastCenter[1]) > threshold
         ) {
+          // Check if we need to expand radius for this new location
+          if (mapCenter) {
+            const distance = calculateDistance(
+              mapCenter[0],
+              mapCenter[1],
+              newCenter[0],
+              newCenter[1]
+            );
+            const distanceInMeters = distance * 1000;
+
+            // LONG DISTANCE MOVEMENT: If moving >500km, switch to center-based approach
+            if (distance > 500) {
+              console.log(
+                `[Map] 🚀 LONG DISTANCE MOVEMENT: ${distance.toFixed(
+                  1
+                )}km - resetting to standard radius at new location`
+              );
+              setDynamicRadius(100000); // 100km radius at new location
+            }
+            // REGIONAL MOVEMENT: If moving more than half the radius away, consider expanding
+            else if (distanceInMeters > dynamicRadius * 0.5) {
+              const newRadius = Math.min(
+                200000,
+                Math.max(dynamicRadius, distanceInMeters * 1.5)
+              ); // Max 200km
+              if (newRadius !== dynamicRadius) {
+                console.log(
+                  `[Map] 📍 Progressive loading: expanding radius to ${
+                    newRadius / 1000
+                  }km for ${distance.toFixed(1)}km movement`
+                );
+                setDynamicRadius(newRadius);
+              }
+            }
+          }
+
+          // Check if we should reset radius when near home
+          resetRadiusIfNearHome(newCenter[0], newCenter[1]);
+
           // Update the map center to trigger new data fetch
           setMapCenter(newCenter);
           lastCenterRef.current = newCenter;
+          console.log(
+            `[Map] Region change triggered data fetch (moved ${threshold.toFixed(
+              4
+            )}°, radius: ${radiusInKm}km)`
+          );
+        } else {
+          console.log(
+            `[Map] Region change too small (${threshold.toFixed(
+              4
+            )}° threshold), skipping data fetch`
+          );
         }
       }
-    }, 2000); // Increased to 2 seconds to reduce API calls
+    }, 2000); // Reduced back to 2 seconds for better responsiveness
 
     // Handle zoom level for follower count visibility
     let zoomLevel = region?.properties?.zoomLevel;
@@ -310,6 +564,72 @@ export default function Map() {
     fitToEvents,
   } = useMapCamera();
 
+  // Need to declare these before useMapEvents hook since they're used in dependencies
+  // They will be calculated after useMapEvents provides the cluster data
+  let clustersNowCount = 0;
+  let clustersTodayCount = 0;
+  let clustersTomorrowCount = 0;
+
+  // Auto-fit once when clusters first appear to ensure markers are visible
+  const didAutoFitRef = useRef(false);
+  useEffect(() => {
+    if (didAutoFitRef.current) return;
+    const activeClusters =
+      selectedTimeFrame === "Today"
+        ? clustersToday || []
+        : selectedTimeFrame === "Week"
+        ? clustersNow || []
+        : clustersTomorrow || [];
+
+    if (activeClusters && activeClusters.length > 0) {
+      const sample = activeClusters
+        .flatMap((c: any) => c.events)
+        .filter(
+          (e: any) =>
+            e &&
+            e.location &&
+            typeof e.location.latitude === "number" &&
+            typeof e.location.longitude === "number"
+        );
+      if (sample.length > 0) {
+        try {
+          fitToEvents(sample as any);
+          didAutoFitRef.current = true;
+          console.log(
+            "[Map] Auto-fit to",
+            sample.length,
+            "events for",
+            selectedTimeFrame
+          );
+        } catch (e) {}
+      }
+    }
+  }, [
+    clustersNowCount,
+    clustersTodayCount,
+    clustersTomorrowCount,
+    selectedTimeFrame,
+    fitToEvents,
+  ]);
+
+  // Prefer preferred coordinates for data fetching center (memoized to prevent infinite loops)
+  const centerForHooks: [number, number] = useMemo(() => {
+    // Always prioritize preferred coordinates if available
+    if (preferredLat != null && preferredLng != null) {
+      return [preferredLat, preferredLng];
+    }
+    // Fallback to device location if available
+    if (location && location.latitude !== 0 && location.longitude !== 0) {
+      return [location.latitude, location.longitude];
+    }
+    // Last resort: use mapCenter if set
+    if (mapCenter && mapCenter[0] !== 0 && mapCenter[1] !== 0) {
+      return mapCenter as [number, number];
+    }
+    // Default fallback
+    return [25.7617, -80.1918]; // Miami coordinates as default
+  }, [preferredLat, preferredLng, location?.latitude, location?.longitude]); // Remove mapCenter to prevent loops
+
   var {
     events,
     locations,
@@ -326,11 +646,10 @@ export default function Map() {
     error,
     handleEventClick,
     handleCloseModal,
+    forceRefreshLocations,
   } = useMapEvents({
-    center:
-      mapCenter ||
-      (location ? [location.latitude, location.longitude] : [0, 0]), // Use the dynamic map center instead of static coordinates
-    radius: 50000,
+    center: isFocused ? centerForHooks : [0, 0], // Only use real center when screen is focused
+    radius: isFocused ? dynamicRadius : 0, // Disable radius when not focused
     timeRange:
       selectedTimeFrame === "Today"
         ? "today"
@@ -338,6 +657,87 @@ export default function Map() {
         ? "week"
         : "weekend",
   });
+
+  // Memoize filtered clusters with stable dependencies to prevent infinite re-renders
+  const filteredClustersLocations = useMemo(() => {
+    // If screen is not focused, return empty array to prevent unnecessary processing
+    if (!isFocused) {
+      return [];
+    }
+
+    if (clustersLocations.length === 0) return [];
+
+    const filtered = filterClusters(clustersLocations, mapZoomLevel);
+
+    // Preload images for filtered clusters (debounced) - only when focused
+    if (isFocused && filtered.length > 0) {
+      setTimeout(() => {
+        const imageUrls: string[] = [];
+        filtered.forEach((cluster) => {
+          if (cluster.mainEvent?.image_urls?.[0]) {
+            imageUrls.push(cluster.mainEvent.image_urls[0]);
+          }
+        });
+
+        if (imageUrls.length > 0) {
+          imagePreloader.preloadImages(imageUrls, {
+            priority: "high",
+            cache: true,
+            aggressive: true,
+          });
+        }
+      }, 500); // Longer delay to prevent spam
+    }
+
+    return filtered;
+  }, [clustersLocations.length, Math.floor(mapZoomLevel), isFocused]); // Use stable dependencies
+
+  // Calculate cluster counts for auto-fit functionality
+  clustersNowCount = Array.isArray(clustersNow) ? clustersNow.length : 0;
+  clustersTodayCount = Array.isArray(clustersToday) ? clustersToday.length : 0;
+  clustersTomorrowCount = Array.isArray(clustersTomorrow)
+    ? clustersTomorrow.length
+    : 0;
+
+  // Debug: log data/state driving markers
+  useEffect(() => {
+    console.log("[Map] Preferred coords:", { preferredLat, preferredLng });
+    console.log("[Map] Center for hooks:", centerForHooks);
+  }, [preferredLat, preferredLng, centerForHooks[0], centerForHooks[1]]);
+
+  useEffect(() => {
+    console.log("[Map] Data lengths:", {
+      events: events.length,
+      locations: locations.length,
+      eventsNow: eventsNow.length,
+      eventsToday: eventsToday.length,
+      eventsTomorrow: eventsTomorrow.length,
+      clusters: clusters.length,
+      clustersNow: clustersNow.length,
+      clustersToday: clustersToday.length,
+      clustersTomorrow: clustersTomorrow.length,
+      clustersLocations: clustersLocations.length,
+    });
+  }, [
+    events.length,
+    locations.length,
+    eventsNow.length,
+    eventsToday.length,
+    eventsTomorrow.length,
+    clusters.length,
+    clustersNow.length,
+    clustersToday.length,
+    clustersTomorrow.length,
+    clustersLocations.length,
+  ]);
+
+  // Ensure mapCenter is initialized to preferred when available - run only once
+  useEffect(() => {
+    if (!mapCenter && preferredLat != null && preferredLng != null) {
+      console.log("[Map] Initializing mapCenter to preferred coordinates");
+      setMapCenter([preferredLat, preferredLng]);
+    }
+  }, [preferredLat, preferredLng]); // Remove mapCenter from dependencies to prevent loop
 
   // Define handleLocationClick function for navigation from SearchSheet
   const handleLocationClick = useCallback(
@@ -439,14 +839,133 @@ export default function Map() {
     };
   }, []);
 
-  // Generate dynamic filters when data loads
+  // Listen for location preference changes and recenter/refetch immediately
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(
+      "locationPreferenceUpdated",
+      (payload: {
+        mode: "current" | "orbit";
+        latitude: number | null;
+        longitude: number | null;
+      }) => {
+        console.log(
+          "📍 Map received locationPreferenceUpdated event:",
+          payload
+        );
+
+        // ALWAYS use the coordinates from the payload - no dependency on stale state
+        const lat = payload.latitude;
+        const lng = payload.longitude;
+
+        console.log("📍 Event payload coordinates:", [lat, lng]);
+
+        if (lat != null && lng != null) {
+          // IMMEDIATE camera movement - don't wait for state updates
+          console.log("📍 🚀 IMMEDIATELY moving camera to:", [lng, lat]);
+          console.log("📍 🔍 Camera ref exists:", !!cameraRef.current);
+          console.log("📍 🔍 Camera ref details:", cameraRef.current);
+
+          if (cameraRef.current) {
+            try {
+              cameraRef.current.setCamera({
+                centerCoordinate: [lng, lat],
+                zoomLevel: 11,
+                animationDuration: 800,
+                animationMode: "flyTo",
+              });
+              console.log("📍 ✅ Camera setCamera called successfully");
+            } catch (error) {
+              console.error("📍 ❌ Error calling setCamera:", error);
+            }
+          } else {
+            console.log("📍 ❌ Camera ref is null - cannot move camera");
+
+            // Fallback: Try again after a short delay
+            setTimeout(() => {
+              console.log("📍 🔄 Retrying camera movement after delay...");
+              if (cameraRef.current) {
+                cameraRef.current.setCamera({
+                  centerCoordinate: [lng, lat],
+                  zoomLevel: 11,
+                  animationDuration: 800,
+                  animationMode: "flyTo",
+                });
+                console.log("📍 ✅ Camera movement successful on retry");
+              } else {
+                console.log("📍 ❌ Camera ref still null on retry");
+              }
+            }, 500);
+          }
+
+          // Update map center state
+          console.log("📍 Setting mapCenter state to:", [lat, lng]);
+          setMapCenter([lat, lng]);
+
+          // Force radius reset for long distance moves
+          console.log("📍 Resetting dynamic radius for location change");
+          setDynamicRadius(100000); // Reset to 100km for new area
+        } else {
+          console.log("📍 ⚠️ Invalid coordinates in payload:", { lat, lng });
+        }
+      }
+    );
+
+    return () => sub.remove();
+  }, []); // NO dependencies - this should work with any state
+
+  // Recenter on screen focus based on current preference (Orbit vs Current)
+  useFocusEffect(
+    useCallback(() => {
+      if (preferredLat != null && preferredLng != null) {
+        if (cameraRef.current) {
+          cameraRef.current.setCamera({
+            centerCoordinate: [preferredLng, preferredLat],
+            zoomLevel: 11,
+            animationDuration: 600,
+            animationMode: "flyTo",
+          });
+        }
+        setMapCenter([preferredLat, preferredLng]);
+      }
+    }, [preferredLat, preferredLng, cameraRef])
+  );
+
+  // Respect user location preference: when Orbit mode is enabled or updated,
+  // recenter the map and trigger data refetches using the orbit coordinates.
+  useEffect(() => {
+    if (
+      user?.event_location_preference === 1 &&
+      orbitLat != null &&
+      orbitLng != null
+    ) {
+      if (cameraRef.current) {
+        cameraRef.current.setCamera({
+          centerCoordinate: [orbitLng, orbitLat],
+          zoomLevel: 11,
+          animationDuration: 800,
+          animationMode: "flyTo",
+        });
+      }
+      setMapCenter([orbitLat, orbitLng]);
+    }
+  }, [user?.event_location_preference, orbitLat, orbitLng, cameraRef]);
+
+  // Generate dynamic filters when data loads, but don't auto-hide anything
   useEffect(() => {
     if ((events && events.length > 0) || (locations && locations.length > 0)) {
-      const defaultFilters = generateDefaultFilters(
-        events || [],
-        locations || []
-      );
-      setFilters(defaultFilters);
+      try {
+        const defaultFilters = generateDefaultFilters(
+          events || [],
+          locations || []
+        );
+        // Initialize all discovered keys to true so nothing is hidden by default
+        const normalized: Record<string, boolean> = {};
+        Object.keys(defaultFilters).forEach((k) => (normalized[k] = true));
+        setFilters(normalized);
+      } catch (e) {
+        // Fallback: show everything
+        setFilters({});
+      }
     }
   }, [events, locations]);
 
@@ -516,8 +1035,26 @@ export default function Map() {
 
   // Handle route params for showing event/location cards
   useEffect(() => {
-    // Handle event navigation (from SearchSheet or other sources)
+    // Handle event navigation (from SearchSheet or other sources) - with debouncing
     if (params.eventId) {
+      const now = Date.now();
+      const currentNavigation = {
+        eventId: params.eventId as string,
+        timestamp: now,
+      };
+
+      // Prevent duplicate navigation calls within 2 seconds
+      if (
+        lastNavigationRef.current.eventId === params.eventId &&
+        now - lastNavigationRef.current.timestamp < 2000
+      ) {
+        console.log(
+          "[Map] 🚫 Event navigation debounced - ignoring duplicate call"
+        );
+        return;
+      }
+
+      lastNavigationRef.current = currentNavigation;
       // Center map on event location if coordinates are provided
       const lat = params.latitude || params.lat;
       const lng = params.longitude || params.lng;
@@ -525,6 +1062,20 @@ export default function Map() {
       if (lat && lng) {
         const latNum = parseFloat(lat as string);
         const lngNum = parseFloat(lng as string);
+
+        // Adjust radius to ensure we can load events at the target location
+        adjustRadiusForDistance(mapCenter, latNum, lngNum);
+
+        // TEMPORARILY DISABLED - Force refresh locations to ensure new static locations appear (event navigation)
+        console.log(
+          "[Map] 🔄 Event search navigation detected - force refresh DISABLED"
+        );
+        // if (forceRefreshLocations) {
+        //   // Only refresh once after all navigation setup is complete
+        //   setTimeout(() => {
+        //     forceRefreshLocations();
+        //   }, 1000);
+        // }
 
         if (cameraRef.current) {
           cameraRef.current.setCamera({
@@ -535,8 +1086,37 @@ export default function Map() {
           });
         }
 
-        // Update map center to trigger new data fetch
-        setMapCenter([latNum, lngNum]);
+        // For long-distance navigation, always update center to ensure fresh data
+        const currentCenter = mapCenter;
+        const isLongDistance = currentCenter
+          ? calculateDistance(
+              currentCenter[0],
+              currentCenter[1],
+              latNum,
+              lngNum
+            ) > 500
+          : true;
+
+        const shouldUpdateCenter =
+          !currentCenter ||
+          isLongDistance ||
+          Math.abs(currentCenter[0] - latNum) > 0.01 ||
+          Math.abs(currentCenter[1] - lngNum) > 0.01;
+
+        if (shouldUpdateCenter) {
+          if (isLongDistance) {
+            console.log(
+              "[Map] 🚀 Long-distance search navigation - forcing fresh data load"
+            );
+          }
+          console.log("[Map] Updating center for search navigation:", [
+            latNum,
+            lngNum,
+          ]);
+          setMapCenter([latNum, lngNum]);
+        } else {
+          console.log("[Map] Skipping center update, already close enough");
+        }
       }
 
       // Find the event by ID and open its card
@@ -548,14 +1128,94 @@ export default function Map() {
       if (event) {
         setIsEvent(true);
         handleEventClick(event as MapEvent);
+        console.log("Found event in current arrays:", event.name);
       } else {
-        // If event not found in current arrays, wait for data to load
-        console.log("Event not found in current arrays, waiting for data...");
+        // If event not found and we have coordinates, create provisional event
+        const latNum = lat ? parseFloat(lat as string) : undefined;
+        const lngNum = lng ? parseFloat(lng as string) : undefined;
+        if (latNum != null && lngNum != null) {
+          const provisionalEvent = {
+            id: String(params.eventId),
+            name: (params as any).name || "Event",
+            description: (params as any).description || "",
+            start_datetime: new Date().toISOString(),
+            end_datetime: new Date().toISOString(),
+            venue_name:
+              (params as any).venue_name || (params as any).address || "",
+            location: { latitude: latNum, longitude: lngNum },
+            address: (params as any).address || "",
+            image_urls: (params as any).image
+              ? [String((params as any).image)]
+              : [],
+            distance: 0,
+            attendees: { count: 0, profiles: [] },
+            categories: [
+              {
+                id: "search-result",
+                name:
+                  (params as any).source === "ticketmaster"
+                    ? "Ticketmaster Event"
+                    : "Event",
+                icon: "🎯",
+              },
+            ],
+            type: (params as any).type || "event",
+            is_ticketmaster: (params as any).source === "ticketmaster",
+          } as MapEvent;
+
+          // Add to current arrays so pin appears on map
+          const updatedNow = [...eventsNow, provisionalEvent];
+          const updatedToday = [...eventsToday, provisionalEvent];
+
+          // Update state to show the pin
+          setIsEvent(true);
+          handleEventClick(provisionalEvent);
+          console.log(
+            "Created provisional event card with pin:",
+            provisionalEvent.name
+          );
+
+          // Schedule a retry to find the real event once data loads
+          setTimeout(() => {
+            const realEvent =
+              eventsNow.find((e) => e.id === params.eventId) ||
+              eventsToday.find((e) => e.id === params.eventId) ||
+              eventsTomorrow.find((e) => e.id === params.eventId);
+
+            if (realEvent && realEvent.id !== provisionalEvent.id) {
+              console.log(
+                "Found real event, replacing provisional:",
+                realEvent.name
+              );
+              handleEventClick(realEvent as MapEvent);
+            }
+          }, 3000); // Wait 3 seconds for data to load
+        } else {
+          console.log("Event not found in current arrays, waiting for data...");
+        }
       }
     }
 
-    // Handle location navigation (from SearchSheet)
+    // Handle location navigation (from SearchSheet) - with debouncing
     if (params.locationId) {
+      const now = Date.now();
+      const currentNavigation = {
+        locationId: params.locationId as string,
+        timestamp: now,
+      };
+
+      // Prevent duplicate navigation calls within 2 seconds
+      if (
+        lastNavigationRef.current.locationId === params.locationId &&
+        now - lastNavigationRef.current.timestamp < 2000
+      ) {
+        console.log(
+          "[Map] 🚫 Location navigation debounced - ignoring duplicate call"
+        );
+        return;
+      }
+
+      lastNavigationRef.current = currentNavigation;
       // Center map on location if coordinates are provided
       const lat = params.latitude || params.lat;
       const lng = params.longitude || params.lng;
@@ -563,6 +1223,20 @@ export default function Map() {
       if (lat && lng) {
         const latNum = parseFloat(lat as string);
         const lngNum = parseFloat(lng as string);
+
+        // Adjust radius for location navigation
+        adjustRadiusForDistance(mapCenter, latNum, lngNum);
+
+        // TEMPORARILY DISABLED - Force refresh locations to ensure new static locations appear (location navigation)
+        console.log(
+          "[Map] 🔄 Location search navigation detected - force refresh DISABLED"
+        );
+        // if (forceRefreshLocations) {
+        //   // Only refresh once after all navigation setup is complete
+        //   setTimeout(() => {
+        //     forceRefreshLocations();
+        //   }, 1000);
+        // }
 
         if (cameraRef.current) {
           cameraRef.current.setCamera({
@@ -584,10 +1258,40 @@ export default function Map() {
         setIsEvent(false);
         handleLocationClick(location as MapLocation);
       } else {
-        // If location not found in current arrays, wait for data to load
-        console.log(
-          "Location not found in current arrays, waiting for data..."
-        );
+        // If location not found, still open a provisional card
+        const latNum = lat ? parseFloat(lat as string) : undefined;
+        const lngNum = lng ? parseFloat(lng as string) : undefined;
+        if (latNum != null && lngNum != null) {
+          const provisionalLocation = {
+            id: String(params.locationId),
+            name: (params as any).name || "Place",
+            description: (params as any).description || "",
+            location: { latitude: latNum, longitude: lngNum },
+            address: (params as any).address || "",
+            image_urls: (params as any).image
+              ? [String((params as any).image)]
+              : [],
+            distance: 0,
+            type: (params as any).type || "place",
+            category: undefined,
+          } as unknown as MapLocation;
+
+          // Convert to MapEvent-like shape used by the card
+          const locationAsEvent = {
+            ...provisionalLocation,
+            start_datetime: new Date().toISOString(),
+            end_datetime: new Date().toISOString(),
+            venue_name: (params as any).name || "",
+            attendees: { count: 0, profiles: [] },
+            categories: [],
+          } as unknown as MapEvent;
+          setIsEvent(false);
+          handleEventClick(locationAsEvent);
+        } else {
+          console.log(
+            "Location not found in current arrays, waiting for data..."
+          );
+        }
       }
     }
   }, [
@@ -597,14 +1301,46 @@ export default function Map() {
     params.longitude,
     params.lat,
     params.lng,
-    eventsNow,
-    eventsToday,
-    eventsTomorrow,
-    locations,
-    handleEventClick,
-    handleLocationClick,
-    cameraRef,
+    // Removed data dependencies that cause infinite loops:
+    // eventsNow, eventsToday, eventsTomorrow, locations
+    // These will be handled in separate effects if needed
   ]);
+
+  // TEMPORARILY DISABLED - Retry finding event once data loads (for SearchSheet navigation)
+  // useEffect(() => {
+  //   if (
+  //     params.eventId &&
+  //     !isLoading &&
+  //     (eventsNow.length > 0 ||
+  //       eventsToday.length > 0 ||
+  //       eventsTomorrow.length > 0)
+  //   ) {
+  //     // Check if we already have the right event displayed
+  //     if (selectedEvent && selectedEvent.id === params.eventId) {
+  //       return; // Already found and displaying the right event
+  //     }
+
+  //     // Try to find the real event now that data has loaded
+  //     const realEvent =
+  //       eventsNow.find((e) => e.id === params.eventId) ||
+  //       eventsToday.find((e) => e.id === params.eventId) ||
+  //       eventsTomorrow.find((e) => e.id === params.eventId);
+
+  //     if (realEvent) {
+  //       console.log("Found real event after data load:", realEvent.name);
+  //       setIsEvent(true);
+  //       handleEventClick(realEvent as MapEvent);
+  //     }
+  //   }
+  // }, [
+  //   params.eventId,
+  //   isLoading,
+  //   eventsNow,
+  //   eventsToday,
+  //   eventsTomorrow,
+  //   selectedEvent,
+  //   handleEventClick,
+  // ]);
 
   const haversine = (
     lat1: number,
@@ -658,10 +1394,12 @@ export default function Map() {
     }
 
     locationUpdateTimeoutRef.current = setTimeout(async () => {
+      // Write live device coordinates to live_* fields to avoid overwriting Orbit selection
       await updateUserLocations({
-        latitude: location.coords.latitude.toString(),
-        longitude: location.coords.longitude.toString(),
-      });
+        live_location_latitude: location.coords.latitude.toString(),
+        live_location_longitude: location.coords.longitude.toString(),
+        last_updated: new Date().toISOString(),
+      } as any);
     }, 2000);
   }
 
@@ -763,8 +1501,8 @@ export default function Map() {
           heading: initialLocation.coords.heading || undefined,
         });
 
-        // Set initial camera position smoothly
-        if (cameraRef.current) {
+        // Set initial camera position only if using current location mode
+        if (user?.event_location_preference !== 1 && cameraRef.current) {
           cameraRef.current.setCamera({
             centerCoordinate: [
               initialLocation.coords.longitude,
@@ -799,7 +1537,7 @@ export default function Map() {
     })();
 
     return () => locationSubscription?.remove();
-  }, [cameraRef]);
+  }, [cameraRef, user?.event_location_preference]);
 
   const handleMapTap = useCallback(() => {
     if (selectedEvent) {
@@ -923,13 +1661,21 @@ export default function Map() {
     );
   }
 
-  if (!location) {
-    return (
-      <View className="flex-1 justify-center items-center">
-        <ActivityIndicator size="large" />
-        <Text className="mt-4">Getting your location...</Text>
-      </View>
-    );
+  // Allow rendering if we either have preferred, an existing mapCenter, or route params lat/lng
+  const paramLat = (params as any)?.latitude || (params as any)?.lat;
+  const paramLng = (params as any)?.longitude || (params as any)?.lng;
+  const hasRouteCoords =
+    (typeof paramLat === "string" || typeof paramLat === "number") &&
+    (typeof paramLng === "string" || typeof paramLng === "number");
+  if (preferredLat == null || preferredLng == null) {
+    if (!mapCenter && !hasRouteCoords) {
+      return (
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" />
+          <Text className="mt-4">Preparing your map...</Text>
+        </View>
+      );
+    }
   }
 
   return (
@@ -971,10 +1717,7 @@ export default function Map() {
         <MapboxGL.Camera
           ref={cameraRef}
           defaultSettings={{
-            centerCoordinate: [
-              location?.longitude || 0,
-              location?.latitude || 0,
-            ],
+            centerCoordinate: [preferredLng ?? 0, preferredLat ?? 0],
             zoomLevel: 11,
           }}
           maxZoomLevel={16}
@@ -988,7 +1731,7 @@ export default function Map() {
 
         {/* Event markers */}
         {selectedTimeFrame == "Today" &&
-          filterClusters(clustersToday).map((cluster, index) =>
+          filterClusters(clustersToday, mapZoomLevel).map((cluster, index) =>
             !cluster.mainEvent ? null : (
               <MapboxGL.MarkerView
                 key={`cluster-now-${cluster.location.latitude.toFixed(
@@ -1031,7 +1774,7 @@ export default function Map() {
           )}
 
         {selectedTimeFrame == "Week" &&
-          filterClusters(clustersNow).map((cluster, index) =>
+          filterClusters(clustersNow, mapZoomLevel).map((cluster, index) =>
             !cluster.mainEvent ? null : (
               <MapboxGL.MarkerView
                 key={`cluster-week-${cluster.location.latitude.toFixed(
@@ -1074,7 +1817,7 @@ export default function Map() {
           )}
 
         {selectedTimeFrame == "Weekend" &&
-          filterClusters(clustersTomorrow).map((cluster, index) =>
+          filterClusters(clustersTomorrow, mapZoomLevel).map((cluster, index) =>
             !cluster.mainEvent ? null : (
               <MapboxGL.MarkerView
                 key={`cluster-weekend-${cluster.location.latitude.toFixed(
@@ -1121,7 +1864,7 @@ export default function Map() {
           clustersToday.length === 0 &&
           clustersTomorrow.length === 0 &&
           clusters.length > 0 &&
-          filterClusters(clusters).map((cluster, index) =>
+          filterClusters(clusters, mapZoomLevel).map((cluster, index) =>
             !cluster.mainEvent ||
             !Array.isArray(cluster.mainEvent.image_urls) ||
             !cluster.mainEvent.image_urls[0] ? null : (
@@ -1166,11 +1909,16 @@ export default function Map() {
           )}
 
         {/* locations fetched from static_location table for (beach, club , park etc) */}
-        {clustersLocations.length > 0 &&
-          filterClusters(clustersLocations).map((cluster, index) =>
-            !cluster.mainEvent ||
-            !Array.isArray(cluster.mainEvent.image_urls) ||
-            !cluster.mainEvent.image_urls[0] ? null : (
+        {filteredClustersLocations.length > 0 &&
+          filteredClustersLocations.map((cluster, index) =>
+            // Only filter out clusters that don't have a mainEvent
+            // Allow locations without images to still show
+            !cluster.mainEvent ? (
+              (console.log(
+                `[Map] ⚠️ Skipping cluster at [${cluster.location.latitude}, ${cluster.location.longitude}] - no mainEvent`
+              ),
+              null)
+            ) : (
               <MapboxGL.MarkerView
                 key={`cluster-location-${cluster.location.latitude.toFixed(
                   3
@@ -1264,7 +2012,12 @@ export default function Map() {
           onFilterChange={setFilters}
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
-          onRecenter={() => handleRecenter(location)}
+          onRecenter={() =>
+            handleRecenter({
+              latitude: preferredLat ?? null,
+              longitude: preferredLng ?? null,
+            })
+          }
           isFollowingUser={isFollowingUser}
           timeFrame={selectedTimeFrame}
           onSelectedTimeFrame={(txt) => {

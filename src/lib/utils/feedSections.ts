@@ -87,10 +87,10 @@ export function createHomeFeedSections(
     googleApiEvents.slice(0, 3).map((e) => e.title)
   );
 
-  // 1. FEATURED MIXED - Events + Locations together (larger section)
+  // 1. FEATURED MIXED - Events + Locations together (MUCH larger section for thousands)
   const mixedContent = getUniqueItems(
     [...events, ...locations],
-    500,
+    1000, // Increased from 500 to handle thousands
     false,
     "mixed"
   );
@@ -101,7 +101,7 @@ export function createHomeFeedSections(
       data: mixedContent,
       layout: "horizontal",
       hasMoreData:
-        mixedContent.length >= 500 &&
+        mixedContent.length >= 1000 &&
         [...events, ...locations].length > mixedContent.length,
     });
   }
@@ -109,7 +109,7 @@ export function createHomeFeedSections(
   // 1.5. QUICK BROWSE - Compact list format for more visibility
   const quickBrowseContent = getUniqueItems(
     [...events, ...locations],
-    200,
+    500, // Increased from 200
     true
   );
   if (quickBrowseContent.length > 0) {
@@ -117,6 +117,369 @@ export function createHomeFeedSections(
       key: "quick-browse",
       title: "⚡ Quick Browse",
       data: quickBrowseContent,
+      layout: "list",
+    });
+  }
+
+  // NEW: LOCATION CATEGORIES - Group locations by actual categories returned from API
+  console.log("🏷️ Creating location category sections...");
+  const locationsByCategory = new Map<string, any[]>();
+
+  locations.forEach((location) => {
+    // Check both category.name and type fields
+    const categories = [];
+    if (location.category?.name) {
+      categories.push(location.category.name);
+    }
+    if (location.type && location.type !== location.category?.name) {
+      categories.push(location.type);
+    }
+
+    categories.forEach((categoryName) => {
+      if (!locationsByCategory.has(categoryName)) {
+        locationsByCategory.set(categoryName, []);
+      }
+      locationsByCategory.get(categoryName)!.push(location);
+    });
+  });
+
+  // Add category sections (top 10 most populated categories)
+  Array.from(locationsByCategory.entries())
+    .filter(([_, locations]) => locations.length >= 5) // Only categories with 5+ locations
+    .sort(([_, a], [__, b]) => b.length - a.length) // Sort by most populated
+    .slice(0, 10) // Top 10 categories
+    .forEach(([categoryName, categoryLocations], index) => {
+      const uniqueCategoryLocations = getUniqueItems(categoryLocations, 300); // Increased limit
+      if (uniqueCategoryLocations.length > 0) {
+        // Get appropriate emoji for category
+        const getCategoryEmoji = (name: string) => {
+          const lower = name.toLowerCase();
+          if (lower.includes("restaurant") || lower.includes("food"))
+            return "🍽️";
+          if (lower.includes("park") || lower.includes("outdoor")) return "🌳";
+          if (lower.includes("museum") || lower.includes("art")) return "🎨";
+          if (lower.includes("bar") || lower.includes("club")) return "🍸";
+          if (lower.includes("shopping") || lower.includes("store"))
+            return "🛍️";
+          if (lower.includes("hotel") || lower.includes("lodging")) return "🏨";
+          if (lower.includes("beach") || lower.includes("water")) return "🏖️";
+          if (lower.includes("gym") || lower.includes("fitness")) return "💪";
+          if (lower.includes("hospital") || lower.includes("health"))
+            return "🏥";
+          if (lower.includes("school") || lower.includes("education"))
+            return "🎓";
+          return "📍";
+        };
+
+        sections.push({
+          key: `location-category-${categoryName
+            .replace(/\s+/g, "-")
+            .toLowerCase()}`,
+          title: `${getCategoryEmoji(categoryName)} ${categoryName}`,
+          data: uniqueCategoryLocations,
+          layout: index % 3 === 0 ? "grid" : "horizontal", // Alternate layouts
+        });
+      }
+    });
+
+  console.log(
+    `🏷️ Created ${locationsByCategory.size} location category groups`
+  );
+
+  // DYNAMIC LOCATION SECTIONS - Only create sections that actually make sense with the data
+
+  // Locations by rating (if available) - only if we have enough rated locations
+  const highRatedLocations = locations.filter(
+    (loc) => loc.rating && loc.rating >= 4.0
+  );
+  if (highRatedLocations.length >= 10) {
+    // Only create if we have at least 10 highly rated places
+    const uniqueHighRated = getUniqueItems(highRatedLocations, 400);
+    console.log(
+      `⭐ Found ${uniqueHighRated.length} highly rated locations (4.0+)`
+    );
+    sections.push({
+      key: "high-rated-locations",
+      title: "⭐ Highly Rated Places",
+      data: uniqueHighRated,
+      layout: "horizontal",
+      category: "Quality",
+    });
+  }
+
+  // Locations with photos (have image_urls) - only if significant portion have photos
+  const locationsWithPhotos = locations.filter(
+    (loc) => loc.image_urls && loc.image_urls.length > 0
+  );
+  if (locationsWithPhotos.length >= 50) {
+    // Only create if we have enough photo locations
+    const uniqueWithPhotos = getUniqueItems(locationsWithPhotos, 500);
+    console.log(`📸 Found ${uniqueWithPhotos.length} locations with photos`);
+    sections.push({
+      key: "locations-with-photos",
+      title: "📸 Picture Perfect Places",
+      data: uniqueWithPhotos,
+      layout: "grid",
+      category: "Visual",
+    });
+  }
+
+  // Locations with phone numbers (active businesses) - only if we have enough
+  const activeBusinesses = locations.filter((loc) => loc.phone);
+  if (activeBusinesses.length >= 20) {
+    const uniqueActiveBiz = getUniqueItems(activeBusinesses, 350);
+    console.log(
+      `📞 Found ${uniqueActiveBiz.length} active businesses with phone numbers`
+    );
+    sections.push({
+      key: "active-businesses",
+      title: "📞 Active Businesses",
+      data: uniqueActiveBiz,
+      layout: "list",
+      category: "Business",
+    });
+  }
+
+  // Locations with operation hours - only if meaningful number
+  const locationsWithHours = locations.filter((loc) => loc.operation_hours);
+  if (locationsWithHours.length >= 15) {
+    const uniqueWithHours = getUniqueItems(locationsWithHours, 400);
+    console.log(
+      `🕐 Found ${uniqueWithHours.length} locations with operation hours`
+    );
+    sections.push({
+      key: "locations-with-hours",
+      title: "🕐 Places with Hours",
+      data: uniqueWithHours,
+      layout: "horizontal",
+      category: "Business",
+    });
+  }
+
+  // Premium locations (with price_level info) - only if we have premium places
+  const premiumLocations = locations.filter(
+    (loc) => loc.price_level && loc.price_level >= 3
+  );
+  if (premiumLocations.length >= 5) {
+    const uniquePremium = getUniqueItems(premiumLocations, 200);
+    console.log(
+      `💎 Found ${uniquePremium.length} premium locations (price level 3+)`
+    );
+    sections.push({
+      key: "premium-locations",
+      title: "💎 Premium Experiences",
+      data: uniquePremium,
+      layout: "horizontal",
+      category: "Luxury",
+    });
+  }
+
+  // Budget-friendly locations - only if we have budget options
+  const budgetLocations = locations.filter(
+    (loc) => loc.price_level && loc.price_level <= 2
+  );
+  if (budgetLocations.length >= 10) {
+    const uniqueBudget = getUniqueItems(budgetLocations, 350);
+    console.log(
+      `💰 Found ${uniqueBudget.length} budget-friendly locations (price level 1-2)`
+    );
+    sections.push({
+      key: "budget-locations",
+      title: "💰 Budget Friendly",
+      data: uniqueBudget,
+      layout: "list",
+      category: "Value",
+    });
+  }
+
+  // Locations by distance (closest first)
+  const nearbyFirst = [...locations].sort(
+    (a, b) => (a.distance || 0) - (b.distance || 0)
+  );
+  const closestLocations = getUniqueItems(nearbyFirst.slice(0, 300), 300);
+  if (closestLocations.length > 0) {
+    sections.push({
+      key: "closest-locations",
+      title: "📍 Closest to You",
+      data: closestLocations,
+      layout: "grid",
+    });
+  }
+
+  // Random shuffle sections for discovery - only if we have enough locations
+  if (locations.length >= 100) {
+    const shuffledLocations1 = getUniqueItems(
+      shuffleArray([...locations]),
+      400,
+      true
+    );
+    console.log(
+      `🎲 Creating discovery section with ${shuffledLocations1.length} locations`
+    );
+    sections.push({
+      key: "discover-new-1",
+      title: "🎲 Discover Something New",
+      data: shuffledLocations1,
+      layout: "horizontal",
+      category: "Discovery",
+    });
+  }
+
+  if (locations.length >= 200) {
+    const shuffledLocations2 = getUniqueItems(
+      shuffleArray([...locations]),
+      350,
+      true
+    );
+    console.log(
+      `🌟 Creating random adventures section with ${shuffledLocations2.length} locations`
+    );
+    sections.push({
+      key: "random-adventures",
+      title: "🌟 Random Adventures",
+      data: shuffledLocations2,
+      layout: "list",
+      category: "Adventure",
+    });
+  }
+
+  // Locations with multiple photos
+  const locationsWithMultiplePhotos = locations.filter(
+    (loc) => loc.image_urls && loc.image_urls.length >= 3
+  );
+  if (locationsWithMultiplePhotos.length > 0) {
+    const uniqueMultiPhoto = getUniqueItems(locationsWithMultiplePhotos, 300);
+    if (uniqueMultiPhoto.length > 0) {
+      sections.push({
+        key: "multi-photo-locations",
+        title: "📷 Photo Galleries",
+        data: uniqueMultiPhoto,
+        layout: "horizontal",
+      });
+    }
+  }
+
+  // Create more themed location sections
+  const weekendDestinations = getUniqueItems(
+    shuffleArray([...locations]),
+    450,
+    true
+  );
+  if (weekendDestinations.length > 0) {
+    sections.push({
+      key: "weekend-destinations",
+      title: "🎉 Weekend Destinations",
+      data: weekendDestinations,
+      layout: "grid",
+    });
+  }
+
+  const dateNightSpots = getUniqueItems(
+    shuffleArray([...locations]),
+    250,
+    true
+  );
+  if (dateNightSpots.length > 0) {
+    sections.push({
+      key: "date-night-spots",
+      title: "💕 Date Night Spots",
+      data: dateNightSpots,
+      layout: "horizontal",
+    });
+  }
+
+  const familyFriendlyPlaces = getUniqueItems(
+    shuffleArray([...locations]),
+    400,
+    true
+  );
+  if (familyFriendlyPlaces.length > 0) {
+    sections.push({
+      key: "family-friendly-places",
+      title: "👨‍👩‍👧‍👦 Family Friendly",
+      data: familyFriendlyPlaces,
+      layout: "list",
+    });
+  }
+
+  const instagramWorthy = getUniqueItems(
+    shuffleArray([...locations]),
+    350,
+    true
+  );
+  if (instagramWorthy.length > 0) {
+    sections.push({
+      key: "instagram-worthy",
+      title: "📱 Instagram Worthy",
+      data: instagramWorthy,
+      layout: "grid",
+    });
+  }
+
+  const localGems = getUniqueItems(shuffleArray([...locations]), 300, true);
+  if (localGems.length > 0) {
+    sections.push({
+      key: "local-gems",
+      title: "💎 Local Gems",
+      data: localGems,
+      layout: "horizontal",
+    });
+  }
+
+  const mustVisitPlaces = getUniqueItems(
+    shuffleArray([...locations]),
+    500,
+    true
+  );
+  if (mustVisitPlaces.length > 0) {
+    sections.push({
+      key: "must-visit-places",
+      title: "🏆 Must Visit Places",
+      data: mustVisitPlaces,
+      layout: "list",
+    });
+  }
+
+  const uniqueExperiences = getUniqueItems(
+    shuffleArray([...locations]),
+    275,
+    true
+  );
+  if (uniqueExperiences.length > 0) {
+    sections.push({
+      key: "unique-experiences",
+      title: "✨ Unique Experiences",
+      data: uniqueExperiences,
+      layout: "horizontal",
+    });
+  }
+
+  const trendingNow = getUniqueItems(shuffleArray([...locations]), 400, true);
+  if (trendingNow.length > 0) {
+    sections.push({
+      key: "trending-now",
+      title: "📈 Trending Now",
+      data: trendingNow,
+      layout: "grid",
+    });
+  }
+
+  const secretSpots = getUniqueItems(shuffleArray([...locations]), 325, true);
+  if (secretSpots.length > 0) {
+    sections.push({
+      key: "secret-spots",
+      title: "🤫 Secret Spots",
+      data: secretSpots,
+      layout: "horizontal",
+    });
+  }
+
+  const adventureTime = getUniqueItems(shuffleArray([...locations]), 375, true);
+  if (adventureTime.length > 0) {
+    sections.push({
+      key: "adventure-time",
+      title: "🏔️ Adventure Time",
+      data: adventureTime,
       layout: "list",
     });
   }
@@ -148,8 +511,8 @@ export function createHomeFeedSections(
     });
   }
 
-  // 3. POPULAR PLACES - Only locations (increased limit)
-  const uniqueLocations = getUniqueItems(locations, 300);
+  // 3. POPULAR PLACES - Only locations (much increased limit for thousands)
+  const uniqueLocations = getUniqueItems(locations, 800); // Increased from 300
   if (uniqueLocations.length > 0) {
     sections.push({
       key: "popular-places",
@@ -160,7 +523,7 @@ export function createHomeFeedSections(
   }
 
   // 3.2. MORE EVENTS LIST - Compact vertical view
-  const moreEventsList = getUniqueItems(events, 150, true);
+  const moreEventsList = getUniqueItems(events, 400, true); // Increased from 150
   if (moreEventsList.length > 0) {
     sections.push({
       key: "more-events-list",
@@ -171,7 +534,7 @@ export function createHomeFeedSections(
   }
 
   // 3.5. TRENDING LOCATIONS - Additional location section
-  const trendingLocations = getUniqueItems(locations, 250);
+  const trendingLocations = getUniqueItems(locations, 600); // Increased from 250
   if (trendingLocations.length > 0) {
     sections.push({
       key: "trending-locations",
@@ -867,8 +1230,8 @@ export function createHomeFeedSections(
     });
   }
 
-  // BONUS SECTIONS - Maximum content with reuse allowed for discovery
-  const bonusEvents1 = getUniqueItems(events, 100, true);
+  // BONUS SECTIONS - Maximum content with reuse allowed for discovery (MASSIVE INCREASE)
+  const bonusEvents1 = getUniqueItems(events, 500, true); // Increased from 100
   if (bonusEvents1.length > 0) {
     sections.push({
       key: "bonus-events-1",
@@ -878,7 +1241,7 @@ export function createHomeFeedSections(
     });
   }
 
-  const bonusLocations1 = getUniqueItems(locations, 150, true);
+  const bonusLocations1 = getUniqueItems(locations, 800, true); // Increased from 150
   if (bonusLocations1.length > 0) {
     sections.push({
       key: "bonus-locations-1",
@@ -888,7 +1251,7 @@ export function createHomeFeedSections(
     });
   }
 
-  const bonusMixed1 = getUniqueItems([...events, ...locations], 200, true);
+  const bonusMixed1 = getUniqueItems([...events, ...locations], 1000, true); // Increased from 200
   if (bonusMixed1.length > 0) {
     sections.push({
       key: "bonus-mixed-1",
@@ -898,7 +1261,7 @@ export function createHomeFeedSections(
     });
   }
 
-  const bonusEvents2 = getUniqueItems(events, 120, true);
+  const bonusEvents2 = getUniqueItems(events, 400, true); // Increased from 120
   if (bonusEvents2.length > 0) {
     sections.push({
       key: "bonus-events-2",
@@ -908,7 +1271,7 @@ export function createHomeFeedSections(
     });
   }
 
-  const bonusLocations2 = getUniqueItems(locations, 100, true);
+  const bonusLocations2 = getUniqueItems(locations, 500, true); // Increased from 100
   if (bonusLocations2.length > 0) {
     sections.push({
       key: "bonus-locations-2",
@@ -916,6 +1279,93 @@ export function createHomeFeedSections(
       data: bonusLocations2,
       layout: "grid",
     });
+  }
+
+  // ADDITIONAL THEMED SECTIONS - Only create if we have substantial data
+
+  // Only create themed sections if we have enough locations to make them meaningful
+  if (locations.length >= 500) {
+    const diverseLocations1 = getUniqueItems(
+      shuffleArray([...locations]),
+      300,
+      true
+    );
+    sections.push({
+      key: "weekend-destinations",
+      title: "🎉 Weekend Destinations",
+      data: diverseLocations1,
+      layout: "grid",
+      category: "Weekend",
+    });
+
+    const diverseLocations2 = getUniqueItems(
+      shuffleArray([...locations]),
+      350,
+      true
+    );
+    sections.push({
+      key: "hidden-gems",
+      title: "💎 Hidden Gems",
+      data: diverseLocations2,
+      layout: "horizontal",
+      category: "Discovery",
+    });
+
+    const diverseLocations3 = getUniqueItems(
+      shuffleArray([...locations]),
+      400,
+      true
+    );
+    sections.push({
+      key: "local-favorites",
+      title: "⭐ Local Favorites",
+      data: diverseLocations3,
+      layout: "list",
+      category: "Popular",
+    });
+
+    const diverseLocations4 = getUniqueItems(
+      shuffleArray([...locations]),
+      250,
+      true
+    );
+    sections.push({
+      key: "trending-spots",
+      title: "📈 Trending Spots",
+      data: diverseLocations4,
+      layout: "horizontal",
+      category: "Trending",
+    });
+
+    const diverseLocations5 = getUniqueItems(
+      shuffleArray([...locations]),
+      450,
+      true
+    );
+    sections.push({
+      key: "explore-more",
+      title: "🗺️ Explore More",
+      data: diverseLocations5,
+      layout: "grid",
+      category: "Exploration",
+    });
+
+    const diverseLocations6 = getUniqueItems(
+      shuffleArray([...locations]),
+      500,
+      true
+    );
+    sections.push({
+      key: "endless-discovery",
+      title: "♾️ Endless Discovery",
+      data: diverseLocations6,
+      layout: "horizontal",
+      category: "Discovery",
+    });
+
+    console.log(
+      "✨ Created 6 additional themed sections for extensive browsing"
+    );
   }
 
   // Debug: Log the final sections
@@ -927,5 +1377,33 @@ export function createHomeFeedSections(
     sections.map((s) => `${s.title}: ${s.data.length} items`)
   );
 
-  return sections;
+  // Extract unique categories from created sections for top filter tags
+  const dynamicCategories = new Set<string>();
+
+  // First, add all actual location category names (highest priority)
+  locationsByCategory.forEach((_, categoryName) => {
+    dynamicCategories.add(categoryName);
+  });
+
+  // Then add section categories
+  sections.forEach((section) => {
+    if (section.category) {
+      dynamicCategories.add(section.category);
+    }
+    // Also extract category names from location category sections
+    if (section.key?.startsWith("location-category-")) {
+      const categoryName = section.title.split(" ").slice(1).join(" "); // Remove emoji
+      dynamicCategories.add(categoryName);
+    }
+  });
+
+  console.log(
+    "🏷️ Dynamic categories for top filters:",
+    Array.from(dynamicCategories)
+  );
+
+  return {
+    sections,
+    dynamicCategories: Array.from(dynamicCategories),
+  };
 }

@@ -29,7 +29,7 @@ import { Icon } from "react-native-elements";
 import { Button } from "../ui/button";
 import { useRouter } from "expo-router";
 import { supabase } from "~/src/lib/supabase";
-import { useUser } from "~/hooks/useUserData";
+import { useUser } from "~/src/lib/UserProvider";
 import * as Location from "expo-location";
 import { UnifiedDetailsSheet } from "./UnifiedDetailsSheet";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
@@ -64,42 +64,6 @@ const isEvent = (data: UnifiedData): data is MapEvent => {
 
 const isLocation = (data: UnifiedData): data is MapLocation => {
   return !isEvent(data);
-};
-
-// Helper function to convert internal category names to user-friendly ones
-const getUserFriendlyCategory = (categoryName?: string): string => {
-  if (!categoryName) return "Event";
-
-  const name = categoryName.toLowerCase();
-
-  // Handle internal API categories
-  if (name.includes("googleapi") || name.includes("api")) return "Popular";
-  if (name.includes("restaurant") || name.includes("food"))
-    return "Food & Dining";
-  if (name.includes("entertainment") || name.includes("amusement"))
-    return "Entertainment";
-  if (name.includes("night_club") || name.includes("bar")) return "Nightlife";
-  if (name.includes("tourist_attraction") || name.includes("museum"))
-    return "Attraction";
-  if (name.includes("park") || name.includes("recreation")) return "Outdoor";
-  if (name.includes("lodging") || name.includes("hotel")) return "Lodging";
-  if (name.includes("shopping") || name.includes("store")) return "Shopping";
-  if (name.includes("health") || name.includes("gym"))
-    return "Health & Fitness";
-  if (name.includes("education") || name.includes("school")) return "Education";
-  if (name.includes("religious") || name.includes("church")) return "Religious";
-  if (name.includes("transportation") || name.includes("transit"))
-    return "Transport";
-  if (name.includes("automotive") || name.includes("gas_station"))
-    return "Automotive";
-  if (name.includes("finance") || name.includes("bank")) return "Finance";
-  if (name.includes("government") || name.includes("city_hall"))
-    return "Government";
-
-  // If it's already user-friendly, capitalize it properly
-  return (
-    categoryName.charAt(0).toUpperCase() + categoryName.slice(1).toLowerCase()
-  );
 };
 
 // Helper function to calculate distance between two coordinates
@@ -470,9 +434,23 @@ export function UnifiedCard({
                 Authorization: `Bearer ${session.access_token}`,
               },
               body: JSON.stringify({
-                source: (data as any).is_ticketmaster
-                  ? "ticketmaster"
-                  : "supabase",
+                source: (() => {
+                  // Better source detection logic
+                  let source = "supabase"; // default to supabase
+                  
+                  // Check multiple possible indicators for Ticketmaster events
+                  if ((data as any).is_ticketmaster === true || 
+                      (data as any).is_ticketmaster === "true" ||
+                      (typeof (data as any).source === "string" && (data as any).source.includes("ticket")) ||
+                      (data as any).source === "ticketmaster" ||
+                      (data.id && typeof data.id === "string" && data.id.length > 20) || // Ticketmaster IDs are typically longer
+                      (data as any).external_url?.includes("ticketmaster")) {
+                    source = "ticketmaster";
+                  }
+                  
+                  console.log(`[UnifiedCard] Event ID: ${data.id}, is_ticketmaster: ${(data as any).is_ticketmaster}, source: ${(data as any).source}, detected source: ${source}`);
+                  return source;
+                })(),
               }),
             }
           );
@@ -556,8 +534,7 @@ export function UnifiedCard({
           ? `${detail.description.slice(0, 80)}...`
           : null,
         imageUrl: detail.image_urls?.[0],
-        categoryName:
-          getUserFriendlyCategory(detail.categories?.[0]?.name) || "Event",
+        categoryName: detail.categories?.[0]?.name || "Event",
         categoryTags: detail.categories?.slice(1, 4) || [],
         dateTime: {
           date: formatDate(detail.start_datetime),
@@ -592,9 +569,7 @@ export function UnifiedCard({
           : null,
         imageUrl: locationDetail.image_urls?.[0],
         categoryName:
-          getUserFriendlyCategory(
-            locationDetail.category?.name || locationDetail.type
-          ) || "Location",
+          locationDetail.category?.name || locationDetail.type || "Location",
         categoryTags: locationDetail.category?.prompts?.slice(0, 3) || [],
         dateTime: null,
         stats: [
@@ -612,15 +587,7 @@ export function UnifiedCard({
                   )} mi away`
                 : "Calculating...",
           },
-          // Only show rating if it actually exists
-          ...((locationDetail as any).rating
-            ? [
-                {
-                  icon: <Star size={12} color="white" />,
-                  label: `${(locationDetail as any).rating}★`,
-                },
-              ]
-            : []),
+          // Rating is now shown as a badge in the header, so removed from stats
         ],
       };
     }
@@ -689,6 +656,18 @@ export function UnifiedCard({
                     {displayValues.categoryName}
                   </Text>
                 </View>
+
+                {/* Rating Badge - Only for locations with rating */}
+                {!treatAsEvent &&
+                  (detailData || data) &&
+                  (detailData || (data as any)).rating && (
+                    <View className="flex-row items-center px-2 py-1 ml-2 rounded-full bg-amber-500">
+                      <Star size={10} color="white" />
+                      <Text className="ml-1 text-xs font-semibold text-white">
+                        {((detailData || data) as any).rating.toFixed(1)}
+                      </Text>
+                    </View>
+                  )}
               </View>
 
               {/* Title */}

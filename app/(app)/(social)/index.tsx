@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import { supabase } from "~/src/lib/supabase";
 import { useAuth } from "~/src/lib/auth";
-import { useUser } from "~/hooks/useUserData";
+import { useUser } from "~/src/lib/UserProvider";
 import { format } from "date-fns";
 import { Icon } from "react-native-elements";
 import {

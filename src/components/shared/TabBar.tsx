@@ -5,6 +5,7 @@ import {
   Platform,
   Animated,
   Dimensions,
+  Text,
 } from "react-native";
 import { useEffect, useState, useRef } from "react";
 import {
@@ -17,6 +18,7 @@ import {
 import { usePathname, router, useSegments } from "expo-router";
 import { Icon } from "react-native-elements";
 import { useTheme } from "~/src/components/ThemeProvider";
+import { useChatUnreadCount } from "~/hooks/useChatUnreadCount";
 
 // Define the tab routes in the requested order
 const TAB_ROUTES = [
@@ -58,6 +60,7 @@ export default function TabBar() {
   const { theme, isDarkMode } = useTheme();
   const slideAnimation = useRef(new Animated.Value(0)).current;
   const [activeIndex, setActiveIndex] = useState(0);
+  const totalUnreadCount = useChatUnreadCount();
 
   // Calculate the current active index
   const currentActiveIndex = TAB_ROUTES.findIndex((tab) =>
@@ -176,6 +179,7 @@ export default function TabBar() {
                 marginHorizontal: 2,
                 borderRadius: 16,
                 zIndex: 1, // Ensure icons are above the animated background
+                position: "relative",
               }}
               onPress={() => {
                 console.log("Navigating to:", tab.path);
@@ -216,6 +220,41 @@ export default function TabBar() {
                   size={24}
                   color={isActive ? "white" : theme.colors.text}
                 />
+              )}
+
+              {/* Notification Badge for Chat Tab */}
+              {tab.segment === "(chat)" && totalUnreadCount > 0 && (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 8,
+                    right: 8,
+                    backgroundColor: theme.colors.notification || "#FF3B30",
+                    borderRadius: 10,
+                    minWidth: 20,
+                    height: 20,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    borderWidth: 2,
+                    borderColor: theme.colors.card,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.25,
+                    shadowRadius: 4,
+                    elevation: 4,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "white",
+                      fontSize: 12,
+                      fontWeight: "bold",
+                      textAlign: "center",
+                    }}
+                  >
+                    {totalUnreadCount > 99 ? "99+" : String(totalUnreadCount)}
+                  </Text>
+                </View>
               )}
             </TouchableOpacity>
           );

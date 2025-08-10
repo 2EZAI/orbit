@@ -14,7 +14,7 @@ export const useMapCamera = ({
 }: UseMapCameraProps = {}) => {
   const cameraRef = useRef<MapboxGL.Camera>(null);
   const [zoomLevel, setZoomLevel] = useState(initialZoom);
-  const [isFollowingUser, setIsFollowingUser] = useState(true);
+  const [isFollowingUser, setIsFollowingUser] = useState(false);
 
   const handleZoomIn = useCallback(() => {
     console.log("Zoom In pressed. Current zoom:", zoomLevel);
@@ -49,21 +49,32 @@ export const useMapCamera = ({
   }, [zoomLevel, minZoom]);
 
   const handleRecenter = useCallback(
-    (location: { longitude: number; latitude: number }) => {
-      if (location && cameraRef.current) {
-        setIsFollowingUser(true);
-        cameraRef.current.setCamera({
-          centerCoordinate: [location.longitude, location.latitude],
-          zoomLevel: 16,
-          animationDuration: 500,
-        });
+    (location: {
+      longitude: number | null | undefined;
+      latitude: number | null | undefined;
+    }) => {
+      if (!cameraRef.current) return;
+      const lng =
+        typeof location?.longitude === "number" &&
+        Number.isFinite(location.longitude)
+          ? location.longitude
+          : null;
+      const lat =
+        typeof location?.latitude === "number" &&
+        Number.isFinite(location.latitude)
+          ? location.latitude
+          : null;
+      if (lng == null || lat == null) return;
 
-        setTimeout(()=>{
-          setIsFollowingUser(false)
-        },2000);
-      }
+      if (isFollowingUser) setIsFollowingUser(false);
+      cameraRef.current.setCamera({
+        centerCoordinate: [lng, lat],
+        zoomLevel: 14,
+        animationDuration: 500,
+        animationMode: "flyTo",
+      });
     },
-    []
+    [isFollowingUser]
   );
 
   const fitToEvents = useCallback(

@@ -7,7 +7,7 @@ import { Button } from "~/src/components/ui/button";
 import { KeyboardAwareSheet } from "./KeyboardAwareSheet";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useAuth } from "~/src/lib/auth";
-import { useUser } from "~/hooks/useUserData";
+import { useUser } from "~/src/lib/UserProvider";
 import { supabase } from "~/src/lib/supabase";
 import Toast from "react-native-toast-message";
 import { User, X } from "lucide-react-native";

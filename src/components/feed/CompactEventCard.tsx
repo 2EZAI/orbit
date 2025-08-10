@@ -99,6 +99,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginHorizontal: 4,
     marginVertical: 8,
+    backgroundColor: "#FFFFFF", // Add solid background color to fix shadow warning
   },
   imageContainer: {
     width: 80,
