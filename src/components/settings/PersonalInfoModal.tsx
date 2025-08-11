@@ -153,7 +153,7 @@ export function PersonalInfoModal({ isOpen, onClose }: PersonalInfoModalProps) {
               }}
               style={{
                 paddingHorizontal: 16,
-                paddingVertical: 14,
+                paddingVertical: 10,
                 fontSize: 16,
                 color: theme.colors.text,
                 backgroundColor: "transparent",
@@ -187,7 +187,7 @@ export function PersonalInfoModal({ isOpen, onClose }: PersonalInfoModalProps) {
               }}
               style={{
                 paddingHorizontal: 16,
-                paddingVertical: 14,
+                paddingVertical: 10,
                 fontSize: 16,
                 color: theme.colors.text,
                 backgroundColor: "transparent",

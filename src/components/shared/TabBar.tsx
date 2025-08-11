@@ -157,7 +157,7 @@ const saveTutorialFinished = async () => {
     await AsyncStorage.setItem("tutorial_finished", JSON.stringify("1"));
     console.log("Saved successfully");
   } catch (error) {
-    console.error("Error saving tutorial_finished:", error);
+    // console.error("Error saving tutorial_finished:", error);
   }
 };
 export default function TabBar() {

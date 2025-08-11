@@ -4,6 +4,7 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { router } from "expo-router";
 import { Text } from "~/src/components/ui/text";
@@ -167,10 +168,12 @@ export default function SettingsScreen() {
       console.log("Initiating logout...");
 
       // Clear any navigation state first to prevent navigation errors
-      router.dismissAll?.();
+      // router.dismissAll?.();
 
       // Sign out from Supabase
       await supabase.auth.signOut();
+      // Reset navigation to the first screen (e.g., "/")
+  //  router.replace("/");
       console.log("Logout successful - app layout will handle redirect");
     } catch (error) {
       console.error("Error logging out:", error);
@@ -186,7 +189,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <SafeAreaView style={{ flex: 1 , backgroundColor: theme.colors.background }}>
       {/* Header */}
       <View
         style={{
@@ -227,7 +230,7 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView
-        style={{ flex: 1 }}
+        style={{ flex: 1 ,marginBottom: Platform.OS === 'android' ? 90 : 0}}
         showsVerticalScrollIndicator={false}
         // iOS page-sheet modals add large automatic bottom insets for scroll views.
         // Disable that and pad manually using the device safe-area bottom inset.
