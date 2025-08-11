@@ -9,7 +9,7 @@ import {
 import { Text } from "~/src/components/ui/text";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useAuth } from "~/src/lib/auth";
-import { useUser } from "~/hooks/useUserData";
+import { useUser } from "~/src/lib/UserProvider";
 import { supabase } from "~/src/lib/supabase";
 import {
   MapPin,

@@ -9,15 +9,22 @@ class CacheWarmer {
   private warmInterval = 30 * 60 * 1000; // 30 minutes
 
   // Proactively warm cache with fresh data
-  async warmCache() {
+  async warmCache(force = false) {
     if (this.isWarming) {
       console.log("🔥 Cache warming already in progress...");
       return;
     }
 
     const now = Date.now();
-    if (now - this.lastWarmTime < this.warmInterval) {
-      console.log("🔥 Cache warmed recently, skipping...");
+    const timeSinceLastWarm = now - this.lastWarmTime;
+    const shouldSkip = !force && timeSinceLastWarm < this.warmInterval;
+
+    if (shouldSkip) {
+      console.log(
+        `🔥 Cache warmed recently (${Math.round(
+          timeSinceLastWarm / 1000
+        )}s ago), skipping...`
+      );
       return;
     }
 

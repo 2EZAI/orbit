@@ -5,7 +5,7 @@ import { Input } from "~/src/components/ui/input";
 import { KeyboardAwareSheet } from "./KeyboardAwareSheet";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useAuth } from "~/src/lib/auth";
-import { useUser } from "~/hooks/useUserData";
+import { useUser } from "~/src/lib/UserProvider";
 import { supabase } from "~/src/lib/supabase";
 import Toast from "react-native-toast-message";
 import { Edit3, X, AlertCircle, CheckCircle } from "lucide-react-native";

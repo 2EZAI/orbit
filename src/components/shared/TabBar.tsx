@@ -18,6 +18,8 @@ import {
 import { usePathname, router, useSegments } from "expo-router";
 import { Icon } from "react-native-elements";
 import { useTheme } from "~/src/components/ThemeProvider";
+import { useChatUnreadCount } from "~/hooks/useChatUnreadCount";
+
 import { WalkthroughComponent, startWalkthrough } from "react-native-wlkt";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -164,6 +166,7 @@ export default function TabBar() {
   const { theme, isDarkMode } = useTheme();
   const slideAnimation = useRef(new Animated.Value(0)).current;
   const [activeIndex, setActiveIndex] = useState(0);
+  const totalUnreadCount = useChatUnreadCount();
 
   // Calculate the current active index
   const currentActiveIndex = TAB_ROUTES.findIndex((tab) =>
@@ -280,7 +283,7 @@ export default function TabBar() {
           const Iconn = tab.icon;
           const IconA = tab.iconAndroid;
 
-          return (
+      const TabButton=     (
             <TouchableOpacity
               key={tab.path}
               style={{
@@ -292,6 +295,7 @@ export default function TabBar() {
                 marginHorizontal: 2,
                 borderRadius: 16,
                 zIndex: 1, // Ensure icons are above the animated background
+                position: "relative",
               }}
               onPress={() => {
                 console.log("Navigating to:", tab.path);
@@ -333,9 +337,43 @@ export default function TabBar() {
                   color={isActive ? "white" : theme.colors.text}
                 />
               )}
-            </TouchableOpacity>);
-          
-             // Only wrap with WalkthroughComponent at index 3
+
+              {/* Notification Badge for Chat Tab */}
+              {tab.segment === "(chat)" && totalUnreadCount > 0 && (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 8,
+                    right: 8,
+                    backgroundColor: theme.colors.notification || "#FF3B30",
+                    borderRadius: 10,
+                    minWidth: 20,
+                    height: 20,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    borderWidth: 2,
+                    borderColor: theme.colors.card,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.25,
+                    shadowRadius: 4,
+                    elevation: 4,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "white",
+                      fontSize: 12,
+                      fontWeight: "bold",
+                      textAlign: "center",
+                    }}
+                  >
+                    {totalUnreadCount > 99 ? "99+" : String(totalUnreadCount)}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );  // Only wrap with WalkthroughComponent at index 3
           return index === 2 || index === 3 || index === 5 ? (
             <WalkthroughComponent
               id={
@@ -358,7 +396,6 @@ export default function TabBar() {
           ) : (
             TabButton
           );
-         
         })}
       </View>
     </View>

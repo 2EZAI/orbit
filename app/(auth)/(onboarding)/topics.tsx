@@ -9,7 +9,7 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import { supabase } from "~/src/lib/supabase";
 import { Text } from "~/src/components/ui/text";
-import { useUser } from "~/hooks/useUserData";
+import { useUser } from "~/src/lib/UserProvider";
 import { TopicList } from "~/src/components/topics/TopicList";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

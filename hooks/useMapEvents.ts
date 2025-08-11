@@ -308,10 +308,11 @@ export function useMapEvents({
         .from("user_locations")
         .select("*")
         .eq("user_id", session.user.id)
-        .single();
+        .order("last_updated", { ascending: false })
+        .limit(1);
 
       if (supabaseError) throw supabaseError;
-      userLocation = data;
+      userLocation = (data as any[])?.[0] ?? null;
     } catch (e) {
     } finally {
     }
@@ -479,11 +480,93 @@ export function useMapEvents({
 
   const fetchAllEvents = useCallback(
     async (centerr: any[]) => {
-      if (centerr[0] == 0 && centerr[1] == 0) {
+      console.log("[Events] fetchAllEvents center:", centerr);
+      console.log(
+        "[Events] isLoading:",
+        isLoadingRef.current,
+        "isMounted:",
+        isMountedRef.current
+      );
+      // Guard against invalid centers
+      if (
+        centerr == null ||
+        !Array.isArray(centerr) ||
+        centerr.length < 2 ||
+        typeof centerr[0] !== "number" ||
+        typeof centerr[1] !== "number" ||
+        !Number.isFinite(centerr[0]) ||
+        !Number.isFinite(centerr[1]) ||
+        (centerr[0] === 0 && centerr[1] === 0)
+      ) {
+        console.log("[Events] Skipping fetch due to invalid center");
         return;
       }
       savedCentre = centerr;
       if (!isMountedRef.current || isLoadingRef.current) return;
+
+      // Cache validation: Don't refetch if we have fresh data (within 5 minutes for expanded radius)
+      const now = Date.now();
+      const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes for large radius searches
+      const lastCenter = lastCenterRef.current;
+      const timeSinceLastFetch = now - lastFetchTimeRef.current;
+
+      // Calculate the threshold based on radius - larger radius allows larger movement before invalidating cache
+      const radiusInKm = radius / 1000;
+      const movementThreshold = Math.min(
+        0.05,
+        Math.max(0.01, radiusInKm / 1000)
+      ); // 0.01-0.05 degrees based on radius
+
+      // For long-distance navigation (different continents/states), invalidate cache more aggressively
+      let hasValidCache = false;
+      if (lastCenter) {
+        // Calculate distance moved
+        const R = 6371; // Earth's radius in km
+        const dLat = ((centerr[0] - lastCenter[0]) * Math.PI) / 180;
+        const dLng = ((centerr[1] - lastCenter[1]) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos((lastCenter[0] * Math.PI) / 180) *
+            Math.cos((centerr[0] * Math.PI) / 180) *
+            Math.sin(dLng / 2) *
+            Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distanceMoved = R * c;
+
+        // If moved >100km, invalidate cache to ensure fresh data for new region
+        if (distanceMoved > 100) {
+          console.log(
+            `[Events] 🌍 Long distance movement (${distanceMoved.toFixed(
+              1
+            )}km) - invalidating cache for fresh data load`
+          );
+          hasValidCache = false;
+          // Don't clear location data here - let fresh data load and replace it naturally
+        } else {
+          // Standard cache validation for regional movement
+          hasValidCache =
+            cachedEventsRef.current.length > 0 &&
+            timeSinceLastFetch < CACHE_DURATION &&
+            Math.abs(lastCenter[0] - centerr[0]) < movementThreshold &&
+            Math.abs(lastCenter[1] - centerr[1]) < movementThreshold;
+        }
+      }
+
+      if (hasValidCache) {
+        console.log("[Events] Using cached data, skipping API call");
+        console.log(
+          `[Events] Cache age: ${Math.round(
+            timeSinceLastFetch / 1000
+          )}s, radius: ${radiusInKm}km`
+        );
+
+        // Use cached events and trigger clustering
+        setEvents(cachedEventsRef.current);
+        return;
+      }
+
+      console.log("[Events] Fetching fresh data from API");
+      lastCenterRef.current = [centerr[0], centerr[1]];
       isLoadingRef.current = true;
       setIsLoading(true);
 
@@ -515,10 +598,11 @@ export function useMapEvents({
           .from("user_locations")
           .select("*")
           .eq("user_id", session.user.id)
-          .single();
+          .order("last_updated", { ascending: false })
+          .limit(1);
 
         if (supabaseError) throw supabaseError;
-        userLocation = data;
+        userLocation = (data as any[])?.[0] ?? null;
       } catch (e) {
       } finally {
       }
@@ -555,49 +639,108 @@ export function useMapEvents({
         //   text1: "eventData:"+eventData.latitude +"\n"+ eventData.longitude,
         // });
 
-        ////fetch locations
+        ////fetch locations (POST all)
+        try {
+          console.log("[Events] 🚀 Starting locations/all API call...");
+          console.log("[Events] 🚀 Backend URL:", process.env.BACKEND_MAP_URL);
+          console.log("[Events] 🚀 Event data being sent:", eventData);
 
-        const responseLocations = await fetch(
-          `${process.env.BACKEND_MAP_URL}/api/locations/all`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify(eventData),
+          const responseLocations = await fetch(
+            `${process.env.BACKEND_MAP_URL}/api/locations/all`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify(eventData),
+            }
+          );
+
+          console.log("[Events] 🚀 Response status:", responseLocations.status);
+          console.log("[Events] 🚀 Response ok:", responseLocations.ok);
+
+          if (!responseLocations.ok) {
+            const errText = await responseLocations.text();
+            console.log(
+              "[Events] locations/all error:",
+              responseLocations.status,
+              errText
+            );
+          } else {
+            const dataLocations = await responseLocations.json();
+            const validLocations = (dataLocations || []).filter((loc: any) => {
+              const isValid =
+                loc.location &&
+                typeof loc.location.latitude === "number" &&
+                typeof loc.location.longitude === "number" &&
+                Number.isFinite(loc.location.latitude) &&
+                Number.isFinite(loc.location.longitude) &&
+                Math.abs(loc.location.latitude) <= 90 &&
+                Math.abs(loc.location.longitude) <= 180;
+              return isValid;
+            });
+            console.log(
+              `[Events] 📍 Loaded ${validLocations.length} static locations from API`
+            );
+            console.log(
+              `[Events] 📍 Sample locations:`,
+              validLocations.slice(0, 3).map((loc: any) => ({
+                id: loc.id,
+                name: loc.name,
+                coords: [loc.location?.latitude, loc.location?.longitude],
+                hasImages: !!loc.image_urls && loc.image_urls.length > 0,
+                imageCount: loc.image_urls?.length || 0,
+                firstImage: loc.image_urls?.[0],
+              }))
+            );
+
+            // Log specific location if it contains "akodahatchee" or "wetlands"
+            const searchedLocation = validLocations.find(
+              (loc: any) =>
+                loc.name?.toLowerCase().includes("akodahatchee") ||
+                loc.name?.toLowerCase().includes("wetlands")
+            );
+            if (searchedLocation) {
+              console.log(`[Events] 🔍 FOUND SEARCHED LOCATION:`, {
+                id: searchedLocation.id,
+                name: searchedLocation.name,
+                coords: [
+                  searchedLocation.location?.latitude,
+                  searchedLocation.location?.longitude,
+                ],
+                image_urls: searchedLocation.image_urls,
+                hasImages:
+                  !!searchedLocation.image_urls &&
+                  searchedLocation.image_urls.length > 0,
+                category: searchedLocation.category,
+                fullData: searchedLocation,
+              });
+            }
+            setLocations(validLocations);
+            // Don't clear clusters here - let the clustering effect handle it
+            // setClustersLocations([]);
           }
-        );
-
-        if (!responseLocations.ok) {
-          throw new Error(await responseLocations.text());
+        } catch (locErr) {
+          console.log(
+            "[Events] ❌ locations/all fetch failed, continuing without locations:",
+            locErr
+          );
+          console.log(
+            "[Events] ❌ Error details:",
+            locErr instanceof Error ? locErr.message : String(locErr)
+          );
+          console.log(
+            "[Events] ❌ Error stack:",
+            locErr instanceof Error ? locErr.stack : "No stack trace available"
+          );
         }
-
-        const dataLocations = await responseLocations.json();
-
-        // Validate event data
-        const validLocations = dataLocations.filter((event: any) => {
-          const isValid =
-            event.location &&
-            typeof event.location.latitude === "number" &&
-            typeof event.location.longitude === "number" &&
-            !isNaN(event.location.latitude) &&
-            !isNaN(event.location.longitude) &&
-            Math.abs(event.location.latitude) <= 90 &&
-            Math.abs(event.location.longitude) <= 180;
-          if (!isValid) {
-          }
-          return isValid;
-        });
-
-        setLocations(validLocations);
-        setClustersLocations([]);
         // Set locations first, clustering will be done in a separate effect
         // setLocations(validLocations); // Removed duplicate call
 
-        ///fetch events
+        ///fetch events (POST all with high limit)
         const response = await fetch(
-          `${process.env.BACKEND_MAP_URL}/api/events/all`,
+          `${process.env.BACKEND_MAP_URL}/api/events/all?page=1&limit=2000`,
           {
             method: "POST",
             headers: {
@@ -613,7 +756,11 @@ export function useMapEvents({
         }
 
         const data_ = await response.json();
-        const data = data_.events;
+        const data = data_?.events || [];
+        console.log(
+          "[Events] Raw events count:",
+          Array.isArray(data) ? data.length : 0
+        );
 
         // Validate event data
         const validEvents = (data || []).filter((event: any) => {
@@ -622,8 +769,6 @@ export function useMapEvents({
             event.location &&
             typeof event.location.latitude === "number" &&
             typeof event.location.longitude === "number" &&
-            event?.type !== "googleApi" &&
-            event?.type !== "static" &&
             !isNaN(event.location.latitude) &&
             !isNaN(event.location.longitude) &&
             Math.abs(event.location.latitude) <= 90 &&
@@ -639,6 +784,7 @@ export function useMapEvents({
         cachedEventsRef.current = validEvents;
         lastFetchTimeRef.current = Date.now();
         setEvents(validEvents);
+        console.log("[Events] Valid events count:", validEvents.length);
         setClusters([]);
         setClustersNow([]);
         setClustersToday([]);
@@ -786,22 +932,131 @@ export function useMapEvents({
       locations.length > 0 &&
       JSON.stringify(locations) !== JSON.stringify(lastLocationsRef.current)
     ) {
+      console.log(`[Events] 🔄 Location data changed, updating clusters`);
+      console.log(
+        `[Events] 📍 Processing ${locations.length} locations for clustering`
+      );
+
+      // Log the searched location in the clustering process
+      const searchedLocation = locations.find(
+        (loc: any) =>
+          loc.name?.toLowerCase().includes("akodahatchee") ||
+          loc.name?.toLowerCase().includes("wetlands")
+      );
+      if (searchedLocation) {
+        console.log(`[Events] 🔍 SEARCHED LOCATION IN CLUSTERING:`, {
+          id: searchedLocation.id,
+          name: searchedLocation.name,
+          coords: [
+            searchedLocation.location?.latitude,
+            searchedLocation.location?.longitude,
+          ],
+          hasImages:
+            !!searchedLocation.image_urls &&
+            searchedLocation.image_urls.length > 0,
+          image_urls: searchedLocation.image_urls,
+        });
+      }
+
       lastLocationsRef.current = locations;
       const newClustersLocations = clusterLocations(locations);
+
+      // Log if our searched location made it into clusters
+      const searchedCluster = newClustersLocations.find(
+        (cluster: any) =>
+          cluster.mainEvent?.name?.toLowerCase().includes("akodahatchee") ||
+          cluster.mainEvent?.name?.toLowerCase().includes("wetlands")
+      );
+      if (searchedCluster) {
+        console.log(`[Events] 🔍 SEARCHED LOCATION CLUSTERED:`, {
+          mainEventId: searchedCluster.mainEvent?.id,
+          mainEventName: searchedCluster.mainEvent?.name,
+          coords: [
+            searchedCluster.location.latitude,
+            searchedCluster.location.longitude,
+          ],
+          hasMainEvent: !!searchedCluster.mainEvent,
+          mainEventImages: searchedCluster.mainEvent?.image_urls,
+        });
+      } else {
+        console.log(`[Events] ⚠️ SEARCHED LOCATION NOT FOUND IN CLUSTERS`);
+      }
+
+      console.log(
+        `[Events] 📍 Created ${newClustersLocations.length} location clusters`
+      );
       setClustersLocations(newClustersLocations);
+    } else if (locations.length === 0) {
+      console.log(`[Events] ⚠️ No locations to cluster`);
+    } else {
+      console.log(`[Events] 📍 Location data unchanged, skipping clustering`);
     }
   }, [locations]);
 
-  // Initial fetch only
+  // Initial fetch only - with proper center change management
   useEffect(() => {
     isMountedRef.current = true;
+
+    // Only fetch if center is valid and has significantly changed
     if (center && center[0] !== 0 && center[1] !== 0) {
-      fetchAllEvents(center);
+      const lastCenter = lastCenterRef.current;
+
+      // Calculate distance from last center to determine if we need to fetch
+      let shouldFetch = false;
+
+      if (!lastCenter) {
+        // First time, always fetch
+        shouldFetch = true;
+        console.log("[Events] Initial center set, fetching data");
+      } else {
+        // Calculate distance moved
+        const radiusInKm = radius / 1000;
+        const movementThreshold = Math.min(
+          0.05,
+          Math.max(0.01, radiusInKm / 1000)
+        );
+        const distance = Math.sqrt(
+          Math.pow(center[0] - lastCenter[0], 2) +
+            Math.pow(center[1] - lastCenter[1], 2)
+        );
+
+        if (distance > movementThreshold) {
+          shouldFetch = true;
+          console.log(
+            `[Events] Center moved ${distance.toFixed(
+              4
+            )} degrees (threshold: ${movementThreshold.toFixed(
+              4
+            )}), fetching new data`
+          );
+        } else {
+          console.log(
+            `[Events] Center change too small (${distance.toFixed(
+              4
+            )} < ${movementThreshold.toFixed(4)}), using cached data`
+          );
+        }
+      }
+
+      if (shouldFetch) {
+        // Debounce the fetch call to prevent rapid API calls
+        if (fetchTimeoutRef.current) {
+          clearTimeout(fetchTimeoutRef.current);
+        }
+
+        fetchTimeoutRef.current = setTimeout(() => {
+          fetchAllEvents(center);
+        }, 500); // 500ms debounce
+      }
     }
+
     return () => {
       isMountedRef.current = false;
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+      }
     };
-  }, [center]);
+  }, [center, radius]); // Add radius to dependencies since it affects threshold calculation
 
   // useEffect(() => {
   //   if (Platform.OS === "android") {
@@ -903,6 +1158,42 @@ export function useMapEvents({
     setSelectedEvent(null);
   }, []);
 
+  // Debounce ref for force refresh to prevent rapid calls
+  const forceRefreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastForceRefreshRef = useRef<number>(0);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Force refresh function for external use (e.g., from search navigation)
+  const forceRefreshLocations = useCallback(() => {
+    const now = Date.now();
+    const timeSinceLastRefresh = now - lastForceRefreshRef.current;
+
+    // Prevent rapid successive calls (minimum 2 seconds between calls)
+    if (timeSinceLastRefresh < 2000) {
+      console.log(
+        `[Events] 🚫 Force refresh debounced (${timeSinceLastRefresh}ms since last call)`
+      );
+      return;
+    }
+
+    // Clear any pending timeout
+    if (forceRefreshTimeoutRef.current) {
+      clearTimeout(forceRefreshTimeoutRef.current);
+    }
+
+    console.log("[Events] 🔄 Force refreshing location data...");
+    lastForceRefreshRef.current = now;
+
+    // Don't clear existing data immediately - let new data load first
+    // Reset cache to force fresh fetch
+    lastFetchTimeRef.current = 0;
+
+    // Trigger fetch if we have a center
+    if (center && center[0] !== 0 && center[1] !== 0) {
+      fetchAllEvents(center);
+    }
+  }, [center, fetchAllEvents]);
+
   return {
     hitEventsApi,
     eventsHome,
@@ -922,5 +1213,6 @@ export function useMapEvents({
     error,
     handleEventClick,
     handleCloseModal,
+    forceRefreshLocations,
   };
 }

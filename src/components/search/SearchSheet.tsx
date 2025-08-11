@@ -18,7 +18,7 @@ import { Calendar, MapPin, Users, Search, X } from "lucide-react-native";
 import { debounce } from "lodash";
 import { useAuth } from "../../lib/auth";
 import { useTheme } from "../ThemeProvider";
-import { useUser } from "~/hooks/useUserData";
+import { useUser } from "~/src/lib/UserProvider";
 import * as Location from "expo-location";
 
 // Types
@@ -277,10 +277,11 @@ export function SearchSheet({
         result_limit: 15,
       });
 
-      // If location-aware RPC doesn't exist, fall back to regular search
-      if (rpcResult.error && rpcResult.error.code === "42883") {
+      // If location-aware RPC doesn't exist or errors for any reason, fall back
+      if (rpcResult.error) {
         console.log(
-          "Location-aware search not available, using regular search"
+          "Location-aware search failed; falling back:",
+          rpcResult.error
         );
         rpcResult = await supabase.rpc("search_comprehensive", {
           search_query: query,
@@ -307,22 +308,17 @@ export function SearchSheet({
     try {
       if (!session?.access_token) return [];
 
-      // Use user's coordinates instead of default NYC coordinates
-      const eventData = {
-        latitude: coordinates.latitude,
-        longitude: coordinates.longitude,
-        category: "", // empty for all categories
-      };
-
+      // Fetch nearby events via backend and filter by query on client
       const response = await fetch(
-        `${process.env.BACKEND_MAP_URL}/api/events/all?page=1&limit=50`, // Increase limit to get more results
+        `${process.env.BACKEND_MAP_URL}/api/events/nearby?lat=${
+          coordinates.latitude
+        }&lng=${coordinates.longitude}&radius=${50_000}&limit_count=500`,
         {
-          method: "POST",
+          method: "GET",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify(eventData),
         }
       );
 
@@ -332,7 +328,7 @@ export function SearchSheet({
       }
 
       const data = await response.json();
-      const allEvents = data.events || [];
+      const allEvents = Array.isArray(data) ? data : data?.events || [];
 
       // Filter for Ticketmaster events that match search query
       const ticketmasterEvents = allEvents
@@ -406,11 +402,23 @@ export function SearchSheet({
       // If user prefers orbit mode and has saved coordinates
       if (user.event_location_preference === 1 && userlocation) {
         coordinates = {
-          latitude: parseFloat(userlocation.latitude || "0"),
-          longitude: parseFloat(userlocation.longitude || "0"),
+          // Prefer orbit coordinates; do not fall back to 0 which causes NaNs
+          latitude:
+            userlocation.latitude != null
+              ? parseFloat(userlocation.latitude)
+              : NaN,
+          longitude:
+            userlocation.longitude != null
+              ? parseFloat(userlocation.longitude)
+              : NaN,
         };
         console.log("Using orbit mode coordinates:", coordinates);
-        return coordinates;
+        if (
+          Number.isFinite(coordinates.latitude) &&
+          Number.isFinite(coordinates.longitude)
+        ) {
+          return coordinates;
+        }
       }
 
       // If user prefers current location or orbit coordinates not available
@@ -476,6 +484,10 @@ export function SearchSheet({
                 result.location?.coordinates?.[1] || result.location?.latitude,
               longitude:
                 result.location?.coordinates?.[0] || result.location?.longitude,
+              name: result.name,
+              venue_name: result.venue_name || "",
+              description: result.description || "",
+              type: result.type || "event",
             },
           });
         } else {
@@ -488,6 +500,10 @@ export function SearchSheet({
                 result.location?.coordinates?.[1] || result.location?.latitude,
               longitude:
                 result.location?.coordinates?.[0] || result.location?.longitude,
+              name: result.name,
+              venue_name: result.venue_name || "",
+              description: result.description || "",
+              type: result.type || "event",
             },
           });
         }
@@ -501,6 +517,10 @@ export function SearchSheet({
               result.location?.coordinates?.[1] || result.location?.latitude,
             longitude:
               result.location?.coordinates?.[0] || result.location?.longitude,
+            name: result.name,
+            description: result.description || "",
+            type: result.type || "location",
+            address: result.address || "",
           },
         });
         break;

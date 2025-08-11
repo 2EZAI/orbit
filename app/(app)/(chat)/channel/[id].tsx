@@ -806,21 +806,25 @@ export default function ChannelScreen() {
           headerRight: () =>
             channel?.data?.name !== "Orbit App" ? (
               <View style={{ flexDirection: "row", paddingRight: 8, gap: 12 }}>
-                {/* Audio Call Button */}
+                {/* Audio Call Button - HIDDEN during development */}
+                {/* 
                 <TouchableOpacity
                   onPress={handleAudioCall}
                   style={{ padding: 4 }}
                 >
                   <Phone size={20} color={theme.colors.text} strokeWidth={2} />
                 </TouchableOpacity>
+                */}
 
-                {/* Video Call Button */}
+                {/* Video Call Button - HIDDEN during development */}
+                {/* 
                 <TouchableOpacity
                   onPress={handleVideoCall}
                   style={{ padding: 4 }}
                 >
                   <Video size={20} color={theme.colors.text} strokeWidth={2} />
                 </TouchableOpacity>
+                */}
 
                 {/* Settings Button */}
                 <TouchableOpacity
@@ -841,7 +845,8 @@ export default function ChannelScreen() {
         }}
       />
 
-      {/* Active Call Banner */}
+      {/* Active Call Banner - HIDDEN during development */}
+      {/* 
       {channel && (
         <ActiveCallBanner
           channelId={channel.id as string}
@@ -849,6 +854,7 @@ export default function ChannelScreen() {
           channelName={channel.data?.name}
         />
       )}
+      */}
 
       {loading ? (
         <View className="flex-1 justify-center items-center">

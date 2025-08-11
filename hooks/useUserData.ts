@@ -4,7 +4,7 @@ import { supabase } from "~/src/lib/supabase";
 import { useAuth } from "~/src/lib/auth";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-interface User {
+export interface User {
   id: string;
   email: string;
   username: string | null;
@@ -22,7 +22,7 @@ interface User {
   occupation_id: string;
 }
 
-interface UserLoation {
+export interface UserLoation {
   user_id: string;
   location: string;
   accuracy: string | null;
@@ -34,7 +34,7 @@ interface UserLoation {
   postal_code: string | null;
 }
 
-interface UseUserReturn {
+export interface UseUserReturn {
   user: User | null;
   otherUser: User | null;
   userlocation: UserLoation | null;
@@ -60,9 +60,10 @@ interface UseUserReturn {
   fetchOherUserTopics: (userId: string) => Promise<any[] | undefined>;
   fetchOtherUserHomeTownLocation: (userId: string) => Promise<void>;
   fetchOtherUser: (userId: string) => Promise<void>;
+  fetchUserLocation: () => Promise<void>;
 }
 
-export function useUser(): UseUserReturn {
+export function useUserData(): UseUserReturn {
   const { session } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [otherUser, setOtherUser] = useState<User | null>(null);
@@ -130,17 +131,30 @@ export function useUser(): UseUserReturn {
         setUserLocation(null);
         return;
       }
+
       const { data, error: supabaseError } = await supabase
         .from("user_locations")
         .select("*")
         .eq("user_id", session.user.id)
-        .single();
+        .order("last_updated", { ascending: false })
+        .limit(1);
 
       if (supabaseError) throw supabaseError;
-      setUserLocation(data);
-      storeData('userLocation',data);    
 
+      const locationToSet = (data && data[0]) || null;
+
+      // Only update state if the location has actually changed
+      const hasChanged =
+        JSON.stringify(userlocation) !== JSON.stringify(locationToSet);
+      if (hasChanged) {
+        console.log("📍 [useUser] Location data changed, updating state");
+        console.log("📍 [useUser] New location:", locationToSet);
+        setUserLocation(locationToSet);
+        storeData('userLocation',data);    
+
+      }
     } catch (e) {
+      console.error("❌ [useUser] Error in fetchUserLocation:", e);
       setError(e instanceof Error ? e : new Error("An error occurred"));
     } finally {
       setLoading(false);
@@ -328,51 +342,111 @@ export function useUser(): UseUserReturn {
   // Update userlocation data
   const updateUserLocations = async (updates: Partial<UserLoation>) => {
     try {
-      // console.error("updateUserLocations:>>>");
+      console.log("🔧 [useUser] updateUserLocations called with:", updates);
+
       if (!session?.user?.id) throw new Error("No user logged in");
 
-      const { data: existingUser, error: fetchError } = await supabase
+      console.log(
+        "🔧 [useUser] Fetching existing user location for user:",
+        session.user.id
+      );
+      // Use limit(1) instead of single() to avoid multiple rows error
+      const { data: existingUsers, error: fetchError } = await supabase
         .from("user_locations")
         .select("*")
         .eq("user_id", session.user.id)
-        .single();
+        .order("last_updated", { ascending: false })
+        .limit(1);
 
-      if (fetchError && fetchError.code !== "PGRST116") {
-        // 'PGRST116' = No rows found
+      const existingUser =
+        existingUsers && existingUsers.length > 0 ? existingUsers[0] : null;
+      console.log("🔧 [useUser] Existing user location:", existingUser);
+      console.log("🔧 [useUser] Fetch error:", fetchError);
+
+      if (fetchError) {
+        console.log("🔧 [useUser] Returning fetch error:", fetchError);
         return { error: fetchError };
       }
+
       let result;
       if (existingUser) {
-        // Update existing record
+        // Update existing record - include properly formatted geography
+        const updateData = {
+          user_id: session.user.id,
+          latitude: updates.latitude,
+          longitude: updates.longitude,
+          city: updates.city,
+          state: updates.state,
+          address: updates.address || null,
+          accuracy: updates.accuracy || null,
+          postal_code: updates.postal_code || null,
+          last_updated: new Date().toISOString(),
+          location: `SRID=4326;POINT(${updates.longitude} ${updates.latitude})`,
+        };
+
+        console.log("🔧 [useUser] Updating existing record with:", updateData);
+
         const { data, error } = await supabase
           .from("user_locations")
-          .update({
-            ...updates,
-            // updated_at: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq("user_id", session.user.id);
 
-    result = { data, error }
-    // console.log("data>>",data);
-    // console.log("error>>",error);
-  } else {
-    // Insert new record
-    const { data, error } = await supabase
-      .from('user_locations')
-      .insert([
-        {
-          ...updates,
-          user_id:session.user.id,
-          // created_at: new Date().toISOString(),
-        },
-      ])
+        result = { data, error };
+        console.log("🔧 [useUser] Update result:", result);
+      } else {
+        // Insert new record - properly format geography using ST_GeogFromText
+        const insertData = {
+          user_id: session.user.id,
+          latitude: updates.latitude,
+          longitude: updates.longitude,
+          city: updates.city,
+          state: updates.state,
+          address: updates.address || null,
+          accuracy: updates.accuracy || null,
+          postal_code: updates.postal_code || null,
+          last_updated: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+        };
+
+        console.log("🔧 [useUser] Inserting new record with:", insertData);
+
+        // Add properly formatted geography point using the same format as backend
+        const insertDataWithLocation = {
+          ...insertData,
+          location: `SRID=4326;POINT(${insertData.longitude} ${insertData.latitude})`,
+        };
+
+        console.log(
+          "🔧 [useUser] Final insert data with geography:",
+          insertDataWithLocation
+        );
+
+        const { data, error } = await supabase
+          .from("user_locations")
+          .insert([insertDataWithLocation]);
 
         result = { data, error };
+        console.log("🔧 [useUser] Insert result:", result);
       }
-  await fetchUser();
-  await fetchUserLocation();
+
+      // Refresh the user location data immediately after successful update
+      if (!result.error) {
+        console.log(
+          "📍 [useUser] Location updated successfully, refreshing user location data"
+        );
+        console.log(
+          "📍 [useUser] Current userlocation before refresh:",
+          userlocation
+        );
+        await fetchUser();
+        await fetchUserLocation();
+        console.log("📍 [useUser] fetchUserLocation rcompleted");
+      } else {
+        console.log("❌ [useUser] Location update failed:", result.error);
+      }
       return result;
     } catch (e) {
+      console.error("❌ [useUser] Exception in updateUserLocations:", e);
       setError(e instanceof Error ? e : new Error("An error occurred"));
       throw e;
     }
@@ -450,8 +524,28 @@ export function useUser(): UseUserReturn {
       )
       .subscribe();
 
+    // Also subscribe to user_locations so orbit/device location updates reflect immediately
+    const locationsSubscription = supabase
+      .channel(`public:user_locations:user_id=eq.${session.user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "user_locations",
+          filter: `user_id=eq.${session.user.id}`,
+        },
+        (payload) => {
+          if (payload.new) {
+            setUserLocation(payload.new as UserLoation);
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(subscription);
+      supabase.removeChannel(locationsSubscription);
     };
   }, [session?.user?.id]);
 
@@ -482,6 +576,7 @@ export function useUser(): UseUserReturn {
     fetchOherUserTopics,
     fetchOtherUserHomeTownLocation,
     fetchOtherUser,
+    fetchUserLocation, // Export fetchUserLocation for immediate refreshes
     getUserData,
   };
 }

@@ -28,7 +28,7 @@ import * as ImagePicker from "expo-image-picker";
 import { supabase } from "~/src/lib/supabase";
 import { useAuth } from "~/src/lib/auth";
 import { Stack } from "expo-router";
-import { useUser } from "~/hooks/useUserData";
+import { useUser } from "~/src/lib/UserProvider";
 import {
   useSafeAreaInsets,
   SafeAreaView,

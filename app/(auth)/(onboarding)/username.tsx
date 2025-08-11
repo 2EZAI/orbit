@@ -15,7 +15,7 @@ import { supabase } from "~/src/lib/supabase";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
 import { KeyboardAwareInput } from "~/src/components/ui/keyboard-aware-input";
-import { useUser } from "~/hooks/useUserData";
+import { useUser } from "~/src/lib/UserProvider";
 import { Check, X, Camera, Mail, Phone, User } from "lucide-react-native";
 import { useDebouncedCallback } from "~/src/hooks/useDebounce";
 import Toast from "react-native-toast-message";

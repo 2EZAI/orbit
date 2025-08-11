@@ -31,7 +31,7 @@ import {
 } from "lucide-react-native";
 import { useAuth } from "~/src/lib/auth";
 import { supabase } from "~/src/lib/supabase";
-import { useUser } from "~/hooks/useUserData";
+import { useUser } from "~/src/lib/UserProvider";
 import Toast from "react-native-toast-message";
 import { SafeAreaView } from "react-native-safe-area-context";
 

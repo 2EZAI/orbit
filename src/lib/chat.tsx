@@ -161,7 +161,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         setIsConnected(false);
       }
     };
-  }, [session?.user?.id, session?.access_token, session]);
+  }, [session?.user?.id]); // Only reconnect when user changes, not on token refresh
 
   // Monitor connection state
   useEffect(() => {

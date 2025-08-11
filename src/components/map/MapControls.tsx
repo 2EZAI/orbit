@@ -8,15 +8,17 @@ import {
   Minus,
   Bell,
   Info,
+  MapPin,
 } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { Icon } from "react-native-elements";
 import { useNotificationsApi } from "~/hooks/useNotificationsApi";
-import { useUser } from "~/hooks/useUserData";
+import { useUser } from "~/src/lib/UserProvider";
 import { SearchSheet } from "~/src/components/search/SearchSheet";
 import { MarkerLegend } from "~/src/components/map/MarkerLegend";
 import { MarkerFilter, FilterState } from "~/src/components/map/MarkerFilter";
+import { LocationPreferencesModal } from "~/src/components/settings/LocationPreferencesModal";
 
 type TimeFrame = "Today" | "Week" | "Weekend";
 
@@ -51,10 +53,11 @@ export function MapControls({
 }: MapControlsProps) {
   const router = useRouter();
   const { theme, isDarkMode } = useTheme();
-  const { user } = useUser();
+  const { user, userlocation } = useUser();
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [isLegendVisible, setIsLegendVisible] = useState(false);
   const [isFilterVisible, setIsFilterVisible] = useState(false);
+  const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
   const [selectedTimeFrame, setSelectedTimeFrame] =
     useState<TimeFrame>(timeFrame);
   const { fetchAllNoifications, unReadCount } = useNotificationsApi();
@@ -78,14 +81,14 @@ export function MapControls({
 
   return (
     <>
-      {/* Pills Row - Avatar, Search, Notifications */}
+      {/* Pills Row - Controls + Avatar/Notifications */}
       <View
         style={{
           position: "absolute",
-          top: 70,
+          top: 140,
           left: 0,
           right: 0,
-          zIndex: 40,
+          zIndex: 35,
         }}
       >
         <View
@@ -97,96 +100,141 @@ export function MapControls({
             alignItems: "center",
           }}
         >
-          {/* Left Section - Search + Filter */}
+          {/* Left Pill - Search + Filter + Location */}
           <View
             style={{
+              backgroundColor: theme.colors.card,
+              borderRadius: 22,
+              paddingHorizontal: 10,
+              paddingVertical: 8,
               flexDirection: "row",
               alignItems: "center",
-              gap: 8,
+              gap: 10,
+              borderWidth: 1,
+              borderColor: isDarkMode
+                ? "rgba(255,255,255,0.1)"
+                : "rgba(0,0,0,0.08)",
+              shadowColor: isDarkMode ? "#000" : "#000",
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: isDarkMode ? 0.6 : 0.15,
+              shadowRadius: 16,
+              elevation: 12,
             }}
           >
-            {/* Search Pill */}
-            <View
+            {/* Search */}
+            <TouchableOpacity
+              onPress={toggleSearch}
               style={{
-                backgroundColor: theme.colors.card,
-                borderRadius: 22,
-                padding: 6,
-                borderWidth: 1,
+                width: 42,
+                height: 42,
+                borderRadius: 18,
+                borderWidth: 1.5,
                 borderColor: isDarkMode
-                  ? "rgba(255,255,255,0.1)"
-                  : "rgba(0,0,0,0.08)",
-                shadowColor: isDarkMode ? "#000" : "#000",
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: isDarkMode ? 0.6 : 0.15,
-                shadowRadius: 16,
-                elevation: 12,
+                  ? "rgba(255,255,255,0.15)"
+                  : "rgba(0,0,0,0.12)",
+                backgroundColor: isDarkMode
+                  ? "rgba(255,255,255,0.08)"
+                  : "rgba(255,255,255,0.9)",
+                justifyContent: "center",
+                alignItems: "center",
               }}
+              activeOpacity={0.7}
             >
-              <TouchableOpacity
-                onPress={toggleSearch}
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 18,
-                  borderWidth: 1.5,
-                  borderColor: isDarkMode
-                    ? "rgba(255,255,255,0.15)"
-                    : "rgba(0,0,0,0.12)",
-                  backgroundColor: isDarkMode
-                    ? "rgba(255,255,255,0.08)"
-                    : "rgba(255,255,255,0.9)",
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-                activeOpacity={0.7}
-              >
-                <Search size={18} color={theme.colors.text} strokeWidth={2.5} />
-              </TouchableOpacity>
-            </View>
+              <Search size={18} color={theme.colors.text} strokeWidth={2.5} />
+            </TouchableOpacity>
 
-            {/* Filter Pill */}
-            <View
+            {/* Filter */}
+            <TouchableOpacity
+              onPress={() => setIsFilterVisible(true)}
               style={{
-                backgroundColor: theme.colors.card,
-                borderRadius: 22,
-                padding: 6,
-                borderWidth: 1,
+                width: 42,
+                height: 42,
+                borderRadius: 18,
+                borderWidth: 1.5,
                 borderColor: isDarkMode
-                  ? "rgba(255,255,255,0.1)"
-                  : "rgba(0,0,0,0.08)",
-                shadowColor: isDarkMode ? "#000" : "#000",
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: isDarkMode ? 0.6 : 0.15,
-                shadowRadius: 16,
-                elevation: 12,
+                  ? "rgba(255,255,255,0.15)"
+                  : "rgba(0,0,0,0.12)",
+                backgroundColor: isDarkMode
+                  ? "rgba(255,255,255,0.08)"
+                  : "rgba(255,255,255,0.9)",
+                justifyContent: "center",
+                alignItems: "center",
               }}
+              activeOpacity={0.7}
             >
-              <TouchableOpacity
-                onPress={() => setIsFilterVisible(true)}
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 18,
-                  borderWidth: 1.5,
-                  borderColor: isDarkMode
+              <Icon
+                name="tune"
+                type="material"
+                size={20}
+                color={theme.colors.text}
+              />
+            </TouchableOpacity>
+
+            {/* Location */}
+            <TouchableOpacity
+              onPress={() => setIsLocationModalVisible(true)}
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 18,
+                borderWidth: 1.5,
+                borderColor:
+                  user?.event_location_preference === 1
+                    ? theme.colors.primary
+                    : isDarkMode
                     ? "rgba(255,255,255,0.15)"
                     : "rgba(0,0,0,0.12)",
-                  backgroundColor: isDarkMode
+                backgroundColor:
+                  user?.event_location_preference === 1
+                    ? theme.colors.primary + "20"
+                    : isDarkMode
                     ? "rgba(255,255,255,0.08)"
                     : "rgba(255,255,255,0.9)",
+                justifyContent: "center",
+                alignItems: "center",
+                position: "relative",
+              }}
+              activeOpacity={0.7}
+            >
+              <MapPin
+                size={18}
+                color={
+                  user?.event_location_preference === 1
+                    ? theme.colors.primary
+                    : theme.colors.text
+                }
+                strokeWidth={2.5}
+              />
+              {/* Subtle mode indicator */}
+              <View
+                style={{
+                  position: "absolute",
+                  bottom: -2,
+                  right: -2,
+                  width: 12,
+                  height: 12,
+                  borderRadius: 6,
+                  backgroundColor:
+                    user?.event_location_preference === 1
+                      ? theme.colors.primary
+                      : theme.colors.text + "80",
+                  borderWidth: 1.5,
+                  borderColor: theme.colors.card,
                   justifyContent: "center",
                   alignItems: "center",
                 }}
-                activeOpacity={0.7}
               >
-                <Icon
-                  name="tune"
-                  type="material"
-                  size={20}
-                  color={theme.colors.text}
-                />
-              </TouchableOpacity>
-            </View>
+                <Text
+                  style={{
+                    fontSize: 7,
+                    fontWeight: "700",
+                    color: "white",
+                  }}
+                >
+                  {user?.event_location_preference === 1 ? "O" : "C"}
+                </Text>
+              </View>
+            </TouchableOpacity>
           </View>
 
           {/* Right Pill - Avatar + Notification */}
@@ -299,10 +347,10 @@ export function MapControls({
       <View
         style={{
           position: "absolute",
-          top: 140,
+          top: 70,
           left: 0,
           right: 0,
-          zIndex: 35,
+          zIndex: 40,
         }}
       >
         <View
@@ -538,6 +586,12 @@ export function MapControls({
         onClose={() => setIsFilterVisible(false)}
         filters={filters}
         onFilterChange={onFilterChange}
+      />
+
+      {/* Location Preferences Modal */}
+      <LocationPreferencesModal
+        isOpen={isLocationModalVisible}
+        onClose={() => setIsLocationModalVisible(false)}
       />
     </>
   );

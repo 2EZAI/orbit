@@ -218,6 +218,7 @@ const styles = StyleSheet.create({
     elevation: 6,
     marginRight: 20,
     overflow: "hidden",
+    backgroundColor: "#FFFFFF", // Add solid background color to fix shadow warning
   },
   imageContainer: {
     position: "relative",

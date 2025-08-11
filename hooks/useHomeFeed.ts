@@ -1,20 +1,25 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "~/src/lib/supabase";
-import { fetchAllEvents } from "~/src/lib/api/ticketmaster";
+import {
+  fetchAllEvents,
+  fetchAllEventsUnlimited,
+} from "~/src/lib/api/ticketmaster";
 import { createHomeFeedSections } from "~/src/lib/utils/feedSections";
 import {
   transformEvent,
   transformLocation,
 } from "~/src/lib/utils/transformers";
 import { imagePreloader } from "~/src/lib/imagePreloader";
-import { useUser } from "~/hooks/useUserData";
+import { useUser } from "~/src/lib/UserProvider";
 import { getCurrentPositionAsync } from "expo-location";
+import { debounce } from "lodash";
 
 export interface HomeFeedData {
   allContent: any[];
   featuredEvents: any[];
   sections: any[];
   flatListData: any[];
+  dynamicCategories: string[];
 }
 
 export function useHomeFeed() {
@@ -24,6 +29,7 @@ export function useHomeFeed() {
     featuredEvents: [],
     sections: [],
     flatListData: [],
+    dynamicCategories: [],
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,51 +58,66 @@ export function useHomeFeed() {
       let locations: any[] = [];
       let topics: any[] = [];
 
+      // First, determine the correct location coordinates to use
+      let currentDeviceLocation: {
+        latitude: number;
+        longitude: number;
+      } | null = null;
+
+      try {
+        const location = await getCurrentPositionAsync({});
+        currentDeviceLocation = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        };
+        console.log("Got current device location:", currentDeviceLocation);
+      } catch (locationError) {
+        console.log("Could not get user location:", locationError);
+      }
+
+      // Create location data for API call (same logic as fetchAllEvents)
+      const locationData = {
+        latitude:
+          user?.event_location_preference === 0 &&
+          currentDeviceLocation?.latitude != null
+            ? currentDeviceLocation.latitude
+            : user != null &&
+              user?.event_location_preference === 1 &&
+              userlocation?.latitude != null
+            ? parseFloat(userlocation.latitude)
+            : currentDeviceLocation?.latitude || null,
+        longitude:
+          user?.event_location_preference === 0 &&
+          currentDeviceLocation?.longitude != null
+            ? currentDeviceLocation.longitude
+            : user != null &&
+              user?.event_location_preference === 1 &&
+              userlocation?.longitude != null
+            ? parseFloat(userlocation.longitude)
+            : currentDeviceLocation?.longitude || null,
+        radius: 50000, // 50km radius like the map
+      };
+
       try {
         // Use the same location-aware backend API as the map
-        let currentDeviceLocation: {
-          latitude: number;
-          longitude: number;
-        } | null = null;
 
-        try {
-          const location = await getCurrentPositionAsync({});
-          currentDeviceLocation = {
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-          };
-          console.log("Got current device location:", currentDeviceLocation);
-        } catch (locationError) {
-          console.log("Could not get user location");
-        }
-
-        // Create location data for API call (same logic as fetchAllEvents)
-        const locationData = {
-          latitude:
-            user?.event_location_preference === 0 &&
-            currentDeviceLocation?.latitude != null
-              ? currentDeviceLocation.latitude
-              : user != null &&
-                user?.event_location_preference === 1 &&
-                userlocation?.latitude != null
-              ? parseFloat(userlocation.latitude)
-              : currentDeviceLocation?.latitude || null,
-          longitude:
-            user?.event_location_preference === 0 &&
-            currentDeviceLocation?.longitude != null
-              ? currentDeviceLocation.longitude
-              : user != null &&
-                user?.event_location_preference === 1 &&
-                userlocation?.longitude != null
-              ? parseFloat(userlocation.longitude)
-              : currentDeviceLocation?.longitude || null,
-          radius: 50000, // 50km radius like the map
-        };
-
+        console.log("🔍 [HomeFeed] Location selection debug:", {
+          userPreference: user?.event_location_preference,
+          currentDeviceLocation,
+          userLocationFromDB: userlocation
+            ? {
+                latitude: userlocation.latitude,
+                longitude: userlocation.longitude,
+                city: userlocation.city,
+                state: userlocation.state,
+              }
+            : null,
+          finalLocationData: locationData,
+        });
         console.log("Using coordinates for locations:", locationData);
 
         if (locationData.latitude && locationData.longitude) {
-          // Fetch location-filtered static locations from backend
+          // Fetch ALL location-filtered static locations from backend (no limit like the map)
           const session = await supabase.auth.getSession();
 
           if (session?.data?.session) {
@@ -108,12 +129,18 @@ export function useHomeFeed() {
                   "Content-Type": "application/json",
                   Authorization: `Bearer ${session.data.session.access_token}`,
                 },
-                body: JSON.stringify(locationData),
+                body: JSON.stringify({
+                  ...locationData,
+                  radius: 500000, // Expand radius to 500km to get thousands of locations like the map
+                }),
               }
             );
 
             if (responseLocations.ok) {
               const dataLocations = await responseLocations.json();
+              console.log(
+                `🔍 Total raw locations received from API: ${dataLocations.length}`
+              );
 
               // Validate and transform location data
               const validLocations = dataLocations.filter((location: any) => {
@@ -132,6 +159,21 @@ export function useHomeFeed() {
               console.log(
                 "✅ Location-filtered static locations count:",
                 locations.length
+              );
+
+              // Extract unique categories from locations for filtering
+              const locationCategories = new Set<string>();
+              validLocations.forEach((location: any) => {
+                if (location.category?.name) {
+                  locationCategories.add(location.category.name);
+                }
+                if (location.type) {
+                  locationCategories.add(location.type);
+                }
+              });
+              console.log(
+                "🏷️ Location categories found:",
+                Array.from(locationCategories)
               );
             }
           }
@@ -155,15 +197,30 @@ export function useHomeFeed() {
 
       console.log("Final locations count:", locations.length);
 
-      // Fetch location-filtered events from the backend
-      const allBackendEvents = await fetchAllEvents();
+      // Fetch ALL location-filtered events from the backend (no 1000 limit)
+      // Pass the same location coordinates that we're using for locations
+      const allBackendEvents = await fetchAllEventsUnlimited({
+        latitude: locationData.latitude,
+        longitude: locationData.longitude,
+      });
       console.log(
         "Location-filtered backend events count:",
         allBackendEvents.length
       );
 
-      // Check if we got no events and provide helpful error messages
-      if (allBackendEvents.length === 0) {
+      // Debug logging for location setup
+      console.log("🔍 [HomeFeed] Debug location setup:", {
+        user: user ? `ID: ${user.id}` : "null",
+        event_location_preference: user?.event_location_preference,
+        userlocation: userlocation
+          ? `${userlocation.city}, ${userlocation.state}`
+          : "null",
+        hasLocationSetup: hasLocationSetup(),
+        allBackendEventsCount: allBackendEvents.length,
+      });
+
+      // Check if we got no events AND no locations - then show error
+      if (allBackendEvents.length === 0 && locations.length === 0) {
         if (!hasLocationSetup()) {
           throw new Error(
             "Please set up your location preferences in Settings to see events in your area."
@@ -179,12 +236,21 @@ export function useHomeFeed() {
         }
       }
 
+      // If we have no events but have locations, show a message and continue
+      if (allBackendEvents.length === 0 && locations.length > 0) {
+        console.log(
+          "⚠️ [HomeFeed] No events found, but showing locations only"
+        );
+      }
+
       // Use only the location-filtered backend events
       const allEvents = allBackendEvents;
       const allContent = [...allEvents, ...locations];
 
       console.log("Total events after combining:", allEvents.length);
       console.log("Total content (events + locations):", allContent.length);
+      console.log("🎯 Events count:", allEvents.length);
+      console.log("🏢 Locations count:", locations.length);
 
       // Create featured events
       const featuredEvents = allEvents
@@ -199,15 +265,30 @@ export function useHomeFeed() {
         })
         .slice(0, 5);
 
+      console.log("🌟 Featured events count:", featuredEvents.length);
+
       // Create sections (expandedSections would be passed from component)
-      const sections = createHomeFeedSections(allContent, topics);
+      const feedSectionResult = createHomeFeedSections(allContent, topics);
+
+      // If we have very few sections, add some basic location-only sections
+      if (feedSectionResult.sections.length < 2 && locations.length > 0) {
+        console.log("🔄 [HomeFeed] Adding fallback location-only sections");
+        // Add a basic locations section
+        feedSectionResult.sections.unshift({
+          key: "nearby-places",
+          title: "Places Near You",
+          data: locations.slice(0, 20),
+          layout: "grid",
+          hasMoreData: locations.length > 20,
+        });
+      }
 
       // Create flat list data
       const flatListData = [];
       if (featuredEvents.length > 0) {
         flatListData.push({ type: "featured", data: featuredEvents });
       }
-      sections.forEach((section: any) => {
+      feedSectionResult.sections.forEach((section: any) => {
         if (section.data.length > 0) {
           flatListData.push({ type: "section", data: section });
         }
@@ -257,8 +338,9 @@ export function useHomeFeed() {
       setData({
         allContent,
         featuredEvents,
-        sections,
+        sections: feedSectionResult.sections,
         flatListData,
+        dynamicCategories: feedSectionResult.dynamicCategories,
       });
     } catch (err: any) {
       setError(err?.message || "Error loading feed");
@@ -267,40 +349,40 @@ export function useHomeFeed() {
     }
   };
 
+  // Add debounced refresh to prevent rapid successive calls
+  const debouncedRefresh = useCallback(
+    debounce(() => {
+      if (user) {
+        const newCacheKey = `${user.id}-${user.event_location_preference}-${
+          userlocation?.city || "current"
+        }-${userlocation?.state || "location"}`;
+
+        // Check if we have cached data that's still fresh (5 minutes)
+        const now = Date.now();
+        const cacheExpiry = 5 * 60 * 1000; // 5 minutes
+        const isCacheValid =
+          cacheKey === newCacheKey &&
+          now - lastFetchTime < cacheExpiry &&
+          data.allContent.length > 0;
+
+        if (isCacheValid) {
+          console.log("📱 Using cached home feed data");
+          setLoading(false);
+          return;
+        }
+
+        console.log("🔄 Fetching fresh home feed data");
+        setCacheKey(newCacheKey);
+        setLastFetchTime(now);
+        fetchHomeFeedData();
+      }
+    }, 500), // 500ms debounce
+    [user, userlocation, cacheKey, lastFetchTime, data.allContent.length]
+  );
+
   // Warm cache on app startup and fetch data when user is available
   useEffect(() => {
-    // Only fetch data when we have user information
-    if (user) {
-      // Create cache key based on user preferences
-      const newCacheKey = `${user.id}-${user.event_location_preference}-${
-        userlocation?.city || "current"
-      }-${userlocation?.state || "location"}`;
-
-      // Check if we have cached data that's still fresh (5 minutes)
-      const now = Date.now();
-      const cacheExpiry = 5 * 60 * 1000; // 5 minutes
-      const isCacheValid =
-        cacheKey === newCacheKey &&
-        now - lastFetchTime < cacheExpiry &&
-        data.allContent.length > 0;
-
-      if (isCacheValid) {
-        console.log("📱 Using cached home feed data");
-        setLoading(false);
-        return;
-      }
-
-      console.log("🔄 Fetching fresh home feed data");
-      setCacheKey(newCacheKey);
-      setLastFetchTime(now);
-
-      // Try to preload any previously queued images
-      setTimeout(() => {
-        const stats = imagePreloader.getCacheStats();
-      }, 1000);
-
-      fetchHomeFeedData();
-    }
+    debouncedRefresh();
   }, [user, userlocation]); // Re-fetch when user or location changes
 
   return {

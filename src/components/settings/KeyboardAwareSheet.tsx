@@ -224,9 +224,7 @@ export const KeyboardAwareSheet: React.FC<KeyboardAwareSheetProps> = ({
               {
                 transform: [{ translateY }],
                 // Add bottom margin when keyboard is visible
-                marginBottom:
-                  Platform.OS === "android" ? keyboardHeight * 0.1 : 0,
-              },
+               },
             ]}
           >
             {!fullScreen && (

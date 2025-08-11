@@ -4,7 +4,7 @@ import { router } from "expo-router";
 import { supabase } from "~/src/lib/supabase";
 import { Text } from "~/src/components/ui/text";
 import { Button } from "~/src/components/ui/button";
-import { useUser } from "~/hooks/useUserData";
+import { useUser } from "~/src/lib/UserProvider";
 import { TopicList } from "~/src/components/topics/TopicList";
 
 export default function Onboarding() {

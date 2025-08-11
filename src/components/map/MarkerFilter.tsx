@@ -150,12 +150,21 @@ export function MarkerFilter({
     });
 
     // Analyze location data
+    console.log(
+      "🔍 [MarkerFilter] Processing",
+      locationsList.length,
+      "locations"
+    );
+    let locationsWithCategories = 0;
+    let locationsWithTypes = 0;
+
     locationsList.forEach((location) => {
       if (
         location.category &&
         location.category.name &&
         typeof location.category.name === "string"
       ) {
+        locationsWithCategories++;
         const catKey = `location-${location.category.name
           .toLowerCase()
           .replace(/\s+/g, "-")}`;
@@ -164,9 +173,24 @@ export function MarkerFilter({
           count: (existing?.count || 0) + 1,
           type: "location-category",
         });
+
+        if (locationsWithCategories <= 5) {
+          console.log(
+            "📍 [MarkerFilter] Location category:",
+            location.category.name,
+            "for",
+            location.name
+          );
+        }
       }
 
-      if (location.type && typeof location.type === "string") {
+      // Only process location.type if there's NO category.name (to avoid duplicate "Places" filter)
+      if (
+        location.type &&
+        typeof location.type === "string" &&
+        (!location.category || !location.category.name)
+      ) {
+        locationsWithTypes++;
         const typeKey = `type-${location.type
           .toLowerCase()
           .replace(/\s+/g, "-")}`;
@@ -175,7 +199,22 @@ export function MarkerFilter({
           count: (existing?.count || 0) + 1,
           type: "location-type",
         });
+
+        if (locationsWithTypes <= 5) {
+          console.log(
+            "🏷️ [MarkerFilter] Location type:",
+            location.type,
+            "for",
+            location.name
+          );
+        }
       }
+    });
+
+    console.log("📊 [MarkerFilter] Summary:", {
+      locationsWithCategories,
+      locationsWithTypes,
+      totalCategories: categories.size,
     });
 
     // Convert to filter options
@@ -186,7 +225,7 @@ export function MarkerFilter({
       // Transform technical terms to user-friendly names
       let rawLabel = key.replace(/^(event-|location-|type-)/, "");
 
-      // Replace technical terms with user-friendly ones
+      // Replace technical terms with user-friendly ones ONLY for types, not categories
       const technicalToFriendly: { [key: string]: string } = {
         googleapi: "Places",
         api: "Places",
@@ -200,12 +239,15 @@ export function MarkerFilter({
         database: "Featured Spots",
       };
 
-      // Check if the raw label contains any technical terms
+      // Only apply technical replacements to types, NOT to location categories
       let friendlyLabel = rawLabel;
-      for (const [tech, friendly] of Object.entries(technicalToFriendly)) {
-        if (rawLabel.toLowerCase().includes(tech)) {
-          friendlyLabel = friendly;
-          break;
+      if (value.type === "location-type") {
+        // Only replace for location types, not categories
+        for (const [tech, friendly] of Object.entries(technicalToFriendly)) {
+          if (rawLabel.toLowerCase().includes(tech)) {
+            friendlyLabel = friendly;
+            break;
+          }
         }
       }
 
@@ -259,6 +301,21 @@ export function MarkerFilter({
         category,
         count: value.count,
       });
+
+      // Debug the first few filter options
+      if (filterOptions.length <= 10) {
+        console.log("🏷️ [MarkerFilter] Filter created:", {
+          key,
+          label,
+          category: value.type,
+          count: value.count,
+        });
+      }
+    });
+
+    console.log("🎯 [MarkerFilter] Final filter summary:", {
+      totalFilters: filterOptions.length,
+      filterLabels: filterOptions.map((f) => f.label).slice(0, 10),
     });
 
     // Sort by count (highest first) within each category
