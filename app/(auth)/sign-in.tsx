@@ -42,11 +42,11 @@ export default function SignIn(): JSX.Element {
   async function signIn(): Promise<void> {
     if (!email || !password) {
       setError("Please fill in all fields.");
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Please fill in all fields",
-      });
+      // Toast.show({
+      //   type: "error",
+      //   text1: "Error",
+      //   text2: "Please fill in all fields",
+      // });
       return;
     }
 
@@ -64,11 +64,11 @@ export default function SignIn(): JSX.Element {
         setError(
           "Invalid login credentials or no account associated with email."
         );
-        Toast.show({
-          type: "error",
-          text1: "Error",
-          text2: error.message || "Invalid login credentials",
-        });
+        // Toast.show({
+        //   type: "error",
+        //   text1: "Error",
+        //   text2: error.message || "Invalid login credentials",
+        // });
         return;
       }
 
@@ -99,7 +99,7 @@ export default function SignIn(): JSX.Element {
       await AsyncStorage.setItem("tutorial_finished", JSON.stringify("1"));
       console.log("Saved successfully");
     } catch (error) {
-      console.error("Error saving tutorial_finished:", error);
+      // console.error("Error saving tutorial_finished:", error);
     }
   };
 

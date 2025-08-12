@@ -17,8 +17,11 @@ import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 import { useLocalSearchParams } from "expo-router";
 
 export default function WebviewLayout() {
-  const { eventSelected, external_url } = useLocalSearchParams();
-  const event = JSON.parse(eventSelected);
+  const { eventSelected, external_url, title } = useLocalSearchParams();
+  let event;
+  if (eventSelected !== undefined) {
+    event = JSON.parse(eventSelected);
+  }
 
   // console.log("eventSelected>>", event);
   // console.log("external_url>>", external_url);
@@ -29,7 +32,11 @@ export default function WebviewLayout() {
   const [showOverlay, setShowOverlay] = useState(false);
 
   const handleBackPress = () => {
-    setShowOverlay(true); // show full screen view
+    if (title !== "Privacy Policy" && title !== "Terms & Conditions") {
+      setShowOverlay(true); // show full screen view
+    } else {
+      router.back();
+    }
   };
   const hitUpdaeEventApi = async () => {
     console.log("hitUpdaeEventApi");
@@ -37,7 +44,7 @@ export default function WebviewLayout() {
     setShowOverlay(false);
     setTimeout(() => {
       router.back(); // user confirms navigation
-      DeviceEventEmitter.emit('refreshEventDetail', true);
+      DeviceEventEmitter.emit("refreshEventDetail", true);
     }, 2000); // 2000ms = 2 seconds
   };
 
@@ -60,7 +67,7 @@ export default function WebviewLayout() {
             headerTitleAlign: "center",
             headerTitle: () => (
               <Text style={{ fontSize: 18, fontWeight: "bold" }}>
-                Book Event
+                {title!== undefined ? title : 'Book Event'}
               </Text>
             ),
             headerLeft: () => (

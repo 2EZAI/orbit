@@ -9,8 +9,7 @@ import { AlertDialogs } from "~/src/components/ui/alertdialogs";
 export default function Webview() {
   const [isShowAlert, setIsShowAlert] = useState(false);
   const { external_url } = useLocalSearchParams();
-  // console.log("external_url>>", external_url);
-
+  console.log("external_url>>", external_url);
   useEffect(() => {
     return () => {
       setIsShowAlert(true);
@@ -20,7 +19,7 @@ export default function Webview() {
   return (
     <SafeAreaView className="flex-1 bg-background">
       <WebView source={{ uri: external_url }} style={{ flex: 1 }} />
-      <AlertDialogs isvisible={isShowAlert} />
+     <AlertDialogs isvisible={isShowAlert} />
     </SafeAreaView>
   );
 }

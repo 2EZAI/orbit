@@ -1,9 +1,11 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
-  SafeAreaView,
   TouchableOpacity,
+  SafeAreaView,
   View,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import { supabase } from "../../src/lib/supabase";
 import { router } from "expo-router";
@@ -11,20 +13,29 @@ import { Input } from "~/src/components/ui/input";
 import { Button } from "~/src/components/ui/button";
 import { Text } from "~/src/components/ui/text";
 import Toast from "react-native-toast-message";
-import { Mail } from "lucide-react-native";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { Mail ,AlertTriangle,ArrowLeft} from "lucide-react-native";
 import { MotiView } from "moti";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ResetPassword(): JSX.Element {
   const [email, setEmail] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
+  const { theme } = useTheme();
+ const insets = useSafeAreaInsets();
 
+const handleBack = () => {
+    router.back();
+  };
   async function handleForgotPassword(): Promise<void> {
     if (!email) {
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Please enter your email address.",
-      });
+       setError("Please enter your email address.");
+      // Toast.show({
+      //   type: "error",
+      //   text1: "Error",
+      //   text2: "Please enter your email address.",
+      // });
       return;
     }
 
@@ -36,11 +47,12 @@ export default function ResetPassword(): JSX.Element {
 
       if (error) {
         console.log(error);
-        Toast.show({
-          type: "error",
-          text1: "Error",
-          text2: error.message || "Unable to send reset email.",
-        });
+        setError(error.message || "Unable to send reset email.");
+        // Toast.show({
+        //   type: "error",
+        //   text1: "Error",
+        //   text2: error.message || "Unable to send reset email.",
+        // });
         return;
       }
 
@@ -54,11 +66,12 @@ export default function ResetPassword(): JSX.Element {
       router.push("/(auth)/sign-in");
     } catch (error) {
       if (error instanceof Error) {
-        Toast.show({
-          type: "error",
-          text1: "Error",
-          text2: error.message,
-        });
+        setError(error.message);
+        // Toast.show({
+        //   type: "error",
+        //   text1: "Error",
+        //   text2: error.message,
+        // });
       }
     } finally {
       setLoading(false);
@@ -66,8 +79,38 @@ export default function ResetPassword(): JSX.Element {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+    <SafeAreaView  style={{
+        paddingTop: Math.max(insets.top + 20, 40),
+      }} className="flex-1 bg-background">
       <View className="flex-1 w-full px-4">
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+        }}
+      >
+        <TouchableOpacity
+          onPress={handleBack}
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            backgroundColor: theme.dark
+              ? "rgba(139, 92, 246, 0.2)"
+              : "rgba(139, 92, 246, 0.1)",
+            justifyContent: "center",
+            alignItems: "center",
+            marginRight: 16,
+            borderWidth: 1,
+            borderColor: theme.dark
+              ? "rgba(139, 92, 246, 0.3)"
+              : "rgba(139, 92, 246, 0.2)",
+          }}
+        >
+          <ArrowLeft size={20} color="#8B5CF6" />
+        </TouchableOpacity>
+      </View>
         {/* Header Section */}
         <MotiView
           from={{ opacity: 0, translateY: -20 }}
@@ -91,6 +134,48 @@ export default function ResetPassword(): JSX.Element {
           >
             {/* Email Input */}
             <View className="mb-6">
+            {/* Error Message */}
+              {error && (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    padding: 16,
+                    marginBottom: 24,
+                    backgroundColor: theme.dark
+                      ? "rgba(239, 68, 68, 0.15)"
+                      : "rgba(239, 68, 68, 0.1)",
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: theme.dark
+                      ? "rgba(239, 68, 68, 0.3)"
+                      : "rgba(239, 68, 68, 0.2)",
+                  }}
+                >
+                  <AlertTriangle
+                    size={20}
+                    color="#EF4444"
+                    style={{ marginRight: 12 }}
+                  />
+                  <Text style={{ flex: 1, fontSize: 14, color: "#EF4444" }}>
+                    {error}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setError("")}
+                    style={{ padding: 4 }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: "600",
+                        color: "#EF4444",
+                      }}
+                    >
+                      ✕
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
               <Text className="mb-4 text-lg font-medium">Email Address</Text>
               <View className="flex-row items-center h-14 bg-input rounded-xl">
                 <View className="px-4">
@@ -144,5 +229,6 @@ export default function ResetPassword(): JSX.Element {
       {/* Toast Component */}
       <Toast />
     </SafeAreaView>
+     </TouchableWithoutFeedback>
   );
 }

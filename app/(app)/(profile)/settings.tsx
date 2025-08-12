@@ -181,10 +181,11 @@ export default function SettingsScreen() {
     }
   };
 
-  const openWebview = (url: string, title: string) => {
+  const openWebview = (external_url: string, title: string) => {
+    router.back();
     router.push({
       pathname: "/(app)/(webview)",
-      params: { url, title },
+      params: { external_url, title },
     });
   };
 

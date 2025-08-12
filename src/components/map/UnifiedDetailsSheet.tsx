@@ -43,6 +43,7 @@ import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 import { useLocationEvents } from "~/hooks/useLocationEvents";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "~/src/components/ThemeProvider";
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 type UnifiedData = (MapEvent | MapLocation) & {
   created_by?: {
@@ -556,6 +557,7 @@ export function UnifiedDetailsSheet({
       statusBarTranslucent={true}
       presentationStyle="overFullScreen"
     >
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={{ flex: 1 }}>
         {/* Full Screen Backdrop */}
         <View
@@ -1988,6 +1990,7 @@ export function UnifiedDetailsSheet({
           />
         )}
       </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
