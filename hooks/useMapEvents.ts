@@ -438,7 +438,7 @@ export function useMapEvents({
       if (!session?.access_token) {
         throw new Error("No valid auth session");
       }
-
+console.log("session.access_token>",session.access_token);
       const response = await fetch(
         `${process.env.BACKEND_MAP_URL}/api/events/categories`,
         {

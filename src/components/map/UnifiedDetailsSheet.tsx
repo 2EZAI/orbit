@@ -12,6 +12,7 @@ import {
   Linking,
   PanResponder,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import { OptimizedImage } from "~/src/components/ui/optimized-image";
 import { MapEvent, MapLocation, Category, Prompt } from "~/hooks/useMapEvents";
@@ -557,6 +558,7 @@ export function UnifiedDetailsSheet({
       statusBarTranslucent={true}
       presentationStyle="overFullScreen"
     >
+    
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={{ flex: 1 }}>
         {/* Full Screen Backdrop */}
@@ -587,6 +589,7 @@ export function UnifiedDetailsSheet({
           style={{ zIndex: 99999, elevation: 99999 }}
           containerStyle={{ zIndex: 99999, elevation: 99999 }}
         >
+          <SafeAreaView style={{flex:1,marginTop:20}}>
           <BottomSheetScrollView
             contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
             showsVerticalScrollIndicator={false}
@@ -1757,6 +1760,7 @@ export function UnifiedDetailsSheet({
               </View>
             )}
           </View>
+           </SafeAreaView>
         </BottomSheet>
 
         {/* Enhanced Image Viewer Modal with Swiping */}

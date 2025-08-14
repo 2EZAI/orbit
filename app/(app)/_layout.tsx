@@ -28,6 +28,7 @@ export default function AppLayout() {
     }
   }, [session]);
 
+
   if (loading) {
     return null;
   }

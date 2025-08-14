@@ -122,6 +122,8 @@ export default function CreateEvent() {
   const [input, setInput] = useState("");
   const [isStartDate, setIsStartDate] = useState(true);
   const [showDateModal, setShowDateModal] = useState(false);
+  const [eventID, setEventID] = useState<string | undefined>(undefined);
+
   // Form state
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
@@ -230,6 +232,16 @@ export default function CreateEvent() {
         }
 
         console.log(`🎯 [${callId}] passDataToCreateEvent COMPLETED`);
+      }
+    );
+     DeviceEventEmitter.addListener(
+      "editEvent",
+      (...args: any[]) => { 
+        const [
+          eventId,
+        ] = args;
+        // console.log("eventId>>",eventId);
+        setEventID(eventId ? eventId : undefined);
       }
     );
   }, []);
@@ -730,7 +742,11 @@ export default function CreateEvent() {
         image_urls: imageUrls,
         is_private: isPrivate,
         topic_id: selectedTopics,
+        ...(eventID?.eventId && { event_id: eventID.eventId }),
       };
+//       if (eventID !== undefined) {
+//   eventData.event_id = eventID;
+// }
       if (locationType === "static" || locationType === "googleApi") {
         let promtIds: string[] = []; // an empty array
         if (selectedPrompts?.id != undefined) {
@@ -751,9 +767,13 @@ export default function CreateEvent() {
           image_urls: imageUrls,
           is_private: isPrivate,
           topic_id: selectedTopics,
+          ...(eventID?.eventId && { event_id: eventID.eventId }),
         };
+//         if (eventID !== undefined) {
+//   eventData.event_id = eventID;
+// }
       }
-      // console.log("eventData>>",eventData);
+      console.log("eventData>>",eventData);
 
       const response = await fetch(
         `${process.env.BACKEND_MAP_URL}/api/events`,
@@ -779,7 +799,7 @@ export default function CreateEvent() {
         text1: "Event Created!",
         text2: "Your event has been created successfully",
       });
-
+ setEventID(undefined);
       // Navigate to summary screen with event data
       router.push({
         pathname: "/(app)/(create)/summary",

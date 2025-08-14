@@ -172,9 +172,11 @@ export default function TabBar() {
   const currentActiveIndex = TAB_ROUTES.findIndex((tab) =>
     segments.includes(tab.segment)
   );
-
+//  console.log('segments:',segments);
   useEffect(() => {
+
     if (currentActiveIndex !== -1 && currentActiveIndex !== activeIndex) {
+        console.log('currentActiveIndex:',currentActiveIndex);
       setActiveIndex(currentActiveIndex);
       // Animate to the new position
       Animated.spring(slideAnimation, {

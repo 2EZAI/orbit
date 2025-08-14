@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect,useCallback, useState, useRef } from "react";
 import {
   View,
   TouchableOpacity,
@@ -13,6 +13,7 @@ import {
   Platform,
   Dimensions,
 } from "react-native";
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import { useAuth } from "~/src/lib/auth";
@@ -87,11 +88,25 @@ export function UnifiedProfilePage({
   const isCurrentUser = !userId || userId === session?.user?.id;
   const targetUserId = userId || session?.user?.id;
 
-  useEffect(() => {
+  // useEffect(() => {
+  //   if (targetUserId) {
+  //     loadProfile();
+  //   }
+  // }, [targetUserId]);
+  //  useEffect(() => {
+  //   console.log("dfd");
+  // }, []);
+
+  useFocusEffect(
+  useCallback(() => {
     if (targetUserId) {
       loadProfile();
     }
-  }, [targetUserId]);
+    return () => {
+      console.log('Screen is unfocused');
+    };
+  }, [targetUserId])
+);
 
   const loadProfile = async () => {
     if (!targetUserId) return;

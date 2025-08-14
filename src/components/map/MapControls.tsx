@@ -260,7 +260,12 @@ export function MapControls({
           >
             {/* Notification */}
             <TouchableOpacity
-              onPress={() => router.push("/(app)/(notification)")}
+              onPress={() => {
+                router.push({
+                  pathname: `/(app)/(notification)`,
+                  params: { from: "map" },
+                });
+              }}
               style={{
                 width: 42,
                 height: 42,

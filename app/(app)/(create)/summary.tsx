@@ -65,6 +65,10 @@ export default function EventSummary() {
   };
 
   const handleEdit = () => {
+    // console.log("params.eventId as string>",params.eventId as string);
+     DeviceEventEmitter.emit("editEvent", {
+      eventId: params.eventId as string,
+    });
     // Go back to the create event screen
     router.back();
   };

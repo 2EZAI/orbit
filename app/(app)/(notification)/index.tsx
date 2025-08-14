@@ -11,7 +11,7 @@ import {
   Alert,
 } from "react-native";
 import { supabase } from "~/src/lib/supabase";
-import { router } from "expo-router";
+import { router ,useLocalSearchParams} from "expo-router";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -324,6 +324,8 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
 
 export default function NotificationView() {
   const { theme, isDarkMode } = useTheme();
+  const {from} =  useLocalSearchParams();
+
   const { session } = useAuth();
   const { client } = useChat();
   const insets = useSafeAreaInsets();
@@ -337,8 +339,10 @@ export default function NotificationView() {
   const [hasMore, setHasMore] = useState(true);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-
+    console.log('params:', from); 
+      
   useEffect(() => {
+
     loadNotifications();
   }, []);
 
@@ -772,7 +776,21 @@ export default function NotificationView() {
             }}
           >
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => {
+                if(from === 'home'){
+                  router.push('/(app)/(home)')
+                }
+               else if(from === 'social'){
+                  router.push('/(app)/(social)')
+                }
+                else if(from === 'map'){
+                  router.back()
+                }
+                else{
+                router.back()
+                }
+                }
+              }
               style={{
                 width: 40,
                 height: 40,

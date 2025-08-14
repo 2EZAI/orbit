@@ -72,8 +72,7 @@ export default function EventSummaryCard({
               backgroundColor: "rgba(139, 92, 246, 0.1)",
               justifyContent: "center",
               alignItems: "center",
-              marginBottom: 16,
-              paddingBottom: 20,
+              
             }}
           >
             <CheckCircle size={40} color="#8B5CF6" />
@@ -82,6 +81,7 @@ export default function EventSummaryCard({
             style={{
               fontSize: 28,
               fontWeight: "800",
+               lineHeight: 34,
               color: theme.colors.text,
               marginBottom: 8,
               textAlign: "center",
@@ -133,6 +133,7 @@ export default function EventSummaryCard({
               <Text
                 style={{
                   fontSize: 24,
+                  lineHeight: 34,
                   fontWeight: "700",
                   color: theme.colors.text,
                   flex: 1,

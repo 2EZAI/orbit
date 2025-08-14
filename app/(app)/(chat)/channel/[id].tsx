@@ -792,7 +792,7 @@ export default function ChannelScreen() {
               onPress={() => router.back()}
             >
               <ArrowLeft size={22} color={theme.colors.text} strokeWidth={2} />
-              <Text
+           {/*<Text
                 style={{
                   fontSize: 17,
                   color: theme.colors.text,
@@ -801,6 +801,7 @@ export default function ChannelScreen() {
               >
                 Messages
               </Text>
+               */}  
             </TouchableOpacity>
           ),
           headerRight: () =>

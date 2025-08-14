@@ -340,8 +340,9 @@ export default function UnifiedEventsTab({
   };
 
   const handleCloseSheet = () => {
-    setIsSheetOpen(false);
     setSelectedEvent(null);
+    setIsSheetOpen(false);
+    
   };
 
   const getCurrentEvents = () => {

@@ -1104,7 +1104,12 @@ export default function Home() {
           actions={[
             {
               icon: <Bell size={18} color="white" strokeWidth={2.5} />,
-              onPress: () => router.push("/(app)/(notification)"),
+              onPress: () => {
+                router.push({
+                  pathname: `/(app)/(notification)`,
+                  params: { from: "home" },
+                });
+              },
               backgroundColor: theme.colors.primary,
               badge: !!(unReadCount && unReadCount > 0) ? (
                 <View
@@ -1255,7 +1260,12 @@ export default function Home() {
           actions={[
             {
               icon: <Bell size={18} color="white" strokeWidth={2.5} />,
-              onPress: () => router.push("/(app)/(notification)"),
+              onPress: () => {
+                router.push({
+                  pathname: `/(app)/(notification)`,
+                  params: { from: "home" },
+                });
+              },
               backgroundColor: theme.colors.primary,
               badge: !!(unReadCount && unReadCount > 0) ? (
                 <View
