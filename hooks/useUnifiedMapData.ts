@@ -571,7 +571,7 @@ export function useUnifiedMapData({
         };
 
         // Make API call
-        const apiUrl = `${process.env.BACKEND_DEV_URL}/events/user-location`;
+        const apiUrl = `${process.env.BACKEND_MAP_URL}/api/events/user-location`;
         const response = await fetch(apiUrl, {
           method: "POST",
           headers: {
