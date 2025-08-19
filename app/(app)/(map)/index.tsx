@@ -8,7 +8,6 @@ import {
   DeviceEventEmitter,
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 
 type TimeFrame = "Today" | "Week" | "Weekend";
 import { supabase } from "~/src/lib/supabase";
@@ -17,13 +16,13 @@ import { Text } from "~/src/components/ui/text";
 import * as Location from "expo-location";
 import { useTheme } from "~/src/components/ThemeProvider";
 import MapboxGL, { UserTrackingMode } from "@rnmapbox/maps";
-import { useUser } from "~/src/lib/UserProvider";
-import { debounce } from "lodash";
+
 import {
-  useMapEvents,
+  useUnifiedMapData,
   type MapEvent,
   type MapLocation,
-} from "~/hooks/useMapEvents";
+  type UnifiedCluster,
+} from "~/hooks/useUnifiedMapData";
 import { useMapCamera } from "~/src/hooks/useMapCamera";
 import { MapControls } from "~/src/components/map/MapControls";
 import {
@@ -41,7 +40,7 @@ import { UnifiedDetailsSheet } from "~/src/components/map/UnifiedDetailsSheet";
 import { MapLoadingScreen } from "~/src/components/map/MapLoadingScreen";
 
 import { SearchSheet } from "~/src/components/search/SearchSheet";
-import { imagePreloader } from "~/src/lib/imagePreloader";
+import { useUser } from "~/src/lib/UserProvider";
 
 // Replace with your Mapbox access token
 MapboxGL.setAccessToken(
@@ -66,9 +65,37 @@ const FALLBACK_DARK_STYLE = "mapbox://styles/mapbox/dark-v11";
 const getFallbackStyle = (isDarkMode: boolean) =>
   isDarkMode ? FALLBACK_DARK_STYLE : FALLBACK_LIGHT_STYLE;
 
+// Helper function to extract coordinates from location object (supports both old and new formats)
+const getLocationCoordinates = (
+  location: any
+): { latitude: number; longitude: number } | null => {
+  if (!location) return null;
+
+  // Handle GeoJSON format (new API format)
+  if (
+    location.type === "Point" &&
+    location.coordinates &&
+    Array.isArray(location.coordinates)
+  ) {
+    const [longitude, latitude] = location.coordinates;
+    if (typeof latitude === "number" && typeof longitude === "number") {
+      return { latitude, longitude };
+    }
+  }
+
+  // Handle old format (fallback)
+  if (
+    typeof location.latitude === "number" &&
+    typeof location.longitude === "number"
+  ) {
+    return { latitude: location.latitude, longitude: location.longitude };
+  }
+
+  return null;
+};
+
 export default function Map() {
   const params = useLocalSearchParams();
-  const isFocused = useIsFocused(); // Track if this screen is currently active
   const [selectedTimeFrame, setSelectedTimeFrame] =
     useState<TimeFrame>("Today");
   const [showDetails, setShowDetails] = useState(false);
@@ -88,64 +115,27 @@ export default function Map() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [followerList, setFollowerList] = useState<any[]>([]);
-  const [selectedCluster, setSelectedCluster] = useState<MapEvent[] | null>(
-    null
-  );
+  const [selectedCluster, setSelectedCluster] = useState<
+    (MapEvent | MapLocation)[] | null
+  >(null);
   const [mapStyleError, setMapStyleError] = useState(false);
   const [filters, setFilters] = useState<FilterState>({});
   const [isMapFullyLoaded, setIsMapFullyLoaded] = useState(false); // Track overall map loading state
+  const [currentZoomLevel, setCurrentZoomLevel] = useState(13); // Track current zoom level
+  const zoomDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const lastRegionChangeRef = useRef<number>(0); // CRITICAL: Track last region change time
+  const isMapMovingRef = useRef<boolean>(false); // CRITICAL: Track if map is actively moving
   const [loadingReason, setLoadingReason] = useState<
     "initial" | "timeframe" | "filters" | "data"
   >("initial"); // Track why we're loading
   const markersReadyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastNavigationRef = useRef<{
-    eventId?: string;
-    locationId?: string;
-    timestamp: number;
-  }>({ timestamp: 0 });
-  const searchedLocationNameRef = useRef<string | null>(null);
-
-  // Helper to parse safe numbers
-  const parseNumber = (v: any): number | null => {
-    const n =
-      typeof v === "string" ? parseFloat(v) : typeof v === "number" ? v : NaN;
-    return Number.isFinite(n) ? n : null;
-  };
-
-  // Preferred coordinates (Orbit if selected and valid; otherwise device) - memoized to prevent infinite loops
-  const orbitLat = useMemo(
-    () =>
-      user?.event_location_preference === 1 && userlocation?.latitude
-        ? parseNumber(userlocation.latitude)
-        : null,
-    [user?.event_location_preference, userlocation?.latitude]
-  );
-  const orbitLng = useMemo(
-    () =>
-      user?.event_location_preference === 1 && userlocation?.longitude
-        ? parseNumber(userlocation.longitude)
-        : null,
-    [user?.event_location_preference, userlocation?.longitude]
-  );
-
-  const preferredLat = useMemo(
-    () => orbitLat ?? (location ? parseNumber(location.latitude) : null),
-    [orbitLat, location?.latitude]
-  );
-  const preferredLng = useMemo(
-    () => orbitLng ?? (location ? parseNumber(location.longitude) : null),
-    [orbitLng, location?.longitude]
-  );
+  const forceCloseLoadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Reset style error when theme changes to retry the correct style
   useEffect(() => {
     setMapStyleError(false);
-    console.log("Theme changed to:", isDarkMode ? "DARK" : "LIGHT");
-    console.log(
-      "Will attempt to use style:",
-      isDarkMode ? CUSTOM_DARK_STYLE : WORKING_LIGHT_STYLE
-    );
-    console.log("Fallback available:", getFallbackStyle(isDarkMode));
+    // Reduce theme change logging to prevent spam
+    // console.log("Theme changed to:", isDarkMode ? "DARK" : "LIGHT");
   }, [isDarkMode]);
 
   // Get loading text based on the current loading reason
@@ -179,120 +169,12 @@ export default function Map() {
     }
   };
 
-  // Add state to track current map center and dynamic radius
+  // Add state to track current map center
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
-  const [dynamicRadius, setDynamicRadius] = useState<number>(50000); // Default 50km
-  const [mapZoomLevel, setMapZoomLevel] = useState<number>(10); // Track zoom level for smart limits
 
   // Add debounced region change handler
   const regionChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastCenterRef = useRef<[number, number] | null>(null);
-
-  // Helper function to calculate distance between two points in km
-  const calculateDistance = (
-    lat1: number,
-    lng1: number,
-    lat2: number,
-    lng2: number
-  ): number => {
-    const R = 6371; // Earth's radius in km
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLng = ((lng2 - lng1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLng / 2) *
-        Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
-
-  // Function to dynamically adjust radius based on target location
-  const adjustRadiusForDistance = (
-    currentCenter: [number, number] | null,
-    targetLat: number,
-    targetLng: number
-  ) => {
-    if (!currentCenter) {
-      // If no current center, use a large radius to ensure we capture the target
-      const expandedRadius = Math.max(100000, dynamicRadius * 2); // At least 100km
-      console.log(
-        "[Map] No current center, expanding radius to:",
-        expandedRadius
-      );
-      setDynamicRadius(expandedRadius);
-      return expandedRadius;
-    }
-
-    const distance = calculateDistance(
-      currentCenter[0],
-      currentCenter[1],
-      targetLat,
-      targetLng
-    );
-    const distanceInMeters = distance * 1000;
-
-    // LONG DISTANCE NAVIGATION: If target is >500km away, switch to center-based loading
-    if (distance > 500) {
-      console.log(
-        `[Map] 🚀 LONG DISTANCE NAVIGATION: ${distance.toFixed(
-          1
-        )}km - switching to target-centered loading`
-      );
-
-      // For long distances, center the map on the target and use standard radius
-      // This is more efficient than trying to expand radius to cover huge distances
-      console.log(
-        `[Map] Setting new center to target location: [${targetLat}, ${targetLng}]`
-      );
-
-      // Reset to standard radius for the new location
-      setDynamicRadius(100000); // 100km radius at target location
-
-      // The map center will be updated by the calling function
-      return 100000;
-    }
-
-    // REGIONAL NAVIGATION: For distances <500km, use radius expansion as before
-    const requiredRadius = distanceInMeters + distanceInMeters * 0.2;
-    const newRadius = Math.max(50000, Math.min(requiredRadius, 200000)); // Min 50km, max 200km
-
-    if (newRadius > dynamicRadius) {
-      console.log(
-        `[Map] 📍 REGIONAL EXPANSION: from ${dynamicRadius / 1000}km to ${
-          newRadius / 1000
-        }km for distance ${distance.toFixed(1)}km`
-      );
-      setDynamicRadius(newRadius);
-      return newRadius;
-    }
-
-    return dynamicRadius;
-  };
-
-  // Function to reset radius when returning to home area
-  const resetRadiusIfNearHome = (currentLat: number, currentLng: number) => {
-    const homeCoords = centerForHooks;
-    if (homeCoords && homeCoords.length >= 2) {
-      const distanceFromHome = calculateDistance(
-        currentLat,
-        currentLng,
-        homeCoords[0],
-        homeCoords[1]
-      );
-
-      // If within 25km of home and radius is expanded, reset to default
-      if (distanceFromHome < 25 && dynamicRadius > 50000) {
-        console.log(
-          `[Map] Near home (${distanceFromHome.toFixed(
-            1
-          )}km), resetting radius to 50km`
-        );
-        setDynamicRadius(50000);
-      }
-    }
-  };
 
   // Helper function to determine marker type
   const getMarkerType = (
@@ -326,134 +208,157 @@ export default function Map() {
   };
 
   // Dynamic filter functions - uses OR logic for better UX
-  const shouldShowMarker = (event: MapEvent | MapLocation): boolean => {
-    // If no filters are set yet, show everything
-    if (Object.keys(filters).length === 0) return true;
-
-    // If all filters are false, hide everything
-    const hasAnyFilterEnabled = Object.values(filters).some(
-      (value) => value === true
-    );
-    if (!hasAnyFilterEnabled) return false;
-
-    let shouldShow = false;
-
-    // Check event source type filters - user-friendly names only
-    if ("source" in event && event.source) {
-      const sourceKey =
-        event.source === "user"
-          ? "community-events"
-          : (typeof event.source === "string" &&
-              event.source.includes("ticket")) ||
-            event.source === "ticketmaster"
-          ? "ticketed-events"
-          : "featured-events"; // No technical terms
-
-      if (filters.hasOwnProperty(sourceKey) && filters[sourceKey]) {
-        shouldShow = true;
+  const shouldShowMarker = useCallback(
+    (event: MapEvent | MapLocation): boolean => {
+      // If no filters are set yet, show everything
+      if (Object.keys(filters).length === 0) {
+        return true;
       }
-    }
 
-    // Check event category filters
-    if (
-      "categories" in event &&
-      event.categories &&
-      Array.isArray(event.categories)
-    ) {
-      for (const cat of event.categories) {
-        const catKey = `event-${cat.name.toLowerCase().replace(/\s+/g, "-")}`;
-        if (filters.hasOwnProperty(catKey) && filters[catKey]) {
+      // If all filters are false, hide everything
+      const hasAnyFilterEnabled = Object.values(filters).some(
+        (value) => value === true
+      );
+      if (!hasAnyFilterEnabled) {
+        return false;
+      }
+
+      let shouldShow = false;
+
+      // Check event source type filters - user-friendly names only
+      if ("source" in event && event.source) {
+        const sourceKey =
+          event.source === "user"
+            ? "community-events"
+            : (typeof event.source === "string" &&
+                event.source.includes("ticket")) ||
+              event.source === "ticketmaster"
+            ? "ticketed-events"
+            : "featured-events"; // No technical terms
+
+        if (filters.hasOwnProperty(sourceKey) && filters[sourceKey]) {
           shouldShow = true;
-          break;
         }
       }
-    }
 
-    // Check location category filters
-    if ("category" in event && event.category) {
-      const catKey = `location-${event.category.name
-        .toLowerCase()
-        .replace(/\s+/g, "-")}`;
-      if (filters.hasOwnProperty(catKey) && filters[catKey]) {
-        shouldShow = true;
-      }
-    }
-
-    // Check location type filters
-    if ("type" in event && event.type) {
-      const typeKey = `type-${event.type.toLowerCase().replace(/\s+/g, "-")}`;
-      if (filters.hasOwnProperty(typeKey) && filters[typeKey]) {
-        shouldShow = true;
-      }
-    }
-
-    // If nothing matched any enabled filter, default to show (prevents empty map)
-    return shouldShow || !hasAnyFilterEnabled;
-  };
-
-  const filterClusters = (clusters: any[], zoomLevel?: number) => {
-    // Smart limit based on zoom level to prevent callback overflow
-    const getSmartLimit = (zoom: number = 10) => {
-      if (zoom >= 14) return 1000; // Close zoom: show everything
-      if (zoom >= 12) return 500; // Medium zoom: moderate limit
-      if (zoom >= 10) return 300; // Far zoom: fewer markers
-      return 150; // Very far: minimal markers
-    };
-
-    const smartLimit = getSmartLimit(zoomLevel);
-    // Reduced logging - only log significant changes
-    if (clusters.length > smartLimit) {
-      console.log(
-        `[Map] ⚡ SMART LIMIT: ${smartLimit} of ${
-          clusters.length
-        } clusters (zoom: ${zoomLevel || "unknown"})`
-      );
-    }
-
-    // If no filters are set, or all filters are enabled, don't hide anything
-    const hasAnyFilterEnabled = Object.values(filters).some((v) => v === true);
-    const areAllFiltersEnabled =
-      Object.keys(filters).length > 0 &&
-      Object.values(filters).every((v) => v === true);
-    if (!hasAnyFilterEnabled || areAllFiltersEnabled) {
-      // Search location debugging is now handled in the memoized hook
-
-      // Apply smart limit to prevent callback overflow
-      if (clusters.length > smartLimit) {
-        return clusters.slice(0, smartLimit);
+      // Check event category filters
+      if (
+        "categories" in event &&
+        event.categories &&
+        Array.isArray(event.categories)
+      ) {
+        for (const cat of event.categories) {
+          const catKey = `event-${cat.name.toLowerCase().replace(/\s+/g, "-")}`;
+          if (filters.hasOwnProperty(catKey) && filters[catKey]) {
+            shouldShow = true;
+            break;
+          }
+        }
       }
 
-      return clusters;
-    }
+      // Check location category filters (prioritize categories over types)
+      if ("category" in event && event.category) {
+        const catKey = `location-${event.category.name
+          .toLowerCase()
+          .replace(/\s+/g, "-")}`;
+        if (filters.hasOwnProperty(catKey) && filters[catKey]) {
+          shouldShow = true;
+        }
+      }
 
-    const filtered = clusters
-      .filter((cluster) => {
-        // Check if the main event should be shown
-        if (cluster.mainEvent && !shouldShowMarker(cluster.mainEvent))
-          return false;
+      // Check location type filters (only if no category is available)
+      if (
+        "type" in event &&
+        event.type &&
+        !("category" in event && event.category)
+      ) {
+        const typeKey = `type-${event.type.toLowerCase().replace(/\s+/g, "-")}`;
+        if (filters.hasOwnProperty(typeKey) && filters[typeKey]) {
+          shouldShow = true;
+        }
+      }
 
-        // Filter the events in the cluster
-        const filteredEvents = cluster.events.filter(shouldShowMarker);
+      return shouldShow;
+    },
+    [filters]
+  );
 
-        // Only show cluster if it has at least one visible event
-        return filteredEvents.length > 0;
-      })
-      .map((cluster) => ({
-        ...cluster,
-        events: cluster.events.filter(shouldShowMarker),
-      }));
+  const filterClusters = useCallback(
+    (clusters: any[]) => {
+      if (!clusters || !Array.isArray(clusters)) {
+        return [];
+      }
 
-    // Search location debugging is now handled in the memoized hook
+      const filtered = clusters
+        .filter((cluster) => {
+          // Handle both event clusters and location clusters
+          if (cluster.type === "location") {
+            // For location clusters, check if the main location should be shown
+            if (cluster.mainEvent && !shouldShowMarker(cluster.mainEvent)) {
+              return false;
+            }
 
-    // Apply smart limit to filtered results too
-    if (filtered.length > smartLimit) {
-      return filtered.slice(0, smartLimit);
-    }
+            // Filter the locations in the cluster
+            const filteredLocations = (cluster.locations || []).filter(
+              shouldShowMarker
+            );
 
-    return filtered;
-  };
+            // Only show cluster if it has at least one visible location
+            return filteredLocations.length > 0;
+          } else {
+            // For event clusters, check if the main event should be shown
+            if (cluster.mainEvent && !shouldShowMarker(cluster.mainEvent)) {
+              return false;
+            }
+
+            // Filter the events in the cluster
+            const filteredEvents = (cluster.events || []).filter(
+              shouldShowMarker
+            );
+
+            // Only show cluster if it has at least one visible event
+            return filteredEvents.length > 0;
+          }
+        })
+        .map((cluster) => {
+          if (cluster.type === "location") {
+            return {
+              ...cluster,
+              locations: cluster.locations.filter(shouldShowMarker),
+            };
+          } else {
+            return {
+              ...cluster,
+              events: cluster.events.filter(shouldShowMarker),
+            };
+          }
+        });
+
+      return filtered;
+    },
+    [shouldShowMarker]
+  );
 
   const handleRegionChange = useCallback((region: any) => {
+    // CRITICAL FIX: Prevent excessive callback creation
+    // Only process if we have valid region data
+    if (!region?.properties) {
+      return;
+    }
+
+    // CRITICAL: Prevent processing during rapid map movements
+    if (isMapMovingRef.current) {
+      return;
+    }
+
+    // CRITICAL: Very aggressive throttle region changes to prevent callback spam
+    const now = Date.now();
+    if (now - lastRegionChangeRef.current < 2000) {
+      // 2 second throttle to prevent excessive callbacks
+      return;
+    }
+    lastRegionChangeRef.current = now;
+
     // Clear existing timeout
     if (regionChangeTimeoutRef.current) {
       clearTimeout(regionChangeTimeoutRef.current);
@@ -466,91 +371,54 @@ export default function Map() {
       const zoomLevel = region?.properties?.zoomLevel;
 
       if (centerLat && centerLng && zoomLevel) {
-        // Update zoom level for smart filtering (debounced to prevent excessive updates)
-        const roundedZoom = Math.floor(zoomLevel);
-        if (Math.abs(mapZoomLevel - roundedZoom) >= 1) {
-          setMapZoomLevel(roundedZoom);
-        }
-        // Check if the center has meaningfully changed (more than 0.01 degrees)
+        // Smart panning detection: Load new data when user moves significantly
         const newCenter: [number, number] = [centerLat, centerLng];
         const lastCenter = lastCenterRef.current;
 
-        // Calculate distance moved and adjust threshold based on current radius
-        const radiusInKm = dynamicRadius / 1000;
-        const baseThreshold = 0.01; // 1km base threshold
-        const threshold = Math.min(
-          0.05,
-          Math.max(baseThreshold, radiusInKm / 1000)
-        ); // Scale with radius
-
-        if (
-          !lastCenter ||
-          Math.abs(newCenter[0] - lastCenter[0]) > threshold ||
-          Math.abs(newCenter[1] - lastCenter[1]) > threshold
-        ) {
-          // Check if we need to expand radius for this new location
-          if (mapCenter) {
-            const distance = calculateDistance(
-              mapCenter[0],
-              mapCenter[1],
-              newCenter[0],
-              newCenter[1]
-            );
-            const distanceInMeters = distance * 1000;
-
-            // LONG DISTANCE MOVEMENT: If moving >500km, switch to center-based approach
-            if (distance > 500) {
-              console.log(
-                `[Map] 🚀 LONG DISTANCE MOVEMENT: ${distance.toFixed(
-                  1
-                )}km - resetting to standard radius at new location`
-              );
-              setDynamicRadius(100000); // 100km radius at new location
-            }
-            // REGIONAL MOVEMENT: If moving more than half the radius away, consider expanding
-            else if (distanceInMeters > dynamicRadius * 0.5) {
-              const newRadius = Math.min(
-                200000,
-                Math.max(dynamicRadius, distanceInMeters * 1.5)
-              ); // Max 200km
-              if (newRadius !== dynamicRadius) {
-                console.log(
-                  `[Map] 📍 Progressive loading: expanding radius to ${
-                    newRadius / 1000
-                  }km for ${distance.toFixed(1)}km movement`
-                );
-                setDynamicRadius(newRadius);
-              }
-            }
-          }
-
-          // Check if we should reset radius when near home
-          resetRadiusIfNearHome(newCenter[0], newCenter[1]);
-
-          // Update the map center to trigger new data fetch
+        if (!lastCenter) {
+          // First time - load initial data
           setMapCenter(newCenter);
           lastCenterRef.current = newCenter;
-          console.log(
-            `[Map] Region change triggered data fetch (moved ${threshold.toFixed(
-              4
-            )}°, radius: ${radiusInKm}km)`
-          );
         } else {
-          console.log(
-            `[Map] Region change too small (${threshold.toFixed(
-              4
-            )}° threshold), skipping data fetch`
-          );
+          // Calculate distance moved
+          const latDiff = Math.abs(newCenter[0] - lastCenter[0]);
+          const lngDiff = Math.abs(newCenter[1] - lastCenter[1]);
+
+          // If moved more than ~50 miles, fetch new data for that area
+          const significantMoveThreshold = 0.5; // ~50 miles in degrees
+
+          if (
+            latDiff > significantMoveThreshold ||
+            lngDiff > significantMoveThreshold
+          ) {
+            console.log(
+              `🗺️ [MAP PANNING] User moved significantly, loading new area data`
+            );
+            setMapCenter(newCenter);
+            lastCenterRef.current = newCenter;
+          }
         }
       }
-    }, 2000); // Reduced back to 2 seconds for better responsiveness
+    }, 1000); // Increased to 1 second to reduce callback frequency
 
-    // Handle zoom level for follower count visibility
+    // Handle zoom level for follower count visibility and clustering
     let zoomLevel = region?.properties?.zoomLevel;
-    if (zoomLevel <= 12) {
-      setHideCount(true);
-    } else {
-      setHideCount(false);
+    if (zoomLevel) {
+      // Update hide count immediately
+      if (zoomLevel <= 12) {
+        setHideCount(true);
+      } else {
+        setHideCount(false);
+      }
+
+      // CRITICAL FIX: Throttled zoom level tracking to prevent excessive callbacks
+      if (zoomDebounceRef.current) {
+        clearTimeout(zoomDebounceRef.current);
+      }
+
+      zoomDebounceRef.current = setTimeout(() => {
+        setCurrentZoomLevel(zoomLevel);
+      }, 1000); // 1 second debounce to prevent excessive callbacks
     }
   }, []);
 
@@ -564,73 +432,56 @@ export default function Map() {
     fitToEvents,
   } = useMapCamera();
 
-  // Need to declare these before useMapEvents hook since they're used in dependencies
-  // They will be calculated after useMapEvents provides the cluster data
-  let clustersNowCount = 0;
-  let clustersTodayCount = 0;
-  let clustersTomorrowCount = 0;
-
-  // Auto-fit once when clusters first appear to ensure markers are visible
-  const didAutoFitRef = useRef(false);
-  useEffect(() => {
-    if (didAutoFitRef.current) return;
-    const activeClusters =
-      selectedTimeFrame === "Today"
-        ? clustersToday || []
-        : selectedTimeFrame === "Week"
-        ? clustersNow || []
-        : clustersTomorrow || [];
-
-    if (activeClusters && activeClusters.length > 0) {
-      const sample = activeClusters
-        .flatMap((c: any) => c.events)
-        .filter(
-          (e: any) =>
-            e &&
-            e.location &&
-            typeof e.location.latitude === "number" &&
-            typeof e.location.longitude === "number"
-        );
-      if (sample.length > 0) {
-        try {
-          fitToEvents(sample as any);
-          didAutoFitRef.current = true;
-          console.log(
-            "[Map] Auto-fit to",
-            sample.length,
-            "events for",
-            selectedTimeFrame
-          );
-        } catch (e) {}
-      }
+  // SIMPLE: Use orbit coordinates if orbit mode, GPS if current mode
+  const calculatedCenter = useMemo(() => {
+    // ORBIT MODE: Use orbit coordinates
+    if (
+      user?.event_location_preference === 1 &&
+      userlocation?.latitude &&
+      userlocation?.longitude
+    ) {
+      const orbitCenter: [number, number] = [
+        parseFloat(userlocation.latitude),
+        parseFloat(userlocation.longitude),
+      ];
+      // console.log("🗺️ [Map] ORBIT MODE - Using orbit coordinates:", orbitCenter);
+      return orbitCenter;
     }
+
+    // CURRENT MODE: Use GPS coordinates
+    if (
+      user?.event_location_preference === 0 &&
+      location?.latitude &&
+      location?.longitude
+    ) {
+      const gpsCenter: [number, number] = [
+        location.latitude,
+        location.longitude,
+      ];
+      // console.log("🗺️ [Map] CURRENT MODE - Using GPS coordinates:", gpsCenter);
+      return gpsCenter;
+    }
+
+    // Fallback for when preference is not set or no coordinates available
+    if (location?.latitude && location?.longitude) {
+      const fallbackCenter: [number, number] = [
+        location.latitude,
+        location.longitude,
+      ];
+      // console.log("🗺️ [Map] FALLBACK - Using GPS coordinates:", fallbackCenter);
+      return fallbackCenter;
+    }
+
+    return [0, 0] as [number, number];
   }, [
-    clustersNowCount,
-    clustersTodayCount,
-    clustersTomorrowCount,
-    selectedTimeFrame,
-    fitToEvents,
+    user?.event_location_preference,
+    userlocation?.latitude,
+    userlocation?.longitude,
+    location?.latitude,
+    location?.longitude,
   ]);
 
-  // Prefer preferred coordinates for data fetching center (memoized to prevent infinite loops)
-  const centerForHooks: [number, number] = useMemo(() => {
-    // Always prioritize preferred coordinates if available
-    if (preferredLat != null && preferredLng != null) {
-      return [preferredLat, preferredLng];
-    }
-    // Fallback to device location if available
-    if (location && location.latitude !== 0 && location.longitude !== 0) {
-      return [location.latitude, location.longitude];
-    }
-    // Last resort: use mapCenter if set
-    if (mapCenter && mapCenter[0] !== 0 && mapCenter[1] !== 0) {
-      return mapCenter as [number, number];
-    }
-    // Default fallback
-    return [25.7617, -80.1918]; // Miami coordinates as default
-  }, [preferredLat, preferredLng, location?.latitude, location?.longitude]); // Remove mapCenter to prevent loops
-
-  var {
+  const {
     events,
     locations,
     eventsNow,
@@ -641,103 +492,179 @@ export default function Map() {
     clustersNow,
     clustersToday,
     clustersTomorrow,
-    selectedEvent,
     isLoading,
     error,
-    handleEventClick,
-    handleCloseModal,
-    forceRefreshLocations,
-  } = useMapEvents({
-    center: isFocused ? centerForHooks : [0, 0], // Only use real center when screen is focused
-    radius: isFocused ? dynamicRadius : 0, // Disable radius when not focused
+    isLoadingProgressively,
+    loadedClusterCount,
+    totalClusterCount,
+    forceRefresh: forceRefreshLocations,
+  } = useUnifiedMapData({
+    center: calculatedCenter,
+    radius: 50000, // 50 miles radius
     timeRange:
       selectedTimeFrame === "Today"
         ? "today"
         : selectedTimeFrame === "Week"
         ? "week"
         : "weekend",
+    zoomLevel: currentZoomLevel, // Re-enabled for proper clustering
   });
 
-  // Memoize filtered clusters with stable dependencies to prevent infinite re-renders
-  const filteredClustersLocations = useMemo(() => {
-    // If screen is not focused, return empty array to prevent unnecessary processing
-    if (!isFocused) {
-      return [];
-    }
-
-    if (clustersLocations.length === 0) return [];
-
-    const filtered = filterClusters(clustersLocations, mapZoomLevel);
-
-    // Preload images for filtered clusters (debounced) - only when focused
-    if (isFocused && filtered.length > 0) {
-      setTimeout(() => {
-        const imageUrls: string[] = [];
-        filtered.forEach((cluster) => {
-          if (cluster.mainEvent?.image_urls?.[0]) {
-            imageUrls.push(cluster.mainEvent.image_urls[0]);
-          }
-        });
-
-        if (imageUrls.length > 0) {
-          imagePreloader.preloadImages(imageUrls, {
-            priority: "high",
-            cache: true,
-            aggressive: true,
-          });
-        }
-      }, 500); // Longer delay to prevent spam
-    }
-
-    return filtered;
-  }, [clustersLocations.length, Math.floor(mapZoomLevel), isFocused]); // Use stable dependencies
-
-  // Calculate cluster counts for auto-fit functionality
-  clustersNowCount = Array.isArray(clustersNow) ? clustersNow.length : 0;
-  clustersTodayCount = Array.isArray(clustersToday) ? clustersToday.length : 0;
-  clustersTomorrowCount = Array.isArray(clustersTomorrow)
-    ? clustersTomorrow.length
-    : 0;
-
-  // Debug: log data/state driving markers
+  // Initialize filters when data is available
   useEffect(() => {
-    console.log("[Map] Preferred coords:", { preferredLat, preferredLng });
-    console.log("[Map] Center for hooks:", centerForHooks);
-  }, [preferredLat, preferredLng, centerForHooks[0], centerForHooks[1]]);
-
-  useEffect(() => {
-    console.log("[Map] Data lengths:", {
-      events: events.length,
-      locations: locations.length,
-      eventsNow: eventsNow.length,
-      eventsToday: eventsToday.length,
-      eventsTomorrow: eventsTomorrow.length,
-      clusters: clusters.length,
-      clustersNow: clustersNow.length,
-      clustersToday: clustersToday.length,
-      clustersTomorrow: clustersTomorrow.length,
-      clustersLocations: clustersLocations.length,
-    });
-  }, [
-    events.length,
-    locations.length,
-    eventsNow.length,
-    eventsToday.length,
-    eventsTomorrow.length,
-    clusters.length,
-    clustersNow.length,
-    clustersToday.length,
-    clustersTomorrow.length,
-    clustersLocations.length,
-  ]);
-
-  // Ensure mapCenter is initialized to preferred when available - run only once
-  useEffect(() => {
-    if (!mapCenter && preferredLat != null && preferredLng != null) {
-      console.log("[Map] Initializing mapCenter to preferred coordinates");
-      setMapCenter([preferredLat, preferredLng]);
+    if (
+      (events.length > 0 || locations.length > 0) &&
+      Object.keys(filters).length === 0
+    ) {
+      const defaultFilters = generateDefaultFilters(events, locations);
+      setFilters(defaultFilters);
     }
-  }, [preferredLat, preferredLng]); // Remove mapCenter from dependencies to prevent loop
+  }, [events, locations]); // Removed filters from dependencies to prevent infinite loop
+
+  // Memoize filtered clusters to prevent repeated filtering - OPTIMIZED
+  const filteredClustersToday = useMemo(
+    () => filterClusters(clustersToday),
+    [clustersToday, filterClusters]
+  );
+  const filteredClustersNow = useMemo(
+    () => filterClusters(clustersNow),
+    [clustersNow, filterClusters]
+  );
+  const filteredClustersTomorrow = useMemo(
+    () => filterClusters(clustersTomorrow),
+    [clustersTomorrow, filterClusters]
+  );
+  const filteredClusters = useMemo(
+    () => filterClusters(clusters),
+    [clusters, filterClusters]
+  );
+  const filteredClustersLocations = useMemo(
+    () => filterClusters(clustersLocations),
+    [clustersLocations, filterClusters]
+  );
+  const [selectedEvent, setSelectedEvent] = useState<MapEvent | null>(null);
+
+  // OPTIMIZATION: Memoize marker data WITHOUT selectedEvent dependency
+  const memoizedMarkerData = useMemo(() => {
+    return {
+      today: filteredClustersToday.map((cluster, index) => ({
+        cluster,
+        index,
+        key: `cluster-today-${cluster.coordinate[0].toFixed(
+          3
+        )}-${cluster.coordinate[1].toFixed(3)}-${index}`,
+        id: `cluster-today-${cluster.coordinate[0].toFixed(
+          3
+        )}-${cluster.coordinate[1].toFixed(3)}-${index}`,
+        coordinate: [cluster.coordinate[1], cluster.coordinate[0]],
+        count:
+          cluster.type === "event"
+            ? cluster.events?.length || 0
+            : cluster.locations?.length || 0,
+        mainEventForMarker:
+          cluster.type === "event"
+            ? (cluster.mainEvent as MapEvent)
+            : ({
+                ...cluster.mainEvent,
+                start_datetime: new Date().toISOString(),
+                end_datetime: new Date().toISOString(),
+                venue_name: cluster.mainEvent.name,
+                attendees: { count: 0, profiles: [] },
+                categories: (cluster.mainEvent as MapLocation).category
+                  ? [(cluster.mainEvent as MapLocation).category!]
+                  : [],
+              } as MapEvent),
+      })),
+      now: filteredClustersNow.map((cluster, index) => ({
+        cluster,
+        index,
+        key: `cluster-now-${cluster.coordinate[0].toFixed(
+          3
+        )}-${cluster.coordinate[1].toFixed(3)}-${index}`,
+        id: `cluster-now-${cluster.coordinate[0].toFixed(
+          3
+        )}-${cluster.coordinate[1].toFixed(3)}-${index}`,
+        coordinate: [cluster.coordinate[1], cluster.coordinate[0]],
+        count:
+          cluster.type === "event"
+            ? cluster.events?.length || 0
+            : cluster.locations?.length || 0,
+        mainEventForMarker:
+          cluster.type === "event"
+            ? (cluster.mainEvent as MapEvent)
+            : ({
+                ...cluster.mainEvent,
+                start_datetime: new Date().toISOString(),
+                end_datetime: new Date().toISOString(),
+                venue_name: cluster.mainEvent.name,
+                attendees: { count: 0, profiles: [] },
+                categories: (cluster.mainEvent as MapLocation).category
+                  ? [(cluster.mainEvent as MapLocation).category!]
+                  : [],
+              } as MapEvent),
+      })),
+      tomorrow: filteredClustersTomorrow.map((cluster, index) => ({
+        cluster,
+        index,
+        key: `cluster-tomorrow-${cluster.coordinate[0].toFixed(
+          3
+        )}-${cluster.coordinate[1].toFixed(3)}-${index}`,
+        id: `cluster-tomorrow-${cluster.coordinate[0].toFixed(
+          3
+        )}-${cluster.coordinate[1].toFixed(3)}-${index}`,
+        coordinate: [cluster.coordinate[1], cluster.coordinate[0]],
+        count:
+          cluster.type === "event"
+            ? cluster.events?.length || 0
+            : cluster.locations?.length || 0,
+        mainEventForMarker:
+          cluster.type === "event"
+            ? (cluster.mainEvent as MapEvent)
+            : ({
+                ...cluster.mainEvent,
+                start_datetime: new Date().toISOString(),
+                end_datetime: new Date().toISOString(),
+                venue_name: cluster.mainEvent.name,
+                attendees: { count: 0, profiles: [] },
+                categories: (cluster.mainEvent as MapLocation).category
+                  ? [(cluster.mainEvent as MapLocation).category!]
+                  : [],
+              } as MapEvent),
+      })),
+    };
+  }, [filteredClustersToday, filteredClustersNow, filteredClustersTomorrow]);
+
+  // OPTIMIZATION: Separate memoized function for isSelected calculation
+  const getIsSelected = useCallback(
+    (cluster: any) => {
+      return cluster.type === "event"
+        ? cluster.events?.some((e: MapEvent) => e.id === selectedEvent?.id) ||
+            false
+        : cluster.locations?.some(
+            (l: MapLocation) => l.id === selectedEvent?.id
+          ) || false;
+    },
+    [selectedEvent]
+  );
+
+  // Mock the old functions that aren't needed with the new hook
+
+  const handleEventClick = useCallback(
+    (event: MapEvent) => {
+      // OPTIMIZATION: Only update if event actually changed
+      if (selectedEvent?.id !== event.id) {
+        setSelectedEvent(event);
+        setShowDetails(false); // Show card first, not details
+        setIsEvent(true);
+      }
+    },
+    [selectedEvent?.id]
+  );
+
+  const handleCloseModal = useCallback(() => {
+    setSelectedEvent(null);
+    setShowDetails(false);
+  }, []);
 
   // Define handleLocationClick function for navigation from SearchSheet
   const handleLocationClick = useCallback(
@@ -758,7 +685,7 @@ export default function Map() {
     [handleEventClick]
   );
 
-  // Comprehensive loading state management - placed after useMapEvents hook
+  // Simplified loading state management
   useEffect(() => {
     // Clear any existing timeout
     if (markersReadyTimeoutRef.current) {
@@ -769,14 +696,18 @@ export default function Map() {
       // Data is loading, show loading screen
       setLoadingReason("data");
       setIsMapFullyLoaded(false);
-    } else if (!isLoading && (events.length > 0 || locations.length > 0)) {
-      // Data has loaded and we have markers to show
-      // Add a delay to allow markers to render and images to load
-      markersReadyTimeoutRef.current = setTimeout(() => {
+
+      // Aggressive timeout to prevent infinite loading
+      if (forceCloseLoadingTimeoutRef.current) {
+        clearTimeout(forceCloseLoadingTimeoutRef.current);
+      }
+      forceCloseLoadingTimeoutRef.current = setTimeout(() => {
+        console.log("[Map] Force closing loading screen after 5 seconds");
         setIsMapFullyLoaded(true);
-      }, 1000); // 1 second delay for markers to render and images to load
-    } else if (!isLoading && events.length === 0 && locations.length === 0) {
-      // Data loaded but no events/locations found, hide loading immediately
+      }, 5000); // Reduced to 5 seconds
+    } else {
+      // Data has finished loading, hide loading screen immediately
+      console.log("[Map] Loading finished, hiding loading screen");
       setIsMapFullyLoaded(true);
     }
 
@@ -785,46 +716,11 @@ export default function Map() {
       if (markersReadyTimeoutRef.current) {
         clearTimeout(markersReadyTimeoutRef.current);
       }
+      if (forceCloseLoadingTimeoutRef.current) {
+        clearTimeout(forceCloseLoadingTimeoutRef.current);
+      }
     };
-  }, [isLoading, events.length, locations.length]);
-
-  // Handle time frame changes - show loading while new markers are prepared
-  useEffect(() => {
-    if (events.length > 0 || locations.length > 0) {
-      // We have data, but time frame changed, so markers will change
-      setLoadingReason("timeframe");
-      setIsMapFullyLoaded(false);
-
-      // Clear any existing timeout
-      if (markersReadyTimeoutRef.current) {
-        clearTimeout(markersReadyTimeoutRef.current);
-      }
-
-      // Add a shorter delay for time frame changes since data is already loaded
-      markersReadyTimeoutRef.current = setTimeout(() => {
-        setIsMapFullyLoaded(true);
-      }, 600); // Shorter delay for time frame changes
-    }
-  }, [selectedTimeFrame]);
-
-  // Handle filter changes - show loading while markers are filtered
-  useEffect(() => {
-    if ((events.length > 0 || locations.length > 0) && isMapFullyLoaded) {
-      // We have data and map was fully loaded, but filters changed
-      setLoadingReason("filters");
-      setIsMapFullyLoaded(false);
-
-      // Clear any existing timeout
-      if (markersReadyTimeoutRef.current) {
-        clearTimeout(markersReadyTimeoutRef.current);
-      }
-
-      // Add a very short delay for filter changes
-      markersReadyTimeoutRef.current = setTimeout(() => {
-        setIsMapFullyLoaded(true);
-      }, 300); // Short delay for filter changes
-    }
-  }, [filters]);
+  }, [isLoading]);
 
   // Cleanup all timeouts and listeners on unmount
   useEffect(() => {
@@ -836,136 +732,23 @@ export default function Map() {
       if (regionChangeTimeoutRef.current) {
         clearTimeout(regionChangeTimeoutRef.current);
       }
+      if (zoomDebounceRef.current) {
+        clearTimeout(zoomDebounceRef.current);
+      }
+
+      // CRITICAL: Reset region change tracking
+      lastRegionChangeRef.current = 0;
     };
   }, []);
 
-  // Listen for location preference changes and recenter/refetch immediately
-  useEffect(() => {
-    const sub = DeviceEventEmitter.addListener(
-      "locationPreferenceUpdated",
-      (payload: {
-        mode: "current" | "orbit";
-        latitude: number | null;
-        longitude: number | null;
-      }) => {
-        console.log(
-          "📍 Map received locationPreferenceUpdated event:",
-          payload
-        );
-
-        // ALWAYS use the coordinates from the payload - no dependency on stale state
-        const lat = payload.latitude;
-        const lng = payload.longitude;
-
-        console.log("📍 Event payload coordinates:", [lat, lng]);
-
-        if (lat != null && lng != null) {
-          // IMMEDIATE camera movement - don't wait for state updates
-          console.log("📍 🚀 IMMEDIATELY moving camera to:", [lng, lat]);
-          console.log("📍 🔍 Camera ref exists:", !!cameraRef.current);
-          console.log("📍 🔍 Camera ref details:", cameraRef.current);
-
-          if (cameraRef.current) {
-            try {
-              cameraRef.current.setCamera({
-                centerCoordinate: [lng, lat],
-                zoomLevel: 11,
-                animationDuration: 800,
-                animationMode: "flyTo",
-              });
-              console.log("📍 ✅ Camera setCamera called successfully");
-            } catch (error) {
-              console.error("📍 ❌ Error calling setCamera:", error);
-            }
-          } else {
-            console.log("📍 ❌ Camera ref is null - cannot move camera");
-
-            // Fallback: Try again after a short delay
-            setTimeout(() => {
-              console.log("📍 🔄 Retrying camera movement after delay...");
-              if (cameraRef.current) {
-                cameraRef.current.setCamera({
-                  centerCoordinate: [lng, lat],
-                  zoomLevel: 11,
-                  animationDuration: 800,
-                  animationMode: "flyTo",
-                });
-                console.log("📍 ✅ Camera movement successful on retry");
-              } else {
-                console.log("📍 ❌ Camera ref still null on retry");
-              }
-            }, 500);
-          }
-
-          // Update map center state
-          console.log("📍 Setting mapCenter state to:", [lat, lng]);
-          setMapCenter([lat, lng]);
-
-          // Force radius reset for long distance moves
-          console.log("📍 Resetting dynamic radius for location change");
-          setDynamicRadius(100000); // Reset to 100km for new area
-        } else {
-          console.log("📍 ⚠️ Invalid coordinates in payload:", { lat, lng });
-        }
-      }
-    );
-
-    return () => sub.remove();
-  }, []); // NO dependencies - this should work with any state
-
-  // Recenter on screen focus based on current preference (Orbit vs Current)
-  useFocusEffect(
-    useCallback(() => {
-      if (preferredLat != null && preferredLng != null) {
-        if (cameraRef.current) {
-          cameraRef.current.setCamera({
-            centerCoordinate: [preferredLng, preferredLat],
-            zoomLevel: 11,
-            animationDuration: 600,
-            animationMode: "flyTo",
-          });
-        }
-        setMapCenter([preferredLat, preferredLng]);
-      }
-    }, [preferredLat, preferredLng, cameraRef])
-  );
-
-  // Respect user location preference: when Orbit mode is enabled or updated,
-  // recenter the map and trigger data refetches using the orbit coordinates.
-  useEffect(() => {
-    if (
-      user?.event_location_preference === 1 &&
-      orbitLat != null &&
-      orbitLng != null
-    ) {
-      if (cameraRef.current) {
-        cameraRef.current.setCamera({
-          centerCoordinate: [orbitLng, orbitLat],
-          zoomLevel: 11,
-          animationDuration: 800,
-          animationMode: "flyTo",
-        });
-      }
-      setMapCenter([orbitLat, orbitLng]);
-    }
-  }, [user?.event_location_preference, orbitLat, orbitLng, cameraRef]);
-
-  // Generate dynamic filters when data loads, but don't auto-hide anything
+  // Generate dynamic filters when data loads
   useEffect(() => {
     if ((events && events.length > 0) || (locations && locations.length > 0)) {
-      try {
-        const defaultFilters = generateDefaultFilters(
-          events || [],
-          locations || []
-        );
-        // Initialize all discovered keys to true so nothing is hidden by default
-        const normalized: Record<string, boolean> = {};
-        Object.keys(defaultFilters).forEach((k) => (normalized[k] = true));
-        setFilters(normalized);
-      } catch (e) {
-        // Fallback: show everything
-        setFilters({});
-      }
+      const defaultFilters = generateDefaultFilters(
+        events || [],
+        locations || []
+      );
+      setFilters(defaultFilters);
     }
   }, [events, locations]);
 
@@ -975,6 +758,37 @@ export default function Map() {
       // Event selected
     }
   }, [selectedEvent]);
+
+  // Function to get current location
+  const getCurrentLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        console.log("🗺️ [Map] Location permission denied");
+        return;
+      }
+
+      console.log("🗺️ [Map] Getting current GPS location...");
+      const currentLocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.BestForNavigation,
+      });
+
+      setLocation({
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude,
+        heading: currentLocation.coords.heading || undefined,
+      });
+
+      console.log("🗺️ [Map] Updated GPS location:", {
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude,
+      });
+
+      return currentLocation;
+    } catch (error) {
+      console.error("🗺️ [Map] Error getting current location:", error);
+    }
+  };
 
   //set zoom enabled by default
   useEffect(() => {
@@ -1006,9 +820,9 @@ export default function Map() {
         // Wait a bit for data to load, then find the event
         setTimeout(() => {
           const event =
-            eventsNow.find((e) => e.id === data.eventId) ||
-            eventsToday.find((e) => e.id === data.eventId) ||
-            eventsTomorrow.find((e) => e.id === data.eventId);
+            eventsNow.find((e: MapEvent) => e.id === data.eventId) ||
+            eventsToday.find((e: MapEvent) => e.id === data.eventId) ||
+            eventsTomorrow.find((e: MapEvent) => e.id === data.eventId);
 
           if (event) {
             setIsEvent(true);
@@ -1020,223 +834,208 @@ export default function Map() {
       }
     );
 
+    // Listen for location preference updates
+    const locationPreferenceListener = DeviceEventEmitter.addListener(
+      "locationPreferenceUpdated",
+      (eventPayload: {
+        mode: string;
+        latitude?: number;
+        longitude?: number;
+      }) => {
+        console.log(
+          "🗺️ [Map] Received location preference update:",
+          eventPayload
+        );
+
+        if (
+          eventPayload.mode === "orbit" &&
+          eventPayload.latitude &&
+          eventPayload.longitude
+        ) {
+          // Switch to orbit mode - use the specified coordinates
+          console.log("🗺️ [Map] Switching to Orbit mode, centering on:", [
+            eventPayload.latitude,
+            eventPayload.longitude,
+          ]);
+          setMapCenter([eventPayload.latitude, eventPayload.longitude]);
+
+          // Fly to the new location
+          if (cameraRef.current) {
+            cameraRef.current.setCamera({
+              centerCoordinate: [eventPayload.longitude, eventPayload.latitude],
+              zoomLevel: 13, // Approximately 5-mile radius view
+              animationDuration: 2000,
+              animationMode: "flyTo",
+            });
+          }
+        } else if (eventPayload.mode === "current") {
+          // Switch to current location mode - use GPS coordinates
+          console.log("🗺️ [Map] Switching to Current mode, using GPS location");
+          if (location?.latitude && location?.longitude) {
+            console.log("🗺️ [Map] Setting center to GPS location:", [
+              location.latitude,
+              location.longitude,
+            ]);
+            setMapCenter([location.latitude, location.longitude]);
+
+            // Fly to current location
+            if (cameraRef.current) {
+              cameraRef.current.setCamera({
+                centerCoordinate: [location.longitude, location.latitude],
+                zoomLevel: 13, // Approximately 5-mile radius view
+                animationDuration: 2000,
+                animationMode: "flyTo",
+              });
+            }
+          } else {
+            console.log(
+              "🗺️ [Map] No GPS location available, requesting location update"
+            );
+            // Request fresh location update
+            getCurrentLocation();
+          }
+        }
+      }
+    );
+
     return () => {
       eventListener.remove();
       showEventCardListener.remove();
+      locationPreferenceListener.remove();
     };
-  }, [handleEventClick, eventsNow, eventsToday, eventsTomorrow, cameraRef]);
+  }, [
+    handleEventClick,
+    eventsNow,
+    eventsToday,
+    eventsTomorrow,
+    cameraRef,
+    location,
+    getCurrentLocation,
+  ]);
 
-  // Update mapCenter when location becomes available
+  // Set mapCenter and camera position based on user's location preference
   useEffect(() => {
-    if (location?.latitude && location?.longitude && !mapCenter) {
-      setMapCenter([location.latitude, location.longitude]);
+    console.log("🗺️ [Map] Location preference effect triggered:", {
+      userPreference: user?.event_location_preference,
+      hasOrbitLocation: !!(userlocation?.latitude && userlocation?.longitude),
+      hasGPSLocation: !!(location?.latitude && location?.longitude),
+      currentMapCenter: mapCenter,
+    });
+
+    // ORBIT MODE: Use orbit coordinates
+    if (
+      user?.event_location_preference === 1 &&
+      userlocation?.latitude &&
+      userlocation?.longitude
+    ) {
+      const orbitCoords: [number, number] = [
+        parseFloat(userlocation.latitude),
+        parseFloat(userlocation.longitude),
+      ];
+
+      // Only update if different from current mapCenter
+      if (
+        !mapCenter ||
+        Math.abs(mapCenter[0] - orbitCoords[0]) > 0.0001 ||
+        Math.abs(mapCenter[1] - orbitCoords[1]) > 0.0001
+      ) {
+        console.log(
+          "🗺️ [Map] Setting ORBIT mode center and moving camera:",
+          orbitCoords
+        );
+        setMapCenter(orbitCoords);
+
+        // Move the map camera to orbit location
+        if (cameraRef.current) {
+          cameraRef.current.setCamera({
+            centerCoordinate: [orbitCoords[1], orbitCoords[0]], // [lng, lat] for Mapbox
+            zoomLevel: 13, // Approximately 5-mile radius view
+            animationDuration: 2000,
+            animationMode: "flyTo",
+          });
+        }
+      }
+      return;
     }
-  }, [location, mapCenter]);
+
+    // CURRENT MODE: Use GPS coordinates
+    if (
+      user?.event_location_preference === 0 &&
+      location?.latitude &&
+      location?.longitude
+    ) {
+      const gpsCoords: [number, number] = [
+        location.latitude,
+        location.longitude,
+      ];
+
+      // Only update if different from current mapCenter
+      if (
+        !mapCenter ||
+        Math.abs(mapCenter[0] - gpsCoords[0]) > 0.0001 ||
+        Math.abs(mapCenter[1] - gpsCoords[1]) > 0.0001
+      ) {
+        console.log(
+          "🗺️ [Map] Setting CURRENT mode center and moving camera:",
+          gpsCoords
+        );
+        setMapCenter(gpsCoords);
+
+        // Move the map camera to GPS location
+        if (cameraRef.current) {
+          cameraRef.current.setCamera({
+            centerCoordinate: [gpsCoords[1], gpsCoords[0]], // [lng, lat] for Mapbox
+            zoomLevel: 13, // Approximately 5-mile radius view
+            animationDuration: 2000,
+            animationMode: "flyTo",
+          });
+        }
+      }
+      return;
+    }
+
+    // No preference set yet - use GPS as fallback (should only happen on initial load)
+    if (location?.latitude && location?.longitude && !mapCenter) {
+      const fallbackCoords: [number, number] = [
+        location.latitude,
+        location.longitude,
+      ];
+      console.log(
+        "🗺️ [Map] Setting FALLBACK center and moving camera:",
+        fallbackCoords
+      );
+      setMapCenter(fallbackCoords);
+
+      // Move the map camera to fallback location with immediate animation for initial load
+      if (cameraRef.current) {
+        cameraRef.current.setCamera({
+          centerCoordinate: [fallbackCoords[1], fallbackCoords[0]], // [lng, lat] for Mapbox
+          zoomLevel: 13, // Approximately 5-mile radius view
+          animationDuration: 1000, // Faster animation for initial load
+          animationMode: "flyTo",
+        });
+      }
+    }
+  }, [
+    user?.event_location_preference,
+    userlocation?.latitude,
+    userlocation?.longitude,
+    location?.latitude,
+    location?.longitude,
+    mapCenter, // Include mapCenter in dependencies to prevent infinite loops
+  ]);
 
   // Handle route params for showing event/location cards
   useEffect(() => {
-    // Handle event navigation (from SearchSheet or other sources) - with debouncing
+    // Handle event navigation (from SearchSheet or other sources)
     if (params.eventId) {
-      const now = Date.now();
-      const currentNavigation = {
-        eventId: params.eventId as string,
-        timestamp: now,
-      };
-
-      // Prevent duplicate navigation calls within 2 seconds
-      if (
-        lastNavigationRef.current.eventId === params.eventId &&
-        now - lastNavigationRef.current.timestamp < 2000
-      ) {
-        console.log(
-          "[Map] 🚫 Event navigation debounced - ignoring duplicate call"
-        );
-        return;
-      }
-
-      lastNavigationRef.current = currentNavigation;
       // Center map on event location if coordinates are provided
       const lat = params.latitude || params.lat;
       const lng = params.longitude || params.lng;
 
-      if (lat && lng) {
+      if (lat && lng && lat !== "undefined" && lng !== "undefined") {
         const latNum = parseFloat(lat as string);
         const lngNum = parseFloat(lng as string);
-
-        // Adjust radius to ensure we can load events at the target location
-        adjustRadiusForDistance(mapCenter, latNum, lngNum);
-
-        // TEMPORARILY DISABLED - Force refresh locations to ensure new static locations appear (event navigation)
-        console.log(
-          "[Map] 🔄 Event search navigation detected - force refresh DISABLED"
-        );
-        // if (forceRefreshLocations) {
-        //   // Only refresh once after all navigation setup is complete
-        //   setTimeout(() => {
-        //     forceRefreshLocations();
-        //   }, 1000);
-        // }
-
-        if (cameraRef.current) {
-          cameraRef.current.setCamera({
-            centerCoordinate: [lngNum, latNum],
-            zoomLevel: 15,
-            animationDuration: 1000,
-            animationMode: "flyTo",
-          });
-        }
-
-        // For long-distance navigation, always update center to ensure fresh data
-        const currentCenter = mapCenter;
-        const isLongDistance = currentCenter
-          ? calculateDistance(
-              currentCenter[0],
-              currentCenter[1],
-              latNum,
-              lngNum
-            ) > 500
-          : true;
-
-        const shouldUpdateCenter =
-          !currentCenter ||
-          isLongDistance ||
-          Math.abs(currentCenter[0] - latNum) > 0.01 ||
-          Math.abs(currentCenter[1] - lngNum) > 0.01;
-
-        if (shouldUpdateCenter) {
-          if (isLongDistance) {
-            console.log(
-              "[Map] 🚀 Long-distance search navigation - forcing fresh data load"
-            );
-          }
-          console.log("[Map] Updating center for search navigation:", [
-            latNum,
-            lngNum,
-          ]);
-          setMapCenter([latNum, lngNum]);
-        } else {
-          console.log("[Map] Skipping center update, already close enough");
-        }
-      }
-
-      // Find the event by ID and open its card
-      const event =
-        eventsNow.find((e) => e.id === params.eventId) ||
-        eventsToday.find((e) => e.id === params.eventId) ||
-        eventsTomorrow.find((e) => e.id === params.eventId);
-
-      if (event) {
-        setIsEvent(true);
-        handleEventClick(event as MapEvent);
-        console.log("Found event in current arrays:", event.name);
-      } else {
-        // If event not found and we have coordinates, create provisional event
-        const latNum = lat ? parseFloat(lat as string) : undefined;
-        const lngNum = lng ? parseFloat(lng as string) : undefined;
-        if (latNum != null && lngNum != null) {
-          const provisionalEvent = {
-            id: String(params.eventId),
-            name: (params as any).name || "Event",
-            description: (params as any).description || "",
-            start_datetime: new Date().toISOString(),
-            end_datetime: new Date().toISOString(),
-            venue_name:
-              (params as any).venue_name || (params as any).address || "",
-            location: { latitude: latNum, longitude: lngNum },
-            address: (params as any).address || "",
-            image_urls: (params as any).image
-              ? [String((params as any).image)]
-              : [],
-            distance: 0,
-            attendees: { count: 0, profiles: [] },
-            categories: [
-              {
-                id: "search-result",
-                name:
-                  (params as any).source === "ticketmaster"
-                    ? "Ticketmaster Event"
-                    : "Event",
-                icon: "🎯",
-              },
-            ],
-            type: (params as any).type || "event",
-            is_ticketmaster: (params as any).source === "ticketmaster",
-          } as MapEvent;
-
-          // Add to current arrays so pin appears on map
-          const updatedNow = [...eventsNow, provisionalEvent];
-          const updatedToday = [...eventsToday, provisionalEvent];
-
-          // Update state to show the pin
-          setIsEvent(true);
-          handleEventClick(provisionalEvent);
-          console.log(
-            "Created provisional event card with pin:",
-            provisionalEvent.name
-          );
-
-          // Schedule a retry to find the real event once data loads
-          setTimeout(() => {
-            const realEvent =
-              eventsNow.find((e) => e.id === params.eventId) ||
-              eventsToday.find((e) => e.id === params.eventId) ||
-              eventsTomorrow.find((e) => e.id === params.eventId);
-
-            if (realEvent && realEvent.id !== provisionalEvent.id) {
-              console.log(
-                "Found real event, replacing provisional:",
-                realEvent.name
-              );
-              handleEventClick(realEvent as MapEvent);
-            }
-          }, 3000); // Wait 3 seconds for data to load
-        } else {
-          console.log("Event not found in current arrays, waiting for data...");
-        }
-      }
-    }
-
-    // Handle location navigation (from SearchSheet) - with debouncing
-    if (params.locationId) {
-      const now = Date.now();
-      const currentNavigation = {
-        locationId: params.locationId as string,
-        timestamp: now,
-      };
-
-      // Prevent duplicate navigation calls within 2 seconds
-      if (
-        lastNavigationRef.current.locationId === params.locationId &&
-        now - lastNavigationRef.current.timestamp < 2000
-      ) {
-        console.log(
-          "[Map] 🚫 Location navigation debounced - ignoring duplicate call"
-        );
-        return;
-      }
-
-      lastNavigationRef.current = currentNavigation;
-      // Center map on location if coordinates are provided
-      const lat = params.latitude || params.lat;
-      const lng = params.longitude || params.lng;
-
-      if (lat && lng) {
-        const latNum = parseFloat(lat as string);
-        const lngNum = parseFloat(lng as string);
-
-        // Adjust radius for location navigation
-        adjustRadiusForDistance(mapCenter, latNum, lngNum);
-
-        // TEMPORARILY DISABLED - Force refresh locations to ensure new static locations appear (location navigation)
-        console.log(
-          "[Map] 🔄 Location search navigation detected - force refresh DISABLED"
-        );
-        // if (forceRefreshLocations) {
-        //   // Only refresh once after all navigation setup is complete
-        //   setTimeout(() => {
-        //     forceRefreshLocations();
-        //   }, 1000);
-        // }
 
         if (cameraRef.current) {
           cameraRef.current.setCamera({
@@ -1251,47 +1050,113 @@ export default function Map() {
         setMapCenter([latNum, lngNum]);
       }
 
+      // Find the event by ID and open its card
+      const event =
+        eventsNow.find((e: MapEvent) => e.id === params.eventId) ||
+        eventsToday.find((e: MapEvent) => e.id === params.eventId) ||
+        eventsTomorrow.find((e: MapEvent) => e.id === params.eventId);
+
+      if (event) {
+        setIsEvent(true);
+        handleEventClick(event as MapEvent);
+      } else {
+        // If event not found in current arrays, wait for data to load
+        console.log("Event not found in current arrays, waiting for data...");
+      }
+    }
+
+    // Handle location navigation (from SearchSheet)
+    if (params.locationId) {
+      console.log("🗺️ [Map] Navigation params received:", {
+        locationId: params.locationId,
+        latitude: params.latitude,
+        longitude: params.longitude,
+        lat: params.lat,
+        lng: params.lng,
+        name: params.name,
+      });
+
+      // Center map on location if coordinates are provided
+      const lat = params.latitude || params.lat;
+      const lng = params.longitude || params.lng;
+
+      if (lat && lng && lat !== "undefined" && lng !== "undefined") {
+        const latNum = parseFloat(lat as string);
+        const lngNum = parseFloat(lng as string);
+
+        console.log("🗺️ [Map] Centering camera on coordinates:", [
+          latNum,
+          lngNum,
+        ]);
+
+        if (cameraRef.current) {
+          cameraRef.current.setCamera({
+            centerCoordinate: [lngNum, latNum],
+            zoomLevel: 15,
+            animationDuration: 1000,
+            animationMode: "flyTo",
+          });
+        }
+
+        // Update map center to trigger new data fetch
+        setMapCenter([latNum, lngNum]);
+      } else {
+        console.log("🗺️ [Map] No coordinates provided in params");
+      }
+
       // Find the location by ID and open its card
-      const location = locations.find((l) => l.id === params.locationId);
+      console.log("🗺️ [Map] Looking for location with ID:", params.locationId);
+      console.log("🗺️ [Map] Looking for location with name:", params.name);
+      console.log("🗺️ [Map] Available locations count:", locations.length);
+
+      // Log first few locations for debugging
+      console.log(
+        "🗺️ [Map] Sample locations:",
+        locations.slice(0, 3).map((l: MapLocation) => ({
+          id: l.id,
+          name: l.name,
+          location: l.location,
+          coordinates: l.location?.coordinates,
+          type: l.location?.type,
+        }))
+      );
+
+      // Try to find by ID first
+      let location = locations.find(
+        (l: MapLocation) => l.id === params.locationId
+      );
+
+      // If not found by ID, try to find by name (case insensitive)
+      if (!location && params.name) {
+        console.log("🗺️ [Map] Location not found by ID, searching by name...");
+        const searchName = Array.isArray(params.name)
+          ? params.name[0]
+          : params.name;
+        location = locations.find(
+          (l: MapLocation) =>
+            l.name?.toLowerCase().includes(searchName.toLowerCase()) ||
+            searchName.toLowerCase().includes(l.name?.toLowerCase())
+        );
+
+        if (location) {
+          console.log("🗺️ [Map] Found location by name match:", {
+            searchName: params.name,
+            foundName: location.name,
+            id: location.id,
+          });
+        }
+      }
 
       if (location) {
+        console.log("🗺️ [Map] Found location:", {
+          id: location.id,
+          name: location.name,
+          location: location.location,
+        });
         setIsEvent(false);
         handleLocationClick(location as MapLocation);
       } else {
-        // If location not found, still open a provisional card
-        const latNum = lat ? parseFloat(lat as string) : undefined;
-        const lngNum = lng ? parseFloat(lng as string) : undefined;
-        if (latNum != null && lngNum != null) {
-          const provisionalLocation = {
-            id: String(params.locationId),
-            name: (params as any).name || "Place",
-            description: (params as any).description || "",
-            location: { latitude: latNum, longitude: lngNum },
-            address: (params as any).address || "",
-            image_urls: (params as any).image
-              ? [String((params as any).image)]
-              : [],
-            distance: 0,
-            type: (params as any).type || "place",
-            category: undefined,
-          } as unknown as MapLocation;
-
-          // Convert to MapEvent-like shape used by the card
-          const locationAsEvent = {
-            ...provisionalLocation,
-            start_datetime: new Date().toISOString(),
-            end_datetime: new Date().toISOString(),
-            venue_name: (params as any).name || "",
-            attendees: { count: 0, profiles: [] },
-            categories: [],
-          } as unknown as MapEvent;
-          setIsEvent(false);
-          handleEventClick(locationAsEvent);
-        } else {
-          console.log(
-            "Location not found in current arrays, waiting for data..."
-          );
-        }
+        console.log("🗺️ [Map] Location not found in current data");
       }
     }
   }, [
@@ -1301,46 +1166,14 @@ export default function Map() {
     params.longitude,
     params.lat,
     params.lng,
-    // Removed data dependencies that cause infinite loops:
-    // eventsNow, eventsToday, eventsTomorrow, locations
-    // These will be handled in separate effects if needed
+    eventsNow,
+    eventsToday,
+    eventsTomorrow,
+    locations,
+    handleEventClick,
+    handleLocationClick,
+    cameraRef,
   ]);
-
-  // TEMPORARILY DISABLED - Retry finding event once data loads (for SearchSheet navigation)
-  // useEffect(() => {
-  //   if (
-  //     params.eventId &&
-  //     !isLoading &&
-  //     (eventsNow.length > 0 ||
-  //       eventsToday.length > 0 ||
-  //       eventsTomorrow.length > 0)
-  //   ) {
-  //     // Check if we already have the right event displayed
-  //     if (selectedEvent && selectedEvent.id === params.eventId) {
-  //       return; // Already found and displaying the right event
-  //     }
-
-  //     // Try to find the real event now that data has loaded
-  //     const realEvent =
-  //       eventsNow.find((e) => e.id === params.eventId) ||
-  //       eventsToday.find((e) => e.id === params.eventId) ||
-  //       eventsTomorrow.find((e) => e.id === params.eventId);
-
-  //     if (realEvent) {
-  //       console.log("Found real event after data load:", realEvent.name);
-  //       setIsEvent(true);
-  //       handleEventClick(realEvent as MapEvent);
-  //     }
-  //   }
-  // }, [
-  //   params.eventId,
-  //   isLoading,
-  //   eventsNow,
-  //   eventsToday,
-  //   eventsTomorrow,
-  //   selectedEvent,
-  //   handleEventClick,
-  // ]);
 
   const haversine = (
     lat1: number,
@@ -1394,12 +1227,10 @@ export default function Map() {
     }
 
     locationUpdateTimeoutRef.current = setTimeout(async () => {
-      // Write live device coordinates to live_* fields to avoid overwriting Orbit selection
       await updateUserLocations({
-        live_location_latitude: location.coords.latitude.toString(),
-        live_location_longitude: location.coords.longitude.toString(),
-        last_updated: new Date().toISOString(),
-      } as any);
+        latitude: location.coords.latitude.toString(),
+        longitude: location.coords.longitude.toString(),
+      });
     }, 2000);
   }
 
@@ -1501,18 +1332,8 @@ export default function Map() {
           heading: initialLocation.coords.heading || undefined,
         });
 
-        // Set initial camera position only if using current location mode
-        if (user?.event_location_preference !== 1 && cameraRef.current) {
-          cameraRef.current.setCamera({
-            centerCoordinate: [
-              initialLocation.coords.longitude,
-              initialLocation.coords.latitude,
-            ],
-            zoomLevel: 11,
-            animationDuration: 1000,
-            animationMode: "flyTo",
-          });
-        }
+        // Don't set initial camera position here - let the location preference effect handle it
+        // The map center will be set based on user preferences in the separate effect
 
         locationSubscription = await Location.watchPositionAsync(
           {
@@ -1537,7 +1358,7 @@ export default function Map() {
     })();
 
     return () => locationSubscription?.remove();
-  }, [cameraRef, user?.event_location_preference]);
+  }, []);
 
   const handleMapTap = useCallback(() => {
     if (selectedEvent) {
@@ -1548,9 +1369,10 @@ export default function Map() {
   const handleEventSelect = useCallback(
     (event: MapEvent) => {
       // Center map on selected event
-      if (cameraRef.current) {
+      const coords = getLocationCoordinates(event.location);
+      if (cameraRef.current && coords) {
         cameraRef.current.setCamera({
-          centerCoordinate: [event.location.longitude, event.location.latitude],
+          centerCoordinate: [coords.longitude, coords.latitude],
           zoomLevel: 14,
           animationDuration: 500,
           animationMode: "flyTo",
@@ -1562,37 +1384,126 @@ export default function Map() {
   );
 
   const handleClusterPress = useCallback(
-    (cluster: { events: MapEvent[] }) => {
-      if (cluster.events?.length === 1) {
-        // Center map on selected event
-        if (cameraRef.current) {
-          cameraRef.current.setCamera({
-            centerCoordinate: [
-              cluster.events[0].location.longitude,
-              cluster.events[0].location.latitude,
-            ],
-            zoomLevel: 14,
-            animationDuration: 500,
-            animationMode: "flyTo",
-          });
+    (cluster: UnifiedCluster) => {
+      if (cluster.type === "event") {
+        // Handle event cluster
+        if (cluster.events?.length === 1) {
+          // Center map on selected event
+          const coords = getLocationCoordinates(cluster.events[0].location);
+          if (cameraRef.current && coords) {
+            cameraRef.current.setCamera({
+              centerCoordinate: [
+                coords.longitude, // longitude
+                coords.latitude, // latitude
+              ],
+              zoomLevel: 14,
+              animationDuration: 500,
+              animationMode: "flyTo",
+            });
+          }
+          handleEventClick(cluster.events[0]);
+        } else {
+          setSelectedCluster(cluster.events || []);
         }
-        handleEventClick(cluster.events[0]);
-      } else {
-        setSelectedCluster(cluster.events);
+      } else if (cluster.type === "location") {
+        // Handle location cluster
+        if (cluster.locations?.length === 1) {
+          // Center map on selected location
+          const coords = getLocationCoordinates(cluster.locations[0].location);
+          if (cameraRef.current && coords) {
+            cameraRef.current.setCamera({
+              centerCoordinate: [
+                coords.longitude, // longitude
+                coords.latitude, // latitude
+              ],
+              zoomLevel: 14,
+              animationDuration: 500,
+              animationMode: "flyTo",
+            });
+          }
+          // Convert MapLocation to MapEvent format for the card
+          const locationAsEvent = {
+            ...cluster.locations[0],
+            start_datetime: new Date().toISOString(),
+            end_datetime: new Date().toISOString(),
+            venue_name: cluster.locations[0].name,
+            attendees: { count: 0, profiles: [] },
+            categories: cluster.locations[0].category
+              ? [cluster.locations[0].category]
+              : [],
+          } as MapEvent;
+
+          handleEventClick(locationAsEvent);
+        } else {
+          setSelectedCluster(cluster.locations || []);
+        }
       }
     },
     [handleEventClick, cameraRef]
   );
 
+  // OPTIMIZATION: Memoized marker component to prevent re-renders
+  const MemoizedMarker = useCallback(
+    ({
+      cluster,
+      index,
+      timeFrame,
+      markerData,
+    }: {
+      cluster: any;
+      index: number;
+      timeFrame: string;
+      markerData: any;
+    }) => {
+      const isSelected = getIsSelected(cluster);
+
+      return (
+        <MapboxGL.MarkerView
+          key={`cluster-${timeFrame}-${cluster.coordinate[0].toFixed(
+            3
+          )}-${cluster.coordinate[1].toFixed(3)}-${index}`}
+          id={`cluster-${timeFrame}-${cluster.coordinate[0].toFixed(
+            3
+          )}-${cluster.coordinate[1].toFixed(3)}-${index}`}
+          coordinate={markerData.coordinate}
+          anchor={{ x: 0.5, y: 0.5 }}
+        >
+          <View
+            style={{
+              zIndex: isSelected ? 1000 : 100,
+            }}
+          >
+            <EventMarker
+              imageUrl={cluster.mainEvent?.image_urls?.[0]}
+              count={markerData.count}
+              isSelected={isSelected}
+              markerType={getMarkerType(markerData.mainEventForMarker)}
+              categoryName={getCategoryName(markerData.mainEventForMarker)}
+              onPress={() => {
+                setIsEvent(cluster.type === "event");
+                handleClusterPress(cluster);
+              }}
+            />
+          </View>
+        </MapboxGL.MarkerView>
+      );
+    },
+    [
+      getIsSelected,
+      getMarkerType,
+      getCategoryName,
+      setIsEvent,
+      handleClusterPress,
+    ]
+  );
+
   const handleLocationSelect = useCallback(
     (location: MapLocation) => {
       // Center map on selected location
-      if (cameraRef.current) {
+      const coords = getLocationCoordinates(location.location);
+      if (cameraRef.current && coords) {
         cameraRef.current.setCamera({
-          centerCoordinate: [
-            location.location.longitude,
-            location.location.latitude,
-          ],
+          centerCoordinate: [coords.longitude, coords.latitude],
           zoomLevel: 14,
           animationDuration: 500,
           animationMode: "flyTo",
@@ -1613,42 +1524,6 @@ export default function Map() {
     [cameraRef, handleEventClick]
   );
 
-  const handleLocationClusterPress = useCallback(
-    (cluster: { events: MapLocation[] }) => {
-      if (cluster.events?.length === 1) {
-        // Center map on selected location
-        if (cameraRef.current) {
-          cameraRef.current.setCamera({
-            centerCoordinate: [
-              cluster.events[0].location.longitude,
-              cluster.events[0].location.latitude,
-            ],
-            zoomLevel: 14,
-            animationDuration: 500,
-            animationMode: "flyTo",
-          });
-        }
-        // Convert MapLocation to MapEvent format for the card
-        const locationAsEvent = {
-          ...cluster.events[0],
-          start_datetime: new Date().toISOString(),
-          end_datetime: new Date().toISOString(),
-          venue_name: cluster.events[0].name,
-          attendees: { count: 0, profiles: [] },
-          categories: cluster.events[0].category
-            ? [cluster.events[0].category]
-            : [],
-        } as MapEvent;
-
-        handleEventClick(locationAsEvent);
-      } else {
-        // For multiple locations, show cluster sheet
-        setSelectedCluster(cluster.events as any);
-      }
-    },
-    [cameraRef, handleEventClick]
-  );
-
   const handleClusterClose = useCallback(() => {
     setSelectedCluster(null);
   }, []);
@@ -1661,21 +1536,13 @@ export default function Map() {
     );
   }
 
-  // Allow rendering if we either have preferred, an existing mapCenter, or route params lat/lng
-  const paramLat = (params as any)?.latitude || (params as any)?.lat;
-  const paramLng = (params as any)?.longitude || (params as any)?.lng;
-  const hasRouteCoords =
-    (typeof paramLat === "string" || typeof paramLat === "number") &&
-    (typeof paramLng === "string" || typeof paramLng === "number");
-  if (preferredLat == null || preferredLng == null) {
-    if (!mapCenter && !hasRouteCoords) {
-      return (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" />
-          <Text className="mt-4">Preparing your map...</Text>
-        </View>
-      );
-    }
+  if (!location) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <ActivityIndicator size="large" />
+        <Text className="mt-4">Getting your location...</Text>
+      </View>
+    );
   }
 
   return (
@@ -1693,7 +1560,14 @@ export default function Map() {
         rotateEnabled
         scrollEnabled
         zoomEnabled
-        onTouchMove={() => setIsFollowingUser(false)}
+        onTouchMove={() => {
+          setIsFollowingUser(false);
+          isMapMovingRef.current = true;
+          // Reset movement flag after a delay
+          setTimeout(() => {
+            isMapMovingRef.current = false;
+          }, 2000);
+        }}
         onPress={handleMapTap}
         logoEnabled={false}
         onDidFinishLoadingMap={() => {
@@ -1712,13 +1586,58 @@ export default function Map() {
           console.log("Falling back to:", getFallbackStyle(isDarkMode));
           setMapStyleError(true); // Trigger fallback
         }}
-        onRegionDidChange={handleRegionChange}
+        onRegionDidChange={(region: any) => {
+          // Update hide count and zoom level for clustering
+          const zoomLevel = region?.properties?.zoomLevel;
+          if (zoomLevel) {
+            // Update hide count immediately
+            if (zoomLevel <= 12) {
+              setHideCount(true);
+            } else {
+              setHideCount(false);
+            }
+
+            // Update zoom level for clustering with throttling
+            if (zoomDebounceRef.current) {
+              clearTimeout(zoomDebounceRef.current);
+            }
+            zoomDebounceRef.current = setTimeout(() => {
+              console.log(`🗺️ [ZOOM] Current zoom level: ${zoomLevel}`);
+              setCurrentZoomLevel(zoomLevel);
+            }, 500); // 500ms debounce to prevent excessive clustering
+          }
+        }}
       >
+        {/* Progressive loading indicator */}
+        {isLoadingProgressively && totalClusterCount > 0 && (
+          <View className="absolute right-4 top-20 z-40 p-4 bg-white rounded-xl shadow-lg">
+            <View className="flex-row items-center mb-2">
+              <ActivityIndicator size="small" color="#8B5CF6" />
+              <Text className="ml-2 text-sm font-semibold text-gray-800">
+                Loading pins...
+              </Text>
+            </View>
+            <View className="overflow-hidden w-32 h-2 bg-gray-200 rounded-full">
+              <View
+                className="h-full bg-purple-600 rounded-full transition-all duration-300"
+                style={{
+                  width: `${(loadedClusterCount / totalClusterCount) * 100}%`,
+                }}
+              />
+            </View>
+            <Text className="mt-1 text-xs text-center text-gray-600">
+              {loadedClusterCount} / {totalClusterCount} pins
+            </Text>
+          </View>
+        )}
         <MapboxGL.Camera
           ref={cameraRef}
           defaultSettings={{
-            centerCoordinate: [preferredLng ?? 0, preferredLat ?? 0],
-            zoomLevel: 11,
+            centerCoordinate: [
+              calculatedCenter[1] || location?.longitude || 0,
+              calculatedCenter[0] || location?.latitude || 0,
+            ],
+            zoomLevel: 13, // Approximately 5-mile radius view
           }}
           maxZoomLevel={16}
           minZoomLevel={3}
@@ -1726,238 +1645,306 @@ export default function Map() {
           animationDuration={1000}
           followUserLocation={isFollowingUser}
           followUserMode={UserTrackingMode.FollowWithCourse}
-          followZoomLevel={14}
+          followZoomLevel={13} // Consistent 5-mile radius for follow mode
         />
 
         {/* Event markers */}
         {selectedTimeFrame == "Today" &&
-          filterClusters(clustersToday, mapZoomLevel).map((cluster, index) =>
-            !cluster.mainEvent ? null : (
-              <MapboxGL.MarkerView
-                key={`cluster-now-${cluster.location.latitude.toFixed(
-                  3
-                )}-${cluster.location.longitude.toFixed(3)}-${index}`}
-                id={`cluster-now-${cluster.location.latitude.toFixed(
-                  3
-                )}-${cluster.location.longitude.toFixed(3)}-${index}`}
-                coordinate={[
-                  cluster.location.longitude,
-                  cluster.location.latitude,
-                ]}
-                anchor={{ x: 0.5, y: 0.5 }}
-              >
-                <View
-                  style={{
-                    zIndex: cluster.events.some(
-                      (e: MapEvent) => e.id === selectedEvent?.id
-                    )
-                      ? 1000
-                      : 100,
-                  }}
-                >
-                  <EventMarker
-                    imageUrl={cluster.mainEvent.image_urls?.[0]}
-                    count={cluster.events.length}
-                    isSelected={cluster.events.some(
-                      (e: MapEvent) => e.id === selectedEvent?.id
-                    )}
-                    markerType={getMarkerType(cluster.mainEvent)}
-                    categoryName={getCategoryName(cluster.mainEvent)}
-                    onPress={() => {
-                      setIsEvent(true);
-                      handleClusterPress(cluster);
-                    }}
-                  />
-                </View>
-              </MapboxGL.MarkerView>
-            )
-          )}
+          memoizedMarkerData.today.map((markerData, index) => {
+            const cluster = filteredClustersToday[index];
+            if (!cluster?.mainEvent) return null;
+
+            return (
+              <MemoizedMarker
+                key={markerData.key}
+                cluster={cluster}
+                index={index}
+                timeFrame="today"
+                markerData={markerData}
+              />
+            );
+          })}
 
         {selectedTimeFrame == "Week" &&
-          filterClusters(clustersNow, mapZoomLevel).map((cluster, index) =>
-            !cluster.mainEvent ? null : (
+          filteredClustersNow.map((cluster, index) => {
+            if (!cluster.mainEvent) return null;
+
+            const isSelected =
+              cluster.type === "event"
+                ? cluster.events?.some(
+                    (e: MapEvent) => e.id === selectedEvent?.id
+                  ) || false
+                : cluster.locations?.some(
+                    (l: MapLocation) => l.id === selectedEvent?.id
+                  ) || false;
+
+            const count =
+              cluster.type === "event"
+                ? cluster.events?.length || 0
+                : cluster.locations?.length || 0;
+
+            // Convert MapLocation to MapEvent format for marker functions
+            const mainEventForMarker =
+              cluster.type === "event"
+                ? (cluster.mainEvent as MapEvent)
+                : ({
+                    ...cluster.mainEvent,
+                    start_datetime: new Date().toISOString(),
+                    end_datetime: new Date().toISOString(),
+                    venue_name: cluster.mainEvent.name,
+                    attendees: { count: 0, profiles: [] },
+                    categories: (cluster.mainEvent as MapLocation).category
+                      ? [(cluster.mainEvent as MapLocation).category!]
+                      : [],
+                  } as MapEvent);
+
+            return (
               <MapboxGL.MarkerView
-                key={`cluster-week-${cluster.location.latitude.toFixed(
+                key={`cluster-week-${cluster.coordinate[0].toFixed(
                   3
-                )}-${cluster.location.longitude.toFixed(3)}-${index}`}
-                id={`cluster-week-${cluster.location.latitude.toFixed(
+                )}-${cluster.coordinate[1].toFixed(3)}-${index}`}
+                id={`cluster-week-${cluster.coordinate[0].toFixed(
                   3
-                )}-${cluster.location.longitude.toFixed(3)}-${index}`}
+                )}-${cluster.coordinate[1].toFixed(3)}-${index}`}
                 coordinate={[
-                  cluster.location.longitude,
-                  cluster.location.latitude,
+                  cluster.coordinate[1], // longitude
+                  cluster.coordinate[0], // latitude
                 ]}
                 anchor={{ x: 0.5, y: 0.5 }}
               >
                 <View
                   style={{
-                    zIndex: cluster.events.some(
-                      (e: MapEvent) => e.id === selectedEvent?.id
-                    )
-                      ? 1000
-                      : 100,
+                    zIndex: isSelected ? 1000 : 100,
                   }}
                 >
                   <EventMarker
-                    imageUrl={cluster.mainEvent.image_urls?.[0]}
-                    count={cluster.events.length}
-                    isSelected={cluster.events.some(
-                      (e: MapEvent) => e.id === selectedEvent?.id
-                    )}
-                    markerType={getMarkerType(cluster.mainEvent)}
-                    categoryName={getCategoryName(cluster.mainEvent)}
+                    imageUrl={cluster.mainEvent?.image_urls?.[0]}
+                    count={count}
+                    isSelected={isSelected}
+                    markerType={getMarkerType(mainEventForMarker)}
+                    categoryName={getCategoryName(mainEventForMarker)}
                     onPress={() => {
-                      setIsEvent(true);
+                      setIsEvent(cluster.type === "event");
                       handleClusterPress(cluster);
                     }}
                   />
                 </View>
               </MapboxGL.MarkerView>
-            )
-          )}
+            );
+          })}
 
         {selectedTimeFrame == "Weekend" &&
-          filterClusters(clustersTomorrow, mapZoomLevel).map((cluster, index) =>
-            !cluster.mainEvent ? null : (
+          filteredClustersTomorrow.map((cluster, index) => {
+            if (!cluster.mainEvent) return null;
+
+            const isSelected =
+              cluster.type === "event"
+                ? cluster.events?.some(
+                    (e: MapEvent) => e.id === selectedEvent?.id
+                  ) || false
+                : cluster.locations?.some(
+                    (l: MapLocation) => l.id === selectedEvent?.id
+                  ) || false;
+
+            const count =
+              cluster.type === "event"
+                ? cluster.events?.length || 0
+                : cluster.locations?.length || 0;
+
+            // Convert MapLocation to MapEvent format for marker functions
+            const mainEventForMarker =
+              cluster.type === "event"
+                ? (cluster.mainEvent as MapEvent)
+                : ({
+                    ...cluster.mainEvent,
+                    start_datetime: new Date().toISOString(),
+                    end_datetime: new Date().toISOString(),
+                    venue_name: cluster.mainEvent.name,
+                    attendees: { count: 0, profiles: [] },
+                    categories: (cluster.mainEvent as MapLocation).category
+                      ? [(cluster.mainEvent as MapLocation).category!]
+                      : [],
+                  } as MapEvent);
+
+            return (
               <MapboxGL.MarkerView
-                key={`cluster-weekend-${cluster.location.latitude.toFixed(
+                key={`cluster-weekend-${cluster.coordinate[0].toFixed(
                   3
-                )}-${cluster.location.longitude.toFixed(3)}-${index}`}
-                id={`cluster-weekend-${cluster.location.latitude.toFixed(
+                )}-${cluster.coordinate[1].toFixed(3)}-${index}`}
+                id={`cluster-weekend-${cluster.coordinate[0].toFixed(
                   3
-                )}-${cluster.location.longitude.toFixed(3)}-${index}`}
+                )}-${cluster.coordinate[1].toFixed(3)}-${index}`}
                 coordinate={[
-                  cluster.location.longitude,
-                  cluster.location.latitude,
+                  cluster.coordinate[1], // longitude
+                  cluster.coordinate[0], // latitude
                 ]}
                 anchor={{ x: 0.5, y: 0.5 }}
               >
                 <View
                   style={{
-                    zIndex: cluster.events.some(
-                      (e: MapEvent) => e.id === selectedEvent?.id
-                    )
-                      ? 1000
-                      : 100,
+                    zIndex: isSelected ? 1000 : 100,
                   }}
                 >
                   <EventMarker
-                    imageUrl={cluster.mainEvent.image_urls?.[0]}
-                    count={cluster.events.length}
-                    isSelected={cluster.events.some(
-                      (e: MapEvent) => e.id === selectedEvent?.id
-                    )}
-                    markerType={getMarkerType(cluster.mainEvent)}
-                    categoryName={getCategoryName(cluster.mainEvent)}
+                    imageUrl={cluster.mainEvent?.image_urls?.[0]}
+                    count={count}
+                    isSelected={isSelected}
+                    markerType={getMarkerType(mainEventForMarker)}
+                    categoryName={getCategoryName(mainEventForMarker)}
                     onPress={() => {
-                      setIsEvent(true);
+                      setIsEvent(cluster.type === "event");
                       handleClusterPress(cluster);
                     }}
                   />
                 </View>
               </MapboxGL.MarkerView>
-            )
-          )}
+            );
+          })}
 
         {/* Fallback: Show all clusters if no specific timeframe clusters are available */}
         {clustersNow.length === 0 &&
           clustersToday.length === 0 &&
           clustersTomorrow.length === 0 &&
           clusters.length > 0 &&
-          filterClusters(clusters, mapZoomLevel).map((cluster, index) =>
-            !cluster.mainEvent ||
-            !Array.isArray(cluster.mainEvent.image_urls) ||
-            !cluster.mainEvent.image_urls[0] ? null : (
+          filteredClusters.map((cluster, index) => {
+            if (!cluster.mainEvent) return null;
+
+            const isSelected =
+              cluster.type === "event"
+                ? cluster.events?.some(
+                    (e: MapEvent) => e.id === selectedEvent?.id
+                  ) || false
+                : cluster.locations?.some(
+                    (l: MapLocation) => l.id === selectedEvent?.id
+                  ) || false;
+
+            const count =
+              cluster.type === "event"
+                ? cluster.events?.length || 0
+                : cluster.locations?.length || 0;
+
+            // Convert MapLocation to MapEvent format for marker functions
+            const mainEventForMarker =
+              cluster.type === "event"
+                ? (cluster.mainEvent as MapEvent)
+                : ({
+                    ...cluster.mainEvent,
+                    start_datetime: new Date().toISOString(),
+                    end_datetime: new Date().toISOString(),
+                    venue_name: cluster.mainEvent.name,
+                    attendees: { count: 0, profiles: [] },
+                    categories: (cluster.mainEvent as MapLocation).category
+                      ? [(cluster.mainEvent as MapLocation).category!]
+                      : [],
+                  } as MapEvent);
+
+            return (
               <MapboxGL.MarkerView
-                key={`cluster-fallback-${cluster.location.latitude.toFixed(
+                key={`cluster-fallback-${cluster.coordinate[0].toFixed(
                   3
-                )}-${cluster.location.longitude.toFixed(3)}-${index}`}
-                id={`cluster-fallback-${cluster.location.latitude.toFixed(
+                )}-${cluster.coordinate[1].toFixed(3)}-${index}`}
+                id={`cluster-fallback-${cluster.coordinate[0].toFixed(
                   3
-                )}-${cluster.location.longitude.toFixed(3)}-${index}`}
+                )}-${cluster.coordinate[1].toFixed(3)}-${index}`}
                 coordinate={[
-                  cluster.location.longitude,
-                  cluster.location.latitude,
+                  cluster.coordinate[1], // longitude
+                  cluster.coordinate[0], // latitude
                 ]}
                 anchor={{ x: 0.5, y: 0.5 }}
               >
                 <View
                   style={{
-                    zIndex: cluster.events.some(
-                      (e: MapEvent) => e.id === selectedEvent?.id
-                    )
-                      ? 1000
-                      : 100,
+                    zIndex: isSelected ? 1000 : 100,
                   }}
                 >
                   <EventMarker
-                    imageUrl={cluster.mainEvent.image_urls?.[0]}
-                    count={cluster.events.length}
-                    isSelected={cluster.events.some(
-                      (e: MapEvent) => e.id === selectedEvent?.id
-                    )}
-                    markerType={getMarkerType(cluster.mainEvent)}
-                    categoryName={getCategoryName(cluster.mainEvent)}
+                    imageUrl={cluster.mainEvent?.image_urls?.[0]}
+                    count={count}
+                    isSelected={isSelected}
+                    markerType={getMarkerType(mainEventForMarker)}
+                    categoryName={getCategoryName(mainEventForMarker)}
                     onPress={() => {
-                      setIsEvent(true);
+                      setIsEvent(cluster.type === "event");
                       handleClusterPress(cluster);
                     }}
                   />
                 </View>
               </MapboxGL.MarkerView>
-            )
-          )}
+            );
+          })}
 
         {/* locations fetched from static_location table for (beach, club , park etc) */}
-        {filteredClustersLocations.length > 0 &&
-          filteredClustersLocations.map((cluster, index) =>
-            // Only filter out clusters that don't have a mainEvent
-            // Allow locations without images to still show
-            !cluster.mainEvent ? (
-              (console.log(
-                `[Map] ⚠️ Skipping cluster at [${cluster.location.latitude}, ${cluster.location.longitude}] - no mainEvent`
-              ),
-              null)
-            ) : (
+        {clustersLocations.length > 0 &&
+          filteredClustersLocations.slice(0, 500).map((cluster, index) => {
+            if (!cluster.mainEvent) return null;
+
+            const isSelected =
+              cluster.type === "event"
+                ? cluster.events?.some(
+                    (e: MapEvent) => e.id === selectedEvent?.id
+                  ) || false
+                : cluster.locations?.some(
+                    (l: MapLocation) => l.id === selectedEvent?.id
+                  ) || false;
+
+            const count =
+              cluster.type === "event"
+                ? cluster.events?.length || 0
+                : cluster.locations?.length || 0;
+
+            // Convert MapLocation to MapEvent format for marker functions
+            const mainEventForMarker =
+              cluster.type === "event"
+                ? (cluster.mainEvent as MapEvent)
+                : ({
+                    ...cluster.mainEvent,
+                    start_datetime: new Date().toISOString(),
+                    end_datetime: new Date().toISOString(),
+                    venue_name: cluster.mainEvent.name,
+                    attendees: { count: 0, profiles: [] },
+                    categories: (cluster.mainEvent as MapLocation).category
+                      ? [(cluster.mainEvent as MapLocation).category!]
+                      : [],
+                  } as MapEvent);
+
+            return (
               <MapboxGL.MarkerView
-                key={`cluster-location-${cluster.location.latitude.toFixed(
+                key={`cluster-location-${cluster.coordinate[0].toFixed(
                   3
-                )}-${cluster.location.longitude.toFixed(3)}-${index}`}
-                id={`cluster-location-${cluster.location.latitude.toFixed(
+                )}-${cluster.coordinate[1].toFixed(3)}-${index}`}
+                id={`cluster-location-${cluster.coordinate[0].toFixed(
                   3
-                )}-${cluster.location.longitude.toFixed(3)}-${index}`}
+                )}-${cluster.coordinate[1].toFixed(3)}-${index}`}
                 coordinate={[
-                  cluster.location.longitude,
-                  cluster.location.latitude,
+                  cluster.coordinate[1], // longitude
+                  cluster.coordinate[0], // latitude
                 ]}
                 anchor={{ x: 0.5, y: 0.5 }}
               >
                 <View
                   style={{
-                    zIndex: cluster?.events?.some(
-                      (e: MapEvent) => e.id === selectedEvent?.id
-                    )
-                      ? 1000
-                      : 100,
+                    zIndex: isSelected ? 1000 : 100,
                   }}
                 >
                   <EventMarker
                     imageUrl={cluster.mainEvent?.image_urls?.[0]}
-                    count={cluster?.events?.length}
-                    isSelected={cluster?.events?.some(
-                      (e: MapEvent) => e.id === selectedEvent?.id
-                    )}
-                    markerType="static-location"
-                    categoryName={getCategoryName(cluster.mainEvent as any)}
+                    count={count}
+                    isSelected={isSelected}
+                    markerType={
+                      cluster.type === "location"
+                        ? "static-location"
+                        : getMarkerType(mainEventForMarker)
+                    }
+                    categoryName={getCategoryName(mainEventForMarker)}
                     onPress={() => {
-                      setIsEvent(false);
-                      handleLocationClusterPress(cluster);
+                      setIsEvent(cluster.type === "event");
+                      handleClusterPress(cluster);
                     }}
                   />
                 </View>
               </MapboxGL.MarkerView>
-            )
-          )}
+            );
+          })}
 
         {/* User location marker */}
         {location && (
@@ -2012,12 +1999,25 @@ export default function Map() {
           onFilterChange={setFilters}
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
-          onRecenter={() =>
-            handleRecenter({
-              latitude: preferredLat ?? null,
-              longitude: preferredLng ?? null,
-            })
-          }
+          onRecenter={() => {
+            // Respect user's location preference when recentering
+            if (
+              user?.event_location_preference === 1 &&
+              userlocation?.latitude &&
+              userlocation?.longitude
+            ) {
+              // User is in orbit mode - recenter to orbit location
+              console.log("🗺️ [Map] Recentering to orbit location");
+              handleRecenter({
+                latitude: parseFloat(userlocation.latitude),
+                longitude: parseFloat(userlocation.longitude),
+              });
+            } else {
+              // User is in current mode - recenter to GPS location
+              console.log("🗺️ [Map] Recentering to GPS location");
+              handleRecenter(location);
+            }
+          }}
           isFollowingUser={isFollowingUser}
           timeFrame={selectedTimeFrame}
           onSelectedTimeFrame={(txt) => {
@@ -2051,7 +2051,9 @@ export default function Map() {
       {selectedCluster && (
         <ClusterSheet
           events={selectedCluster}
-          onEventSelect={handleEventClick}
+          onEventSelect={
+            handleEventClick as (event: MapEvent | MapLocation) => void
+          }
           onClose={handleClusterClose}
         />
       )}

@@ -186,7 +186,7 @@ export async function fetchAllEventsUnlimited(options?: {
     const backendUrl = process.env.BACKEND_MAP_URL;
     console.log(
       "Fetching unlimited events from:",
-      `${backendUrl}/api/events/nearby`
+      `${backendUrl}/api/events/all`
     );
 
     // Create a timeout promise
@@ -194,83 +194,104 @@ export async function fetchAllEventsUnlimited(options?: {
       setTimeout(() => reject(new Error("Request timeout")), 10000); // 10 second timeout for unlimited
     });
 
-    // Get current device location like the map does (unless overrides provided)
-    let currentDeviceLocation: { latitude: number; longitude: number } | null =
-      null;
-
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === "granted") {
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.BestForNavigation,
-        });
-        currentDeviceLocation = {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        };
-        console.log("Got current device location:", currentDeviceLocation);
-      }
-    } catch (error) {
-      console.log("Could not get current device location:", error);
-    }
-
-    // Get user and user location like the map does
-    let user: any = null;
-    let userLocation: any = null;
-
-    // Fetch user data
-    try {
-      const { data, error: supabaseError } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", session.user.id)
-        .single();
-
-      if (supabaseError) throw supabaseError;
-      user = data;
-    } catch (e) {
-      console.log("Could not get user data");
-    }
-
-    // Fetch most recent user location (handle multiple rows safely)
-    try {
-      const { data, error: supabaseError } = await supabase
-        .from("user_locations")
-        .select("*")
-        .eq("user_id", session.user.id)
-        .order("last_updated", { ascending: false })
-        .limit(1);
-
-      if (supabaseError) throw supabaseError;
-      userLocation = (data && data[0]) || null;
-    } catch (e) {
-      console.log("Could not get user location", e);
-    }
-
-    // FIXED: Respect explicit coords from caller, then Orbit, then device
+    // Check if coordinates were provided by the caller (home feed)
     const providedLat = options?.latitude ?? null;
     const providedLng = options?.longitude ?? null;
 
-    const eventData = {
-      latitude:
-        providedLat != null
-          ? providedLat
-          : user?.event_location_preference === 1 &&
-            userLocation?.latitude != null
-          ? parseFloat(userLocation.latitude)
-          : currentDeviceLocation?.latitude != null
-          ? currentDeviceLocation.latitude
-          : null,
-      longitude:
-        providedLng != null
-          ? providedLng
-          : user?.event_location_preference === 1 &&
-            userLocation?.longitude != null
-          ? parseFloat(userLocation.longitude)
-          : currentDeviceLocation?.longitude != null
-          ? currentDeviceLocation.longitude
-          : null,
-    };
+    let eventData: { latitude: number | null; longitude: number | null };
+
+    if (providedLat != null && providedLng != null) {
+      // USE PROVIDED COORDINATES - don't fetch location data again
+      console.log(
+        "🎯 [fetchAllEventsUnlimited] Using provided coordinates from caller:",
+        {
+          latitude: providedLat,
+          longitude: providedLng,
+        }
+      );
+
+      eventData = {
+        latitude: providedLat,
+        longitude: providedLng,
+      };
+    } else {
+      // FALLBACK: Only fetch location data if no coordinates provided
+      console.log(
+        "📍 [fetchAllEventsUnlimited] No coordinates provided, fetching location data..."
+      );
+
+      // Get current device location like the map does
+      let currentDeviceLocation: {
+        latitude: number;
+        longitude: number;
+      } | null = null;
+
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === "granted") {
+          const location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.BestForNavigation,
+          });
+          currentDeviceLocation = {
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+          };
+          console.log("Got current device location:", currentDeviceLocation);
+        }
+      } catch (error) {
+        console.log("Could not get current device location:", error);
+      }
+
+      // Get user and user location like the map does
+      let user: any = null;
+      let userLocation: any = null;
+
+      // Fetch user data
+      try {
+        const { data, error: supabaseError } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", session.user.id)
+          .single();
+
+        if (supabaseError) throw supabaseError;
+        user = data;
+      } catch (e) {
+        console.log("Could not get user data");
+      }
+
+      // Fetch most recent user location (handle multiple rows safely)
+      try {
+        const { data, error: supabaseError } = await supabase
+          .from("user_locations")
+          .select("*")
+          .eq("user_id", session.user.id)
+          .order("last_updated", { ascending: false })
+          .limit(1);
+
+        if (supabaseError) throw supabaseError;
+        userLocation = (data && data[0]) || null;
+      } catch (e) {
+        console.log("Could not get user location", e);
+      }
+
+      eventData = {
+        latitude:
+          user?.event_location_preference === 1 &&
+          userLocation?.latitude != null
+            ? parseFloat(userLocation.latitude)
+            : currentDeviceLocation?.latitude != null
+            ? currentDeviceLocation.latitude
+            : null,
+        longitude:
+          user?.event_location_preference === 1 &&
+          userLocation?.longitude != null
+            ? parseFloat(userLocation.longitude)
+            : currentDeviceLocation?.longitude != null
+            ? currentDeviceLocation.longitude
+            : null,
+      };
+    }
 
     // Only proceed if we have valid coordinates
     if (eventData.latitude == null || eventData.longitude == null) {

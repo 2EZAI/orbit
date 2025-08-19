@@ -8,14 +8,14 @@ import {
 } from "react-native";
 import { Text } from "../ui/text";
 import { Sheet } from "../ui/sheet";
-import { MapEvent } from "~/hooks/useMapEvents";
+import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
 import { formatTime, formatDate } from "~/src/lib/date";
 import { MapPin, Calendar, X, Users } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 
 interface ClusterSheetProps {
-  events: MapEvent[];
-  onEventSelect: (event: MapEvent) => void;
+  events: (MapEvent | MapLocation)[];
+  onEventSelect: (event: MapEvent | MapLocation) => void;
   onClose: () => void;
 }
 
@@ -25,6 +25,18 @@ export function ClusterSheet({
   onClose,
 }: ClusterSheetProps) {
   const { theme } = useTheme();
+
+  // Debug: Log the events array to see what we're working with
+  console.log(
+    "ClusterSheet received events:",
+    events?.map((e) => ({
+      id: e?.id,
+      name: e?.name,
+      type: "start_datetime" in e ? "event" : "location",
+      hasName: !!e?.name,
+      nameType: typeof e?.name,
+    }))
+  );
 
   return (
     <Sheet isOpen onClose={onClose}>
@@ -37,10 +49,9 @@ export function ClusterSheet({
         >
           <View style={styles.headerLeft}>
             <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-              {events?.[0]?.type === "googleApi" ||
-              events?.[0]?.type === "static"
-                ? `${events.length} Locations`
-                : `${events.length} Events at this location`}
+              {events?.[0] && "start_datetime" in events[0]
+                ? `${events?.length || 0} Events at this location`
+                : `${events?.length || 0} Locations`}
             </Text>
             <Text
               style={[
@@ -62,92 +73,144 @@ export function ClusterSheet({
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
         >
-          {events.map((event) => (
-            <TouchableOpacity
-              key={event.id}
-              onPress={() => {
-                onEventSelect(event);
-                onClose();
-              }}
-              style={[styles.eventCard, { backgroundColor: theme.colors.card }]}
-              activeOpacity={0.8}
-            >
-              {/* Event Image */}
-              <View style={styles.imageContainer}>
-                <Image
-                  source={{
-                    uri:
-                      event?.image_urls?.[0] ||
-                      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80",
+          {events
+            ?.filter((event) => event && event.id && typeof event === "object")
+            .map((event) => {
+              // Additional safety check to ensure event is valid
+              if (!event || typeof event !== "object" || !event.id) {
+                console.warn("ClusterSheet: Invalid event object:", event);
+                return null;
+              }
+
+              const isEvent = "start_datetime" in event;
+
+              // Ensure all text fields are strings or null
+              const eventName =
+                typeof event.name === "string" ? event.name : "Unnamed Event";
+              const eventAddress =
+                typeof (event as MapLocation).address === "string"
+                  ? (event as MapLocation).address
+                  : null;
+              const eventVenue =
+                typeof (event as MapEvent).venue_name === "string"
+                  ? (event as MapEvent).venue_name
+                  : null;
+
+              return (
+                <TouchableOpacity
+                  key={event.id}
+                  onPress={() => {
+                    onEventSelect(event);
+                    onClose();
                   }}
-                  style={styles.eventImage}
-                  resizeMode="cover"
-                />
-
-                {/* Event Type Badge */}
-                {(event as any).is_ticketmaster && (
-                  <View style={styles.ticketmasterBadge}>
-                    <Text style={styles.badgeText}>Ticketmaster</Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Event Details */}
-              <View style={styles.eventContent}>
-                <Text
-                  style={[styles.eventTitle, { color: theme.colors.text }]}
-                  numberOfLines={2}
+                  style={[
+                    styles.eventCard,
+                    { backgroundColor: theme.colors.card },
+                  ]}
+                  activeOpacity={0.8}
                 >
-                  {event.name}
-                </Text>
+                  {/* Event Image */}
+                  <View style={styles.imageContainer}>
+                    <Image
+                      source={{
+                        uri:
+                          event?.image_urls?.[0] ||
+                          "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80",
+                      }}
+                      style={styles.eventImage}
+                      resizeMode="cover"
+                    />
 
-                {/* Date and Time */}
-                {event?.start_datetime && (
-                  <View style={styles.metaRow}>
-                    <Calendar size={14} color={theme.colors.text + "CC"} />
-                    <Text
-                      style={[
-                        styles.metaText,
-                        { color: theme.colors.text + "CC" },
-                      ]}
-                    >
-                      {formatDate(event?.start_datetime)} •{" "}
-                      {formatTime(event?.start_datetime)}
-                    </Text>
+                    {/* Event Type Badge */}
+                    {isEvent && (event as MapEvent).is_ticketmaster && (
+                      <View style={styles.ticketmasterBadge}>
+                        <Text style={styles.badgeText}>Ticketmaster</Text>
+                      </View>
+                    )}
                   </View>
-                )}
 
-                {/* Venue */}
-                {event.venue_name && (
-                  <View style={styles.metaRow}>
-                    <MapPin size={14} color={theme.colors.text + "CC"} />
+                  {/* Event Details */}
+                  <View style={styles.eventContent}>
                     <Text
-                      style={[
-                        styles.metaText,
-                        { color: theme.colors.text + "CC" },
-                      ]}
-                      numberOfLines={1}
+                      style={[styles.eventTitle, { color: theme.colors.text }]}
+                      numberOfLines={2}
                     >
-                      {event.venue_name}
+                      {eventName}
                     </Text>
-                  </View>
-                )}
 
-                {/* Attendee count */}
-                {event?.attendees?.count > 0 && (
-                  <View style={styles.metaRow}>
-                    <Users size={14} color={theme.colors.primary} />
-                    <Text
-                      style={[styles.metaText, { color: theme.colors.primary }]}
-                    >
-                      {event.attendees.count}{" "}
-                      {event.attendees.count === 1 ? "attendee" : "attendees"}
-                    </Text>
+                    {/* Date and Time for events */}
+                    {isEvent && (event as MapEvent).start_datetime && (
+                      <View style={styles.metaRow}>
+                        <Calendar size={14} color={theme.colors.text + "CC"} />
+                        <Text
+                          style={[
+                            styles.metaText,
+                            { color: theme.colors.text + "CC" },
+                          ]}
+                        >
+                          {formatDate((event as MapEvent).start_datetime)} •{" "}
+                          {formatTime((event as MapEvent).start_datetime)}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Address for locations */}
+                    {!isEvent && eventAddress && (
+                      <View style={styles.metaRow}>
+                        <MapPin size={14} color={theme.colors.text + "CC"} />
+                        <Text
+                          style={[
+                            styles.metaText,
+                            { color: theme.colors.text + "CC" },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {eventAddress}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Venue for events */}
+                    {isEvent && eventVenue && (
+                      <View style={styles.metaRow}>
+                        <MapPin size={14} color={theme.colors.text + "CC"} />
+                        <Text
+                          style={[
+                            styles.metaText,
+                            { color: theme.colors.text + "CC" },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {eventVenue}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Attendee count for events */}
+                    {isEvent &&
+                      typeof (event as MapEvent).attendees?.count ===
+                        "number" &&
+                      (event as MapEvent).attendees?.count > 0 && (
+                        <View style={styles.metaRow}>
+                          <Users size={14} color={theme.colors.primary} />
+                          <Text
+                            style={[
+                              styles.metaText,
+                              { color: theme.colors.primary },
+                            ]}
+                          >
+                            {(event as MapEvent).attendees?.count}{" "}
+                            {(event as MapEvent).attendees?.count === 1
+                              ? "attendee"
+                              : "attendees"}
+                          </Text>
+                        </View>
+                      )}
                   </View>
-                )}
-              </View>
-            </TouchableOpacity>
-          ))}
+                </TouchableOpacity>
+              );
+            })
+            .filter(Boolean)}
         </ScrollView>
       </View>
     </Sheet>

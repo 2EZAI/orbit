@@ -1,5 +1,6 @@
 import { supabase } from "~/src/lib/supabase";
-import { fetchAllEvents } from "~/src/lib/api/ticketmaster";
+// COMMENTED OUT: Old Ticketmaster API import - now using unified API
+// import { fetchAllEvents } from "~/src/lib/api/ticketmaster";
 import {
   transformEvent,
   transformLocation,
@@ -89,12 +90,16 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
       });
     } else if (section.key === "ticketmaster") {
       // Get all events and filter for Ticketmaster
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       allSectionData =
         allEvents.filter((event: any) => event.is_ticketmaster) || [];
     } else if (section.key === "this-weekend") {
       // Get all events and filter for this weekend
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       const today = new Date();
       allSectionData =
         allEvents.filter((event: any) => {
@@ -106,7 +111,9 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         }) || [];
     } else if (section.key === "popular-events") {
       // Get all events and sort by popularity
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       allSectionData =
         allEvents
           .sort((a: any, b: any) => {
@@ -147,7 +154,9 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
       allSectionData = locations.slice(0, 100) || [];
     } else if (section.key === "this-week") {
       // Get all events and filter for this week
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       const today = new Date();
       allSectionData =
         allEvents.filter((event: any) => {
@@ -159,7 +168,9 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         }) || [];
     } else if (section.key === "free-events") {
       // Get all events and filter for free events
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       allSectionData =
         allEvents.filter((event: any) => {
           const name = event.name?.toLowerCase() || "";
@@ -173,7 +184,9 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         }) || [];
     } else if (section.key === "outdoor-events") {
       // Get all events and filter for outdoor events
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       allSectionData =
         allEvents.filter((event: any) => {
           const name = event.name?.toLowerCase() || "";
@@ -193,7 +206,9 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         }) || [];
     } else if (section.key === "nightlife-events") {
       // Get all events and filter for nightlife
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       allSectionData =
         allEvents.filter((event: any) => {
           const name = event.name?.toLowerCase() || "";
@@ -214,7 +229,9 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         }) || [];
     } else if (section.key === "family-events") {
       // Get all events and filter for family friendly
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       allSectionData =
         allEvents.filter((event: any) => {
           const name = event.name?.toLowerCase() || "";
@@ -232,7 +249,9 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         }) || [];
     } else if (section.key === "sports-events") {
       // Get all events and filter for sports
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       console.log("🔍 Sports Events - Total events fetched:", allEvents.length);
 
       allSectionData =
@@ -259,7 +278,9 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
       console.log("🔍 Sports Events - Filtered count:", allSectionData.length);
     } else if (section.key === "food-events") {
       // Get all events and filter for food & drink
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       allSectionData =
         allEvents.filter((event: any) => {
           const name = event.name?.toLowerCase() || "";
@@ -281,7 +302,9 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         }) || [];
     } else if (section.key === "art-events") {
       // Get all events and filter for art & culture
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       allSectionData =
         allEvents.filter((event: any) => {
           const name = event.name?.toLowerCase() || "";
@@ -301,7 +324,9 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         }) || [];
     } else if (section.key === "music-events") {
       // Get all events and filter for music
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       allSectionData =
         allEvents.filter((event: any) => {
           const name = event.name?.toLowerCase() || "";
@@ -321,7 +346,9 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         }) || [];
     } else if (section.key === "business-events") {
       // Get all events and filter for business & networking
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       allSectionData =
         allEvents.filter((event: any) => {
           const name = event.name?.toLowerCase() || "";
@@ -341,7 +368,9 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         }) || [];
     } else if (section.key === "tech-events") {
       // Get all events and filter for tech
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       allSectionData =
         allEvents.filter((event: any) => {
           const name = event.name?.toLowerCase() || "";
@@ -361,7 +390,9 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         }) || [];
     } else if (section.key === "wellness-events") {
       // Get all events and filter for wellness & fitness
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       allSectionData =
         allEvents.filter((event: any) => {
           const name = event.name?.toLowerCase() || "";
@@ -381,7 +412,9 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         }) || [];
     } else if (section.key === "educational-events") {
       // Get all events and filter for educational
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       allSectionData =
         allEvents.filter((event: any) => {
           const name = event.name?.toLowerCase() || "";
@@ -401,7 +434,9 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         }) || [];
     } else if (section.key === "charity-events") {
       // Get all events and filter for charity & volunteer
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       allSectionData =
         allEvents.filter((event: any) => {
           const name = event.name?.toLowerCase() || "";
@@ -419,7 +454,9 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         }) || [];
     } else if (section.key === "late-night-events") {
       // Get all events and filter for late night
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       allSectionData =
         allEvents.filter((event: any) => {
           const eventDate = new Date(event.start_datetime);
@@ -428,7 +465,9 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         }) || [];
     } else if (section.key === "morning-events") {
       // Get all events and filter for morning
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       allSectionData =
         allEvents.filter((event: any) => {
           const eventDate = new Date(event.start_datetime);
@@ -437,7 +476,9 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         }) || [];
     } else if (section.key === "afternoon-events") {
       // Get all events and filter for afternoon
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       allSectionData =
         allEvents.filter((event: any) => {
           const eventDate = new Date(event.start_datetime);
@@ -446,7 +487,9 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         }) || [];
     } else if (section.key === "evening-events") {
       // Get all events and filter for evening
-      const allEvents = await fetchAllEvents();
+      // COMMENTED OUT: Old API call - now using unified API
+      // const allEvents = await fetchAllEvents();
+      const allEvents: any[] = []; // Empty array - events now come from unified API
       allSectionData =
         allEvents.filter((event: any) => {
           const eventDate = new Date(event.start_datetime);

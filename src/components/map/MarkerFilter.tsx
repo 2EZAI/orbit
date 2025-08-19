@@ -149,7 +149,7 @@ export function MarkerFilter({
       }
     });
 
-    // Analyze location data
+    // Analyze location data - prioritize categories over types
     console.log(
       "🔍 [MarkerFilter] Processing",
       locationsList.length,
@@ -159,6 +159,7 @@ export function MarkerFilter({
     let locationsWithTypes = 0;
 
     locationsList.forEach((location) => {
+      // PRIORITY 1: Location categories (most meaningful filters)
       if (
         location.category &&
         location.category.name &&
@@ -184,11 +185,22 @@ export function MarkerFilter({
         }
       }
 
-      // Only process location.type if there's NO category.name (to avoid duplicate "Places" filter)
+      // PRIORITY 2: Location types (only if no category is available)
+      // This prevents showing generic "googleApi" or "static" filters
       if (
         location.type &&
         typeof location.type === "string" &&
-        (!location.category || !location.category.name)
+        (!location.category || !location.category.name) &&
+        // Only include meaningful types, exclude technical ones
+        ![
+          "googleapi",
+          "google",
+          "api",
+          "static",
+          "external",
+          "third-party",
+          "database",
+        ].includes(location.type.toLowerCase())
       ) {
         locationsWithTypes++;
         const typeKey = `type-${location.type
@@ -227,16 +239,12 @@ export function MarkerFilter({
 
       // Replace technical terms with user-friendly ones ONLY for types, not categories
       const technicalToFriendly: { [key: string]: string } = {
-        googleapi: "Places",
-        api: "Places",
-        google: "Places",
         foursquare: "Local Spots",
         yelp: "Popular Spots",
         facebook: "Social Events",
         instagram: "Social Events",
-        external: "Featured Spots",
-        "third-party": "Featured Spots",
-        database: "Featured Spots",
+        // Note: We exclude technical terms like googleapi, api, google, external, etc.
+        // as they should not appear in filters anymore due to the filtering logic above
       };
 
       // Only apply technical replacements to types, NOT to location categories
