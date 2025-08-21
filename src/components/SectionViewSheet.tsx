@@ -193,6 +193,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: "bold",
+     lineHeight: 26,
     marginBottom: 4,
   },
   headerSubtitle: {

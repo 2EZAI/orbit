@@ -466,6 +466,7 @@ const EventSearchItem = ({
 export default function ChannelScreen() {
   const { session } = useAuth();
   const { id } = useLocalSearchParams();
+  const {from} =  useLocalSearchParams();
   const { client } = useChat();
   const router = useRouter();
   const [channel, setChannel] = useState<ChannelType | null>(null);
@@ -789,7 +790,19 @@ export default function ChannelScreen() {
                 alignItems: "center",
                 paddingLeft: 8,
               }}
-              onPress={() => router.back()}
+              onPress={() => {
+                 if(from === 'home' || from === 'social' 
+                 || from === 'map') {
+                 router.push({
+                  pathname: `/(app)/(notification)`,
+                  params: { from:from },
+                });
+                }
+               
+               else{
+                router.back()
+               }
+              }}
             >
               <ArrowLeft size={22} color={theme.colors.text} strokeWidth={2} />
            {/*<Text

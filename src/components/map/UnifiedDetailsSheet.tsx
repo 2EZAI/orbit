@@ -342,7 +342,7 @@ export function UnifiedDetailsSheet({
     const currentData = detailData || data;
     const lat = currentData.location?.latitude;
     const lng = currentData.location?.longitude;
-
+console.log("lat>lng>",lng)
     if (lat && lng) {
       const url = `https://maps.apple.com/?daddr=${lat},${lng}`;
       Linking.openURL(url);

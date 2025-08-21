@@ -55,7 +55,7 @@ export default function AppLayout() {
               typeof currentRoute.params === "object" &&
               currentRoute.params !== null &&
               "id" in currentRoute.params);
-
+console.log("currentRoute.name>",currentRoute.name)
           const hideTabBar =
             currentRoute.name === "(notification)" || isSpecificChatRoute;
 

@@ -6,6 +6,8 @@ import {
   StatusBar,
   Dimensions,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { supabase } from "../../src/lib/supabase";
 import { router } from "expo-router";
@@ -132,6 +134,7 @@ export default function SignIn(): JSX.Element {
         style={{
           flexDirection: "row",
           alignItems: "center",
+          paddingHorizontal: 20,
         }}
       >
         <TouchableOpacity
@@ -155,6 +158,11 @@ export default function SignIn(): JSX.Element {
           <ArrowLeft size={20} color="#8B5CF6" />
         </TouchableOpacity>
       </View>
+       <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={60} // Adjust if you have a header
+    >
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
         {/* Main Content */}
         <View
@@ -439,6 +447,7 @@ export default function SignIn(): JSX.Element {
           </View>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Toast Component */}
       <Toast />

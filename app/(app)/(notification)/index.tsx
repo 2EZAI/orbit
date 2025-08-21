@@ -595,6 +595,7 @@ export default function NotificationView() {
         params: {
           id: streamChannelId,
           name: groupName,
+          from:from,
         },
       });
     }, 200);

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { View, TouchableOpacity, ScrollView } from "react-native";
 import { Text } from "../ui/text";
 import { Sheet } from "../ui/sheet";
@@ -109,6 +109,15 @@ export function MarkerFilter({
   locationsList,
 }: MarkerFilterProps) {
   const { theme } = useTheme();
+  const [isAllTrue, setIsAllTrue] = useState(false);
+
+  useEffect(() => {
+    setTimeout(() => {
+      // console.log("filters>", filters);
+      const areAllTrue = Object.values(filters).every(value => value === true);
+      setIsAllTrue(areAllTrue);
+    }, 200);
+  }, []);
 
   // Generate dynamic filters based on actual data
   const dynamicFilters = useMemo(() => {
@@ -131,6 +140,7 @@ export function MarkerFilter({
         count: (existing?.count || 0) + 1,
         type: "source",
       });
+      // setIsAllTrue(existing ? true : false);
 
       // Event categories
       if (event.categories && Array.isArray(event.categories)) {
@@ -144,6 +154,7 @@ export function MarkerFilter({
               count: (existing?.count || 0) + 1,
               type: "event-category",
             });
+            // setIsAllTrue(existing ? true : false);
           }
         });
       }
@@ -341,6 +352,7 @@ export function MarkerFilter({
       return acc;
     }, {} as FilterState);
     onFilterChange(allTrue);
+    setIsAllTrue(allTrue);
   };
 
   const selectNone = () => {
@@ -349,6 +361,7 @@ export function MarkerFilter({
       return acc;
     }, {} as FilterState);
     onFilterChange(allFalse);
+    setIsAllTrue(false);
   };
 
   const getFiltersByCategory = (category: string) => {
@@ -600,7 +613,7 @@ export function MarkerFilter({
             }}
           >
             <Text style={{ color: "white", fontWeight: "600" }}>
-              Select All
+              {isAllTrue ? "All Selected" : "Select All"}
             </Text>
           </TouchableOpacity>
 
