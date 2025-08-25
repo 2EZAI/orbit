@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "~/src/lib/supabase";
+// COMMENTED OUT: Old Ticketmaster API imports - now using unified User Location API
+/*
 import {
   fetchAllEvents,
   fetchAllEventsUnlimited,
 } from "~/src/lib/api/ticketmaster";
+*/
 import { createHomeFeedSections } from "~/src/lib/utils/feedSections";
 import {
   transformEvent,
@@ -75,26 +78,23 @@ export function useHomeFeed() {
         console.log("Could not get user location:", locationError);
       }
 
-      // Create location data for API call (same logic as fetchAllEvents)
+      // Create location data for API call (same logic as map)
+      // Priority: User orbit preference → GPS → fallback to GPS
       const locationData = {
         latitude:
-          user?.event_location_preference === 0 &&
-          currentDeviceLocation?.latitude != null
-            ? currentDeviceLocation.latitude
-            : user != null &&
-              user?.event_location_preference === 1 &&
-              userlocation?.latitude != null
+          user?.event_location_preference === 1 &&
+          userlocation?.latitude != null
             ? parseFloat(userlocation.latitude)
-            : currentDeviceLocation?.latitude || null,
+            : currentDeviceLocation?.latitude != null
+            ? currentDeviceLocation.latitude
+            : null,
         longitude:
-          user?.event_location_preference === 0 &&
-          currentDeviceLocation?.longitude != null
-            ? currentDeviceLocation.longitude
-            : user != null &&
-              user?.event_location_preference === 1 &&
-              userlocation?.longitude != null
+          user?.event_location_preference === 1 &&
+          userlocation?.longitude != null
             ? parseFloat(userlocation.longitude)
-            : currentDeviceLocation?.longitude || null,
+            : currentDeviceLocation?.longitude != null
+            ? currentDeviceLocation.longitude
+            : null,
         radius: 50000, // 50km radius like the map
       };
 
@@ -117,6 +117,8 @@ export function useHomeFeed() {
         console.log("Using coordinates for locations:", locationData);
 
         if (locationData.latitude && locationData.longitude) {
+          // COMMENTED OUT: Old locations API - now using unified User Location API
+          /*
           // Fetch ALL location-filtered static locations from backend (no limit like the map)
           const session = await supabase.auth.getSession();
 
@@ -135,25 +137,46 @@ export function useHomeFeed() {
                 }),
               }
             );
+          */
 
-            if (responseLocations.ok) {
-              const dataLocations = await responseLocations.json();
+          // NEW: Use unified User Location API from APIEVENTS.md
+          const session = await supabase.auth.getSession();
+
+          if (session?.data?.session) {
+            const responseUnified = await fetch(
+              `${process.env.BACKEND_MAP_URL}/api/events/user-location`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${session.data.session.access_token}`,
+                },
+                body: JSON.stringify(locationData),
+              }
+            );
+
+            if (responseUnified.ok) {
+              const unifiedData = await responseUnified.json();
               console.log(
-                `🔍 Total raw locations received from API: ${dataLocations.length}`
+                `🔍 Unified API response - Events: ${
+                  unifiedData.events?.length || 0
+                }, Locations: ${unifiedData.locations?.length || 0}`
               );
 
-              // Validate and transform location data
-              const validLocations = dataLocations.filter((location: any) => {
-                return (
-                  location.location &&
-                  typeof location.location.latitude === "number" &&
-                  typeof location.location.longitude === "number" &&
-                  !isNaN(location.location.latitude) &&
-                  !isNaN(location.location.longitude) &&
-                  Math.abs(location.location.latitude) <= 90 &&
-                  Math.abs(location.location.longitude) <= 180
-                );
-              });
+              // Extract and validate location data from unified response
+              const validLocations = (unifiedData.locations || []).filter(
+                (location: any) => {
+                  return (
+                    location.location &&
+                    typeof location.location.latitude === "number" &&
+                    typeof location.location.longitude === "number" &&
+                    !isNaN(location.location.latitude) &&
+                    !isNaN(location.location.longitude) &&
+                    Math.abs(location.location.latitude) <= 90 &&
+                    Math.abs(location.location.longitude) <= 180
+                  );
+                }
+              );
 
               locations = validLocations.map(transformLocation);
               console.log(
@@ -198,15 +221,60 @@ export function useHomeFeed() {
       console.log("Final locations count:", locations.length);
 
       // Fetch ALL location-filtered events from the backend (no 1000 limit)
+      // COMMENTED OUT: Old Ticketmaster API call - events now come from unified API
+      /*
       // Pass the same location coordinates that we're using for locations
+      console.log(
+        "🎯 [HomeFeed] Calling fetchAllEventsUnlimited with coordinates:",
+        {
+          latitude: locationData.latitude,
+          longitude: locationData.longitude,
+          userPreference: user?.event_location_preference,
+          source: user?.event_location_preference === 1 ? "orbit" : "gps",
+        }
+      );
+
       const allBackendEvents = await fetchAllEventsUnlimited({
         latitude: locationData.latitude,
         longitude: locationData.longitude,
       });
       console.log(
-        "Location-filtered backend events count:",
+        "🎉 Location-filtered backend events count:",
         allBackendEvents.length
       );
+      */
+
+      // NEW: Events now come from the unified API response above
+      // We need to access the unified data from the earlier API call
+      let allBackendEvents: any[] = [];
+
+      // Re-fetch for events if we haven't done unified call yet
+      if (locationData.latitude && locationData.longitude) {
+        const session = await supabase.auth.getSession();
+
+        if (session?.data?.session) {
+          const responseUnified = await fetch(
+            `${process.env.BACKEND_MAP_URL}/api/events/user-location`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.data.session.access_token}`,
+              },
+              body: JSON.stringify(locationData),
+            }
+          );
+
+          if (responseUnified.ok) {
+            const unifiedData = await responseUnified.json();
+            allBackendEvents = (unifiedData.events || []).map(transformEvent);
+            console.log(
+              "🎉 Unified API events count:",
+              allBackendEvents.length
+            );
+          }
+        }
+      }
 
       // Debug logging for location setup
       console.log("🔍 [HomeFeed] Debug location setup:", {

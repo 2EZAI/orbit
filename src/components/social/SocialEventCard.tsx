@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { Text } from "../ui/text";
 import { LinearGradient } from "expo-linear-gradient";
-import { MapEvent, MapLocation } from "~/hooks/useMapEvents";
+import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
 import { formatTime, formatDate } from "~/src/lib/date";
 import { Users, MapPin, Calendar, Star } from "lucide-react-native";
 
@@ -314,7 +314,8 @@ export function SocialEventCard({
 
     setLoading(true);
     try {
-      await UpdateEventStatus(data);
+      // COMMENTED OUT: UpdateEventStatus - needs update for unified API
+      // await UpdateEventStatus(data);
       setTimeout(() => {
         setLoading(false);
         hitDetailApi(); // This will update the join_status and change button to "Create Orbit"

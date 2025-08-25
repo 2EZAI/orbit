@@ -366,12 +366,7 @@ export function useMapEvents({
         }
         ///fetch events
         const response = await fetch(
-          `${
-            process.env.BACKEND_MAP_URL
-          }/api/events/all?page=${page}&limit=${Math.max(
-            Number(pageSize),
-            500
-          )}`,
+          `${process.env.BACKEND_MAP_URL}/api/events/all?page=${page}&limit=999999`,
           {
             method: "POST",
             headers: {
@@ -740,7 +735,7 @@ console.log("session.access_token>",session.access_token);
 
         ///fetch events (POST all with high limit)
         const response = await fetch(
-          `${process.env.BACKEND_MAP_URL}/api/events/all?page=1&limit=2000`,
+          `${process.env.BACKEND_MAP_URL}/api/events/all?page=1&limit=999999`,
           {
             method: "POST",
             headers: {

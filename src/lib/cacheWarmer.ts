@@ -1,6 +1,7 @@
 import { imagePreloader } from "./imagePreloader";
 import { supabase } from "./supabase";
-import { fetchAllEvents } from "./api/ticketmaster";
+// COMMENTED OUT: Old Ticketmaster API import - now using unified API
+// import { fetchAllEvents } from "./api/ticketmaster";
 import { transformEvent, transformLocation } from "./utils/transformers";
 
 class CacheWarmer {
@@ -40,9 +41,10 @@ class CacheWarmer {
         const events = (rpcData.events || []).map(transformEvent);
         const locations = (rpcData.locations || []).map(transformLocation);
 
-        // Get external events too
-        const allBackendEvents = await fetchAllEvents();
-        const allEvents = allBackendEvents;
+        // COMMENTED OUT: Get external events too - now using unified API
+        // const allBackendEvents = await fetchAllEvents();
+        // const allEvents = allBackendEvents;
+        const allEvents: any[] = []; // Empty array since events now come from unified API
 
         // Extract images to preload
         const imagesToWarm: string[] = [];

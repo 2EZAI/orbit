@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { OptimizedImage } from "~/src/components/ui/optimized-image";
-import { MapEvent } from "~/hooks/useMapEvents";
+import { MapEvent } from "~/hooks/useUnifiedMapData";
 import { Clock, MapPin, User, Calendar, Users } from "lucide-react-native";
 import { format } from "date-fns";
 import { UnifiedDetailsSheet } from "../map/UnifiedDetailsSheet";
@@ -26,7 +26,7 @@ export function FeedEventCard({
   const { theme } = useTheme();
   const [showDetails, setShowDetails] = useState(false);
   const startTime = new Date(event?.start_datetime);
-  const endTime = new Date(event?.end_datetime);
+  const endTime = event?.end_datetime ? new Date(event.end_datetime) : null;
 
   return (
     <>
@@ -74,7 +74,7 @@ export function FeedEventCard({
             </View>
 
             {/* Attendees Badge */}
-            {event?.attendees?.count > 0 && (
+            {event?.attendees?.count && event.attendees.count > 0 && (
               <View
                 style={[
                   styles.attendeesBadge,

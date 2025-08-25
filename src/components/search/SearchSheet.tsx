@@ -167,12 +167,13 @@ export function SearchSheet({
 
       console.log("Searching with user coordinates:", userCoordinates);
 
-      // Call RPC for Supabase data + Ticketmaster search API in parallel
+      // Call RPC for Supabase data only - Ticketmaster now comes from unified API
       const [rpcResults, ticketmasterResults] = await Promise.all([
         // Try location-aware search first, fall back to regular search
         searchSupabaseData(query, userCoordinates),
-        // Ticketmaster API search with user location
-        searchTicketmaster(query, userCoordinates),
+        // COMMENTED OUT: Ticketmaster API search - now using unified API
+        // searchTicketmaster(query, userCoordinates),
+        Promise.resolve([]), // Return empty array instead
       ]);
 
       // Handle RPC results
@@ -245,6 +246,22 @@ export function SearchSheet({
         locations: processedLocations,
       });
 
+      // Debug: Log a sample of processed locations
+      if (processedLocations.length > 0) {
+        console.log(
+          "🔍 [SearchSheet] Sample processed locations:",
+          processedLocations.slice(0, 3).map((loc) => ({
+            id: loc.id,
+            name: loc.name,
+            location: loc.location,
+            hasCoords: !!(loc.location?.latitude && loc.location?.longitude),
+            hasCoordArray: !!(
+              loc.location?.coordinates && loc.location.coordinates.length >= 2
+            ),
+          }))
+        );
+      }
+
       setTicketmasterEvents(ticketmasterResults);
 
       console.log("Search complete:", {
@@ -301,6 +318,8 @@ export function SearchSheet({
   };
 
   // Search Ticketmaster events via backend - fetch events in user's location area
+  // COMMENTED OUT: Old Ticketmaster search - now using unified API
+  /*
   const searchTicketmaster = async (
     query: string,
     coordinates: { latitude: number; longitude: number }
@@ -390,6 +409,7 @@ export function SearchSheet({
       return [];
     }
   };
+  */
 
   // Get user's location coordinates based on their preference
   const getUserLocationCoordinates = async () => {
@@ -509,14 +529,41 @@ export function SearchSheet({
         }
         break;
       case "location":
+        console.log("🔍 [SearchSheet] Navigating to location:", {
+          id: result.id,
+          name: result.name,
+          location: result.location,
+          coordinates: result.location?.coordinates,
+          latitude: result.location?.latitude,
+          longitude: result.location?.longitude,
+          finalLat:
+            result.location?.coordinates?.[1] || result.location?.latitude,
+          finalLng:
+            result.location?.coordinates?.[0] || result.location?.longitude,
+        });
+
+        // Check if we have valid coordinates
+        const lat =
+          result.location?.coordinates?.[1] || result.location?.latitude;
+        const lng =
+          result.location?.coordinates?.[0] || result.location?.longitude;
+
+        if (!lat || !lng) {
+          console.error(
+            "🔍 [SearchSheet] Location has no coordinates, cannot navigate:",
+            result.name
+          );
+          // Show an error to the user
+          // Toast or alert could be shown here
+          return;
+        }
+
         router.push({
           pathname: "/(app)/(map)",
           params: {
             locationId: result.id,
-            latitude:
-              result.location?.coordinates?.[1] || result.location?.latitude,
-            longitude:
-              result.location?.coordinates?.[0] || result.location?.longitude,
+            latitude: lat,
+            longitude: lng,
             name: result.name,
             description: result.description || "",
             type: result.type || "location",

@@ -8,7 +8,7 @@ interface UseMapCameraProps {
 }
 
 export const useMapCamera = ({
-  initialZoom = 11,
+  initialZoom = 13, // Approximately 5-mile radius view
   minZoom = 3,
   maxZoom = 16,
 }: UseMapCameraProps = {}) => {
@@ -69,7 +69,7 @@ export const useMapCamera = ({
       if (isFollowingUser) setIsFollowingUser(false);
       cameraRef.current.setCamera({
         centerCoordinate: [lng, lat],
-        zoomLevel: 14,
+        zoomLevel: 13, // Approximately 5-mile radius view - consistent with default
         animationDuration: 500,
         animationMode: "flyTo",
       });
