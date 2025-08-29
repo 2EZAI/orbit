@@ -296,16 +296,16 @@ This platform helps you discover and join amazing events near you. Let's get sta
   const handleContinue = async () => {
     if (!user || !username || !isAvailable || isSubmitting) return;
 
-    if (!profileImage || !firstName || !lastName) {
+    if ( !firstName || !lastName) {
       setShowValidationErrors(true);
       setError(
-        "Please fill in all required fields and select a profile picture"
+        "Please fill in all required fields"
       );
-      Toast.show({
-        type: "error",
-        text1: "Missing Required Fields",
-        text2: "Please complete all required fields before continuing",
-      });
+      // Toast.show({
+      //   type: "error",
+      //   text1: "Missing Required Fields",
+      //   text2: "Please complete all required fields before continuing",
+      // });
       return;
     }
 
@@ -362,7 +362,7 @@ This platform helps you discover and join amazing events near you. Let's get sta
   };
 
   const isFormValid =
-    profileImage && firstName && lastName && username && isAvailable;
+    firstName && lastName && username && isAvailable;
 
   return (
     <KeyboardAvoidingView
@@ -1017,9 +1017,7 @@ This platform helps you discover and join amazing events near you. Let's get sta
                 >
                   {!isFormValid
                     ? `Complete All Fields ${
-                        !profileImage
-                          ? "📸"
-                          : !firstName || !lastName
+                         !firstName || !lastName
                           ? "👤"
                           : !username || !isAvailable
                           ? "@"
@@ -1042,12 +1040,10 @@ This platform helps you discover and join amazing events near you. Let's get sta
                 }}
               >
                 Please complete all required fields:{" "}
-                {!profileImage && "Profile Picture"}
-                {!profileImage && (!firstName || !lastName) && ", "}
                 {!firstName && "First Name"}
                 {!firstName && !lastName && ", "}
                 {!lastName && "Last Name"}
-                {(!profileImage || !firstName || !lastName) &&
+                {( !firstName || !lastName) &&
                   (!username || !isAvailable) &&
                   ", "}
                 {!username && "Username"}

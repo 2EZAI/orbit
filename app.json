@@ -15,6 +15,7 @@
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
+      "usesAppleSignIn": true,
       "supportsTablet": true,
       "bundleIdentifier": "com.dovydmcnugget.orbit",
       "infoPlist": {
@@ -34,6 +35,7 @@
     },
     "plugins": [
       "@stream-io/video-react-native-sdk",
+      "expo-apple-authentication",
       [
         "@config-plugins/react-native-webrtc",
         {

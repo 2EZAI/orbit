@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import * as AppleAuthentication from "expo-apple-authentication";
 import {
   View,
   TouchableOpacity,
@@ -16,6 +17,7 @@ import { ImageCacheManager } from "~/src/components/ui/optimized-image";
 import { cacheMonitor } from "~/src/lib/cacheMonitor";
 import { ChevronRight } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { supabase } from "../src/lib/supabase";
 
 const { width, height } = Dimensions.get("window");
 
@@ -507,7 +509,6 @@ export default function LandingPage() {
   const [fireflies, setFireflies] = useState<string[]>([]);
 
   const mainRotation = useState(() => new Animated.Value(0))[0];
-
   // Logo center coordinates
   const logoCenterX = width / 2;
   const logoCenterY = height * 0.3;
@@ -579,6 +580,108 @@ export default function LandingPage() {
     router.push("/(auth)/sign-up");
   };
 
+  const userExistsOrNot = async (uesrId: string) => {
+    // console.error('uesr>', uesrId);
+    const { data, error } = await supabase
+      .from("users")
+      .select("id")
+      .eq("apple_id", uesrId)
+      .maybeSingle(); // Use maybeSingle() if email might not exist
+
+    if (error) {
+      console.error("❌ Error querying Supabase:", error);
+      return false;
+    }
+
+    return !!data; // true if found, false if null
+  };
+
+  // Update user data
+  const updateUser = async (updates: any, user: any) => {
+    try {
+      const { error: supabaseError } = await supabase
+        .from("users")
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
+
+      if (supabaseError) throw supabaseError;
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error("An error occurred"));
+      throw e;
+    }
+  };
+
+  const handleAppleLogin = async () => {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      // console.log("credential>", credential);
+
+      // Sign in via Supabase Auth.
+      if (credential.identityToken) {
+        console.log("credential??>", credential);
+        const exists = await userExistsOrNot(credential?.user);
+        console.log(exists ? "✅ User exists" : "❌ User does not exist");
+
+        if (exists) {
+          //user exsist navigate to home
+
+          const {
+            error,
+            data: { user },
+          } = await supabase.auth.signInWithIdToken({
+            provider: "apple",
+            token: credential.identityToken,
+          });
+          console.log(JSON.stringify({ error, user }, null, 2));
+          if (!error) {
+            // User is signed in.
+            // Navigate to home
+            router.replace("/(app)/home");
+          }
+        } else {
+          //new user
+          const {
+            error,
+            data: { user },
+          } = await supabase.auth.signInWithIdToken({
+            provider: "apple",
+            token: credential.identityToken,
+          });
+          console.log(JSON.stringify({ error, user }, null, 2));
+          if (!error) {
+            await updateUser(
+              {
+                apple_id: credential?.user,
+                register_type: "apple",
+              },
+              user
+            );
+            // User is signed in.
+            // Navigate to onboarding
+            setTimeout(() => {
+              router.replace("/(auth)/(onboarding)/username");
+            }, 500);
+          }
+        }
+      } else {
+        throw new Error("No identityToken.");
+      }
+    } catch (e) {
+      if (e.code === "ERR_REQUEST_CANCELED") {
+        // handle that the user canceled the sign-in flow
+      } else {
+        // handle other errors
+      }
+    }
+  };
   // Show loading while checking authentication
   if (loading) {
     return (
@@ -745,6 +848,20 @@ export default function LandingPage() {
         </Text>
 
         <View style={{ width: "100%", gap: 12 }}>
+          <AppleAuthentication.AppleAuthenticationButton
+            buttonType={
+              AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
+            }
+            buttonStyle={
+              AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+            }
+            cornerRadius={5}
+            style={{ width: "100%", height: 64 }}
+            onPress={async () => {
+              handleAppleLogin();
+            }}
+          />
+
           <TouchableOpacity
             onPress={handleSignUp}
             style={{
