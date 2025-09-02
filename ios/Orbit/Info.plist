@@ -29,8 +29,17 @@
         <array>
           <string>orbit</string>
           <string>com.dovydmcnugget.orbit</string>
+          <string>com.googleusercontent.apps.809354453079-21bet8phmjrskmnt17in7250ehhn97g3</string>
         </array>
       </dict>
+
+<key>LSApplicationQueriesSchemes</key>
+<array>
+  <string>google</string>
+  <string>com-google-gidconsent</string>
+  <string>com.googleusercontent.apps.809354453079-21bet8phmjrskmnt17in7250ehhn97g3</string>
+</array>
+
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
