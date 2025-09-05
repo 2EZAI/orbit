@@ -12,7 +12,7 @@ import {
   GoogleSignin,
   GoogleSigninButton,
   statusCodes,
-} from '@react-native-google-signin/google-signin'
+} from "@react-native-google-signin/google-signin";
 import { router } from "expo-router";
 import { Text } from "~/src/components/ui/text";
 import { useTheme } from "~/src/components/ThemeProvider";
@@ -436,11 +436,13 @@ const OrbitingCircle = ({
 const GeometricPattern = ({ rotation }: { rotation: Animated.Value }) => {
   const scale = useState(() => new Animated.Value(1))[0];
 
- GoogleSignin.configure({
-    scopes: ['https://www.googleapis.com/auth/drive.readonly'],
-     iosClientId: '809354453079-21bet8phmjrskmnt17in7250ehhn97g3.apps.googleusercontent.com',
-    webClientId: '809354453079-9k7nsnt1n71ki815t2qtv4i4nqjelkan.apps.googleusercontent.com',
-  })
+  GoogleSignin.configure({
+    scopes: ["https://www.googleapis.com/auth/drive.readonly"],
+    iosClientId:
+      "809354453079-21bet8phmjrskmnt17in7250ehhn97g3.apps.googleusercontent.com",
+    webClientId:
+      "809354453079-9k7nsnt1n71ki815t2qtv4i4nqjelkan.apps.googleusercontent.com",
+  });
 
   useEffect(() => {
     Animated.loop(
@@ -591,12 +593,28 @@ export default function LandingPage() {
     router.push("/(auth)/sign-up");
   };
 
-  const userExistsOrNot = async (uesrId: string) => {
+  const appleUserExistsOrNot = async (uesrId: string) => {
     // console.error('uesr>', uesrId);
     const { data, error } = await supabase
       .from("users")
       .select("id")
       .eq("apple_id", uesrId)
+      .maybeSingle(); // Use maybeSingle() if email might not exist
+
+    if (error) {
+      console.error("❌ Error querying Supabase:", error);
+      return false;
+    }
+
+    return !!data; // true if found, false if null
+  };
+
+  const googleUserExistsOrNot = async (uesrId: string) => {
+    // console.error('uesr>', uesrId);
+    const { data, error } = await supabase
+      .from("users")
+      .select("id")
+      .eq("google_id", uesrId)
       .maybeSingle(); // Use maybeSingle() if email might not exist
 
     if (error) {
@@ -620,7 +638,8 @@ export default function LandingPage() {
 
       if (supabaseError) throw supabaseError;
     } catch (e) {
-      setError(e instanceof Error ? e : new Error("An error occurred"));
+      console.log("error>", e instanceof Error ? e : new Error("An error occurred"));
+      // setError(e instanceof Error ? e : new Error("An error occurred"));
       throw e;
     }
   };
@@ -638,7 +657,7 @@ export default function LandingPage() {
       // Sign in via Supabase Auth.
       if (credential.identityToken) {
         console.log("credential??>", credential);
-        const exists = await userExistsOrNot(credential?.user);
+        const exists = await appleUserExistsOrNot(credential?.user);
         console.log(exists ? "✅ User exists" : "❌ User does not exist");
 
         if (exists) {
@@ -690,6 +709,60 @@ export default function LandingPage() {
         // handle that the user canceled the sign-in flow
       } else {
         // handle other errors
+      }
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    console.log("handleGoogleLogin>");
+    try {
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      if (userInfo.data.idToken) {
+        const { data: { user }, error } = await supabase.auth.signInWithIdToken({
+          provider: "google",
+          token: userInfo.data.idToken,
+        });
+        console.log("userInfo>", userInfo);
+        console.log("userInfo.data.idToken>", userInfo.data.idToken);
+        console.log("data>",user);
+        const exists = await googleUserExistsOrNot(userInfo.data.user.id);
+        console.log(exists ? "✅ User exists" : "❌ User does not exist");
+
+        if (exists) {
+          //exist user
+         
+            // User is signed in.
+            // Navigate to home
+            // router.replace("/(app)/home");
+          
+        } else {
+          await updateUser(
+            {
+              google_id: userInfo.data.user.id,
+              register_type: "google",
+            },
+            userInfo.data.user.id
+          );
+          // User is signed in.
+          // Navigate to onboarding
+          setTimeout(() => {
+            router.replace("/(auth)/(onboarding)/username");
+          }, 500);
+        }
+      } else {
+        throw new Error("no ID token present!");
+      }
+    } catch (error: any) {
+      console.log("handleGoogleLogin>error>", error);
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        // user cancelled the login flow
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        // operation (e.g. sign in) is in progress already
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        // play services not available or outdated
+      } else {
+        // some other error happened
       }
     }
   };
@@ -873,49 +946,11 @@ export default function LandingPage() {
             }}
           />
 
-           <GoogleSigninButton
-      size={GoogleSigninButton.Size.Wide}
-      color={GoogleSigninButton.Color.Dark}
-      onPress={async () => {
-        try {
-          await GoogleSignin.hasPlayServices()
-          const userInfo = await GoogleSignin.signIn()
-          if (userInfo.data.idToken) {
-            const { data, error } = await supabase.auth.signInWithIdToken({
-              provider: 'google',
-              token: userInfo.data.idToken,
-            })
-            console.log("userInfo>", userInfo)
-            if(!error){
-               await updateUser(
-              {
-                google_id: userInfo.data.user.id,
-                register_type: "google",
-              },
-              user
-            );
-            // User is signed in.
-            // Navigate to onboarding
-            setTimeout(() => {
-              router.replace("/(auth)/(onboarding)/username");
-            }, 500);
-            }
-          } else {
-            throw new Error('no ID token present!')
-          }
-        } catch (error: any) {
-          if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-            // user cancelled the login flow
-          } else if (error.code === statusCodes.IN_PROGRESS) {
-            // operation (e.g. sign in) is in progress already
-          } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-            // play services not available or outdated
-          } else {
-            // some other error happened
-          }
-        }
-      }}
-    />
+          <GoogleSigninButton
+            size={GoogleSigninButton.Size.Wide}
+            color={GoogleSigninButton.Color.Dark}
+            onPress={handleGoogleLogin}
+          />
 
           <TouchableOpacity
             onPress={handleSignUp}

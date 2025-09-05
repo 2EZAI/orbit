@@ -4,10 +4,12 @@
   <dict>
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
+    <key>CFBundleAllowMixedLocalizations</key>
+    <true/>
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
-    <string>Orbit Social App</string>
+    <string>Orbit</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -30,25 +32,20 @@
           <string>orbit</string>
           <string>com.dovydmcnugget.orbit</string>
           <string>com.googleusercontent.apps.809354453079-21bet8phmjrskmnt17in7250ehhn97g3</string>
+       <string>com.googleusercontent.apps.809354453079-9k7nsnt1n71ki815t2qtv4i4nqjelkan</string>
         </array>
       </dict>
-
-<key>LSApplicationQueriesSchemes</key>
-<array>
-  <string>google</string>
-  <string>com-google-gidconsent</string>
-  <string>com.googleusercontent.apps.809354453079-21bet8phmjrskmnt17in7250ehhn97g3</string>
-</array>
-
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
           <string>exp+orbit</string>
+          <string>com.googleusercontent.apps.809354453079-21bet8phmjrskmnt17in7250ehhn97g3</string>
+          <string>com.googleusercontent.apps.809354453079-9k7nsnt1n71ki815t2qtv4i4nqjelkan</string>
         </array>
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>8</string>
+    <string>1.0.1</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>LSMinimumSystemVersion</key>
@@ -76,6 +73,14 @@
     <string>Allow $(PRODUCT_NAME) to save photos</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your photos</string>
+    <key>NSUserNotificationUsageDescription</key>
+    <string>This app uses notifications to keep you informed.</string>
+    <key>NSUserTrackingUsageDescription</key>
+    <string>This identifier will be used to deliver personalized ads to you.</string>
+    <key>UIBackgroundModes</key>
+    <array>
+      <string>remote-notification</string>
+    </array>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>
@@ -102,14 +107,5 @@
     <string>Automatic</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <false/>
-
-    <key>UIBackgroundModes</key>
-<array>
-    <string>remote-notification</string>
-</array>
-<key>NSUserTrackingUsageDescription</key>
-<string>This identifier will be used to deliver personalized ads to you.</string>
-<key>NSUserNotificationUsageDescription</key>
-<string>This app uses notifications to keep you informed.</string>
   </dict>
 </plist>
