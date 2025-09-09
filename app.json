@@ -62,6 +62,12 @@
           "photosPermission": "Allow Orbit to access your photo gallery to share images.",
           "savePhotosPermission": "Allow Orbit to save photos from messages to your gallery."
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Orbit to use your location to show nearby events and help you navigate."
+        }
       ]
     ],
     "expo-build-properties": {

@@ -38,6 +38,54 @@ export function FilterModal({
   const { theme } = useTheme();
   const [localFilters, setLocalFilters] = useState<FilterState>(filters);
 
+  // Set default filters when modal opens and no filters are set
+  React.useEffect(() => {
+    if (isOpen && (!filters || Object.keys(filters).length === 0)) {
+      const defaultFilters: FilterState = {};
+
+      // Enable all event source types by default
+      defaultFilters["community-events"] = true;
+      defaultFilters["ticketed-events"] = true;
+      defaultFilters["featured-events"] = true;
+
+      // Enable all event categories by default
+      eventsList.forEach((event) => {
+        if (event.categories && Array.isArray(event.categories)) {
+          event.categories.forEach((cat: any) => {
+            if (cat && cat.name && typeof cat.name === "string") {
+              const catKey = `event-${cat.name
+                .toLowerCase()
+                .replace(/\s+/g, "-")}`;
+              defaultFilters[catKey] = true;
+            }
+          });
+        }
+      });
+
+      // Enable all location categories by default
+      locationsList.forEach((location) => {
+        if (location.category && location.category.name) {
+          const catKey = `location-${location.category.name
+            .toLowerCase()
+            .replace(/\s+/g, "-")}`;
+          defaultFilters[catKey] = true;
+        }
+      });
+
+      // Enable all location types by default (for locations without categories)
+      locationsList.forEach((location) => {
+        if (location.type && !location.category?.name) {
+          const typeKey = `type-${location.type
+            .toLowerCase()
+            .replace(/\s+/g, "-")}`;
+          defaultFilters[typeKey] = true;
+        }
+      });
+
+      setLocalFilters(defaultFilters);
+    }
+  }, [isOpen, filters, eventsList, locationsList]);
+
   const dateRangeOptions = [
     { key: "all", label: "Any time", icon: "📅" },
     { key: "today", label: "Today", icon: "📅" },

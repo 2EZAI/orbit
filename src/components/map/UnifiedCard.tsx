@@ -30,14 +30,7 @@ import { supabase } from "~/src/lib/supabase";
 import { useUser } from "~/src/lib/UserProvider";
 import * as Location from "expo-location";
 import { UnifiedDetailsSheet } from "./UnifiedDetailsSheet";
-import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import { useUpdateEvents } from "~/hooks/useUpdateEvents";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  runOnJS,
-} from "react-native-reanimated";
 
 type UnifiedData = MapEvent | MapLocation;
 
@@ -51,7 +44,6 @@ interface UnifiedCardProps {
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
 
 // Type guards
 const isEvent = (data: UnifiedData): data is MapEvent => {
@@ -219,50 +211,60 @@ const getContextActions = (
     const isTicketmaster =
       (detailData as any)?.is_ticketmaster || (data as any)?.is_ticketmaster;
 
-    if (categoryName.includes("food") || name.includes("dinner")) {
+    // Determine event source for proper button logic
+    const eventSource = (detailData as any)?.source || (data as any)?.source;
+    const isUserEvent = eventSource === "user";
+    const isGoogleApiEvent =
+      eventSource &&
+      (eventSource === "googleapi" ||
+        eventSource === "google" ||
+        eventSource === "api" ||
+        eventSource.includes("google") ||
+        eventSource.includes("api"));
+
+    // For user events: Join Event -> Create Orbit
+    if (isUserEvent) {
       return [
         { label: "View Details", action: "details", icon: "ℹ️" },
         {
           label: joinStatus ? "Create Orbit" : "Join Event",
           action: joinStatus ? "create" : "join",
-          icon: joinStatus ? "💬" : "🍽️",
+          icon: joinStatus ? "💬" : "✨",
         },
       ];
     }
-    if (categoryName.includes("music") || name.includes("concert")) {
+
+    // For Ticketmaster events: Buy Tickets
+    if (isTicketmaster) {
       return [
-        { label: "View Details", action: "details", icon: "🎵" },
+        { label: "View Details", action: "details", icon: "ℹ️" },
         {
-          label: joinStatus
-            ? "Create Orbit"
-            : isTicketmaster
-            ? "Buy Tickets"
-            : "Join Event",
-          action: joinStatus ? "create" : "join",
-          icon: joinStatus ? "💬" : isTicketmaster ? "🎫" : "✨",
+          label: "Buy Tickets",
+          action: "join", // This will be handled as ticket purchase
+          icon: "🎫",
         },
       ];
     }
-    if (categoryName.includes("business") || name.includes("meeting")) {
+
+    // For Google API events: Create Event Here
+    if (isGoogleApiEvent) {
       return [
-        { label: "View Details", action: "details", icon: "💼" },
+        { label: "View Details", action: "details", icon: "ℹ️" },
         {
-          label: joinStatus ? "Create Orbit" : "Join Event",
-          action: joinStatus ? "create" : "join",
-          icon: joinStatus ? "💬" : "📝",
+          label: "Create Event Here",
+          action: "create",
+          icon: "✨",
         },
       ];
     }
+
+    // Fallback for other event types
     return [
       { label: "View Details", action: "details", icon: "ℹ️" },
       {
-        label: joinStatus
-          ? "Create Orbit"
-          : isTicketmaster
-          ? "Buy Tickets"
-          : "Join Event",
-        action: joinStatus ? "create" : "join",
-        icon: joinStatus ? "💬" : isTicketmaster ? "🎫" : "✨",
+        label: "Create Event Here",
+        action: "create",
+        icon: "✨",
       },
     ];
   } else {
@@ -283,15 +285,15 @@ export const UnifiedCard = React.memo(
     onShowDetails,
     treatAsEvent = true, // Default to true to maintain existing behavior
   }: UnifiedCardProps) => {
+    // REMOVED: Debug logging for performance
     const { UpdateEventStatus, fetchEventDetail, fetchLocationDetail } =
       useUpdateEvents();
     const router = useRouter();
     const { user } = useUser();
     const [showDetails, setShowDetails] = useState(false);
-    const translateX = useSharedValue(0);
     const currentIndex = nearbyData.findIndex((item) => item.id === data.id);
     const [loading, setLoading] = useState(false); // Start with false since we have data
-    const [detailData, setDetailData] = useState<any>();
+    const [detailData, setDetailData] = useState<any>(data); // Initialize with data immediately
     const [userLocation, setUserLocation] = useState<{
       latitude: number;
       longitude: number;
@@ -320,23 +322,35 @@ export const UnifiedCard = React.memo(
       });
     }, []);
 
-    useEffect(() => {
-      // Only update if data actually changed to prevent unnecessary re-renders
-      if (detailData?.id !== data.id) {
-        setDetailData(data); // Use data directly, no API call needed
-        getCurrentLocation();
-      }
-    }, [data.id, detailData?.id]);
+    // REMOVED: Location fetching to make card render instantly
+    // Location will be fetched in background if needed
 
     const getCurrentLocation = async () => {
       try {
+        // Use cached location first for faster response
+        const lastKnownLocation = await Location.getLastKnownPositionAsync({
+          maxAge: 60000, // 1 minute cache
+        });
+
+        if (lastKnownLocation) {
+          setUserLocation({
+            latitude: lastKnownLocation.coords.latitude,
+            longitude: lastKnownLocation.coords.longitude,
+          });
+          return;
+        }
+
+        // Only request permission if we don't have cached location
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") {
           console.log("Location permission denied");
           return;
         }
 
-        const location = await Location.getCurrentPositionAsync({});
+        // Use faster location options
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced, // Faster than high accuracy
+        });
         setUserLocation({
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
@@ -346,48 +360,23 @@ export const UnifiedCard = React.memo(
       }
     };
 
-    const handleSwipeComplete = (direction: "left" | "right") => {
-      "worklet";
-      const newIndex =
-        direction === "left" ? currentIndex + 1 : currentIndex - 1;
-
-      if (newIndex >= 0 && newIndex < nearbyData.length) {
-        runOnJS(onDataSelect)(nearbyData[newIndex]);
-      }
-      translateX.value = withSpring(0);
-    };
-
-    const gesture = Gesture.Pan()
-      .onUpdate((e) => {
-        translateX.value = e.translationX;
-      })
-      .onEnd((e) => {
-        if (Math.abs(e.translationX) > SWIPE_THRESHOLD) {
-          if (e.translationX > 0 && currentIndex > 0) {
-            handleSwipeComplete("right");
-          } else if (
-            e.translationX < 0 &&
-            currentIndex < nearbyData.length - 1
-          ) {
-            handleSwipeComplete("left");
-          } else {
-            translateX.value = withSpring(0);
-          }
-        } else {
-          translateX.value = withSpring(0);
-        }
-      });
-
-    const animatedStyle = useAnimatedStyle(() => ({
-      transform: [{ translateX: translateX.value }],
-    }));
+    // REMOVED: Gesture handling and animations for better performance
 
     const handleContextAction = (action: string) => {
       switch (action) {
         case "join":
-          // For EVENTS: Join button -> turns into "Create Orbit"
-          if (treatAsEvent && !(detailData as any)?.join_status) {
-            hitUpdateEventApi();
+          // Check if this is a Ticketmaster event for ticket purchase
+          const isTicketmaster =
+            (detailData as any)?.is_ticketmaster ||
+            (data as any)?.is_ticketmaster;
+          if (isTicketmaster) {
+            // For Ticketmaster events: "Buy Tickets" -> opens ticket purchase
+            handleTicketPurchase();
+          } else {
+            // For user events: Join button -> turns into "Create Orbit"
+            if (treatAsEvent && !(detailData as any)?.join_status) {
+              hitUpdateEventApi();
+            }
           }
           break;
         case "details":
@@ -503,6 +492,22 @@ export const UnifiedCard = React.memo(
       });
     };
 
+    const handleTicketPurchase = () => {
+      const currentData = detailData || data;
+      if (!currentData.external_url) return;
+
+      // Close the card first so webview appears properly
+      onClose();
+
+      router.push({
+        pathname: "/(app)/(webview)",
+        params: {
+          external_url: currentData.external_url,
+          eventSelected: JSON.stringify(currentData),
+        },
+      });
+    };
+
     const handleCreateEvent = () => {
       if (treatAsEvent) return;
 
@@ -542,7 +547,7 @@ export const UnifiedCard = React.memo(
       onShowDetails();
     };
 
-    // Get display values based on data type - ULTRA OPTIMIZED
+    // Get display values based on data type - INSTANT RENDERING
     const displayValues = useMemo(() => {
       const detail = detailData || data;
 
@@ -581,6 +586,7 @@ export const UnifiedCard = React.memo(
         };
       } else {
         const locationDetail = detail as MapLocation;
+        // Show default distance label for instant rendering
         return {
           title: locationDetail.name,
           subtitle: locationDetail.type || "Location",
@@ -595,196 +601,168 @@ export const UnifiedCard = React.memo(
           stats: [
             {
               icon: <MapPin size={12} color="white" />,
-              label:
-                userLocation && locationDetail.location
-                  ? `${Math.round(
-                      calculateDistance(
-                        userLocation.latitude,
-                        userLocation.longitude,
-                        locationDetail.location.latitude,
-                        locationDetail.location.longitude
-                      )
-                    )} mi away`
-                  : "Calculating...",
+              label: "Calculating...", // Show default for instant rendering
             },
-            // Rating is now shown as a badge in the header, so removed from stats
           ],
         };
       }
-    }, [
-      detailData?.id,
-      data.id,
-      treatAsEvent,
-      userLocation?.latitude,
-      userLocation?.longitude,
-    ]); // Only depend on IDs and location coords
+    }, [detailData?.id, data.id, treatAsEvent]); // Removed userLocation dependencies
 
     return (
       <>
-        <GestureDetector gesture={gesture}>
-          <Animated.View
-            style={[
-              {
-                position: "absolute",
-                left: 16,
-                right: 16,
-                bottom: 50,
-                marginBottom: 56,
-                zIndex: 1000,
-              },
-              animatedStyle,
-            ]}
-          >
-            <View className="overflow-hidden rounded-2xl">
-              {/* Background Image */}
-              {displayValues.imageUrl && (
-                <Image
-                  source={{ uri: displayValues.imageUrl }}
-                  className="absolute w-full h-full"
-                  resizeMode="cover"
-                  blurRadius={isEvent(data) ? 8 : 10}
-                />
-              )}
-
-              {/* Dynamic Gradient Overlay */}
-              <LinearGradient
-                colors={theme.gradientColors}
-                locations={[0.3, 1]}
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                }}
+        <View
+          style={{
+            position: "absolute",
+            left: 16,
+            right: 16,
+            bottom: 50,
+            marginBottom: 56,
+            zIndex: 1000,
+          }}
+        >
+          <View className="overflow-hidden rounded-2xl">
+            {/* Background Image */}
+            {displayValues.imageUrl && (
+              <Image
+                source={{ uri: displayValues.imageUrl }}
+                className="absolute w-full h-full"
+                resizeMode="cover"
+                blurRadius={isEvent(data) ? 8 : 10}
               />
+            )}
 
-              {/* Close Button */}
-              <TouchableOpacity
-                className="absolute top-2 right-2 z-10 justify-center items-center w-8 h-8 rounded-full bg-black/30"
-                onPress={onClose}
-              >
-                <X size={20} color="white" />
-              </TouchableOpacity>
+            {/* Dynamic Gradient Overlay */}
+            <LinearGradient
+              colors={theme.gradientColors}
+              locations={[0.3, 1]}
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 0,
+              }}
+            />
 
-              {/* Content */}
-              <View className="p-4">
-                {/* Header with Icon and Category */}
-                <View className="flex-row items-center mb-3">
-                  <Text className="mr-2 text-2xl">{itemIcon}</Text>
-                  <View
-                    style={{ backgroundColor: theme.primary }}
-                    className="px-3 py-1 rounded-full"
-                  >
-                    <Text className="text-xs font-semibold text-white">
-                      {displayValues.categoryName}
-                    </Text>
-                  </View>
+            {/* Close Button */}
+            <TouchableOpacity
+              className="absolute top-2 right-2 z-10 justify-center items-center w-8 h-8 rounded-full bg-black/30"
+              onPress={onClose}
+            >
+              <X size={20} color="white" />
+            </TouchableOpacity>
 
-                  {/* Rating Badge - Only for locations with rating */}
-                  {!treatAsEvent &&
-                    (detailData || data) &&
-                    (detailData || (data as any)).rating && (
-                      <View className="flex-row items-center px-2 py-1 ml-2 bg-amber-500 rounded-full">
-                        <Star size={10} color="white" />
-                        <Text className="ml-1 text-xs font-semibold text-white">
-                          {((detailData || data) as any).rating.toFixed(1)}
-                        </Text>
-                      </View>
-                    )}
+            {/* Content */}
+            <View className="p-4">
+              {/* Header with Icon and Category */}
+              <View className="flex-row items-center mb-3">
+                <Text className="mr-2 text-2xl">{itemIcon}</Text>
+                <View
+                  style={{ backgroundColor: theme.primary }}
+                  className="px-3 py-1 rounded-full"
+                >
+                  <Text className="text-xs font-semibold text-white">
+                    {displayValues.categoryName}
+                  </Text>
                 </View>
 
-                {/* Title */}
-                <Text className="mb-2 text-xl font-bold text-white">
-                  {displayValues.title}
-                </Text>
-
-                {/* Date/Time for Events */}
-                {displayValues.dateTime && (
-                  <View className="flex-row items-center mb-2">
-                    <Calendar size={12} color="white" />
-                    <Text className="ml-1 text-sm text-white/90">
-                      {displayValues.dateTime.date} •{" "}
-                      {displayValues.dateTime.time}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Description */}
-                {displayValues.description && (
-                  <Text
-                    className="mb-2 text-sm text-white/80"
-                    numberOfLines={2}
-                  >
-                    {displayValues.description}
-                  </Text>
-                )}
-
-                {/* Stats Row */}
-                <View className="flex-row items-center mb-3">
-                  {displayValues.stats.map((stat, index) => (
-                    <View key={index} className="flex-row items-center mr-4">
-                      {stat.icon}
-                      <Text className="ml-1 text-xs text-white/90">
-                        {stat.label}
+                {/* Rating Badge - Only for locations with rating */}
+                {!treatAsEvent &&
+                  (detailData || data) &&
+                  (detailData || (data as any)).rating && (
+                    <View className="flex-row items-center px-2 py-1 ml-2 bg-amber-500 rounded-full">
+                      <Star size={10} color="white" />
+                      <Text className="ml-1 text-xs font-semibold text-white">
+                        {((detailData || data) as any).rating.toFixed(1)}
                       </Text>
                     </View>
-                  ))}
-                </View>
+                  )}
+              </View>
 
-                {/* Category Tags */}
-                {displayValues.categoryTags.length > 0 && (
-                  <View className="mb-3">
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                    >
-                      <View className="flex-row">
-                        {displayValues.categoryTags.map(
-                          (tag: any, index: number) => (
-                            <View
-                              key={tag.id || tag.name || index}
-                              className="px-2 py-1 mr-2 rounded-full bg-white/15"
-                            >
-                              <Text className="text-xs text-white">
-                                {tag.name}
-                              </Text>
-                            </View>
-                          )
-                        )}
-                      </View>
-                    </ScrollView>
+              {/* Title */}
+              <Text className="mb-2 text-xl font-bold text-white">
+                {displayValues.title}
+              </Text>
+
+              {/* Date/Time for Events */}
+              {displayValues.dateTime && (
+                <View className="flex-row items-center mb-2">
+                  <Calendar size={12} color="white" />
+                  <Text className="ml-1 text-sm text-white/90">
+                    {displayValues.dateTime.date} •{" "}
+                    {displayValues.dateTime.time}
+                  </Text>
+                </View>
+              )}
+
+              {/* Description */}
+              {displayValues.description && (
+                <Text className="mb-2 text-sm text-white/80" numberOfLines={2}>
+                  {displayValues.description}
+                </Text>
+              )}
+
+              {/* Stats Row */}
+              <View className="flex-row items-center mb-3">
+                {displayValues.stats.map((stat, index) => (
+                  <View key={index} className="flex-row items-center mr-4">
+                    {stat.icon}
+                    <Text className="ml-1 text-xs text-white/90">
+                      {stat.label}
+                    </Text>
                   </View>
-                )}
+                ))}
+              </View>
 
-                {/* Context-Aware Action Buttons */}
-                <View className="flex-row gap-2">
-                  {contextActions.map((action, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      className="flex-1 py-2 rounded-full"
-                      style={{
-                        backgroundColor:
-                          index === 0 ? "rgba(255,255,255,0.9)" : "#3B82F6", // Solid blue for action buttons
-                      }}
-                      onPress={() => handleContextAction(action.action)}
-                    >
-                      <View className="flex-row justify-center items-center">
-                        <Text
-                          className={`font-bold text-base ${
-                            index === 0 ? "text-black" : "text-white"
-                          }`}
-                        >
-                          {action.label}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
+              {/* Category Tags */}
+              {displayValues.categoryTags.length > 0 && (
+                <View className="mb-3">
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View className="flex-row">
+                      {displayValues.categoryTags.map(
+                        (tag: any, index: number) => (
+                          <View
+                            key={tag.id || tag.name || index}
+                            className="px-2 py-1 mr-2 rounded-full bg-white/15"
+                          >
+                            <Text className="text-xs text-white">
+                              {tag.name}
+                            </Text>
+                          </View>
+                        )
+                      )}
+                    </View>
+                  </ScrollView>
                 </View>
+              )}
+
+              {/* Context-Aware Action Buttons */}
+              <View className="flex-row gap-2">
+                {contextActions.map((action, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    className="flex-1 py-2 rounded-full"
+                    style={{
+                      backgroundColor:
+                        index === 0 ? "rgba(255,255,255,0.9)" : "#3B82F6", // Solid blue for action buttons
+                    }}
+                    onPress={() => handleContextAction(action.action)}
+                  >
+                    <View className="flex-row justify-center items-center">
+                      <Text
+                        className={`font-bold text-base ${
+                          index === 0 ? "text-black" : "text-white"
+                        }`}
+                      >
+                        {action.label}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
-          </Animated.View>
-        </GestureDetector>
+          </View>
+        </View>
 
         {loading && (
           <View className="absolute top-0 right-0 bottom-0 left-0 justify-center items-center bg-black/20">

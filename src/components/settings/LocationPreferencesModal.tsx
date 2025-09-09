@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   ScrollView,
   DeviceEventEmitter,
+  Dimensions,
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
@@ -17,6 +18,9 @@ import Constants from "expo-constants";
 import Toast from "react-native-toast-message";
 import { MapPin, X, Navigation, Globe, Search } from "lucide-react-native";
 import { debounce } from "lodash";
+import MapboxGL from "@rnmapbox/maps";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const MAPBOX_ACCESS_TOKEN = Constants.expoConfig?.extra?.mapboxAccessToken;
 
@@ -46,7 +50,7 @@ export function LocationPreferencesModal({
   isOpen,
   onClose,
 }: LocationPreferencesModalProps) {
-  const { theme } = useTheme();
+  const { theme, isDarkMode } = useTheme();
   const { session } = useAuth();
   const {
     user,
@@ -215,10 +219,18 @@ export function LocationPreferencesModal({
         selectedMode === "orbit" ? 1 : 0
       );
 
-      // Update user preference
-      const userUpdateResult = await updateUser({
+      // Update user preference with timeout protection
+      const userUpdatePromise = updateUser({
         event_location_preference: selectedMode === "orbit" ? 1 : 0,
       });
+
+      const userUpdateResult = await Promise.race([
+        userUpdatePromise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("User update timeout")), 10000)
+        ),
+      ]);
+
       console.log(
         "🔧 [LocationModal] User preference update result:",
         userUpdateResult
@@ -238,14 +250,23 @@ export function LocationPreferencesModal({
           locationData
         );
 
-        const locationUpdateResult = await updateUserLocations(locationData);
+        // Add timeout protection for location update
+        const locationUpdatePromise = updateUserLocations(locationData);
+        const locationUpdateResult = await Promise.race([
+          locationUpdatePromise,
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("Location update timeout")),
+              10000
+            )
+          ),
+        ]);
+
         console.log(
           "🔧 [LocationModal] Location update result:",
           locationUpdateResult
         );
         console.log("🔧 [LocationModal] Orbit location saved:", orbitLocation);
-
-        // No need to wait - we'll force refresh immediately after the event
       }
 
       Toast.show({
@@ -274,19 +295,43 @@ export function LocationPreferencesModal({
           "📍 Emitting locationPreferenceUpdated event:",
           eventPayload
         );
-        // CRITICAL: Force immediate user location refresh BEFORE emitting event
+
+        // Force immediate user location refresh with timeout
         console.log("📍 Forcing immediate user location refresh for sync");
-        await fetchUserLocation(); // This will immediately update userlocation state
+        const fetchPromise = fetchUserLocation();
+        await Promise.race([
+          fetchPromise,
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("Fetch user location timeout")),
+              5000
+            )
+          ),
+        ]);
         console.log("📍 User location state refreshed!");
 
-        // Emit event immediately - no need for delay as state is already synced
+        // Emit event immediately
         console.log("📍 🚀 Emitting event with payload:", eventPayload);
         DeviceEventEmitter.emit("locationPreferenceUpdated", eventPayload);
       } catch (e) {
         console.error("Error emitting location preference update:", e);
+        // Still emit the event even if fetch fails
+        const eventPayload = {
+          mode: selectedMode,
+          latitude:
+            selectedMode === "orbit" && orbitLocation
+              ? orbitLocation.coordinates[1]
+              : null,
+          longitude:
+            selectedMode === "orbit" && orbitLocation
+              ? orbitLocation.coordinates[0]
+              : null,
+        };
+        DeviceEventEmitter.emit("locationPreferenceUpdated", eventPayload);
       }
 
-      // Close immediately since state is already synced
+      // ALWAYS close the modal, even if there are errors
+      console.log("🔧 [LocationModal] Closing modal...");
       onClose();
     } catch (error) {
       console.error("Error updating location preferences:", error);
@@ -295,6 +340,10 @@ export function LocationPreferencesModal({
         text1: "Failed to update preferences",
         text2: "Please try again",
       });
+
+      // Close modal even on error to prevent it from getting stuck
+      console.log("🔧 [LocationModal] Closing modal due to error...");
+      onClose();
     } finally {
       setSaving(false);
     }
@@ -507,6 +556,69 @@ export function LocationPreferencesModal({
             >
               Choose Your Orbit Location
             </Text>
+
+            {/* Map Preview */}
+            {orbitLocation && (
+              <View style={{ marginBottom: 16 }}>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: "500",
+                    color: theme.colors.text + "80",
+                    marginBottom: 8,
+                  }}
+                >
+                  Map Preview
+                </Text>
+                <View
+                  style={{
+                    height: 200,
+                    borderRadius: 12,
+                    overflow: "hidden",
+                    borderWidth: 1,
+                    borderColor: theme.colors.border,
+                  }}
+                >
+                  <MapboxGL.MapView
+                    style={{ flex: 1 }}
+                    styleURL={
+                      isDarkMode
+                        ? MapboxGL.StyleURL.Dark
+                        : MapboxGL.StyleURL.Street
+                    }
+                    centerCoordinate={orbitLocation.coordinates}
+                    zoomLevel={10}
+                    scrollEnabled={false}
+                    zoomEnabled={false}
+                    rotateEnabled={false}
+                    pitchEnabled={false}
+                    logoEnabled={false}
+                    attributionEnabled={false}
+                  >
+                    <MapboxGL.PointAnnotation
+                      id="orbit-location"
+                      coordinate={orbitLocation.coordinates}
+                    >
+                      <View
+                        style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: 10,
+                          backgroundColor: theme.colors.primary,
+                          borderWidth: 3,
+                          borderColor: "white",
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.25,
+                          shadowRadius: 4,
+                          elevation: 5,
+                        }}
+                      />
+                    </MapboxGL.PointAnnotation>
+                  </MapboxGL.MapView>
+                </View>
+              </View>
+            )}
 
             {/* Current Orbit Location */}
             {orbitLocation && (

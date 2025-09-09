@@ -648,9 +648,16 @@ export const generateDefaultFilters = (
 ): FilterState => {
   const filters: FilterState = {};
 
+  // Safety checks for input arrays
+  if (!eventsList || !Array.isArray(eventsList)) eventsList = [];
+  if (!locationsList || !Array.isArray(locationsList)) locationsList = [];
+
+  // CRITICAL FIX: ENABLE ALL FILTERS BY DEFAULT
   // Add event source types - user-friendly names only
   const sources = new Set<string>();
   eventsList.forEach((event) => {
+    if (!event || typeof event !== "object") return;
+
     if (event.source === "user") sources.add("community-events");
     else if (
       (typeof event.source === "string" && event.source.includes("ticket")) ||
@@ -661,16 +668,18 @@ export const generateDefaultFilters = (
   });
 
   sources.forEach((source) => {
-    filters[source] = true;
+    filters[source] = true; // ENABLED BY DEFAULT
   });
 
   // Add event categories
   eventsList.forEach((event) => {
+    if (!event || typeof event !== "object") return;
+
     if (event.categories && Array.isArray(event.categories)) {
       event.categories.forEach((cat: any) => {
         if (cat && cat.name && typeof cat.name === "string") {
           const key = `event-${cat.name.toLowerCase().replace(/\s+/g, "-")}`;
-          filters[key] = true;
+          filters[key] = true; // ENABLED BY DEFAULT
         }
       });
     }
@@ -678,6 +687,8 @@ export const generateDefaultFilters = (
 
   // Add location categories
   locationsList.forEach((location) => {
+    if (!location || typeof location !== "object") return;
+
     if (
       location.category &&
       location.category.name &&
@@ -686,13 +697,26 @@ export const generateDefaultFilters = (
       const key = `location-${location.category.name
         .toLowerCase()
         .replace(/\s+/g, "-")}`;
-      filters[key] = true;
+      filters[key] = true; // ENABLED BY DEFAULT
     }
     if (location.type && typeof location.type === "string") {
       const key = `type-${location.type.toLowerCase().replace(/\s+/g, "-")}`;
-      filters[key] = true;
+      filters[key] = true; // ENABLED BY DEFAULT
     }
   });
 
+  // CRITICAL FIX: If no filters were created, create a fallback to show everything
+  if (Object.keys(filters).length === 0) {
+    console.log(
+      "🚨 [MarkerFilter] No filters created, enabling fallback filters"
+    );
+    filters["show-all"] = true;
+  }
+
+  console.log(
+    "✅ [MarkerFilter] Generated filters:",
+    Object.keys(filters).length,
+    "filters enabled by default"
+  );
   return filters;
 };

@@ -569,6 +569,18 @@ export const UnifiedDetailsSheet = React.memo(
     const attendeeCount = (currentData as any).attendees?.count || 0;
     const attendeeProfiles = (currentData as any).attendees?.profiles || [];
 
+    // Determine event source and type for proper button logic
+    const eventSource = (currentData as any).source;
+    const isTicketmasterEvent = (currentData as any).is_ticketmaster === true;
+    const isUserEvent = eventSource === "user";
+    const isGoogleApiEvent =
+      eventSource &&
+      (eventSource === "googleapi" ||
+        eventSource === "google" ||
+        eventSource === "api" ||
+        eventSource.includes("google") ||
+        eventSource.includes("api"));
+
     return (
       <Modal
         visible={isOpen}
@@ -1712,62 +1724,95 @@ export const UnifiedDetailsSheet = React.memo(
             >
               {isEventType ? (
                 <View className="flex-row gap-3">
-                  {/* Tickets Button - Only show for Ticketmaster events */}
-                  {hasTickets &&
-                    !isJoined &&
-                    (currentData as any)?.is_ticketmaster && (
-                      <TouchableOpacity
-                        onPress={handleTicketPurchase}
-                        className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
-                      >
-                        <Text className="text-lg font-semibold text-purple-600">
-                          Buy Tickets
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-
-                  {/* Join/Create Orbit/Leave Button */}
+                  {/* Loading State */}
                   {loading ? (
                     <View className="flex-1 items-center py-4 bg-purple-600 rounded-2xl">
                       <ActivityIndicator size="small" color="white" />
                     </View>
-                  ) : isJoined ? (
-                    <>
-                      {/* Create Orbit Button */}
-                      <TouchableOpacity
-                        onPress={handleCreateOrbit}
-                        className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
-                      >
-                        <Text className="text-lg font-semibold text-white">
-                          Create Orbit
-                        </Text>
-                      </TouchableOpacity>
-
-                      {/* Leave Event Button */}
-                      <TouchableOpacity
-                        onPress={handleLeaveEvent}
-                        className="flex-1 items-center py-4 bg-red-600 rounded-2xl"
-                      >
-                        <Text className="text-lg font-semibold text-white">
-                          Leave Event
-                        </Text>
-                      </TouchableOpacity>
-                    </>
                   ) : (
-                    <TouchableOpacity
-                      onPress={handleJoinEvent}
-                      className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
-                    >
-                      <Text className="text-lg font-semibold text-white">
-                        Join Event
-                      </Text>
-                    </TouchableOpacity>
+                    <>
+                      {/* Ticketmaster Events - Show Buy Tickets */}
+                      {isTicketmasterEvent && hasTickets && !isJoined && (
+                        <TouchableOpacity
+                          onPress={handleTicketPurchase}
+                          className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
+                        >
+                          <Text className="text-lg font-semibold text-purple-600">
+                            Buy Tickets
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+
+                      {/* User Events - Show Join/Create Orbit/Leave */}
+                      {isUserEvent && (
+                        <>
+                          {isJoined ? (
+                            <>
+                              {/* Create Orbit Button */}
+                              <TouchableOpacity
+                                onPress={handleCreateOrbit}
+                                className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
+                              >
+                                <Text className="text-lg font-semibold text-white">
+                                  Create Orbit
+                                </Text>
+                              </TouchableOpacity>
+
+                              {/* Leave Event Button */}
+                              <TouchableOpacity
+                                onPress={handleLeaveEvent}
+                                className="flex-1 items-center py-4 bg-red-600 rounded-2xl"
+                              >
+                                <Text className="text-lg font-semibold text-white">
+                                  Leave Event
+                                </Text>
+                              </TouchableOpacity>
+                            </>
+                          ) : (
+                            <TouchableOpacity
+                              onPress={handleJoinEvent}
+                              className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
+                            >
+                              <Text className="text-lg font-semibold text-white">
+                                Join Event
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </>
+                      )}
+
+                      {/* Google API Events - Show Create Event Here */}
+                      {isGoogleApiEvent && (
+                        <TouchableOpacity
+                          onPress={handleCreateEvent}
+                          className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
+                        >
+                          <Text className="text-lg font-semibold text-white">
+                            Create Event Here
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+
+                      {/* Fallback for other event types */}
+                      {!isTicketmasterEvent &&
+                        !isUserEvent &&
+                        !isGoogleApiEvent && (
+                          <TouchableOpacity
+                            onPress={handleCreateEvent}
+                            className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
+                          >
+                            <Text className="text-lg font-semibold text-white">
+                              Create Event Here
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                    </>
                   )}
                 </View>
               ) : (
                 <View className="flex-row gap-3">
                   {/* Tickets Button for Location - Only show for Ticketmaster events */}
-                  {hasTickets && (currentData as any)?.is_ticketmaster && (
+                  {hasTickets && isTicketmasterEvent && (
                     <TouchableOpacity
                       onPress={handleTicketPurchase}
                       className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
@@ -1778,7 +1823,7 @@ export const UnifiedDetailsSheet = React.memo(
                     </TouchableOpacity>
                   )}
 
-                  {/* Create Event Button */}
+                  {/* Create Event Button for Locations */}
                   <TouchableOpacity
                     onPress={handleCreateEvent}
                     className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
