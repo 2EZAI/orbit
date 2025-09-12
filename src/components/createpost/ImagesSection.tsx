@@ -25,11 +25,7 @@ export default function ImagesSection({
   const { theme } = useTheme();
 
   return (
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 100 }}
-      keyboardShouldPersistTaps="handled"
-    >
+   
     <View
       style={{
         backgroundColor: theme.dark
@@ -131,6 +127,6 @@ export default function ImagesSection({
         )}
       </View>
     </View>
-    </ScrollView>
+    
   );
 }

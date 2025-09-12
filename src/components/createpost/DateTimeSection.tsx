@@ -21,11 +21,7 @@ export default function DateTimeSection({
   const { theme } = useTheme();
 console.log("startDate>>",startDate)
   return (
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 100 }}
-      keyboardShouldPersistTaps="handled"
-    >
+   
     <View
       style={{
         backgroundColor: theme.dark
@@ -361,6 +357,6 @@ console.log("startDate>>",startDate)
         </View>
       </View>
     </View>
-    </ScrollView>
+    
   );
 }

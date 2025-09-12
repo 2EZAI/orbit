@@ -5,28 +5,41 @@ import { Category, Prompt } from "~/hooks/useMapEvents";
 import { useTheme } from "~/src/components/ThemeProvider";
 
 interface PromptsSectionProps {
-  categoryList: Partial<Category>;
+  prompts: Partial<Prompt[]>;
   selectedPrompts: Partial<Prompt>;
   setSelectedPrompts: (prompts: Partial<Prompt>) => void;
 }
 
 export default function PromptsSection({
-  categoryList,
+  prompts,
   selectedPrompts,
   setSelectedPrompts,
 }: PromptsSectionProps) {
   const { theme } = useTheme();
+console.log("typeof prompts:", typeof prompts);
+console.log("is array?", Array.isArray(prompts));
+console.log("prompts:", prompts);
 
-  if (!categoryList?.prompts || categoryList.prompts.length === 0) {
+let parsedPrompts: Prompt[] = [];
+
+if (typeof prompts === 'string') {
+  try {
+    const parsed = JSON.parse(prompts);
+    if (Array.isArray(parsed)) {
+      parsedPrompts = parsed;
+    }
+  } catch (e) {
+    console.error("Invalid JSON passed to prompts", e);
+  }
+} else if (Array.isArray(prompts)) {
+  parsedPrompts = prompts;
+}
+  if (!prompts || prompts.length === 0) {
     return null;
   }
 
   return (
-     <ScrollView
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 100 }}
-      keyboardShouldPersistTaps="handled"
-    >
+   
     <View
       style={{
         backgroundColor: theme.dark
@@ -69,13 +82,13 @@ export default function PromptsSection({
       </View>
 
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        {categoryList.prompts?.map((prompt) => {
-          const isSelected = selectedPrompts?.id === prompt?.id;
+        {parsedPrompts?.length> 0 && parsedPrompts?.map((promptItem) => {
+          const isSelected = selectedPrompts?.id === promptItem?.id;
           return (
             <TouchableOpacity
-              key={prompt.id}
+              key={promptItem.id}
               onPress={() => {
-                setSelectedPrompts(prompt);
+                setSelectedPrompts(promptItem);
               }}
               style={{
                 paddingHorizontal: 16,
@@ -97,13 +110,13 @@ export default function PromptsSection({
                   color: isSelected ? "white" : theme.colors.text,
                 }}
               >
-                {prompt.name}
+                {promptItem.name}
               </Text>
             </TouchableOpacity>
           );
         })}
       </View>
     </View>
-    </ScrollView>
+   
   );
 }

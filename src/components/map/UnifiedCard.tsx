@@ -23,6 +23,7 @@ import {
   Calendar,
   Star,
 } from "lucide-react-native";
+import {  Prompt } from "~/hooks/useMapEvents";
 import { Icon } from "react-native-elements";
 import { Button } from "../ui/button";
 import { useRouter } from "expo-router";
@@ -297,6 +298,7 @@ export const UnifiedCard = React.memo(
       longitude: number;
     } | null>(null);
 
+console.log("treatAsEvent>",treatAsEvent)
     // Get theme colors and context based on data - ULTRA OPTIMIZED
     const theme = useMemo(
       () => getThemeColors(detailData || data),
@@ -525,12 +527,13 @@ export const UnifiedCard = React.memo(
         params: {
           locationId: locationData.id,
           locationType: (locationData as any).type || "",
-          latitude: (locationData as any).location?.latitude?.toString() || "",
+          latitude: (locationData as any).location?.coordinates?.[1]?.toString() || "",
           longitude:
-            (locationData as any).location?.longitude?.toString() || "",
+            (locationData as any).location?.coordinates?.[0]?.toString() || "",
           address: (locationData as any).address || "",
           categoryId: simplifiedCategory.id,
           categoryName: simplifiedCategory.name,
+          prompts:JSON.stringify(locationData?.category?.prompts ?? []),
         },
       });
     };
@@ -545,6 +548,8 @@ export const UnifiedCard = React.memo(
     // Get display values based on data type - ULTRA OPTIMIZED
     const displayValues = useMemo(() => {
       const detail = detailData || data;
+console.log("detail>",detail)
+console.log("prompts>",detail?.category?.prompts)
 
       if (treatAsEvent) {
         return {
@@ -557,8 +562,8 @@ export const UnifiedCard = React.memo(
           categoryName: detail.categories?.[0]?.name || "Event",
           categoryTags: detail.categories?.slice(1, 4) || [],
           dateTime: {
-            date: formatDate(detail.start_datetime),
-            time: formatTime(detail.start_datetime),
+            date: formatDate(detail?.start_datetime),
+            time: formatTime(detail?.start_datetime),
           },
           stats: [
             {

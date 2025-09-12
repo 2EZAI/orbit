@@ -11,11 +11,13 @@ import { useTheme } from "~/src/components/ThemeProvider";
 
 interface TopicListSingleSelectionProps {
   selectedTopics: string;
+  selectedTopicsName:string;
   onSelectTopic: (topics: string) => void;
 }
 
 export function TopicListSingleSelection({
   selectedTopics,
+  selectedTopicsName,
   onSelectTopic,
 }: TopicListSingleSelectionProps) {
   const [topics, setTopics] = useState<any[]>([]);
@@ -62,17 +64,25 @@ export function TopicListSingleSelection({
   }
 
   return (
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 100 }}
-      keyboardShouldPersistTaps="handled"
-      style={{ height: "80%" }}
-    >
+    
       <View className="  flex-row flex-wrap gap-2">
-        {topics?.map((topic) => {
-          // console.log("topic?.id>",topic?.id)
-          //  console.log("selectedTopics>",selectedTopics)
+        {selectedTopics !=='' && selectedTopicsName !== ''?
+        
+            <View
+              className={`px-4 py-2 rounded-full border ${
+                 "bg-primary border-primary" }`} >
+              <Text
+                className={ "text-primary-foreground"}  >
+                {selectedTopicsName}
+              </Text>
+            </View>
+          
+         :
+         topics?.map((topic) => {
+          console.log("topic?.id>",topic?.id)
+           console.log("selectedTopics>",selectedTopics)
           const isSelected = selectedTopics == topic?.id;
+          console.log("isSelected>",isSelected)
           return (
             <TouchableOpacity
               key={topic?.id}
@@ -94,6 +104,6 @@ export function TopicListSingleSelection({
           );
         })}
       </View>
-    </ScrollView>
+    
   );
 }

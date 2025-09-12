@@ -6,11 +6,13 @@ import { useTheme } from "~/src/components/ThemeProvider";
 
 interface CategorySectionProps {
   selectedTopics: string;
+  selectedTopicsName:string;
   onSelectTopic: (topic: string) => void;
 }
 
 export default function CategorySection({
   selectedTopics,
+  selectedTopicsName,
   onSelectTopic,
 }: CategorySectionProps) {
   const { theme } = useTheme();
@@ -59,6 +61,7 @@ export default function CategorySection({
       
       <TopicListSingleSelection
         selectedTopics={selectedTopics}
+        selectedTopicsName={selectedTopicsName}
         onSelectTopic={onSelectTopic}
       />
        

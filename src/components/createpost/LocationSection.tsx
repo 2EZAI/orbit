@@ -61,11 +61,7 @@ export default function LocationSection({
   }
 
   return (
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 100 }}
-      keyboardShouldPersistTaps="handled"
-    >
+    
     <View
       style={{
         backgroundColor: theme.dark
@@ -270,6 +266,6 @@ export default function LocationSection({
         )}
       </View>
     </View>
-    </ScrollView>
+ 
   );
 }

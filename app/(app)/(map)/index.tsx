@@ -656,6 +656,7 @@ export default function Map() {
       if (selectedEvent?.id !== event.id) {
         setSelectedEvent(event);
         setShowDetails(false); // Show card first, not details
+        console.log("vv")
         setIsEvent(true);
       }
     },
@@ -670,6 +671,7 @@ export default function Map() {
   // Define handleLocationClick function for navigation from SearchSheet
   const handleLocationClick = useCallback(
     (location: MapLocation) => {
+      console.log("cc")
       setIsEvent(false);
       // Convert MapLocation to MapEvent format for the card
       const locationAsEvent = {
@@ -807,6 +809,7 @@ export default function Map() {
     const eventListener = DeviceEventEmitter.addListener(
       "eventNotification",
       (event: Partial<MapEvent>) => {
+        console.log("bb")
         setIsEvent(true);
         handleEventClick(event as MapEvent);
       }
@@ -836,6 +839,7 @@ export default function Map() {
             eventsTomorrow.find((e: MapEvent) => e.id === data.eventId);
 
           if (event) {
+            console.log("qq")
             setIsEvent(true);
             handleEventClick(event as MapEvent);
           } else {
@@ -1068,6 +1072,7 @@ export default function Map() {
         eventsTomorrow.find((e: MapEvent) => e.id === params.eventId);
 
       if (event) {
+        console.log("zz")
         setIsEvent(true);
         handleEventClick(event as MapEvent);
       } else {
@@ -1164,6 +1169,7 @@ export default function Map() {
           name: location.name,
           location: location.location,
         });
+        console.log("nn")
         setIsEvent(false);
         handleLocationClick(location as MapLocation);
       } else {
@@ -1533,6 +1539,7 @@ console.log(uData?.event_location_preference); // 77.5946
               markerType={getMarkerType(markerData.mainEventForMarker)}
               categoryName={getCategoryName(markerData.mainEventForMarker)}
               onPress={() => {
+                console.log("mm")
                 setIsEvent(cluster.type === "event");
                 handleClusterPress(cluster);
               }}
@@ -1777,6 +1784,7 @@ console.log(uData?.event_location_preference); // 77.5946
                     markerType={getMarkerType(mainEventForMarker)}
                     categoryName={getCategoryName(mainEventForMarker)}
                     onPress={() => {
+                      console.log("dsds")
                       setIsEvent(cluster.type === "event");
                       handleClusterPress(cluster);
                     }}
@@ -1845,6 +1853,7 @@ console.log(uData?.event_location_preference); // 77.5946
                     markerType={getMarkerType(mainEventForMarker)}
                     categoryName={getCategoryName(mainEventForMarker)}
                     onPress={() => {
+                      console.log("ss")
                       setIsEvent(cluster.type === "event");
                       handleClusterPress(cluster);
                     }}
@@ -1917,6 +1926,7 @@ console.log(uData?.event_location_preference); // 77.5946
                     markerType={getMarkerType(mainEventForMarker)}
                     categoryName={getCategoryName(mainEventForMarker)}
                     onPress={() => {
+                      console.log("qq")
                       setIsEvent(cluster.type === "event");
                       handleClusterPress(cluster);
                     }}
@@ -1990,6 +2000,7 @@ console.log(uData?.event_location_preference); // 77.5946
                     }
                     categoryName={getCategoryName(mainEventForMarker)}
                     onPress={() => {
+                      console.log("ww")
                       setIsEvent(cluster.type === "event");
                       handleClusterPress(cluster);
                     }}
@@ -2093,7 +2104,7 @@ console.log(uData?.event_location_preference); // 77.5946
               handleLocationSelect(data);
             }
           }}
-          treatAsEvent={isEvent}
+          treatAsEvent={selectedEvent?.mainType === 'location'?false:isEvent}
           onShowDetails={() => {
             setShowControler(false);
             setShowDetails(true);
@@ -2125,7 +2136,7 @@ console.log(uData?.event_location_preference); // 77.5946
           nearbyData={(isEvent ? events : locations) as any}
           onDataSelect={(data) => handleEventClick(data as any)}
           onShowControler={() => setShowControler(true)}
-          isEvent={isEvent}
+          isEvent={selectedEvent?.mainType === 'location'?false:isEvent}
         />
       )}
 

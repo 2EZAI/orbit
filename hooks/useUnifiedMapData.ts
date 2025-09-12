@@ -39,9 +39,20 @@ export interface MapEvent {
     name: string;
     icon?: string;
   }>;
+  category?: {
+    id: string;
+    name: string;
+    icon?: string;
+    prompts?: Array<{
+      id: string;
+      name: string;
+      created_at: string;
+    }>;
+  };
   join_status?: boolean;
   source?: string;
   type?: string;
+  mainType: "event"; //  new type to differentiate
 }
 
 export interface MapLocation {
@@ -74,6 +85,7 @@ export interface MapLocation {
   place_id?: string;
   distance_meters?: number;
   category_id?: string;
+  mainType: "location"; //  new type to differentiate
 }
 
 // Unified cluster type that can handle both events and locations
@@ -592,7 +604,9 @@ export function useUnifiedMapData({
         }
 
         const data = await response.json();
-
+        console.log("data????", 
+        data
+           );
         // Validate data
         const validEvents = validateData(
           data.events || [],
@@ -608,17 +622,27 @@ export function useUnifiedMapData({
         if (!isMountedRef.current) return;
 
         // Update cache and state
-        cachedEventsRef.current = validEvents;
-        cachedLocationsRef.current = validLocations;
+        const mappedvalidEvents: MapEvent[] = validEvents.map((event: any) => ({
+          ...event,
+          mainType: "event",
+        }));
+        const mappedvalidLocations: MapLocation[] = validLocations.map((locations: any) => ({
+          ...locations,
+          mainType: "location",
+        }));
+        // cachedEventsRef.current = validEvents;
+        // cachedLocationsRef.current = validLocations;
+         cachedEventsRef.current = mappedvalidEvents;
+        cachedLocationsRef.current = mappedvalidLocations;
         lastFetchTimeRef.current = Date.now();
 
-        setEvents(validEvents);
-        setLocations(validLocations);
+        setEvents(mappedvalidEvents);
+        setLocations(mappedvalidLocations);
 
         // Filter events by time
-        const nowEvents = filterEventsByTime(validEvents, "today");
-        const todayEvents = filterEventsByTime(validEvents, "today");
-        const tomorrowEvents = filterEventsByTime(validEvents, "weekend");
+        const nowEvents = filterEventsByTime(mappedvalidEvents, "today");
+        const todayEvents = filterEventsByTime(mappedvalidEvents, "today");
+        const tomorrowEvents = filterEventsByTime(mappedvalidEvents, "weekend");
 
         setEventsNow(nowEvents);
         setEventsToday(todayEvents);
@@ -627,8 +651,8 @@ export function useUnifiedMapData({
         // Create clusters efficiently
         try {
           // Create all clusters at once
-          const allEventClusters = createClusters(validEvents, "event");
-          const locationClusters = createClusters(validLocations, "location");
+          const allEventClusters = createClusters(mappedvalidEvents, "event");
+          const locationClusters = createClusters(mappedvalidLocations, "location");
           const allClusters = [...allEventClusters, ...locationClusters];
 
           // Create time-based clusters
@@ -644,6 +668,15 @@ export function useUnifiedMapData({
             ...locationClusters,
           ];
 
+          // console.log("nowEventClusters:", 
+          // nowEventClusters
+          //   );
+          //   console.log("todayEventClusters:", 
+          // todayEventClusters
+          //   );
+          //   console.log("tomorrowEventClusters:", 
+          //   tomorrowEventClusters
+          //   );
           console.log("[UnifiedMapData] Cluster counts:", {
             all: allClusters.length,
             now: nowClusters.length,
@@ -651,6 +684,9 @@ export function useUnifiedMapData({
             tomorrow: tomorrowClusters.length,
             locations: locationClusters.length,
           });
+          console.log("todayClusters Cluster:", 
+         todayClusters
+            );
 
           // Load clusters progressively if enabled
           if (progressiveLoading) {

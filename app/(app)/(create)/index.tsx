@@ -77,43 +77,6 @@ function decode(base64: string): Uint8Array {
   return bytes;
 }
 
-const STEPS = [
-  {
-    id: "basic-info",
-    title: "Basic Info",
-    description: "Event name, description, and privacy settings",
-  },
-  {
-    id: "category",
-    title: "Category",
-    description: "Choose your event category",
-  },
-  {
-    id: "prompts",
-    title: "Prompts",
-    description: "Select event prompts (if available)",
-  },
-  {
-    id: "images",
-    title: "Images",
-    description: "Add photos to showcase your event",
-  },
-  {
-    id: "location",
-    title: "Location",
-    description: "Set your event location",
-  },
-  {
-    id: "datetime",
-    title: "Date & Time",
-    description: "Schedule your event",
-  },
-  {
-    id: "additional",
-    title: "Additional",
-    description: "Optional external links",
-  },
-];
 
 export default function CreateEvent() {
   const params = useLocalSearchParams();
@@ -124,10 +87,7 @@ export default function CreateEvent() {
   const [showDateModal, setShowDateModal] = useState(false);
   const [eventID, setEventID] = useState<string | undefined>(undefined);
 
-  // Form state
-  const [currentStep, setCurrentStep] = useState(0);
-  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
-
+  
   const [locationId, setlocationId] = useState<string | undefined>(undefined);
   const [locationType, setlocationType] = useState<string | undefined>(
     undefined
@@ -135,10 +95,12 @@ export default function CreateEvent() {
   const [latitude, setlatitude] = useState<number | undefined>(undefined);
   const [longitude, setlongitude] = useState<number | undefined>(undefined);
   const [selectedTopics, setSelectedTopics] = useState<string>("");
+  const [selectedTopicsName, setSelectedTopicsName] = useState<string>("");
 
   const [categoryList, setCategoryList] = useState<Partial<Category>>({});
   const [selectedPrompts, setSelectedPrompts] = useState<Partial<Prompt>>({});
   const [showPrompts, setshowPrompts] = useState<boolean>(false);
+  const [prompts, setPrompts] = useState<Partial<Prompt>>({});
 
   const { showActionSheetWithOptions } = useActionSheet();
   const { user } = useUser();
@@ -174,9 +136,25 @@ export default function CreateEvent() {
       };
       console.log("🔍 Router params category:", simpleCategory);
       setCategoryList(simpleCategory as Category);
+      setSelectedTopics(params.categoryId);
+      setSelectedTopicsName(params.categoryName);
       setshowPrompts(true);
-    }
+      if (params.prompts){
+        try {
+          const raw = params.prompts;
+          console.log("params.prompts>",raw)
 
+         const parsedPrompts_: Prompt[] = raw;
+         console.log("parsedPrompts_", parsedPrompts_);
+  setPrompts(parsedPrompts_);
+        
+      } catch (e) {
+        console.error("Invalid prompts data", e);
+      }
+      }
+      
+    }
+console.log("params.latitude>",params.latitude)
     if (params.locationId) setlocationId(params.locationId as string);
     if (params.locationType) setlocationType(params.locationType as string);
     if (params.latitude) setlatitude(parseFloat(params.latitude as string));
@@ -246,50 +224,44 @@ export default function CreateEvent() {
     );
   }, []);
 
-  const validateCurrentStep = () => {
-    switch (currentStep) {
-      case 0: // Basic Info
-        return name.trim() !== "" && description.trim() !== "";
-      case 1: // Category
-        return selectedTopics !== "";
-      case 2: // Prompts (optional)
+  const validateCheck = () => {
+  const validations = [
+    () => name.trim() !== "" && description.trim() !== "",                     // Step 0: Basic Info
+    () => selectedTopics !== "",                                              // Step 1: Category
+    () => true,                                                               // Step 2: Prompts (optional)
+    () => images.length > 0,                                                 // Step 3: Images
+    () => {
+      if (locationType === "static" || locationType === "googleApi") {
         return true;
-      case 3: // Images
-        return images.length > 0;
-      case 4: // Location
-        if (locationType === "static" || locationType === "googleApi") {
-          return true;
-        }
-        return locationDetails.city !== "" && locationDetails.state !== "";
-      case 5: // Date & Time
-        // Truncate both to "minute" level
-        function truncateToMinute(date) {
-          return new Date(
-            date.getFullYear(),
-            date.getMonth(),
-            date.getDate(),
-            date.getHours(),
-            date.getMinutes()
-          );
-        }
+      }
+      return locationDetails.city !== "" && locationDetails.state !== "";
+    },                                                                       // Step 4: Location
+    () => {
+      const truncateToMinute = (date) =>
+        new Date(
+          date.getFullYear(),
+          date.getMonth(),
+          date.getDate(),
+          date.getHours(),
+          date.getMinutes()
+        );
 
-        const startTruncated = truncateToMinute(startDate);
-        const endTruncated = truncateToMinute(endDate);
-        console.log(startTruncated , endTruncated);
-        // console.log("startDate > endDate>", startDate, endDate);
-        return startTruncated < endTruncated;
-      // return startDate > endDate;
-      case 6: // Additional (optional)
-        return true;
-      default:
-        return false;
-    }
-  };
+      const startTruncated = truncateToMinute(startDate);
+      const endTruncated = truncateToMinute(endDate);
 
-  const handleNext = () => {
-    if (!validateCurrentStep()) {
-      console.log("currentStep>",currentStep);
-      if(currentStep === 5 && endDate.getTime() <= startDate.getTime())
+      return startTruncated < endTruncated;
+    },                                                                       // Step 5: Date & Time
+    () => true                                                                // Step 6: Additional (optional)
+  ];
+
+  return validations.every(validate => validate());
+};
+
+
+  const handleEventCreation = () => {
+    if (!validateCheck()) {
+   
+      if(endDate.getTime() <= startDate.getTime())
       {
         console.log("ffff");
         Toast.show({
@@ -311,23 +283,9 @@ export default function CreateEvent() {
      
     }
 
-    // Mark current step as completed
-    if (!completedSteps.includes(currentStep)) {
-      setCompletedSteps([...completedSteps, currentStep]);
-    }
-
-    if (currentStep < STEPS.length - 1) {
-      setCurrentStep(currentStep + 1);
-    } else {
       handleCreateEvent();
-    }
   };
 
-  const handlePrevious = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
 
   const showDatePicker = (isStart: boolean) => {
     setIsStartDate(isStart);
@@ -841,84 +799,6 @@ export default function CreateEvent() {
     router.back();
   };
 
-  const renderCurrentStep = () => {
-    switch (currentStep) {
-      case 0:
-        return (
-          <BasicInfoSection
-            name={name}
-            setName={setName}
-            description={description}
-            setDescription={setDescription}
-            isPrivate={isPrivate}
-            setIsPrivate={setIsPrivate}
-          />
-        );
-      case 1:
-        return (
-          <CategorySection
-            selectedTopics={selectedTopics}
-            onSelectTopic={setSelectedTopics}
-          />
-        );
-      case 2:
-        return showPrompts ? (
-          <PromptsSection
-            categoryList={categoryList}
-            selectedPrompts={selectedPrompts}
-            setSelectedPrompts={setSelectedPrompts}
-          />
-        ) : (
-          <View style={{ alignItems: "center", padding: 40 }}>
-            <Text style={{ fontSize: 16, color: theme.colors.text + "CC" }}>
-              No prompts available for this category
-            </Text>
-          </View>
-        );
-      case 3:
-        return (
-          <ImagesSection
-            images={images}
-            onPickImage={pickImage}
-            onRemoveImage={removeImage}
-          />
-        );
-      case 4:
-        return (
-          <LocationSection
-            locationType={locationType}
-            address1={address1}
-            setAddress1={setAddress1}
-            address2={address2}
-            setAddress2={setAddress2}
-            locationDetails={locationDetails}
-            searchResults={searchResults}
-            showResults={showResults}
-            onSearchAddress={debouncedSearch}
-            onAddressSelect={handleAddressSelect}
-          />
-        );
-      case 5:
-        return (
-          <DateTimeSection
-            startDate={startDate}
-            endDate={endDate}
-            onShowDatePicker={showDatePicker}
-            onShowTimePicker={showTimePicker}
-          />
-        );
-      case 6:
-        return (
-          <AdditionalInfoSection
-            externalUrl={externalUrl}
-            setExternalUrl={setExternalUrl}
-          />
-        );
-      default:
-        return null;
-    }
-  };
-
   return (
     <View
       style={{
@@ -994,15 +874,75 @@ export default function CreateEvent() {
           </View>
         </View>
 
-        {/* Step Indicator */}
-        <StepIndicator
-          steps={STEPS}
-          currentStep={currentStep}
-          completedSteps={completedSteps}
-        />
+<ScrollView
+showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: 100 }}
+      keyboardShouldPersistTaps="handled"
+>
+<View >
 
-        {/* Current Step Content */}
-        <View style={{ flex: 1 }}>{renderCurrentStep()}</View>
+          <BasicInfoSection
+            name={name}
+            setName={setName}
+            description={description}
+            setDescription={setDescription}
+            isPrivate={isPrivate}
+            setIsPrivate={setIsPrivate}
+          />
+       
+          <CategorySection
+            selectedTopics={selectedTopics}
+            selectedTopicsName={selectedTopicsName}
+            onSelectTopic={setSelectedTopics}
+          />
+       
+     
+         {prompts?.length>0 ?  <PromptsSection
+            prompts={prompts}
+            selectedPrompts={selectedPrompts}
+            setSelectedPrompts={setSelectedPrompts}
+          /> :
+        
+          <View style={{ alignItems: "center", padding: 40 }}>
+            <Text style={{ fontSize: 16, color: theme.colors.text + "CC" }}>
+              No prompts available for this category
+            </Text>
+          </View>
+          }
+       
+          <ImagesSection
+            images={images}
+            onPickImage={pickImage}
+            onRemoveImage={removeImage}
+          />
+        
+          <LocationSection
+            locationType={locationType}
+            address1={address1}
+            setAddress1={setAddress1}
+            address2={address2}
+            setAddress2={setAddress2}
+            locationDetails={locationDetails}
+            searchResults={searchResults}
+            showResults={showResults}
+            onSearchAddress={debouncedSearch}
+            onAddressSelect={handleAddressSelect}
+          />
+       
+          <DateTimeSection
+            startDate={startDate}
+            endDate={endDate}
+            onShowDatePicker={showDatePicker}
+            onShowTimePicker={showTimePicker}
+          />
+       
+          <AdditionalInfoSection
+            externalUrl={externalUrl}
+            setExternalUrl={setExternalUrl}
+          />
+        
+</View>
+</ScrollView>
 
         {/* Navigation Buttons */}
         <View
@@ -1010,44 +950,22 @@ export default function CreateEvent() {
             flexDirection: "row",
             justifyContent: "space-between",
             paddingTop: 16,
-            gap: 16,
+            
           }}
         >
-          <TouchableOpacity
-            onPress={handlePrevious}
-            disabled={currentStep === 0}
-            style={{
-              flex: 1,
-              height: 50,
-              backgroundColor: "transparent",
-              borderRadius: 16,
-              justifyContent: "center",
-              alignItems: "center",
-              borderWidth: 1,
-              borderColor:
-                currentStep === 0 ? theme.colors.text + "20" : "#8B5CF6",
-              opacity: currentStep === 0 ? 0.5 : 1,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "600",
-                color: currentStep === 0 ? theme.colors.text + "40" : "#8B5CF6",
-              }}
-            >
-              Previous
-            </Text>
-          </TouchableOpacity>
+          
 
           <TouchableOpacity
-            onPress={handleNext}
-            disabled={isLoading}
+            onPress={handleEventCreation}
+            disabled={isLoading }
             style={{
               flex: 1,
               height: 50,
-              backgroundColor: "#8B5CF6",
+              backgroundColor: validateCheck() ? "#8B5CF6"  : "transparent",
               borderRadius: 16,
+              borderWidth: 1,
+              borderColor:
+                validateCheck()  ?  "#8B5CF6": theme.colors.text + "20" ,
               justifyContent: "center",
               alignItems: "center",
               shadowColor: "#8B5CF6",
@@ -1066,17 +984,14 @@ export default function CreateEvent() {
                   style={{
                     fontSize: 16,
                     fontWeight: "700",
-                    color: "white",
+                     color: validateCheck() ? "white"  : theme.colors.text + "40",
+
                     marginRight: 8,
                   }}
                 >
-                  {currentStep === STEPS.length - 1 ? "Create Event" : "Next"}
+                   Create Event 
                 </Text>
-                {currentStep === STEPS.length - 1 ? (
-                  <Check size={18} color="white" />
-                ) : (
-                  <ArrowRight size={18} color="white" />
-                )}
+                
               </View>
             )}
           </TouchableOpacity>

@@ -60,7 +60,7 @@ export function useLocationEvents(
 
     setLoading(true);
     setError(null);
-
+console.log("fetchEvents>>>")
     try {
       // Query events with creator information
       const { data: eventsData, error: eventsError } = await supabase
@@ -196,7 +196,7 @@ export function useLocationEvents(
           }
         })
       );
-
+console.log("fetRespo>",eventsWithAttendees)
       setEvents(eventsWithAttendees);
     } catch (err) {
       const errorMessage =

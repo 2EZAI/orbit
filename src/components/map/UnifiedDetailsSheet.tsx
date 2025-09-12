@@ -134,6 +134,9 @@ export const UnifiedDetailsSheet = React.memo(
       () => isEventData(data, isEvent),
       [data?.id, isEvent]
     );
+    console.log("data>",data)
+    console.log("isEventType>",isEventType)
+     console.log("isEvent>",isEvent)
 
     // Use our new hook for location events
     const locationIdForEvents = !isEventType ? data.id : null;
@@ -338,12 +341,13 @@ export const UnifiedDetailsSheet = React.memo(
         params: {
           locationId: locationData.id,
           locationType: (locationData as any).type || "",
-          latitude: (locationData as any).location?.latitude?.toString() || "",
+          latitude: (locationData as any).location?.coordinates?.[1]?.toString() || "",
           longitude:
-            (locationData as any).location?.longitude?.toString() || "",
+            (locationData as any).location?.coordinates?.[0]?.toString() || "",
           address: (locationData as any).address || "",
           categoryId: simplifiedCategory.id,
           categoryName: simplifiedCategory.name,
+           prompts:JSON.stringify(locationData?.category?.prompts ?? []),
         },
       });
     };

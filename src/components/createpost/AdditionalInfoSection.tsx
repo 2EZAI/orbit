@@ -16,11 +16,7 @@ export default function AdditionalInfoSection({
   const { theme } = useTheme();
 
   return (
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 100 }}
-      keyboardShouldPersistTaps="handled"
-    >
+    
     <View
       style={{
         backgroundColor: theme.dark
@@ -104,6 +100,6 @@ export default function AdditionalInfoSection({
         </View>
       </View>
     </View>
-    </ScrollView>
+    
   );
 }
