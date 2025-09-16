@@ -68,6 +68,7 @@ type UnifiedData = (MapEvent | MapLocation) & {
   };
   join_status?: boolean;
   external_url?: string;
+  external_title?: string;
   category?: Category;
   categories?: Category[];
   attendees?: {
@@ -571,6 +572,7 @@ console.log("lat>lng>",lng)
 
     const categoryName = getPrimaryCategory();
     const hasTickets = currentData.external_url;
+    const hasTitle = currentData.external_title;
     const isJoined = (currentData as any).join_status;
     const attendeeCount = (currentData as any).attendees?.count || 0;
     const attendeeProfiles = (currentData as any).attendees?.profiles || [];
@@ -1741,7 +1743,7 @@ const handleScroll = (event) => {
                         className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
                       >
                         <Text className="text-lg font-semibold text-purple-600">
-                          Buy Tickets
+                          {hasTitle != ''? hasTitle :"Buy Tickets"}
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -1793,7 +1795,7 @@ const handleScroll = (event) => {
                       className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
                     >
                       <Text className="text-lg font-semibold text-purple-600">
-                        Buy Tickets
+                         {hasTitle != ''? hasTitle :"Buy Tickets"}
                       </Text>
                     </TouchableOpacity>
                   )}

@@ -7,11 +7,15 @@ import { useTheme } from "~/src/components/ThemeProvider";
 interface AdditionalInfoSectionProps {
   externalUrl: string;
   setExternalUrl: (url: string) => void;
+    externalUrlTitle: string;
+  setExternalUrlTitle: (url: string) => void;
 }
 
 export default function AdditionalInfoSection({
   externalUrl,
   setExternalUrl,
+  externalUrlTitle,
+  setExternalUrlTitle,
 }: AdditionalInfoSectionProps) {
   const { theme } = useTheme();
 
@@ -67,6 +71,48 @@ export default function AdditionalInfoSection({
             marginBottom: 12,
           }}
         >
+          External URL Title
+        </Text>
+        <View
+          style={{
+            height: 56,
+            backgroundColor: theme.dark
+              ? "rgba(255, 255, 255, 0.05)"
+              : "rgba(255, 255, 255, 0.7)",
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: theme.dark
+              ? "rgba(139, 92, 246, 0.2)"
+              : "rgba(139, 92, 246, 0.15)",
+            paddingHorizontal: 16,
+          }}
+        >
+          <Input
+            value={externalUrlTitle}
+            onChangeText={setExternalUrlTitle}
+            placeholder="Buy Ticket etc."
+            placeholderTextColor={theme.colors.text + "66"}
+            style={{
+              flex: 1,
+              backgroundColor: "transparent",
+              borderWidth: 0,
+              height: 56,
+              fontSize: 16,
+              color: theme.colors.text,
+            }}
+          />
+        </View>
+      </View>
+
+      <View>
+        <Text
+          style={{
+            fontSize: 16,
+            fontWeight: "600",
+            color: theme.colors.text,
+            marginBottom: 12,
+          }}
+        >
           External URL
         </Text>
         <View
@@ -99,6 +145,8 @@ export default function AdditionalInfoSection({
           />
         </View>
       </View>
+
+       
     </View>
     
   );

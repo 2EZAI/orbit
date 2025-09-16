@@ -122,6 +122,7 @@ export default function CreateEvent() {
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
   const [externalUrl, setExternalUrl] = useState("");
+  const [externalTitle, setExternalTitle] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
 
@@ -354,6 +355,9 @@ console.log("params.latitude>",params.latitude)
               // Set state
               if (isStart) {
                 setStartDate(dateObject);
+                 // Automatically set endDate to 6 hours after startDate
+  const newEndDate = new Date(dateObject.getTime() + 6 * 60 * 60 * 1000); // Add 6 hours
+  setEndDate(newEndDate);
               } else {
                 setEndDate(dateObject);
               }
@@ -381,7 +385,11 @@ console.log("params.latitude>",params.latitude)
         newDate.setMinutes(currentDate.getMinutes());
 
         if (isStart) {
+          console.log("Ljh?",newDate)
           setStartDate(newDate);
+           // Automatically set endDate to 6 hours after startDate
+  const newEndDate = new Date(newDate.getTime() + 6 * 60 * 60 * 1000); // Add 6 hours
+  setEndDate(newEndDate);
         } else {
           setEndDate(newDate);
         }
@@ -446,6 +454,9 @@ console.log("params.latitude>",params.latitude)
 
         if (isStart) {
           setStartDate(newDate);
+          // Automatically set endDate to 6 hours after startDate
+  const newEndDate = new Date(newDate.getTime() + 6 * 60 * 60 * 1000); // Add 6 hours
+  setEndDate(newEndDate);
         } else {
           setEndDate(newDate);
         }
@@ -697,6 +708,7 @@ console.log("params.latitude>",params.latitude)
         start_datetime: startDate.toISOString(),
         end_datetime: endDate.toISOString(),
         external_url: externalUrl || null,
+        external_title:externalTitle || null,
         image_urls: imageUrls,
         is_private: isPrivate,
         topic_id: selectedTopics,
@@ -722,6 +734,7 @@ console.log("params.latitude>",params.latitude)
           start_datetime: startDate.toISOString(),
           end_datetime: endDate.toISOString(),
           external_url: externalUrl || null,
+          external_title: externalTitle || null,
           image_urls: imageUrls,
           is_private: isPrivate,
           topic_id: selectedTopics,
@@ -777,6 +790,7 @@ console.log("params.latitude>",params.latitude)
               })
             : undefined,
           externalUrl,
+          externalTitle,
           lat: event.location.latitude,
           lng: event.location.longitude,
           eventId: event.id, // Pass the event ID
@@ -939,6 +953,8 @@ showsVerticalScrollIndicator={false}
           <AdditionalInfoSection
             externalUrl={externalUrl}
             setExternalUrl={setExternalUrl}
+            externalUrlTitle={externalTitle}
+            setExternalUrlTitle={setExternalTitle}
           />
         
 </View>

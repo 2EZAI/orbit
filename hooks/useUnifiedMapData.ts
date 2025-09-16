@@ -20,6 +20,7 @@ export interface MapEvent {
   image_urls?: string[];
   is_ticketmaster?: boolean;
   external_url?: string;
+  external_title?: string;
   created_by?: {
     id: string;
     name: string;
@@ -82,6 +83,7 @@ export interface MapLocation {
   price_level?: number;
   phone?: string;
   external_url?: string;
+  external_title?: string;
   place_id?: string;
   distance_meters?: number;
   category_id?: string;

@@ -34,6 +34,7 @@ interface EventSummaryCardProps {
   externalUrl?: string;
   onConfirm: () => void;
   onEdit: () => void;
+  onInviteUsers: () => void;
 }
 
 export default function EventSummaryCard({
@@ -47,6 +48,7 @@ export default function EventSummaryCard({
   externalUrl,
   onConfirm,
   onEdit,
+  onInviteUsers,
 }: EventSummaryCardProps) {
   const { theme } = useTheme();
 
@@ -360,6 +362,29 @@ export default function EventSummaryCard({
               }}
             >
               Edit Event
+            </Text>
+          </TouchableOpacity>
+
+           <TouchableOpacity
+            onPress={onInviteUsers}
+            style={{
+              height: 56,
+              backgroundColor: "transparent",
+              borderRadius: 16,
+              justifyContent: "center",
+              alignItems: "center",
+              borderWidth: 1,
+              borderColor: "#8B5CF6",
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "600",
+                color: "#8B5CF6",
+              }}
+            >
+              Invite Users
             </Text>
           </TouchableOpacity>
         </View>

@@ -73,6 +73,10 @@ export default function EventSummary() {
     router.back();
   };
 
+const handleInviteUser = () => {
+    router.push("/(app)/(create)/inviteUsers");
+  };
+
   return (
     <View
       style={{
@@ -118,6 +122,7 @@ export default function EventSummary() {
           externalUrl={eventData.externalUrl}
           onConfirm={handleConfirm}
           onEdit={handleEdit}
+          onInviteUsers={handleInviteUser}
         />
       </View>
     </View>
