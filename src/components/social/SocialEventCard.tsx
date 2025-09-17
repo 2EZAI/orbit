@@ -329,7 +329,15 @@ export function SocialEventCard({
   const hitDetailApi = async () => {
     try {
       if (treatAsEvent) {
-        await fetchEventDetail(data);
+        // Convert data to the format expected by fetchEventDetail
+        const eventData = {
+          ...data,
+          location: {
+            latitude: data.location.coordinates[1], // coordinates[1] is latitude
+            longitude: data.location.coordinates[0], // coordinates[0] is longitude
+          }
+        } as any; // Type assertion to handle the interface mismatch
+        await fetchEventDetail(eventData);
 
         // Manually fetch the event details to get the updated data with join_status
         const {
@@ -358,7 +366,15 @@ export function SocialEventCard({
           }
         }
       } else {
-        await fetchLocationDetail(data as MapLocation);
+        // Convert location data to the format expected by fetchLocationDetail
+        const locationData = {
+          ...data,
+          location: {
+            latitude: data.location.coordinates[1], // coordinates[1] is latitude
+            longitude: data.location.coordinates[0], // coordinates[0] is longitude
+          }
+        } as any; // Type assertion to handle the interface mismatch
+        await fetchLocationDetail(locationData);
       }
     } catch (error) {
       console.error("Error fetching details:", error);

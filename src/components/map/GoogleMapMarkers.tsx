@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, useEffect } from "react";
+import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { View } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import {
@@ -210,64 +210,58 @@ export function GoogleMapMarkers({
     markerDataLocations,
   ]);
 
-  // Progressive rendering effect - START IMMEDIATELY WHEN DATA ARRIVES
+  // OPTIMIZATION: Progressive rendering with proper dependency tracking to prevent continuous re-renders
+  const lastMarkerCountRef = useRef(0);
+  const isRenderingRef = useRef(false);
+
   useEffect(() => {
     if (allMarkerData.length === 0) {
       setVisibleMarkers(0);
       setIsRendering(false);
+      isRenderingRef.current = false;
+      lastMarkerCountRef.current = 0;
       return;
     }
 
-    console.log(
-      `[GoogleMapMarkers] 🚀 Starting progressive rendering for ${allMarkerData.length} markers`
-    );
-    setIsRendering(true);
-    setVisibleMarkers(PROGRESSIVE_RENDERING_CONFIG.INITIAL_BATCH_SIZE);
+    // Only start progressive rendering if marker count actually changed and we're not already rendering
+    if (allMarkerData.length !== lastMarkerCountRef.current && !isRenderingRef.current) {
+      console.log(
+        `[GoogleMapMarkers] 🚀 Starting progressive rendering for ${allMarkerData.length} markers`
+      );
+      setIsRendering(true);
+      isRenderingRef.current = true;
+      lastMarkerCountRef.current = allMarkerData.length;
+      setVisibleMarkers(PROGRESSIVE_RENDERING_CONFIG.INITIAL_BATCH_SIZE);
 
-    const renderNextBatch = () => {
-      setVisibleMarkers((prev) => {
-        const nextBatch = Math.min(
-          prev + PROGRESSIVE_RENDERING_CONFIG.BATCH_INCREMENT,
-          allMarkerData.length
-        );
-
-        if (nextBatch >= allMarkerData.length) {
-          setIsRendering(false);
-          console.log(
-            `[GoogleMapMarkers] ✅ Progressive rendering complete: ${allMarkerData.length} markers`
-          );
-        }
-
-        return nextBatch;
-      });
-    };
-
-    // Start progressive rendering immediately
-    const interval = setInterval(() => {
-      setVisibleMarkers((prev) => {
-        if (prev < allMarkerData.length) {
-          const nextBatch = Math.min(
-            prev + PROGRESSIVE_RENDERING_CONFIG.BATCH_INCREMENT,
-            allMarkerData.length
-          );
-
-          if (nextBatch >= allMarkerData.length) {
-            setIsRendering(false);
-            console.log(
-              `[GoogleMapMarkers] ✅ Progressive rendering complete: ${allMarkerData.length} markers`
+      // Start progressive rendering immediately
+      const interval = setInterval(() => {
+        setVisibleMarkers((prev) => {
+          if (prev < allMarkerData.length) {
+            const nextBatch = Math.min(
+              prev + PROGRESSIVE_RENDERING_CONFIG.BATCH_INCREMENT,
+              allMarkerData.length
             );
+
+            if (nextBatch >= allMarkerData.length) {
+              setIsRendering(false);
+              isRenderingRef.current = false;
+              console.log(
+                `[GoogleMapMarkers] ✅ Progressive rendering complete: ${allMarkerData.length} markers`
+              );
+            }
+
+            return nextBatch;
+          } else {
+            clearInterval(interval);
+            setIsRendering(false);
+            isRenderingRef.current = false;
+            return prev;
           }
+        });
+      }, PROGRESSIVE_RENDERING_CONFIG.BATCH_DELAY);
 
-          return nextBatch;
-        } else {
-          clearInterval(interval);
-          setIsRendering(false);
-          return prev;
-        }
-      });
-    }, PROGRESSIVE_RENDERING_CONFIG.BATCH_DELAY);
-
-    return () => clearInterval(interval);
+      return () => clearInterval(interval);
+    }
   }, [allMarkerData.length]);
 
   // Get currently visible markers

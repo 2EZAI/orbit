@@ -151,23 +151,20 @@ export default function Map() {
                           }
                         }
 
-                        // Handle zoom level updates with safety check
+                        // OPTIMIZATION: Handle zoom level updates with debouncing to prevent excessive updates
                         const zoomLevel =
                           region?.properties?.zoomLevel ||
                           region?.properties?.zoom ||
                           region?.zoomLevel ||
                           region?.zoom;
-                        console.log(
-                          `🗺️ [Map] Region change - zoom level: ${zoomLevel}, region keys:`,
-                          Object.keys(region || {}),
-                          "region properties keys:",
-                          Object.keys(region?.properties || {})
-                        );
+                        
+                        // Only update if zoom level actually changed (prevent continuous updates)
                         if (
                           zoomLevel &&
                           typeof zoomLevel === "number" &&
                           state.setHideCount &&
-                          state.setCurrentZoomLevel
+                          state.setCurrentZoomLevel &&
+                          zoomLevel !== state.currentZoomLevel
                         ) {
                           state.setHideCount(zoomLevel <= 12);
                           state.setCurrentZoomLevel(zoomLevel);

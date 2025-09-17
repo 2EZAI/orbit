@@ -132,28 +132,6 @@ export const EventMarker = React.memo(function EventMarker({
 
   const optimizedImageUrl = imageUrl ? getOptimizedImageUrl(imageUrl) : null;
 
-  // Debug logging for image URLs and states
-  useEffect(() => {
-    if (imageUrl) {
-      console.log("🖼️ [EventMarker] Image state debug:", {
-        original: imageUrl,
-        optimized: optimizedImageUrl,
-        shouldLoad: shouldLoadImage,
-        loading: imageLoading,
-        loaded: imageLoaded,
-        error: imageError,
-        hasOptimizedUrl: !!optimizedImageUrl,
-        willRender: !!optimizedImageUrl,
-      });
-    }
-  }, [
-    imageUrl,
-    optimizedImageUrl,
-    shouldLoadImage,
-    imageLoading,
-    imageLoaded,
-    imageError,
-  ]);
 
   return (
     <TouchableOpacity

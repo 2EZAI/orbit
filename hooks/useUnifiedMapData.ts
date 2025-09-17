@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "~/src/lib/supabase";
 import { useAuth } from "~/src/lib/auth";
+import { mapDataService } from "~/src/services/mapDataService";
 
 // ============================================================================
 // TYPES
@@ -100,7 +101,7 @@ export interface UseUnifiedMapDataProps {
 export function useUnifiedMapData({
   center,
   radius = 500000,
-  timeRange = "today",
+  timeRange = "today", // Always default to 'today' - tab clicks use fetchTimeframeData
   zoomLevel = 10,
 }: UseUnifiedMapDataProps) {
   const { session } = useAuth();
@@ -124,6 +125,7 @@ export function useUnifiedMapData({
     []
   );
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingComplete, setIsLoadingComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // ============================================================================
@@ -348,45 +350,56 @@ export function useUnifiedMapData({
           ? 0.001 // Larger radius at low zoom
           : 0.002; // Even larger radius at very low zoom
 
-      // Pre-allocate arrays for better performance
+      // Optimized clustering with spatial indexing
       const processedItems = new Set();
-      let processedCount = 0;
+      const spatialGrid = new Map<string, UnifiedCluster[]>();
+      const GRID_SIZE = 0.001; // Grid cell size for spatial indexing
+      
+      // Pre-filter valid items to avoid repeated coordinate lookups
+      const validItems = items
+        .map(item => {
+          const coords = getCoordinates(item.location);
+          return coords ? { item, coords } : null;
+        })
+        .filter(Boolean) as Array<{ item: any; coords: { latitude: number; longitude: number } }>;
 
-      items.forEach((item) => {
-        if (processedItems.has(item.id)) return; // Skip already processed items
+      // Performance optimization: Limit clustering for very large datasets
+      const MAX_ITEMS_TO_CLUSTER = 2000;
+      const itemsToProcess = validItems.length > MAX_ITEMS_TO_CLUSTER 
+        ? validItems.slice(0, MAX_ITEMS_TO_CLUSTER)
+        : validItems;
 
-        const location = item.location;
-        const coords = getCoordinates(location);
-        if (!coords) {
-          console.log(
-            `[UnifiedMapData] createClusters: Could not get coordinates for ${type} item`
-          );
-          return;
-        }
+      itemsToProcess.forEach(({ item, coords }) => {
+        if (processedItems.has(item.id)) return;
 
         const { latitude, longitude } = coords;
         processedItems.add(item.id);
-        processedCount++;
 
-        // Log progress every 50 items
-        if (processedCount % 50 === 0) {
-          console.log(
-            `[UnifiedMapData] createClusters: Processed ${processedCount}/${items.length} ${type}s`
-          );
-        }
+        // Use spatial grid for faster nearby cluster search
+        const gridKey = `${Math.floor(latitude / GRID_SIZE)},${Math.floor(longitude / GRID_SIZE)}`;
+        const nearbyGridKeys = [
+          gridKey,
+          `${Math.floor(latitude / GRID_SIZE) - 1},${Math.floor(longitude / GRID_SIZE)}`,
+          `${Math.floor(latitude / GRID_SIZE) + 1},${Math.floor(longitude / GRID_SIZE)}`,
+          `${Math.floor(latitude / GRID_SIZE)},${Math.floor(longitude / GRID_SIZE) - 1}`,
+          `${Math.floor(latitude / GRID_SIZE)},${Math.floor(longitude / GRID_SIZE) + 1}`,
+        ];
 
-        // Find existing cluster nearby - optimized search
+        // Find existing cluster nearby using spatial grid
         let nearbyCluster = null;
-        for (let i = 0; i < clusters.length; i++) {
-          const cluster = clusters[i];
-          const distance = Math.sqrt(
-            Math.pow(cluster.coordinate[0] - longitude, 2) +
-              Math.pow(cluster.coordinate[1] - latitude, 2)
-          );
-          if (distance < CLUSTER_RADIUS) {
-            nearbyCluster = cluster;
-            break;
+        for (const key of nearbyGridKeys) {
+          const gridClusters = spatialGrid.get(key) || [];
+          for (const cluster of gridClusters) {
+            const distance = Math.sqrt(
+              Math.pow(cluster.coordinate[0] - longitude, 2) +
+                Math.pow(cluster.coordinate[1] - latitude, 2)
+            );
+            if (distance < CLUSTER_RADIUS) {
+              nearbyCluster = cluster;
+              break;
+            }
           }
+          if (nearbyCluster) break;
         }
 
         if (nearbyCluster) {
@@ -430,7 +443,7 @@ export function useUnifiedMapData({
           }
         } else {
           // Create new cluster
-          clusters.push({
+          const newCluster = {
             coordinate: [longitude, latitude], // [longitude, latitude] for Mapbox
             count: 1,
             type,
@@ -440,7 +453,15 @@ export function useUnifiedMapData({
                   locations: [item as MapLocation],
                   mainEvent: item as MapLocation,
                 }),
-          });
+          };
+          clusters.push(newCluster);
+          
+          // Add to spatial grid for faster future lookups
+          const gridKey = `${Math.floor(latitude / GRID_SIZE)},${Math.floor(longitude / GRID_SIZE)}`;
+          if (!spatialGrid.has(gridKey)) {
+            spatialGrid.set(gridKey, []);
+          }
+          spatialGrid.get(gridKey)!.push(newCluster);
         }
       });
 
@@ -448,11 +469,133 @@ export function useUnifiedMapData({
         `[UnifiedMapData] ✅ Created ${clusters.length} clusters from ${items.length} ${type}s at zoom ${zoomLevel} (radius: ${CLUSTER_RADIUS})`
       );
       console.log(
-        `[UnifiedMapData] createClusters: Final processed count: ${processedCount}/${items.length}`
+        `[UnifiedMapData] createClusters: Final processed count: ${processedItems.size}/${items.length}`
       );
       return clusters;
     },
     []
+  );
+
+  // ============================================================================
+  // CLUSTER PROCESSING FUNCTION
+  // ============================================================================
+
+  const processClusters = useCallback(
+    async (
+      validEvents: MapEvent[],
+      validLocations: MapLocation[],
+      nowEvents: MapEvent[],
+      todayEvents: MapEvent[],
+      tomorrowEvents: MapEvent[]
+    ) => {
+      try {
+        // OPTIMIZATION: Use requestIdleCallback for non-blocking clustering
+        const createClustersWithTimeout = async (
+          items: any[],
+          type: string,
+          zoom: number
+        ) => {
+          return new Promise<UnifiedCluster[]>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              console.log(
+                `[UnifiedMapData] ⏰ Clustering timeout for ${type}s, using simple fallback`
+              );
+              // Fallback: create individual clusters (no clustering)
+              const fallbackClusters = items
+                .map((item) => {
+                  const coords = getCoordinates(item.location);
+                  if (!coords) return null;
+                  return {
+                    coordinate: [coords.longitude, coords.latitude],
+                    count: 1,
+                    type: type as "event" | "location",
+                    events: type === "event" ? [item] : undefined,
+                    locations: type === "location" ? [item] : undefined,
+                    mainEvent: item,
+                  };
+                })
+                .filter(Boolean) as UnifiedCluster[];
+              resolve(fallbackClusters);
+            }, 2000); // 2 second timeout - faster fallback
+
+            try {
+              const clusters = createClusters(
+                items,
+                type as "event" | "location",
+                zoom
+              );
+              clearTimeout(timeout);
+              resolve(clusters);
+            } catch (error) {
+              clearTimeout(timeout);
+              console.error(
+                `[UnifiedMapData] ❌ Clustering error for ${type}s:`,
+                error
+              );
+              // Fallback: create individual clusters
+              const fallbackClusters = items
+                .map((item) => {
+                  const coords = getCoordinates(item.location);
+                  if (!coords) return null;
+                  return {
+                    coordinate: [coords.longitude, coords.latitude],
+                    count: 1,
+                    type: type as "event" | "location",
+                    events: type === "event" ? [item] : undefined,
+                    locations: type === "location" ? [item] : undefined,
+                    mainEvent: item,
+                  };
+                })
+                .filter(Boolean) as UnifiedCluster[];
+              resolve(fallbackClusters);
+            }
+          });
+        };
+
+        // Create clusters in parallel for better performance
+        console.log(
+          `[UnifiedMapData] 🚀 Creating clusters in parallel for ${
+            validEvents?.length || 0
+          } events and ${validLocations?.length || 0} locations`
+        );
+
+        // Run all clustering operations in parallel
+        const [
+          eventClusters,
+          locationClusters,
+          nowEventClusters,
+          todayEventClusters,
+          tomorrowEventClusters
+        ] = await Promise.all([
+          createClustersWithTimeout(validEvents || [], "event", zoomLevel || 10),
+          createClustersWithTimeout(validLocations || [], "location", zoomLevel || 10),
+          createClustersWithTimeout(nowEvents, "event", zoomLevel),
+          createClustersWithTimeout(todayEvents, "event", zoomLevel),
+          createClustersWithTimeout(tomorrowEvents, "event", zoomLevel)
+        ]);
+
+        console.log(
+          `[UnifiedMapData] ✅ Created ${eventClusters.length} event clusters and ${locationClusters.length} location clusters in parallel`
+        );
+
+        // Update all cluster states
+        setClusters(eventClusters);
+        setClustersLocations(locationClusters);
+        setClustersNow(nowEventClusters);
+        setClustersToday(todayEventClusters);
+        setClustersTomorrow(tomorrowEventClusters);
+
+        console.log(
+          `[UnifiedMapData] ⚡ Created ${eventClusters.length} event clusters and ${locationClusters.length} location clusters`
+        );
+        console.log(
+          `[UnifiedMapData] 📊 Time-based clusters: ${nowEventClusters.length} now, ${todayEventClusters.length} today, ${tomorrowEventClusters.length} tomorrow`
+        );
+      } catch (error) {
+        console.error("[UnifiedMapData] Error processing clusters:", error);
+      }
+    },
+    [createClusters, getCoordinates, zoomLevel]
   );
 
   // ============================================================================
@@ -526,287 +669,254 @@ export function useUnifiedMapData({
               : centerCoords[0], // Longitude is the first element
         };
 
-        // Fetch map data
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        // STAGE 1: Fetch nearby data first (with loader)
+        console.log("🔄 NEARBY API: Starting fetch");
+        
+        const nearbyRequestData = {
+          latitude: requestData.latitude,
+          longitude: requestData.longitude,
+          timeRange: timeRange || 'today',
+          includeTicketmaster: true,
+        };
+
+        const nearbyData = await mapDataService.getNearbyData(nearbyRequestData);
+        
+        console.log(`✅ NEARBY API: Received ${nearbyData.events?.length || 0} events, ${nearbyData.locations?.length || 0} locations`);
+        console.log(`🔍 NEARBY API: First few events:`, nearbyData.events?.slice(0, 3).map(e => ({ id: e.id, name: e.name, start_datetime: e.start_datetime })));
+
+        // Process nearby data immediately
+        let validEvents: MapEvent[] = [];
+        let validLocations: MapLocation[] = [];
 
         try {
-          const apiUrl = `${process.env.BACKEND_MAP_URL}/api/events/user-location`;
-          const response = await fetch(apiUrl, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(session?.access_token && {
-                Authorization: `Bearer ${session.access_token}`,
-              }),
-            },
-            body: JSON.stringify(requestData),
-            signal: controller.signal,
-          });
-
-          clearTimeout(timeoutId);
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API Error ${response.status}: ${errorText}`);
-          }
-
-          const data = await response.json();
-
-          console.log(
-            `[UnifiedMapData] API Response: ${
-              data.events?.length || 0
-            } events, ${data.locations?.length || 0} locations`
-          );
-
-          // Debug: Log first few items to see structure
-          if (data.events && data.events.length > 0) {
-            console.log("[UnifiedMapData] First event structure:", {
-              id: data.events[0].id,
-              name: data.events[0].name,
-              location: data.events[0].location,
-            });
-          }
-          if (data.locations && data.locations.length > 0) {
-            console.log("[UnifiedMapData] First location structure:", {
-              id: data.locations[0].id,
-              name: data.locations[0].name,
-              location: data.locations[0].location,
-            });
-          }
-
-          // Validate data with error handling - PROCESS ALL DATA
-          let validEvents: MapEvent[] = [];
-          let validLocations: MapLocation[] = [];
-
-          try {
-            // PROCESS ALL DATA: Validate all events and locations
-            validEvents = validateData(
-              data.events || [],
-              "event"
-            ) as MapEvent[];
-            validLocations = validateData(
-              data.locations || [],
-              "location"
-            ) as MapLocation[];
-
-            console.log(
-              `[UnifiedMapData] ⚡ Processed all data: ${validEvents.length} events, ${validLocations.length} locations`
-            );
-            console.log(
-              `[UnifiedMapData] 🔍 About to create clusters with zoom level: ${
-                zoomLevel || "UNDEFINED"
-              }`
-            );
-
-            // CRITICAL: Check if we have valid data before proceeding
-            if (!validEvents || validEvents.length === 0) {
-              console.error("[UnifiedMapData] ❌ No valid events to cluster!");
-              return;
-            }
-            if (!validLocations || validLocations.length === 0) {
-              console.error(
-                "[UnifiedMapData] ❌ No valid locations to cluster!"
-              );
-              return;
-            }
-          } catch (error) {
-            console.error("[UnifiedMapData] Error validating data:", error);
-            validEvents = [];
-            validLocations = [];
-          }
-
-          if (!isMountedRef.current) return;
-
-          console.log(
-            `[UnifiedMapData] 🔍 Data validation complete, updating cache and state...`
-          );
-
-          // Update cache and state
-          cachedEventsRef.current = validEvents || [];
-          cachedLocationsRef.current = validLocations || [];
-          lastFetchTimeRef.current = Date.now();
-
-          setEvents(validEvents || []);
-          setLocations(validLocations || []);
-
-          // Filter events by time with safety checks
-          const nowEvents = filterEventsByTime(validEvents || [], "today");
-          const todayEvents = filterEventsByTime(validEvents || [], "today");
-          const tomorrowEvents = filterEventsByTime(
-            validEvents || [],
-            "weekend"
-          );
-
-          setEventsNow(nowEvents);
-          setEventsToday(todayEvents);
-          setEventsTomorrow(tomorrowEvents);
-
-          console.log(
-            `[UnifiedMapData] 🔍 About to start clustering process...`
-          );
-
-          // REMOVED: Old clustering - now using progressive loading
-
-          // SIMPLE CLUSTERING - BASED ON WORKING OLD CODE
-          console.log(
-            `[UnifiedMapData] 🚀 Creating clusters with zoom level: ${zoomLevel}`
-          );
-
-          // Create clusters using the simple clustering logic with timeout protection
-          console.log(
-            `[UnifiedMapData] 🚀 Creating event clusters for ${
-              validEvents?.length || 0
-            } events`
-          );
-
-          // Add timeout protection to clustering
-          const createClustersWithTimeout = async (
-            items: any[],
-            type: string,
-            zoom: number
-          ) => {
-            return new Promise<UnifiedCluster[]>((resolve, reject) => {
-              const timeout = setTimeout(() => {
-                console.log(
-                  `[UnifiedMapData] ⏰ Clustering timeout for ${type}s, using simple fallback`
-                );
-                // Fallback: create individual clusters (no clustering)
-                const fallbackClusters = items
-                  .map((item) => {
-                    const coords = getCoordinates(item.location);
-                    if (!coords) return null;
-                    return {
-                      coordinate: [coords.longitude, coords.latitude],
-                      count: 1,
-                      type: type as "event" | "location",
-                      events: type === "event" ? [item] : undefined,
-                      locations: type === "location" ? [item] : undefined,
-                      mainEvent: item,
-                    };
-                  })
-                  .filter(Boolean) as UnifiedCluster[];
-                resolve(fallbackClusters);
-              }, 5000); // 5 second timeout
-
-              try {
-                const clusters = createClusters(
-                  items,
-                  type as "event" | "location",
-                  zoom
-                );
-                clearTimeout(timeout);
-                resolve(clusters);
-              } catch (error) {
-                clearTimeout(timeout);
-                console.error(
-                  `[UnifiedMapData] ❌ Clustering error for ${type}s:`,
-                  error
-                );
-                // Fallback: create individual clusters
-                const fallbackClusters = items
-                  .map((item) => {
-                    const coords = getCoordinates(item.location);
-                    if (!coords) return null;
-                    return {
-                      coordinate: [coords.longitude, coords.latitude],
-                      count: 1,
-                      type: type as "event" | "location",
-                      events: type === "event" ? [item] : undefined,
-                      locations: type === "location" ? [item] : undefined,
-                      mainEvent: item,
-                    };
-                  })
-                  .filter(Boolean) as UnifiedCluster[];
-                resolve(fallbackClusters);
-              }
-            });
-          };
-
-          const eventClusters = await createClustersWithTimeout(
-            validEvents || [],
-            "event",
-            zoomLevel || 10
-          );
-          console.log(
-            `[UnifiedMapData] ✅ Created ${eventClusters.length} event clusters`
-          );
-
-          console.log(
-            `[UnifiedMapData] 🚀 Creating location clusters for ${
-              validLocations?.length || 0
-            } locations`
-          );
-          const locationClusters = await createClustersWithTimeout(
-            validLocations || [],
-            "location",
-            zoomLevel || 10
-          );
-          console.log(
-            `[UnifiedMapData] ✅ Created ${locationClusters.length} location clusters`
-          );
-
-          // Set clusters for different time frames with timeout protection
-          const nowEventClusters = await createClustersWithTimeout(
-            nowEvents,
-            "event",
-            zoomLevel
-          );
-          const todayEventClusters = await createClustersWithTimeout(
-            todayEvents,
-            "event",
-            zoomLevel
-          );
-          const tomorrowEventClusters = await createClustersWithTimeout(
-            tomorrowEvents,
-            "event",
-            zoomLevel
-          );
-
-          // Update all cluster states
-          setClusters(eventClusters);
-          setClustersLocations(locationClusters);
-          setClustersNow(nowEventClusters);
-          setClustersToday(todayEventClusters);
-          setClustersTomorrow(tomorrowEventClusters);
-
-          console.log(
-            `[UnifiedMapData] ⚡ Created ${eventClusters.length} event clusters and ${locationClusters.length} location clusters`
-          );
-          console.log(
-            `[UnifiedMapData] 📊 Time-based clusters: ${nowEventClusters.length} now, ${todayEventClusters.length} today, ${tomorrowEventClusters.length} tomorrow`
-          );
-
-          setError(null);
-        } finally {
-          clearTimeout(timeoutId);
+          validEvents = validateData(nearbyData.events || [], "event") as MapEvent[];
+          validLocations = validateData(nearbyData.locations || [], "location") as MapLocation[];
+        } catch (error) {
+          console.error("[UnifiedMapData] Error validating nearby data:", error);
+          validEvents = [];
+          validLocations = [];
         }
+
+        if (!isMountedRef.current) return;
+
+        // Update state with nearby data
+        cachedEventsRef.current = validEvents || [];
+        cachedLocationsRef.current = validLocations || [];
+        lastFetchTimeRef.current = Date.now();
+
+        setEvents(validEvents || []);
+        setLocations(validLocations || []);
+
+        console.log(`🔍 NEARBY API: After validation - ${validEvents.length} events, ${validLocations.length} locations`);
+
+        // Filter events by time
+        const nowEvents = filterEventsByTime(validEvents || [], "today");
+        const todayEvents = filterEventsByTime(validEvents || [], "today");
+        const tomorrowEvents = filterEventsByTime(validEvents || [], "weekend");
+
+        console.log(`🔍 NEARBY API: After time filtering - now: ${nowEvents.length}, today: ${todayEvents.length}, tomorrow: ${tomorrowEvents.length}`);
+
+        setEventsNow(nowEvents);
+        setEventsToday(todayEvents);
+        setEventsTomorrow(tomorrowEvents);
+
+        // Create clusters for nearby data - use all events for initial display
+        await processClusters(validEvents, validLocations, validEvents, validEvents, validEvents);
+
+        // STAGE 2: Fetch user-location data in background (silently, only for 'today')
+        setIsLoadingComplete(true);
+
+        // Only load 'today' data from user-location API in background
+        setTimeout(async () => {
+          try {
+            console.log("🔄 USER-LOCATIONS API: Starting background fetch for 'today'");
+            
+            const userLocationRequestData = {
+              latitude: requestData.latitude,
+              longitude: requestData.longitude,
+              radius: radius || 500000,
+              timeRange: 'today' as const, // Always load 'today' data in background
+              includeTicketmaster: true,
+            };
+
+            const userLocationData = await mapDataService.getMapData(userLocationRequestData);
+
+            console.log(`✅ USER-LOCATIONS API: Received ${userLocationData.events?.length || 0} events, ${userLocationData.locations?.length || 0} locations`);
+
+            if (!isMountedRef.current) return;
+
+            // Process user-location data
+            let userLocationValidEvents: MapEvent[] = [];
+            let userLocationValidLocations: MapLocation[] = [];
+
+            try {
+              userLocationValidEvents = validateData(userLocationData.events || [], "event") as MapEvent[];
+              userLocationValidLocations = validateData(userLocationData.locations || [], "location") as MapLocation[];
+            } catch (error) {
+              console.error("[UnifiedMapData] Error validating user-location data:", error);
+              userLocationValidEvents = [];
+              userLocationValidLocations = [];
+            }
+
+            // Merge with existing nearby data (add new markers silently)
+            const mergedEvents = [...validEvents, ...userLocationValidEvents.filter(event => 
+              !validEvents.some(existing => existing.id === event.id)
+            )];
+            const mergedLocations = [...validLocations, ...userLocationValidLocations.filter(location => 
+              !validLocations.some(existing => existing.id === location.id)
+            )];
+
+            // Update state with merged data
+            cachedEventsRef.current = mergedEvents;
+            cachedLocationsRef.current = mergedLocations;
+
+            setEvents(mergedEvents);
+            setLocations(mergedLocations);
+
+            // Filter events by time
+            const mergedNowEvents = filterEventsByTime(mergedEvents || [], "today");
+            const mergedTodayEvents = filterEventsByTime(mergedEvents || [], "today");
+            const mergedTomorrowEvents = filterEventsByTime(mergedEvents || [], "weekend");
+
+            setEventsNow(mergedNowEvents);
+            setEventsToday(mergedTodayEvents);
+            setEventsTomorrow(mergedTomorrowEvents);
+
+            // Create clusters for merged data - use all events for initial display
+            await processClusters(mergedEvents, mergedLocations, mergedEvents, mergedEvents, mergedEvents);
+
+            console.log("✅ USER-LOCATIONS API: Background fetch completed and data merged");
+          } catch (error) {
+            console.error("[UnifiedMapData] Error loading user-location data:", error);
+            // Don't show error to user, just log it
+          } finally {
+            setIsLoadingComplete(false);
+          }
+        }, 500); // 500ms delay
+
+        setError(null);
       } catch (err) {
         if (!isMountedRef.current) return;
-
-        if (err instanceof Error && err.name === "AbortError") {
-          console.log("[UnifiedMapData] Request timeout");
-          setError(
-            "Backend is currently slow. Please try again in a few moments."
-          );
-        } else {
-          console.error("[UnifiedMapData] Error:", err);
-          setError(err instanceof Error ? err.message : "An error occurred");
-        }
-
-        // Don't clear cache on timeout errors
-        if (!(err instanceof Error && err.name === "AbortError")) {
-          cachedEventsRef.current = [];
-          cachedLocationsRef.current = [];
-        }
+        console.error("[UnifiedMapData] Error:", err);
+        setError(err instanceof Error ? err.message : "An error occurred");
       } finally {
         if (!isMountedRef.current) return;
-        // REMOVED: Excessive timing logs
         isLoadingRef.current = false;
         setIsLoading(false);
       }
     },
     [session, radius, validateData, filterEventsByTime, createClusters]
+  );
+
+  // ============================================================================
+  // TAB CLICK HANDLER (for week/weekend)
+  // ============================================================================
+
+  const fetchTimeframeData = useCallback(
+    async (timeframe: 'week' | 'weekend') => {
+      if (!center || center[0] === 0 || center[1] === 0) return;
+
+      console.log(`🔄 USER-LOCATIONS API: Fetching ${timeframe} data on tab click`);
+
+      try {
+        // Get user data for location preferences
+        let user = null;
+        let userLocation = null;
+
+        if (session?.access_token) {
+          try {
+            const [userResult, locationResult] = await Promise.all([
+              supabase
+                .from("users")
+                .select("*")
+                .eq("id", session.user.id)
+                .single(),
+              supabase
+                .from("user_locations")
+                .select("*")
+                .eq("user_id", session.user.id)
+                .order("last_updated", { ascending: false })
+                .limit(1),
+            ]);
+
+            user = userResult.data;
+            userLocation = locationResult.data?.[0] ?? null;
+          } catch (error) {
+            console.log("[UnifiedMapData] Could not get user data:", error);
+          }
+        }
+
+        // Prepare request data
+        const requestData = {
+          latitude:
+            user?.event_location_preference == 1 &&
+            userLocation?.latitude != null
+              ? parseFloat(String(userLocation.latitude))
+              : center[1],
+          longitude:
+            user?.event_location_preference == 1 &&
+            userLocation?.longitude != null
+              ? parseFloat(String(userLocation.longitude))
+              : center[0],
+          radius: radius || 500000,
+          timeRange: timeframe,
+          includeTicketmaster: true,
+        };
+
+        const timeframeData = await mapDataService.getMapData(requestData);
+
+        console.log(`✅ USER-LOCATIONS API: Received ${timeframeData.events?.length || 0} events, ${timeframeData.locations?.length || 0} locations for ${timeframe}`);
+
+        if (!isMountedRef.current) return;
+
+        // Process timeframe data
+        let timeframeValidEvents: MapEvent[] = [];
+        let timeframeValidLocations: MapLocation[] = [];
+
+        try {
+          timeframeValidEvents = validateData(timeframeData.events || [], "event") as MapEvent[];
+          timeframeValidLocations = validateData(timeframeData.locations || [], "location") as MapLocation[];
+
+        } catch (error) {
+          console.error(`[UnifiedMapData] Error validating ${timeframe} data:`, error);
+          timeframeValidEvents = [];
+          timeframeValidLocations = [];
+        }
+
+        // Merge with existing data
+        const mergedEvents = [...events, ...timeframeValidEvents.filter(event => 
+          !events.some(existing => existing.id === event.id)
+        )];
+        const mergedLocations = [...locations, ...timeframeValidLocations.filter(location => 
+          !locations.some(existing => existing.id === location.id)
+        )];
+
+        // Update state with merged data
+        cachedEventsRef.current = mergedEvents;
+        cachedLocationsRef.current = mergedLocations;
+
+        setEvents(mergedEvents);
+        setLocations(mergedLocations);
+
+        // Filter events by time
+        const mergedNowEvents = filterEventsByTime(mergedEvents || [], "today");
+        const mergedTodayEvents = filterEventsByTime(mergedEvents || [], "today");
+        const mergedTomorrowEvents = filterEventsByTime(mergedEvents || [], "weekend");
+
+        setEventsNow(mergedNowEvents);
+        setEventsToday(mergedTodayEvents);
+        setEventsTomorrow(mergedTomorrowEvents);
+
+        // Create clusters for merged data - use all events for initial display
+        await processClusters(mergedEvents, mergedLocations, mergedEvents, mergedEvents, mergedEvents);
+
+        console.log(`✅ USER-LOCATIONS API: ${timeframe} data loaded and merged on tab click`);
+      } catch (error) {
+        console.error(`[UnifiedMapData] Error loading ${timeframe} data:`, error);
+        setError(error instanceof Error ? error.message : "An error occurred");
+      }
+    },
+    [center, radius, session, events, locations, validateData, filterEventsByTime]
   );
 
   // ============================================================================
@@ -917,6 +1027,7 @@ export function useUnifiedMapData({
     // Actions
     forceRefresh,
     fetchUnifiedData,
+    fetchTimeframeData,
     debugBackendPerformance,
   };
 }

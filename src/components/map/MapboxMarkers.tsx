@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, useEffect } from "react";
+import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { View } from "react-native";
 import MapboxGL from "@rnmapbox/maps";
 import {
@@ -184,48 +184,60 @@ export function MapboxMarkers({
     clustersLocations,
   ]);
 
-  // INSTANT VISIBLE progressive rendering - ALL DATA WITH IMMEDIATE VISIBILITY
+  // OPTIMIZATION: Progressive rendering with proper dependency tracking to prevent continuous re-renders
+  const lastMarkerCountRef = useRef(0);
+  const isRenderingRef = useRef(false);
+
   useEffect(() => {
     if (allMarkerData.length === 0) {
       setVisibleMarkers(0);
       setIsRendering(false);
+      isRenderingRef.current = false;
+      lastMarkerCountRef.current = 0;
       return;
     }
 
-    console.log(
-      `[MapboxMarkers] 🚀 Starting INSTANT VISIBLE rendering for ${allMarkerData.length} markers`
-    );
-    setIsRendering(true);
+    // Only start progressive rendering if marker count actually changed and we're not already rendering
+    if (allMarkerData.length !== lastMarkerCountRef.current && !isRenderingRef.current) {
+      console.log(
+        `[MapboxMarkers] 🚀 Starting INSTANT VISIBLE rendering for ${allMarkerData.length} markers`
+      );
+      setIsRendering(true);
+      isRenderingRef.current = true;
+      lastMarkerCountRef.current = allMarkerData.length;
 
-    // Start with more markers immediately for better UX
-    setVisibleMarkers(Math.min(300, allMarkerData.length));
+      // Start with more markers immediately for better UX
+      setVisibleMarkers(Math.min(300, allMarkerData.length));
 
-    // INSTANT VISIBLE rendering: Render markers in smaller batches for immediate visibility
-    const interval = setInterval(() => {
-      setVisibleMarkers((prev) => {
-        if (prev < allMarkerData.length) {
-          const nextBatch = Math.min(
-            prev + 25, // Render 25 markers at a time for immediate visibility
-            allMarkerData.length
-          );
-
-          if (nextBatch >= allMarkerData.length) {
-            setIsRendering(false);
-            console.log(
-              `[MapboxMarkers] ✅ INSTANT VISIBLE rendering complete: ${allMarkerData.length} markers`
+      // INSTANT VISIBLE rendering: Render markers in smaller batches for immediate visibility
+      const interval = setInterval(() => {
+        setVisibleMarkers((prev) => {
+          if (prev < allMarkerData.length) {
+            const nextBatch = Math.min(
+              prev + 25, // Render 25 markers at a time for immediate visibility
+              allMarkerData.length
             );
+
+            if (nextBatch >= allMarkerData.length) {
+              setIsRendering(false);
+              isRenderingRef.current = false;
+              console.log(
+                `[MapboxMarkers] ✅ INSTANT VISIBLE rendering complete: ${allMarkerData.length} markers`
+              );
+            }
+
+            return nextBatch;
+          } else {
+            clearInterval(interval);
+            setIsRendering(false);
+            isRenderingRef.current = false;
+            return prev;
           }
+        });
+      }, 8); // 120fps rendering (8ms intervals) for immediate visibility
 
-          return nextBatch;
-        } else {
-          clearInterval(interval);
-          setIsRendering(false);
-          return prev;
-        }
-      });
-    }, 8); // 120fps rendering (8ms intervals) for immediate visibility
-
-    return () => clearInterval(interval);
+      return () => clearInterval(interval);
+    }
   }, [allMarkerData.length]);
 
   // Get currently visible markers
@@ -299,15 +311,20 @@ export function MapboxMarkers({
     [onClusterPress, selectedEvent]
   );
 
-  return (
-    <>
-      {/* DEBUG: Log progressive rendering progress */}
-      {console.log(
+  // OPTIMIZATION: Move console.log outside JSX to prevent re-renders
+  // Only log when rendering state actually changes
+  useEffect(() => {
+    if (allMarkerData.length > 0) {
+      console.log(
         `[MapboxMarkers] Progressive rendering: ${visibleMarkers}/${
           allMarkerData.length
         } markers visible (${isRendering ? "rendering..." : "complete"})`
-      )}
+      );
+    }
+  }, [visibleMarkers, allMarkerData.length, isRendering]);
 
+  return (
+    <>
       {/* Show progressively rendered markers */}
       {visibleMarkerData.map((markerData) => (
         <MapboxMarker

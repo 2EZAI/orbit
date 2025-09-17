@@ -191,7 +191,7 @@ export function MapStateManager({ children }: MapStateManagerProps) {
     location?.longitude,
   ]);
 
-  // Use the unified map data hook
+  // Use the unified map data hook - always load 'today' data initially
   const {
     events,
     locations,
@@ -206,18 +206,27 @@ export function MapStateManager({ children }: MapStateManagerProps) {
     isLoading,
     error,
     forceRefresh: forceRefresh,
+    fetchTimeframeData,
     debugBackendPerformance,
   } = useUnifiedMapData({
     center: calculatedCenter,
     radius: 50000, // 50 miles radius
-    timeRange:
-      selectedTimeFrame === "Today"
-        ? "today"
-        : selectedTimeFrame === "Week"
-        ? "week"
-        : "weekend",
+    timeRange: "today", // Always load 'today' data - tab clicks use fetchTimeframeData
     zoomLevel: currentZoomLevel,
   });
+
+  // Handle tab clicks efficiently - only fetch additional data for week/weekend
+  const handleTimeFrameChange = useCallback((timeFrame: TimeFrame) => {
+    setSelectedTimeFrame(timeFrame);
+    
+    // Only fetch additional data for week/weekend tabs
+    if (timeFrame === "Week") {
+      fetchTimeframeData("week");
+    } else if (timeFrame === "Weekend") {
+      fetchTimeframeData("weekend");
+    }
+    // For "Today", we already have the data from initial load
+  }, [fetchTimeframeData]);
 
   // Debug zoom level changes
   useEffect(() => {
@@ -312,20 +321,31 @@ export function MapStateManager({ children }: MapStateManagerProps) {
         }
       });
 
-      // Preload only first 10 images (most critical ones) - reduced load
-      const imagesToPreload = imageUrls.slice(0, 10);
+      // Optimized image preloading - prioritize visible markers
+      const imagesToPreload = imageUrls.slice(0, 5); // Reduced to 5 most critical images
 
       console.log(
-        `🖼️ [MapStateManager] Preloading ${imagesToPreload.length} images...`
+        `🖼️ [MapStateManager] Preloading ${imagesToPreload.length} critical images...`
       );
 
-      // Preload images in background with slower timing to reduce load
-      imagesToPreload.forEach((url, index) => {
-        setTimeout(() => {
-          Image.prefetch(url).catch(() => {
-            // Silently fail - image will load normally when needed
-          });
-        }, index * 200); // Slower preloading - 200ms intervals to reduce load
+      // Batch preload with concurrent loading for better performance
+      const preloadBatch = async () => {
+        const promises = imagesToPreload.map((url, index) => 
+          new Promise((resolve) => {
+            setTimeout(() => {
+              Image.prefetch(url)
+                .then(resolve)
+                .catch(() => resolve(null)); // Silently fail
+            }, index * 100); // Faster intervals - 100ms
+          })
+        );
+        
+        await Promise.allSettled(promises);
+      };
+
+      // Start preloading in background
+      preloadBatch().catch(() => {
+        // Silently handle any batch errors
       });
     };
 
@@ -855,7 +875,7 @@ export function MapStateManager({ children }: MapStateManagerProps) {
     renderEndTime,
 
     // Actions
-    setSelectedTimeFrame,
+    setSelectedTimeFrame: handleTimeFrameChange,
     setSelectedEvent,
     setSelectedCluster,
     setShowDetails,
