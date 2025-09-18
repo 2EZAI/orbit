@@ -1,4 +1,10 @@
-import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
+import React, {
+  useCallback,
+  useMemo,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
 import { View } from "react-native";
 import MapboxGL from "@rnmapbox/maps";
 import {
@@ -187,8 +193,15 @@ export function MapboxMarkers({
   // OPTIMIZATION: Progressive rendering with proper dependency tracking to prevent continuous re-renders
   const lastMarkerCountRef = useRef(0);
   const isRenderingRef = useRef(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
+    // Clear any previous interval before starting a new one
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
     if (allMarkerData.length === 0) {
       setVisibleMarkers(0);
       setIsRendering(false);
@@ -197,47 +210,51 @@ export function MapboxMarkers({
       return;
     }
 
-    // Only start progressive rendering if marker count actually changed and we're not already rendering
-    if (allMarkerData.length !== lastMarkerCountRef.current && !isRenderingRef.current) {
-      console.log(
-        `[MapboxMarkers] 🚀 Starting INSTANT VISIBLE rendering for ${allMarkerData.length} markers`
-      );
-      setIsRendering(true);
-      isRenderingRef.current = true;
-      lastMarkerCountRef.current = allMarkerData.length;
+    // If marker count changed (especially increased after second-stage fetch), restart rendering
+    console.log(
+      `[MapboxMarkers] 🚀 Rendering ${allMarkerData.length} markers (restart if count changed)`
+    );
+    setIsRendering(true);
+    isRenderingRef.current = true;
+    lastMarkerCountRef.current = allMarkerData.length;
 
-      // Start with more markers immediately for better UX
-      setVisibleMarkers(Math.min(300, allMarkerData.length));
+    // Start with current visible (don't regress) or jump-start to 300
+    setVisibleMarkers((prev) =>
+      Math.max(prev, Math.min(300, allMarkerData.length))
+    );
 
-      // INSTANT VISIBLE rendering: Render markers in smaller batches for immediate visibility
-      const interval = setInterval(() => {
-        setVisibleMarkers((prev) => {
-          if (prev < allMarkerData.length) {
-            const nextBatch = Math.min(
-              prev + 25, // Render 25 markers at a time for immediate visibility
-              allMarkerData.length
-            );
+    intervalRef.current = setInterval(() => {
+      setVisibleMarkers((prev) => {
+        if (prev < allMarkerData.length) {
+          const nextBatch = Math.min(prev + 25, allMarkerData.length);
 
-            if (nextBatch >= allMarkerData.length) {
-              setIsRendering(false);
-              isRenderingRef.current = false;
-              console.log(
-                `[MapboxMarkers] ✅ INSTANT VISIBLE rendering complete: ${allMarkerData.length} markers`
-              );
-            }
-
-            return nextBatch;
-          } else {
-            clearInterval(interval);
+          if (nextBatch >= allMarkerData.length) {
             setIsRendering(false);
             isRenderingRef.current = false;
-            return prev;
+            console.log(
+              `[MapboxMarkers] ✅ Rendering complete: ${allMarkerData.length} markers`
+            );
           }
-        });
-      }, 8); // 120fps rendering (8ms intervals) for immediate visibility
 
-      return () => clearInterval(interval);
-    }
+          return nextBatch;
+        } else {
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+          setIsRendering(false);
+          isRenderingRef.current = false;
+          return prev;
+        }
+      });
+    }, 8);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, [allMarkerData.length]);
 
   // Get currently visible markers
