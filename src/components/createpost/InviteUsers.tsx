@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import  { useCallback, useEffect, useState, useMemo  } from "react";
 import {
   SafeAreaView,
   View,
@@ -7,11 +7,16 @@ import {
   Platform,
   TouchableOpacity,
   ActivityIndicator,
+  Modal,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useChat } from "~/src/lib/chat";
 import { useRouter } from "expo-router";
 import { supabase } from "~/src/lib/supabase";
 import { User as AuthUser } from "@supabase/supabase-js";
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
+
 import {
   Users,
   Search,
@@ -47,49 +52,30 @@ interface DatabaseUser {
   last_name: string | null;
   avatar_url: string | null;
 }
+interface InviteUsersSheetProps {
+  eventId: string;
+   isOpen: boolean;
+  onClose: () => void;
+  goToMap:()=>void;
+}
 
-export default function InviteUsers() {
+export default function InviteUsers (
+  {
+    eventId,
+   isOpen,
+    onClose,
+    goToMap,
+  }: InviteUsersSheetProps){
+    console.log("eventId>",eventId)
   const router = useRouter();
   const { client } = useChat();
   const { theme } = useTheme();
   const [searchText, setSearchText] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
-  const [chatName, setChatName] = useState("");
   const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [followers, setFollowers] = useState<User[]>([]);
-  const [following, setFollowing] = useState<User[]>([]);
-  const [activeTab, setActiveTab] = useState<
-    "followers" | "following" | "people"
-  >("people");
+  const insets = useSafeAreaInsets();
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingFollows, setIsLoadingFollows] = useState(false);
   const { session } = useAuth();
-
-  const isGroupChat = selectedUsers.length > 1;
-
-  // Generate default chat name based on selected users
-  const defaultChatName = useMemo(() => {
-    if (selectedUsers.length === 0) return "";
-    if (selectedUsers.length === 1) {
-      const user = selectedUsers[0];
-      const fullName = `${user.first_name || ""} ${
-        user.last_name || ""
-      }`.trim();
-      return fullName || user.username || "Chat";
-    }
-    if (selectedUsers.length <= 3) {
-      return selectedUsers
-        .map((user) => user.first_name || user.username || "User")
-        .join(", ")
-        .trim();
-    }
-    return "Group Chat";
-  }, [selectedUsers]);
-
-  // Update chat name when users are selected/deselected
-  useEffect(() => {
-    setChatName(defaultChatName);
-  }, [defaultChatName]);
 
   // Fetch all users initially
   useEffect(() => {
@@ -149,102 +135,8 @@ export default function InviteUsers() {
     fetchUsers();
   }, [client?.userID]);
 
-  // Fetch followers and following
-  useEffect(() => {
-    const fetchFollows = async () => {
-      if (!client?.userID) return;
 
-      setIsLoadingFollows(true);
-      try {
-        // Fetch followers (users who follow the current user)
-        const { data: followersData, error: followersError } = await supabase
-          .from("follows")
-          .select(
-            `
-            follower_id,
-            users!follows_follower_id_fkey(
-              id, email, first_name, last_name, username, avatar_url
-            )
-          `
-          )
-          .eq("following_id", client.userID);
-
-        if (followersError) {
-          console.error("Error fetching followers:", followersError);
-        } else {
-          const formattedFollowers = (followersData || []).map((item: any) => ({
-            id: item.users.id,
-            email: item.users.email || "",
-            first_name: item.users.first_name,
-            last_name: item.users.last_name,
-            username: item.users.username,
-            avatar_url: item.users.avatar_url,
-            aud: "authenticated",
-            app_metadata: {},
-            user_metadata: {},
-            created_at: "",
-            updated_at: "",
-          }));
-          setFollowers(formattedFollowers);
-        }
-
-        // Fetch following (users the current user follows)
-        const { data: followingData, error: followingError } = await supabase
-          .from("follows")
-          .select(
-            `
-            following_id,
-            users!follows_following_id_fkey(
-              id, email, first_name, last_name, username, avatar_url
-            )
-          `
-          )
-          .eq("follower_id", client.userID);
-
-        if (followingError) {
-          console.error("Error fetching following:", followingError);
-        } else {
-          const formattedFollowing = (followingData || []).map((item: any) => ({
-            id: item.users.id,
-            email: item.users.email || "",
-            first_name: item.users.first_name,
-            last_name: item.users.last_name,
-            username: item.users.username,
-            avatar_url: item.users.avatar_url,
-            aud: "authenticated",
-            app_metadata: {},
-            user_metadata: {},
-            created_at: "",
-            updated_at: "",
-          }));
-          setFollowing(formattedFollowing);
-        }
-      } catch (error) {
-        console.error("Error fetching follows:", error);
-      } finally {
-        setIsLoadingFollows(false);
-      }
-    };
-
-    fetchFollows();
-  }, [client?.userID]);
-
-  // Get current tab's user list
-  const getCurrentUserList = () => {
-    switch (activeTab) {
-      case "followers":
-        return followers;
-      case "following":
-        return following;
-      case "people":
-        return allUsers;
-      default:
-        return allUsers;
-    }
-  };
-
-  // Filter users based on search text and current tab
-  const filteredUsers = getCurrentUserList().filter((user) => {
+   const filteredUsers = allUsers.filter((user) => {
     const searchTerm = searchText.toLowerCase();
     const fullName = `${user.first_name || ""} ${
       user.last_name || ""
@@ -283,161 +175,22 @@ export default function InviteUsers() {
     return "?";
   };
 
-  const createChat = async () => {
-    console.log("Starting createChat function");
-    // console.log("Checking prerequisites:", {
-    //   hasClientId: Boolean(client?.userID),
-    //   selectedUsersCount: selectedUsers.length,
-    // });
 
-    if (!client?.userID || selectedUsers.length === 0) {
-      console.log("Prerequisites not met, returning early");
-      return;
-    }
-
+  const inviteUsersApi = async () => {
+    console.log("inviteUsersApi function");
+     if (!session) return;
     try {
-      // Get all member IDs including the current user
-      const memberIds = [client.userID, ...selectedUsers.map((u) => u.id)];
-      // console.log("Member IDs:", memberIds);
+       const selectedUserIds = selectedUsers.map(user => user.id);
 
-      // Generate a unique channel ID using timestamp and random string
-      const timestamp = Date.now();
-      const randomStr = Math.random().toString(36).substring(7);
-      const uniqueChannelId = `${timestamp}-${randomStr}`;
-
-      // Create the channel with members list and name
-      // console.log("[NewChat] Creating Stream channel with config:", {
-      //   members: memberIds,
-      //   name: chatName,
-      // });
-      const channel = client.channel("messaging", uniqueChannelId, {
-        members: memberIds,
-        name: chatName,
-      });
-
-      // This both creates the channel and subscribes to it
-      console.log("[NewChat] Watching channel...");
-      await channel.watch();
-      console.log("[NewChat] Channel created and watching:", {
-        channelId: channel.id,
-        channelType: channel.type,
-        channelData: channel.data,
-        memberCount: Object.keys(channel.state.members || {}).length,
-      });
-
-      // Create channel record in Supabase
-      console.log("[NewChat] Creating chat channel in Supabase");
-      const { data: chatChannel, error: channelError } = await supabase
-        .from("chat_channels")
-        .insert({
-          stream_channel_id: channel.id,
-          channel_type: "messaging",
-          created_by: client.userID,
-          name: chatName,
-        })
-        .select()
-        .single();
-
-      if (channelError) {
-        console.error("Error creating chat channel:", channelError);
-        throw channelError;
-      }
-
-      // console.log("Chat channel created:", chatChannel);
-
-      // Create your own member record first
-      console.log("Creating own member record");
-      const { error: ownMemberError } = await supabase
-        .from("chat_channel_members")
-        .insert({
-          channel_id: chatChannel.id,
-          user_id: client.userID,
-          role: "admin",
-        });
-
-      if (ownMemberError) {
-        console.error("Error creating own member record:", ownMemberError);
-        throw ownMemberError;
-      }
-
-      // Then create other member records
-      console.log("Creating other member records");
-      const otherMembers = memberIds.filter((id) => id !== client.userID);
-      for (const memberId of otherMembers) {
-        const { error: memberError } = await supabase
-          .from("chat_channel_members")
-          .insert({
-            channel_id: chatChannel.id,
-            user_id: memberId,
-            role: "member",
-          });
-
-        if (memberError) {
-          console.error("Error creating member record:", {
-            memberId,
-            error: memberError,
-          });
-          throw memberError;
-        }
-      }
-
-      console.log("All member records created successfully");
-      if (selectedUsers.length > 0) {
-        console.log("selectedUsers");
-        if (selectedUsers.length === 1) {
-          console.log("selectedUsers1");
-          hitNoificationApi("new_chat", chatChannel.id);
-        } else {
-          console.log("selectedUserselse");
-          hitNoificationApi("new_group_chat", chatChannel.id);
-        }
-      }
-
-      console.log("Navigating to chat screen");
-      // First dismiss the modal
-      router.back();
-      // Wait a brief moment for the modal to close
-      setTimeout(() => {
-        router.push({
-          pathname: "/(app)/(chat)/channel/[id]",
-          params: {
-            id: channel.id,
-            name: chatName,
-          },
-        });
-      }, 300);
-      console.log("Navigation triggered");
-    } catch (error: any) {
-      console.error("Final error in chat creation:", {
-        name: error?.name,
-        message: error?.message,
-        code: error?.code,
-        status: error?.status,
-        details: error?.details || {},
-      });
-
-      // Show a more specific error message
-      Alert.alert(
-        "Error",
-        error?.message || "Failed to create chat. Please try again."
-      );
-    }
-  };
-
-  const hitNoificationApi = async (typee: string, chatId: string) => {
-    if (!session) return;
-    try {
+  // Now you can use selectedUserIds for your API request
+  console.log('Inviting users with IDs:', selectedUserIds);
       const reuestData = {
-        senderId: session.user.id,
-        type: typee,
-        data: {
-          chat_id: chatId,
-          group_name: chatName,
-        },
+        event_id: session.user.id,
+        invited_user_ids:selectedUserIds,
       };
       ///send notification
       const response = await fetch(
-        `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
+        `${process.env.BACKEND_MAP_URL}/api/events/invites`,
         {
           method: "POST",
           headers: {
@@ -447,7 +200,7 @@ export default function InviteUsers() {
           body: JSON.stringify(reuestData),
         }
       );
-      // console.log("requestData", reuestData);
+      console.log("requestData", reuestData);
 
       if (!response.ok) {
         // console.log("error>", response);
@@ -456,13 +209,47 @@ export default function InviteUsers() {
 
       const data_ = await response.json();
       // console.log("response>", data_);
+      goToMap(true);
     } catch (e) {
       console.log("error_catch>", e);
     }
+    
   };
 
+
+
   return (
-    <SafeAreaView
+     <Modal
+        visible={isOpen}
+        transparent={true}
+        animationType="none"
+        onRequestClose={onClose}
+        statusBarTranslucent={true}
+        presentationStyle="overFullScreen"
+      >
+          <GestureHandlerRootView style={{ flex: 1 }}>
+          <BottomSheet
+            snapPoints={["75%", "95%"]}
+            handleIndicatorStyle={{
+              backgroundColor: theme.colors.border,
+              width: 40,
+            }}
+            backgroundStyle={{
+              backgroundColor: theme.colors.card,
+              borderRadius: 20,
+            }}
+            enablePanDownToClose
+            onClose={onClose}
+            style={{ zIndex: 99999, elevation: 99999 }}
+            containerStyle={{ zIndex: 99999, elevation: 99999 }}
+          >
+                    <SafeAreaView style={{flex:1,marginTop:20}}>
+
+            <BottomSheetScrollView
+              contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
+              showsVerticalScrollIndicator={false}
+            >
+    <View
       style={{
         flex: 1,
         backgroundColor: theme.colors.card,
@@ -483,24 +270,24 @@ export default function InviteUsers() {
           elevation: 3,
         }}
       >
-        <View className="flex-row justify-between items-center">
+       <View className="flex-row justify-between items-center">
           <View className="flex-row items-center">
             <TouchableOpacity onPress={() => router.back()} className="mr-3">
-              <ArrowLeft size={24} color={theme.colors.text} />
+              <View style={{width:80}}  />
             </TouchableOpacity>
             <Text
               style={{
-                fontSize: 20,
+                fontSize: 22,
                 fontWeight: "700",
                 color: theme.colors.text,
               }}
             >
-              New Message
+              Invite Users
             </Text>
           </View>
           {selectedUsers.length > 0 && (
             <TouchableOpacity
-              onPress={createChat}
+              onPress={inviteUsersApi}
               style={{
                 backgroundColor: theme.colors.primary,
                 paddingHorizontal: 16,
@@ -514,7 +301,7 @@ export default function InviteUsers() {
                   fontWeight: "600",
                 }}
               >
-                Create
+                Send Invite
               </Text>
             </TouchableOpacity>
           )}
@@ -592,36 +379,10 @@ export default function InviteUsers() {
                   marginBottom: 12,
                 }}
               >
-                {isGroupChat ? "Group Members" : "Selected User"}
+                {"Selected User"}
               </Text>
 
-              {/* Chat Name Input for Groups */}
-              {isGroupChat && (
-                <View style={{ marginBottom: 16 }}>
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontWeight: "600",
-                      color: theme.colors.text,
-                      marginBottom: 8,
-                    }}
-                  >
-                    Group Name
-                  </Text>
-                  <Input
-                    value={chatName}
-                    onChangeText={setChatName}
-                    placeholder={defaultChatName}
-                    style={{
-                      backgroundColor: theme.colors.card,
-                      borderColor: theme.colors.border,
-                      color: theme.colors.text,
-                    }}
-                    placeholderTextColor={theme.colors.text}
-                  />
-                </View>
-              )}
-
+             
               {/* Selected Users List */}
               <View className="flex-row flex-wrap gap-2">
                 {selectedUsers.map((user) => (
@@ -677,139 +438,6 @@ export default function InviteUsers() {
           </View>
         )}
 
-        {/* Tabs */}
-        <View
-          style={{
-            backgroundColor: theme.colors.card,
-            borderRadius: 16,
-            marginBottom: 16,
-            shadowColor: theme.colors.border,
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-            elevation: 3,
-          }}
-        >
-          <View style={{ padding: 16 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                backgroundColor: theme.colors.border,
-                borderRadius: 12,
-                padding: 4,
-              }}
-            >
-              {/* Followers Tab */}
-              <TouchableOpacity
-                onPress={() => setActiveTab("followers")}
-                style={{
-                  flex: 1,
-                  paddingVertical: 8,
-                  paddingHorizontal: 4,
-                  borderRadius: 8,
-                  backgroundColor:
-                    activeTab === "followers"
-                      ? theme.colors.primary
-                      : "transparent",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <UserPlus
-                  size={14}
-                  color={
-                    activeTab === "followers" ? "white" : theme.colors.text
-                  }
-                />
-                <Text
-                  style={{
-                    marginTop: 2,
-                    fontSize: 11,
-                    fontWeight: "600",
-                    color:
-                      activeTab === "followers" ? "white" : theme.colors.text,
-                    textAlign: "center",
-                  }}
-                  numberOfLines={1}
-                >
-                  Followers
-                </Text>
-              </TouchableOpacity>
-
-              {/* Following Tab */}
-              <TouchableOpacity
-                onPress={() => setActiveTab("following")}
-                style={{
-                  flex: 1,
-                  paddingVertical: 8,
-                  paddingHorizontal: 4,
-                  borderRadius: 8,
-                  backgroundColor:
-                    activeTab === "following"
-                      ? theme.colors.primary
-                      : "transparent",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <UserCheck
-                  size={14}
-                  color={
-                    activeTab === "following" ? "white" : theme.colors.text
-                  }
-                />
-                <Text
-                  style={{
-                    marginTop: 2,
-                    fontSize: 11,
-                    fontWeight: "600",
-                    color:
-                      activeTab === "following" ? "white" : theme.colors.text,
-                    textAlign: "center",
-                  }}
-                  numberOfLines={1}
-                >
-                  Following
-                </Text>
-              </TouchableOpacity>
-
-              {/* People Tab */}
-              <TouchableOpacity
-                onPress={() => setActiveTab("people")}
-                style={{
-                  flex: 1,
-                  paddingVertical: 8,
-                  paddingHorizontal: 4,
-                  borderRadius: 8,
-                  backgroundColor:
-                    activeTab === "people"
-                      ? theme.colors.primary
-                      : "transparent",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Users
-                  size={14}
-                  color={activeTab === "people" ? "white" : theme.colors.text}
-                />
-                <Text
-                  style={{
-                    marginTop: 2,
-                    fontSize: 11,
-                    fontWeight: "600",
-                    color: activeTab === "people" ? "white" : theme.colors.text,
-                    textAlign: "center",
-                  }}
-                  numberOfLines={1}
-                >
-                  People
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
         {/* Users List */}
         <View
           style={{
@@ -824,21 +452,8 @@ export default function InviteUsers() {
           }}
         >
           <View style={{ padding: 16, flex: 1 }}>
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: "600",
-                color: theme.colors.text,
-                marginBottom: 12,
-              }}
-            >
-              {activeTab === "followers"
-                ? "Your Followers"
-                : activeTab === "following"
-                ? "People You Follow"
-                : "All People"}
-            </Text>
-            {isLoading || isLoadingFollows ? (
+            
+            {isLoading ? (
               <View className="flex-1 justify-center items-center py-8">
                 <ActivityIndicator size="large" color={theme.colors.card} />
                 <Text
@@ -847,7 +462,7 @@ export default function InviteUsers() {
                     color: theme.colors.text,
                   }}
                 >
-                  Loading {activeTab}...
+                  Loading users...
                 </Text>
               </View>
             ) : (
@@ -944,13 +559,9 @@ export default function InviteUsers() {
                         marginBottom: 16,
                       }}
                     >
-                      {activeTab === "followers" ? (
-                        <UserPlus size={24} color={theme.colors.text} />
-                      ) : activeTab === "following" ? (
-                        <UserCheck size={24} color={theme.colors.text} />
-                      ) : (
+                      
                         <Users size={24} color={theme.colors.text} />
-                      )}
+                      
                     </View>
                     <Text
                       style={{
@@ -960,20 +571,26 @@ export default function InviteUsers() {
                       }}
                     >
                       {searchText.trim()
-                        ? `No ${activeTab} found matching your search`
-                        : activeTab === "followers"
-                        ? "No followers yet"
-                        : activeTab === "following"
-                        ? "You're not following anyone yet"
-                        : "No people available to chat with"}
+                        ? `No user found matching your search`
+                        : "No people available to invite"}
                     </Text>
                   </View>
                 }
               />
             )}
           </View>
+         
+         
         </View>
+        
       </View>
+      
+    </View>
+    </BottomSheetScrollView>
     </SafeAreaView>
+    </BottomSheet>
+    </GestureHandlerRootView>
+
+      </Modal>
   );
 }

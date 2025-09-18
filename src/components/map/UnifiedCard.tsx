@@ -209,6 +209,7 @@ const getContextActions = (
   treatAsEvent?: boolean
 ) => {
   if (treatAsEvent) {
+    console.log("detailData>",detailData)
     const categories =
       (detailData as MapEvent)?.categories ||
       (data as MapEvent).categories ||
@@ -219,6 +220,8 @@ const getContextActions = (
     const joinStatus = (detailData as any)?.join_status || false;
     const isTicketmaster =
       (detailData as any)?.is_ticketmaster || (data as any)?.is_ticketmaster;
+    const hasTickets = (detailData as any)?.external_url || (data as any)?.external_url;
+    const hasTitle = (detailData as any)?.external_title || (data as any)?.external_title ;
 
     if (categoryName.includes("food") || name.includes("dinner")) {
       return [
@@ -261,8 +264,8 @@ const getContextActions = (
           ? "Create Orbit"
           : isTicketmaster
           ? "Buy Tickets"
-          : "Join Event",
-        action: joinStatus ? "create" : "join",
+          :hasTickets ? (hasTitle ? hasTitle :"Buy Tickets" ) :"Join Event",
+        action: joinStatus ? "create" :(hasTickets ?"buy_tickets" : "join"),
         icon: joinStatus ? "💬" : isTicketmaster ? "🎫" : "✨",
       },
     ];
@@ -384,8 +387,27 @@ console.log("treatAsEvent>",treatAsEvent)
       transform: [{ translateX: translateX.value }],
     }));
 
+
+    const handleTicketPurchase = () => {
+      const currentData = detailData || data;
+      if (!currentData.external_url) return;
+
+      // Close the sheet first so webview appears properly
+      onClose();
+
+      router.push({
+        pathname: "/(app)/(webview)",
+        params: {
+          external_url: currentData.external_url,
+          eventSelected: JSON.stringify(currentData),
+        },
+      });
+    };
     const handleContextAction = (action: string) => {
       switch (action) {
+        case "buy_tickets":
+           handleTicketPurchase();
+        break;
         case "join":
           // For EVENTS: Join button -> turns into "Create Orbit"
           if (treatAsEvent && !(detailData as any)?.join_status) {

@@ -814,6 +814,14 @@ export default function Map() {
         handleEventClick(event as MapEvent);
       }
     );
+      const refreshMapDataListener = DeviceEventEmitter.addListener(
+      "refreshMapData",
+      data => {
+        console.log("refreshMapData>")
+      forceRefreshLocations
+      }
+    );
+    
 
     const showEventCardListener = DeviceEventEmitter.addListener(
       "showEventCard",
@@ -915,6 +923,7 @@ export default function Map() {
 
     return () => {
       eventListener.remove();
+      refreshMapDataListener.remove();
       showEventCardListener.remove();
       locationPreferenceListener.remove();
     };

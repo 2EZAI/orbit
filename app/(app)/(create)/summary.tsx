@@ -1,10 +1,12 @@
-import React from "react";
+import React , {useState} from "react";
 import { View, StatusBar } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import EventSummaryCard from "~/src/components/createpost/EventSummaryCard";
 import { DeviceEventEmitter } from "react-native";
+import InviteUsers from "~/src/components/createpost/InviteUsers";
+
 
 interface EventImage {
   uri: string;
@@ -23,6 +25,7 @@ export default function EventSummary() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
+  const [isInviteOpen, setIsInviteOpen] = useState<Boolean>(false);
 
   // Parse the event data from params
   const eventData = {
@@ -74,7 +77,7 @@ export default function EventSummary() {
   };
 
 const handleInviteUser = () => {
-    router.push("/(app)/(create)/inviteUsers");
+    setIsInviteOpen(true);
   };
 
   return (
@@ -125,6 +128,20 @@ const handleInviteUser = () => {
           onInviteUsers={handleInviteUser}
         />
       </View>
+      {isInviteOpen && (
+        <InviteUsers
+          eventId={params.eventId as string}
+          isOpen={!!setIsInviteOpen}
+          onClose={() => {
+            setIsInviteOpen(false);
+          }}
+          goToMap={()=>{
+            setIsInviteOpen(false);
+            handleConfirm()
+          }}
+         
+        />
+      )}
     </View>
   );
 }

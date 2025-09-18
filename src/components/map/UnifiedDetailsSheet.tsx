@@ -429,11 +429,15 @@ console.log("lat>lng>",lng)
         setManuallyUpdated(true);
 
         setLoading(false);
+        // Emit event to reload map and show event card
+    DeviceEventEmitter.emit("refreshMapData", true);        
       } catch (error) {
         console.error("❌ Error joining event:", error);
         setLoading(false);
       }
     };
+
+  
 
     const handleLeaveEvent = async () => {
       if (!isEventType) return;
@@ -449,6 +453,8 @@ console.log("lat>lng>",lng)
         setManuallyUpdated(true);
 
         setLoading(false);
+         // Emit event to reload map and show event card
+    DeviceEventEmitter.emit("refreshMapData", true);
       } catch (error) {
         console.error("❌ Error leaving event:", error);
         setLoading(false);
@@ -1736,8 +1742,7 @@ const handleScroll = (event) => {
                 <View className="flex-row gap-3">
                   {/* Tickets Button - Only show for Ticketmaster events */}
                   {hasTickets &&
-                    !isJoined &&
-                    (currentData as any)?.is_ticketmaster && (
+                    !isJoined && (
                       <TouchableOpacity
                         onPress={handleTicketPurchase}
                         className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
@@ -1789,7 +1794,7 @@ const handleScroll = (event) => {
               ) : (
                 <View className="flex-row gap-3">
                   {/* Tickets Button for Location - Only show for Ticketmaster events */}
-                  {hasTickets && (currentData as any)?.is_ticketmaster && (
+                  {hasTickets && (
                     <TouchableOpacity
                       onPress={handleTicketPurchase}
                       className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
