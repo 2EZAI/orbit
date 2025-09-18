@@ -216,17 +216,20 @@ export function MapStateManager({ children }: MapStateManagerProps) {
   });
 
   // Handle tab clicks efficiently - only fetch additional data for week/weekend
-  const handleTimeFrameChange = useCallback((timeFrame: TimeFrame) => {
-    setSelectedTimeFrame(timeFrame);
-    
-    // Only fetch additional data for week/weekend tabs
-    if (timeFrame === "Week") {
-      fetchTimeframeData("week");
-    } else if (timeFrame === "Weekend") {
-      fetchTimeframeData("weekend");
-    }
-    // For "Today", we already have the data from initial load
-  }, [fetchTimeframeData]);
+  const handleTimeFrameChange = useCallback(
+    (timeFrame: TimeFrame) => {
+      setSelectedTimeFrame(timeFrame);
+
+      // Only fetch additional data for week/weekend tabs
+      if (timeFrame === "Week") {
+        fetchTimeframeData("week");
+      } else if (timeFrame === "Weekend") {
+        fetchTimeframeData("weekend");
+      }
+      // For "Today", we already have the data from initial load
+    },
+    [fetchTimeframeData]
+  );
 
   // Debug zoom level changes
   useEffect(() => {
@@ -274,16 +277,31 @@ export function MapStateManager({ children }: MapStateManagerProps) {
     }
   }, []);
 
-  // Initialize filters when data is available
+  // Initialize and keep filters up-to-date with data: select ALL by default
   useEffect(() => {
-    if (
-      (events.length > 0 || locations.length > 0) &&
-      (!filters || Object.keys(filters || {}).length === 0)
-    ) {
-      const defaultFilters = generateDefaultFilters(events, locations);
-      setFilters(defaultFilters);
+    // Only proceed when we have some data
+    if (events.length === 0 && locations.length === 0) return;
+
+    const defaults = generateDefaultFilters(events, locations);
+
+    // Case 1: If filters are empty or only contain the fallback 'show-all',
+    // replace with the full default set so all toggles show as selected.
+    const currentKeys = Object.keys(filters || {});
+    const onlyShowAll =
+      currentKeys.length === 1 && (filters as any)?.["show-all"] === true;
+    if (!filters || currentKeys.length === 0 || onlyShowAll) {
+      setFilters(defaults);
+      return;
     }
-  }, [events, locations, filters]);
+
+    // Case 2: Merge in any new categories/keys discovered later, defaulting to true,
+    // while preserving the user's current on/off selections.
+    const merged: FilterState = { ...defaults, ...filters };
+    const mergedKeys = Object.keys(merged);
+    if (mergedKeys.length !== currentKeys.length) {
+      setFilters(merged);
+    }
+  }, [events, locations]);
 
   // Preload images for better performance
   useEffect(() => {
@@ -330,16 +348,17 @@ export function MapStateManager({ children }: MapStateManagerProps) {
 
       // Batch preload with concurrent loading for better performance
       const preloadBatch = async () => {
-        const promises = imagesToPreload.map((url, index) => 
-          new Promise((resolve) => {
-            setTimeout(() => {
-              Image.prefetch(url)
-                .then(resolve)
-                .catch(() => resolve(null)); // Silently fail
-            }, index * 100); // Faster intervals - 100ms
-          })
+        const promises = imagesToPreload.map(
+          (url, index) =>
+            new Promise((resolve) => {
+              setTimeout(() => {
+                Image.prefetch(url)
+                  .then(resolve)
+                  .catch(() => resolve(null)); // Silently fail
+              }, index * 100); // Faster intervals - 100ms
+            })
         );
-        
+
         await Promise.allSettled(promises);
       };
 

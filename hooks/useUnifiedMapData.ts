@@ -354,20 +354,24 @@ export function useUnifiedMapData({
       const processedItems = new Set();
       const spatialGrid = new Map<string, UnifiedCluster[]>();
       const GRID_SIZE = 0.001; // Grid cell size for spatial indexing
-      
+
       // Pre-filter valid items to avoid repeated coordinate lookups
       const validItems = items
-        .map(item => {
+        .map((item) => {
           const coords = getCoordinates(item.location);
           return coords ? { item, coords } : null;
         })
-        .filter(Boolean) as Array<{ item: any; coords: { latitude: number; longitude: number } }>;
+        .filter(Boolean) as Array<{
+        item: any;
+        coords: { latitude: number; longitude: number };
+      }>;
 
       // Performance optimization: Limit clustering for very large datasets
       const MAX_ITEMS_TO_CLUSTER = 2000;
-      const itemsToProcess = validItems.length > MAX_ITEMS_TO_CLUSTER 
-        ? validItems.slice(0, MAX_ITEMS_TO_CLUSTER)
-        : validItems;
+      const itemsToProcess =
+        validItems.length > MAX_ITEMS_TO_CLUSTER
+          ? validItems.slice(0, MAX_ITEMS_TO_CLUSTER)
+          : validItems;
 
       itemsToProcess.forEach(({ item, coords }) => {
         if (processedItems.has(item.id)) return;
@@ -376,13 +380,23 @@ export function useUnifiedMapData({
         processedItems.add(item.id);
 
         // Use spatial grid for faster nearby cluster search
-        const gridKey = `${Math.floor(latitude / GRID_SIZE)},${Math.floor(longitude / GRID_SIZE)}`;
+        const gridKey = `${Math.floor(latitude / GRID_SIZE)},${Math.floor(
+          longitude / GRID_SIZE
+        )}`;
         const nearbyGridKeys = [
           gridKey,
-          `${Math.floor(latitude / GRID_SIZE) - 1},${Math.floor(longitude / GRID_SIZE)}`,
-          `${Math.floor(latitude / GRID_SIZE) + 1},${Math.floor(longitude / GRID_SIZE)}`,
-          `${Math.floor(latitude / GRID_SIZE)},${Math.floor(longitude / GRID_SIZE) - 1}`,
-          `${Math.floor(latitude / GRID_SIZE)},${Math.floor(longitude / GRID_SIZE) + 1}`,
+          `${Math.floor(latitude / GRID_SIZE) - 1},${Math.floor(
+            longitude / GRID_SIZE
+          )}`,
+          `${Math.floor(latitude / GRID_SIZE) + 1},${Math.floor(
+            longitude / GRID_SIZE
+          )}`,
+          `${Math.floor(latitude / GRID_SIZE)},${
+            Math.floor(longitude / GRID_SIZE) - 1
+          }`,
+          `${Math.floor(latitude / GRID_SIZE)},${
+            Math.floor(longitude / GRID_SIZE) + 1
+          }`,
         ];
 
         // Find existing cluster nearby using spatial grid
@@ -455,9 +469,11 @@ export function useUnifiedMapData({
                 }),
           };
           clusters.push(newCluster);
-          
+
           // Add to spatial grid for faster future lookups
-          const gridKey = `${Math.floor(latitude / GRID_SIZE)},${Math.floor(longitude / GRID_SIZE)}`;
+          const gridKey = `${Math.floor(latitude / GRID_SIZE)},${Math.floor(
+            longitude / GRID_SIZE
+          )}`;
           if (!spatialGrid.has(gridKey)) {
             spatialGrid.set(gridKey, []);
           }
@@ -565,13 +581,21 @@ export function useUnifiedMapData({
           locationClusters,
           nowEventClusters,
           todayEventClusters,
-          tomorrowEventClusters
+          tomorrowEventClusters,
         ] = await Promise.all([
-          createClustersWithTimeout(validEvents || [], "event", zoomLevel || 10),
-          createClustersWithTimeout(validLocations || [], "location", zoomLevel || 10),
+          createClustersWithTimeout(
+            validEvents || [],
+            "event",
+            zoomLevel || 10
+          ),
+          createClustersWithTimeout(
+            validLocations || [],
+            "location",
+            zoomLevel || 10
+          ),
           createClustersWithTimeout(nowEvents, "event", zoomLevel),
           createClustersWithTimeout(todayEvents, "event", zoomLevel),
-          createClustersWithTimeout(tomorrowEvents, "event", zoomLevel)
+          createClustersWithTimeout(tomorrowEvents, "event", zoomLevel),
         ]);
 
         console.log(
@@ -671,28 +695,50 @@ export function useUnifiedMapData({
 
         // STAGE 1: Fetch nearby data first (with loader)
         console.log("🔄 NEARBY API: Starting fetch");
-        
+
         const nearbyRequestData = {
           latitude: requestData.latitude,
           longitude: requestData.longitude,
-          timeRange: timeRange || 'today',
+          timeRange: timeRange || "today",
           includeTicketmaster: true,
         };
 
-        const nearbyData = await mapDataService.getNearbyData(nearbyRequestData);
-        
-        console.log(`✅ NEARBY API: Received ${nearbyData.events?.length || 0} events, ${nearbyData.locations?.length || 0} locations`);
-        console.log(`🔍 NEARBY API: First few events:`, nearbyData.events?.slice(0, 3).map(e => ({ id: e.id, name: e.name, start_datetime: e.start_datetime })));
+        const nearbyData = await mapDataService.getNearbyData(
+          nearbyRequestData
+        );
+
+        console.log(
+          `✅ NEARBY API: Received ${nearbyData.events?.length || 0} events, ${
+            nearbyData.locations?.length || 0
+          } locations`
+        );
+        console.log(
+          `🔍 NEARBY API: First few events:`,
+          nearbyData.events?.slice(0, 3).map((e) => ({
+            id: e.id,
+            name: e.name,
+            start_datetime: e.start_datetime,
+          }))
+        );
 
         // Process nearby data immediately
         let validEvents: MapEvent[] = [];
         let validLocations: MapLocation[] = [];
 
         try {
-          validEvents = validateData(nearbyData.events || [], "event") as MapEvent[];
-          validLocations = validateData(nearbyData.locations || [], "location") as MapLocation[];
+          validEvents = validateData(
+            nearbyData.events || [],
+            "event"
+          ) as MapEvent[];
+          validLocations = validateData(
+            nearbyData.locations || [],
+            "location"
+          ) as MapLocation[];
         } catch (error) {
-          console.error("[UnifiedMapData] Error validating nearby data:", error);
+          console.error(
+            "[UnifiedMapData] Error validating nearby data:",
+            error
+          );
           validEvents = [];
           validLocations = [];
         }
@@ -707,21 +753,31 @@ export function useUnifiedMapData({
         setEvents(validEvents || []);
         setLocations(validLocations || []);
 
-        console.log(`🔍 NEARBY API: After validation - ${validEvents.length} events, ${validLocations.length} locations`);
+        console.log(
+          `🔍 NEARBY API: After validation - ${validEvents.length} events, ${validLocations.length} locations`
+        );
 
         // Filter events by time
         const nowEvents = filterEventsByTime(validEvents || [], "today");
         const todayEvents = filterEventsByTime(validEvents || [], "today");
         const tomorrowEvents = filterEventsByTime(validEvents || [], "weekend");
 
-        console.log(`🔍 NEARBY API: After time filtering - now: ${nowEvents.length}, today: ${todayEvents.length}, tomorrow: ${tomorrowEvents.length}`);
+        console.log(
+          `🔍 NEARBY API: After time filtering - now: ${nowEvents.length}, today: ${todayEvents.length}, tomorrow: ${tomorrowEvents.length}`
+        );
 
         setEventsNow(nowEvents);
         setEventsToday(todayEvents);
         setEventsTomorrow(tomorrowEvents);
 
         // Create clusters for nearby data - use all events for initial display
-        await processClusters(validEvents, validLocations, validEvents, validEvents, validEvents);
+        await processClusters(
+          validEvents,
+          validLocations,
+          validEvents,
+          validEvents,
+          validEvents
+        );
 
         // STAGE 2: Fetch user-location data in background (silently, only for 'today')
         setIsLoadingComplete(true);
@@ -729,19 +785,27 @@ export function useUnifiedMapData({
         // Only load 'today' data from user-location API in background
         setTimeout(async () => {
           try {
-            console.log("🔄 USER-LOCATIONS API: Starting background fetch for 'today'");
-            
+            console.log(
+              "🔄 USER-LOCATIONS API: Starting background fetch for 'today'"
+            );
+
             const userLocationRequestData = {
               latitude: requestData.latitude,
               longitude: requestData.longitude,
               radius: radius || 500000,
-              timeRange: 'today' as const, // Always load 'today' data in background
+              timeRange: "today" as const, // Always load 'today' data in background
               includeTicketmaster: true,
             };
 
-            const userLocationData = await mapDataService.getMapData(userLocationRequestData);
+            const userLocationData = await mapDataService.getMapData(
+              userLocationRequestData
+            );
 
-            console.log(`✅ USER-LOCATIONS API: Received ${userLocationData.events?.length || 0} events, ${userLocationData.locations?.length || 0} locations`);
+            console.log(
+              `✅ USER-LOCATIONS API: Received ${
+                userLocationData.events?.length || 0
+              } events, ${userLocationData.locations?.length || 0} locations`
+            );
 
             if (!isMountedRef.current) return;
 
@@ -750,21 +814,40 @@ export function useUnifiedMapData({
             let userLocationValidLocations: MapLocation[] = [];
 
             try {
-              userLocationValidEvents = validateData(userLocationData.events || [], "event") as MapEvent[];
-              userLocationValidLocations = validateData(userLocationData.locations || [], "location") as MapLocation[];
+              userLocationValidEvents = validateData(
+                userLocationData.events || [],
+                "event"
+              ) as MapEvent[];
+              userLocationValidLocations = validateData(
+                userLocationData.locations || [],
+                "location"
+              ) as MapLocation[];
             } catch (error) {
-              console.error("[UnifiedMapData] Error validating user-location data:", error);
+              console.error(
+                "[UnifiedMapData] Error validating user-location data:",
+                error
+              );
               userLocationValidEvents = [];
               userLocationValidLocations = [];
             }
 
             // Merge with existing nearby data (add new markers silently)
-            const mergedEvents = [...validEvents, ...userLocationValidEvents.filter(event => 
-              !validEvents.some(existing => existing.id === event.id)
-            )];
-            const mergedLocations = [...validLocations, ...userLocationValidLocations.filter(location => 
-              !validLocations.some(existing => existing.id === location.id)
-            )];
+            const mergedEvents = [
+              ...validEvents,
+              ...userLocationValidEvents.filter(
+                (event) =>
+                  !validEvents.some((existing) => existing.id === event.id)
+              ),
+            ];
+            const mergedLocations = [
+              ...validLocations,
+              ...userLocationValidLocations.filter(
+                (location) =>
+                  !validLocations.some(
+                    (existing) => existing.id === location.id
+                  )
+              ),
+            ];
 
             // Update state with merged data
             cachedEventsRef.current = mergedEvents;
@@ -774,25 +857,45 @@ export function useUnifiedMapData({
             setLocations(mergedLocations);
 
             // Filter events by time
-            const mergedNowEvents = filterEventsByTime(mergedEvents || [], "today");
-            const mergedTodayEvents = filterEventsByTime(mergedEvents || [], "today");
-            const mergedTomorrowEvents = filterEventsByTime(mergedEvents || [], "weekend");
+            const mergedNowEvents = filterEventsByTime(
+              mergedEvents || [],
+              "today"
+            );
+            const mergedTodayEvents = filterEventsByTime(
+              mergedEvents || [],
+              "today"
+            );
+            const mergedTomorrowEvents = filterEventsByTime(
+              mergedEvents || [],
+              "weekend"
+            );
 
             setEventsNow(mergedNowEvents);
             setEventsToday(mergedTodayEvents);
             setEventsTomorrow(mergedTomorrowEvents);
 
             // Create clusters for merged data - use all events for initial display
-            await processClusters(mergedEvents, mergedLocations, mergedEvents, mergedEvents, mergedEvents);
+            await processClusters(
+              mergedEvents,
+              mergedLocations,
+              mergedEvents,
+              mergedEvents,
+              mergedEvents
+            );
 
-            console.log("✅ USER-LOCATIONS API: Background fetch completed and data merged");
+            console.log(
+              "✅ USER-LOCATIONS API: Background fetch completed and data merged"
+            );
           } catch (error) {
-            console.error("[UnifiedMapData] Error loading user-location data:", error);
+            console.error(
+              "[UnifiedMapData] Error loading user-location data:",
+              error
+            );
             // Don't show error to user, just log it
           } finally {
             setIsLoadingComplete(false);
           }
-        }, 500); // 500ms delay
+        }, 2000); // 500ms delay
 
         setError(null);
       } catch (err) {
@@ -813,10 +916,12 @@ export function useUnifiedMapData({
   // ============================================================================
 
   const fetchTimeframeData = useCallback(
-    async (timeframe: 'week' | 'weekend') => {
+    async (timeframe: "week" | "weekend") => {
       if (!center || center[0] === 0 || center[1] === 0) return;
 
-      console.log(`🔄 USER-LOCATIONS API: Fetching ${timeframe} data on tab click`);
+      console.log(
+        `🔄 USER-LOCATIONS API: Fetching ${timeframe} data on tab click`
+      );
 
       try {
         // Get user data for location preferences
@@ -865,7 +970,13 @@ export function useUnifiedMapData({
 
         const timeframeData = await mapDataService.getMapData(requestData);
 
-        console.log(`✅ USER-LOCATIONS API: Received ${timeframeData.events?.length || 0} events, ${timeframeData.locations?.length || 0} locations for ${timeframe}`);
+        console.log(
+          `✅ USER-LOCATIONS API: Received ${
+            timeframeData.events?.length || 0
+          } events, ${
+            timeframeData.locations?.length || 0
+          } locations for ${timeframe}`
+        );
 
         if (!isMountedRef.current) return;
 
@@ -874,22 +985,37 @@ export function useUnifiedMapData({
         let timeframeValidLocations: MapLocation[] = [];
 
         try {
-          timeframeValidEvents = validateData(timeframeData.events || [], "event") as MapEvent[];
-          timeframeValidLocations = validateData(timeframeData.locations || [], "location") as MapLocation[];
-
+          timeframeValidEvents = validateData(
+            timeframeData.events || [],
+            "event"
+          ) as MapEvent[];
+          timeframeValidLocations = validateData(
+            timeframeData.locations || [],
+            "location"
+          ) as MapLocation[];
         } catch (error) {
-          console.error(`[UnifiedMapData] Error validating ${timeframe} data:`, error);
+          console.error(
+            `[UnifiedMapData] Error validating ${timeframe} data:`,
+            error
+          );
           timeframeValidEvents = [];
           timeframeValidLocations = [];
         }
 
         // Merge with existing data
-        const mergedEvents = [...events, ...timeframeValidEvents.filter(event => 
-          !events.some(existing => existing.id === event.id)
-        )];
-        const mergedLocations = [...locations, ...timeframeValidLocations.filter(location => 
-          !locations.some(existing => existing.id === location.id)
-        )];
+        const mergedEvents = [
+          ...events,
+          ...timeframeValidEvents.filter(
+            (event) => !events.some((existing) => existing.id === event.id)
+          ),
+        ];
+        const mergedLocations = [
+          ...locations,
+          ...timeframeValidLocations.filter(
+            (location) =>
+              !locations.some((existing) => existing.id === location.id)
+          ),
+        ];
 
         // Update state with merged data
         cachedEventsRef.current = mergedEvents;
@@ -900,23 +1026,48 @@ export function useUnifiedMapData({
 
         // Filter events by time
         const mergedNowEvents = filterEventsByTime(mergedEvents || [], "today");
-        const mergedTodayEvents = filterEventsByTime(mergedEvents || [], "today");
-        const mergedTomorrowEvents = filterEventsByTime(mergedEvents || [], "weekend");
+        const mergedTodayEvents = filterEventsByTime(
+          mergedEvents || [],
+          "today"
+        );
+        const mergedTomorrowEvents = filterEventsByTime(
+          mergedEvents || [],
+          "weekend"
+        );
 
         setEventsNow(mergedNowEvents);
         setEventsToday(mergedTodayEvents);
         setEventsTomorrow(mergedTomorrowEvents);
 
         // Create clusters for merged data - use all events for initial display
-        await processClusters(mergedEvents, mergedLocations, mergedEvents, mergedEvents, mergedEvents);
+        await processClusters(
+          mergedEvents,
+          mergedLocations,
+          mergedEvents,
+          mergedEvents,
+          mergedEvents
+        );
 
-        console.log(`✅ USER-LOCATIONS API: ${timeframe} data loaded and merged on tab click`);
+        console.log(
+          `✅ USER-LOCATIONS API: ${timeframe} data loaded and merged on tab click`
+        );
       } catch (error) {
-        console.error(`[UnifiedMapData] Error loading ${timeframe} data:`, error);
+        console.error(
+          `[UnifiedMapData] Error loading ${timeframe} data:`,
+          error
+        );
         setError(error instanceof Error ? error.message : "An error occurred");
       }
     },
-    [center, radius, session, events, locations, validateData, filterEventsByTime]
+    [
+      center,
+      radius,
+      session,
+      events,
+      locations,
+      validateData,
+      filterEventsByTime,
+    ]
   );
 
   // ============================================================================

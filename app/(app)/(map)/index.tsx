@@ -157,7 +157,7 @@ export default function Map() {
                           region?.properties?.zoom ||
                           region?.zoomLevel ||
                           region?.zoom;
-                        
+
                         // Only update if zoom level actually changed (prevent continuous updates)
                         if (
                           zoomLevel &&
