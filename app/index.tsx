@@ -519,7 +519,7 @@ export default function LandingPage() {
   // Logo center coordinates
   const logoCenterX = width / 2;
   const logoCenterY = height * 0.3;
-  const { appleLogin , googleLogin } = useSocialLoginsApi();
+  const { appleLogin, googleLogin } = useSocialLoginsApi();
 
   // Redirect authenticated users to the app
   useEffect(() => {
@@ -581,11 +581,11 @@ export default function LandingPage() {
   }, [isReady]);
 
   const handleGetStarted = () => {
-    router.push("/(auth)/sign-in");
+    router.push("/(app)/(map)");
   };
 
-  const handleSignUp = () => {
-    router.push("/(auth)/sign-up");
+  const handleSignIn = () => {
+    router.push("/(auth)/sign-in");
   };
 
   // Show loading while checking authentication
@@ -754,34 +754,33 @@ export default function LandingPage() {
         </Text>
 
         <View style={{ width: "100%", gap: 12 }}>
-          {Platform.OS == 'ios' && 
-           <TouchableOpacity
-            onPress={appleLogin}
-            style={{
-              backgroundColor:  "transparent",
-              paddingVertical: 18,
-              paddingHorizontal: 24,
-              borderRadius: 16,
-              borderWidth: 2,
-              borderColor: theme.colors.border,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <Text
+          {Platform.OS == "ios" && (
+            <TouchableOpacity
+              onPress={appleLogin}
               style={{
-                color:  theme.colors.text,
-                fontSize: 16,
-                fontWeight: "600",
+                backgroundColor: "transparent",
+                paddingVertical: 18,
+                paddingHorizontal: 24,
+                borderRadius: 16,
+                borderWidth: 2,
+                borderColor: theme.colors.border,
+                justifyContent: "center",
+                alignItems: "center",
               }}
             >
-              Apple Login
-            </Text>
-          </TouchableOpacity>
-}
-          
+              <Text
+                style={{
+                  color: theme.colors.text,
+                  fontSize: 16,
+                  fontWeight: "600",
+                }}
+              >
+                Apple Login
+              </Text>
+            </TouchableOpacity>
+          )}
 
- <TouchableOpacity
+          <TouchableOpacity
             onPress={googleLogin}
             style={{
               backgroundColor: "transparent",
@@ -806,7 +805,7 @@ export default function LandingPage() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={handleSignUp}
+            onPress={handleGetStarted}
             style={{
               backgroundColor: "#8B5CF6",
               paddingVertical: 18,
@@ -847,7 +846,7 @@ export default function LandingPage() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={handleGetStarted}
+            onPress={handleSignIn}
             style={{
               backgroundColor: "transparent",
               paddingVertical: 18,
