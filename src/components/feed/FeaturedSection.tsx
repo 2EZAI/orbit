@@ -154,11 +154,20 @@ export function FeaturedSection({
         )}
         contentContainerStyle={styles.featuredListContent}
         onMomentumScrollEnd={(event) => {
-          const newIndex = Math.round(
-            event.nativeEvent.contentOffset.x / (FEATURED_CARD_WIDTH + 20)
-          );
-          onIndexChange(newIndex);
+          const offsetX = event.nativeEvent.contentOffset.x;
+          const cardWidth = FEATURED_CARD_WIDTH + 20; // Card width + margin
+          const newIndex = Math.round(offsetX / cardWidth);
+          const clampedIndex = Math.max(0, Math.min(newIndex, events.length - 1));
+          onIndexChange(clampedIndex);
         }}
+        onScroll={(event) => {
+          const offsetX = event.nativeEvent.contentOffset.x;
+          const cardWidth = FEATURED_CARD_WIDTH + 20;
+          const newIndex = Math.round(offsetX / cardWidth);
+          const clampedIndex = Math.max(0, Math.min(newIndex, events.length - 1));
+          onIndexChange(clampedIndex);
+        }}
+        scrollEventThrottle={16}
       />
 
       {/* Scroll Indicator Dots */}
@@ -184,7 +193,7 @@ export function FeaturedSection({
 
 const styles = StyleSheet.create({
   featuredSection: {
-    marginBottom: 32,
+    marginBottom: 28,
   },
   sectionHeader: {
     paddingHorizontal: 20,
@@ -339,9 +348,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginHorizontal: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginHorizontal: 4,
   },
 });

@@ -112,13 +112,14 @@ const styles = StyleSheet.create({
     width: CARD_WIDTH,
     borderRadius: 20,
     borderWidth: 1.5,
+    shadowColor: "#8B5CF6",
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.12,
     shadowRadius: 16,
     elevation: 6,
     marginRight: 16,
     overflow: "hidden",
-    backgroundColor: "#FFFFFF", // Add solid background color to fix shadow warning
+    backgroundColor: "#FFFFFF",
   },
   imageContainer: {
     position: "relative",

@@ -164,6 +164,13 @@ export function SectionViewSheet({
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
           columnWrapperStyle={styles.row}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={[styles.emptyText, { color: theme.colors.text }]}>
+                No items found
+              </Text>
+            </View>
+          }
         />
       </SafeAreaView>
     </Modal>
@@ -177,53 +184,60 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 16,
+    paddingBottom: 20,
     borderBottomWidth: 1,
     shadowColor: "#8B5CF6",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+    minHeight: 80,
   },
   headerLeft: {
     flex: 1,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
+    fontSize: 22,
+    fontWeight: "800",
     marginBottom: 4,
+    lineHeight: 28,
+    flexWrap: "wrap",
   },
   headerSubtitle: {
     fontSize: 14,
     fontWeight: "500",
+    opacity: 0.7,
   },
   closeButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: "rgba(139, 92, 246, 0.1)",
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 16,
     borderWidth: 1,
     borderColor: "rgba(139, 92, 246, 0.2)",
+    flexShrink: 0,
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
     marginHorizontal: 20,
-    marginVertical: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 16,
-    borderWidth: 1,
+    marginTop: 12,
+    marginBottom: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 18,
+    borderWidth: 1.5,
     shadowColor: "#8B5CF6",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 4,
   },
   searchIcon: {
     marginRight: 12,
@@ -234,6 +248,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     backgroundColor: "transparent",
     borderWidth: 0,
+    paddingVertical: 0,
   },
   listContent: {
     paddingHorizontal: 20,
@@ -244,27 +259,30 @@ const styles = StyleSheet.create({
   },
   itemCard: {
     width: (screenWidth - 60) / 2,
-    borderRadius: 16,
+    borderRadius: 18,
     marginBottom: 16,
     shadowColor: "#8B5CF6",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 4,
     overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(139, 92, 246, 0.1)",
   },
   itemImage: {
     width: "100%",
     height: 120,
   },
   itemContent: {
-    padding: 12,
+    padding: 14,
   },
   itemTitle: {
     fontSize: 15,
     fontWeight: "700",
     marginBottom: 8,
     lineHeight: 20,
+    minHeight: 40,
   },
   itemMeta: {
     gap: 4,
@@ -300,5 +318,16 @@ const styles = StyleSheet.create({
   ticketmasterBadgeText: {
     fontSize: 10,
     fontWeight: "600",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: "500",
+    opacity: 0.7,
   },
 });
