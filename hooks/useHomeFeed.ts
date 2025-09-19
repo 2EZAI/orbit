@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "~/src/lib/supabase";
 import { feedService } from "~/src/services/feedService";
-import { mapWebApiSectionsToMobile } from "~/src/lib/utils/webApiSectionMapper";
+import { mapFeedCategoriesFromAPI } from "~/src/lib/utils/homeFeedSectionMapper";
 import { imagePreloader } from "~/src/lib/imagePreloader";
 import { useUser } from "~/src/lib/UserProvider";
 import { getCurrentPositionAsync } from "expo-location";
@@ -90,7 +90,7 @@ export function useHomeFeed() {
               const topics = topicsData || [];
 
               // Map web API sections directly to mobile UI sections
-              const mobileFeedData = mapWebApiSectionsToMobile(feedData.sections, topics);
+              const mobileFeedData = mapFeedCategoriesFromAPI(feedData.sections, topics);
 
               console.log("🌐 [HomeFeed] Web API mapping complete:");
               console.log(`🌐 [HomeFeed] - Mobile sections: ${mobileFeedData.sections.length}`);
