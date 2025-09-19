@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   TouchableOpacity,
@@ -38,6 +38,7 @@ export function FeedSection({
   isLoadingMore = false,
 }: SectionProps) {
   const { theme } = useTheme();
+  const [isSeeAllLoading, setIsSeeAllLoading] = useState(false);
 
   if (!data || data.length === 0) return null;
 
@@ -75,21 +76,33 @@ export function FeedSection({
         </View>
 
         <TouchableOpacity
-          onPress={onSeeAll}
+          onPress={() => {
+            setIsSeeAllLoading(true);
+            onSeeAll();
+            // Reset loading state after a short delay to show the button was pressed
+            setTimeout(() => setIsSeeAllLoading(false), 300);
+          }}
           style={[
             styles.seeAllButton,
             { backgroundColor: theme.colors.primary + "10" },
           ]}
           activeOpacity={0.7}
+          disabled={isSeeAllLoading}
         >
-          <Text style={[styles.seeAllText, { color: theme.colors.primary }]}>
-            See all
-          </Text>
-          <ChevronRight
-            size={16}
-            color={theme.colors.primary}
-            strokeWidth={2.5}
-          />
+          {isSeeAllLoading ? (
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+          ) : (
+            <>
+              <Text style={[styles.seeAllText, { color: theme.colors.primary }]}>
+                See all
+              </Text>
+              <ChevronRight
+                size={16}
+                color={theme.colors.primary}
+                strokeWidth={2.5}
+              />
+            </>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -177,7 +190,7 @@ export function FeedSection({
 
 const styles = StyleSheet.create({
   modernSection: {
-    marginBottom: 40,
+    marginBottom: 32,
   },
   sectionHeader: {
     flexDirection: "row",
