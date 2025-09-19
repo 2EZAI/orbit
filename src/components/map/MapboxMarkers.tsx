@@ -16,11 +16,11 @@ import { EventMarker } from "./EventMarker";
 import { UserMarker } from "./UserMarker";
 import { UserMarkerWithCount } from "./UserMarkerWithCount";
 
-// Progressive rendering configuration - OPTIMIZED FOR LARGE DATASETS
+// Progressive rendering configuration - ORIGINAL WITH SPEED IMPROVEMENT
 const PROGRESSIVE_RENDERING_CONFIG = {
   INITIAL_BATCH_SIZE: 20, // Start with 20 markers
   BATCH_INCREMENT: 10, // Add 10 more each batch
-  BATCH_DELAY: 50, // 50ms delay between batches
+  BATCH_DELAY: 20, // 20ms delay between batches (faster)
   MAX_BATCH_SIZE: 50, // Max 50 markers per batch
 };
 
@@ -193,15 +193,8 @@ export function MapboxMarkers({
   // OPTIMIZATION: Progressive rendering with proper dependency tracking to prevent continuous re-renders
   const lastMarkerCountRef = useRef(0);
   const isRenderingRef = useRef(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    // Clear any previous interval before starting a new one
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-
     if (allMarkerData.length === 0) {
       setVisibleMarkers(0);
       setIsRendering(false);
@@ -210,51 +203,50 @@ export function MapboxMarkers({
       return;
     }
 
-    // If marker count changed (especially increased after second-stage fetch), restart rendering
-    console.log(
-      `[MapboxMarkers] 🚀 Rendering ${allMarkerData.length} markers (restart if count changed)`
-    );
-    setIsRendering(true);
-    isRenderingRef.current = true;
-    lastMarkerCountRef.current = allMarkerData.length;
+    // Start progressive rendering if marker count changed
+    if (allMarkerData.length !== lastMarkerCountRef.current) {
+      console.log(
+        `[MapboxMarkers] 🚀 Starting progressive rendering for ${allMarkerData.length} markers (was ${lastMarkerCountRef.current})`
+      );
+      setIsRendering(true);
+      isRenderingRef.current = true;
+      lastMarkerCountRef.current = allMarkerData.length;
+      
+      // If we have more data than currently visible, continue from current position
+      // Otherwise start from initial batch size
+      const currentVisible = visibleMarkers;
+      const startFrom = currentVisible < allMarkerData.length ? currentVisible : PROGRESSIVE_RENDERING_CONFIG.INITIAL_BATCH_SIZE;
+      setVisibleMarkers(Math.min(startFrom, allMarkerData.length));
 
-    // Start with current visible (don't regress) or jump-start to 300
-    setVisibleMarkers((prev) =>
-      Math.max(prev, Math.min(300, allMarkerData.length))
-    );
+      // Start progressive rendering immediately
+      const interval = setInterval(() => {
+        setVisibleMarkers((prev) => {
+          if (prev < allMarkerData.length) {
+            const nextBatch = Math.min(
+              prev + PROGRESSIVE_RENDERING_CONFIG.BATCH_INCREMENT,
+              allMarkerData.length
+            );
 
-    intervalRef.current = setInterval(() => {
-      setVisibleMarkers((prev) => {
-        if (prev < allMarkerData.length) {
-          const nextBatch = Math.min(prev + 25, allMarkerData.length);
+            if (nextBatch >= allMarkerData.length) {
+              setIsRendering(false);
+              isRenderingRef.current = false;
+              console.log(
+                `[MapboxMarkers] ✅ Progressive rendering complete: ${allMarkerData.length} markers`
+              );
+            }
 
-          if (nextBatch >= allMarkerData.length) {
+            return nextBatch;
+          } else {
+            clearInterval(interval);
             setIsRendering(false);
             isRenderingRef.current = false;
-            console.log(
-              `[MapboxMarkers] ✅ Rendering complete: ${allMarkerData.length} markers`
-            );
+            return prev;
           }
+        });
+      }, PROGRESSIVE_RENDERING_CONFIG.BATCH_DELAY);
 
-          return nextBatch;
-        } else {
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-          }
-          setIsRendering(false);
-          isRenderingRef.current = false;
-          return prev;
-        }
-      });
-    }, 8);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
+      return () => clearInterval(interval);
+    }
   }, [allMarkerData.length]);
 
   // Get currently visible markers
