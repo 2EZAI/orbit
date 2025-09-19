@@ -258,7 +258,9 @@ export default function useNotifications() {
   }
 
   async function hitPushToken() {
+    console.log("hitPushToken>");
     const pushToken = await registerForPushNotificationsAsync();
+    console.log("pushToken>",pushToken);
     if (pushToken != null) {
       upsertDeviceToken(pushToken);
     }

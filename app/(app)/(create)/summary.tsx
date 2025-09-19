@@ -26,7 +26,7 @@ export default function EventSummary() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const [isInviteOpen, setIsInviteOpen] = useState<Boolean>(false);
-
+console.log("params>>",params);
   // Parse the event data from params
   const eventData = {
     name: params.name as string,
@@ -68,9 +68,10 @@ export default function EventSummary() {
   };
 
   const handleEdit = () => {
+    console.log("params.eventId>",params.eventId);
     // console.log("params.eventId as string>",params.eventId as string);
      DeviceEventEmitter.emit("editEvent", {
-      eventId: params.eventId as string,
+      eventId: params.eventId,
     });
     // Go back to the create event screen
     router.back();

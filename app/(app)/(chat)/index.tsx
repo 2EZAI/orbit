@@ -626,7 +626,7 @@ export default function ChatListScreen() {
                   backgroundColor: theme.colors.primary,
                 }}
               >
-                <Search size={18} color={theme.colors.text} strokeWidth={2.5} />
+                <Search size={18} color={theme.colors.card} strokeWidth={2.5} />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleNewChat}
@@ -639,7 +639,7 @@ export default function ChatListScreen() {
                   backgroundColor: theme.colors.primary,
                 }}
               >
-                <Plus size={18} color={theme.colors.text} strokeWidth={2.5} />
+                <Plus size={18} color={theme.colors.card} strokeWidth={2.5} />
               </TouchableOpacity>
             </View>
           </View>

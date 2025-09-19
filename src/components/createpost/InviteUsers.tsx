@@ -185,7 +185,7 @@ export default function InviteUsers (
   // Now you can use selectedUserIds for your API request
   console.log('Inviting users with IDs:', selectedUserIds);
       const reuestData = {
-        event_id: session.user.id,
+        event_id: eventId,
         invited_user_ids:selectedUserIds,
       };
       ///send notification
@@ -195,7 +195,7 @@ export default function InviteUsers (
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session.user.id}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify(reuestData),
         }
