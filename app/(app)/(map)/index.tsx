@@ -5,7 +5,7 @@ import { useUser } from "~/src/lib/UserProvider";
 import { useMapCamera } from "~/src/hooks/useMapCamera";
 
 // Import new modular components
-import { GoogleMapContainer } from "~/src/components/map/GoogleMapContainer";
+import { MapboxContainer } from "~/src/components/map/MapboxContainer";
 import { MapboxMarkers } from "~/src/components/map/MapboxMarkers";
 import { MapStateManager } from "~/src/components/map/MapStateManager";
 import { MapEventHandlers } from "~/src/components/map/MapEventHandlers";
@@ -30,7 +30,7 @@ type TimeFrame = "Today" | "Week" | "Weekend";
 
 export default function Map() {
   const { user, userlocation } = useUser();
-  const { isFollowingUser, handleZoomIn, handleZoomOut } = useMapCamera();
+  const { cameraRef, isFollowingUser, handleZoomIn, handleZoomOut } = useMapCamera();
 
   // Viewport state for performance optimization
   const [mapBounds, setMapBounds] = useState<{
@@ -261,19 +261,20 @@ export default function Map() {
                   return (
                     <View className="flex-1">
                       {/* Main Map Container */}
-                      <GoogleMapContainer
+                      <MapboxContainer
                         center={center}
                         onRegionChange={handleRegionChange}
                         onMapTap={handleMapTap}
                         onMapLoadingError={() =>
-                          console.log("Google Map loading error")
+                          console.log("Mapbox Map loading error")
                         }
                         onDidFinishLoadingMap={() =>
-                          console.log("Google Map loaded successfully")
+                          console.log("Mapbox Map loaded successfully")
                         }
                         isFollowingUser={isFollowingUser}
+                        cameraRef={cameraRef}
                       >
-                        {/* Google Map Markers */}
+                        {/* Mapbox Markers */}
                         <MapboxMarkers
                           clustersToday={optimizedData.visibleClustersToday}
                           clustersNow={optimizedData.visibleClustersNow}
@@ -293,7 +294,7 @@ export default function Map() {
                           onClusterPress={handleClusterPress}
                           setIsEvent={state.setIsEvent}
                         />
-                      </GoogleMapContainer>
+                      </MapboxContainer>
 
                       {/* Map Controls */}
                       {state.showControler && (
