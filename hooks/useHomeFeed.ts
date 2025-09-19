@@ -1,11 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "~/src/lib/supabase";
 import { feedService } from "~/src/services/feedService";
-import { createHomeFeedSections } from "~/src/lib/utils/feedSections";
-import {
-  transformEvent,
-  transformLocation,
-} from "~/src/lib/utils/transformers";
+import { mapWebApiSectionsToMobile } from "~/src/lib/utils/webApiSectionMapper";
 import { imagePreloader } from "~/src/lib/imagePreloader";
 import { useUser } from "~/src/lib/UserProvider";
 import { getCurrentPositionAsync } from "expo-location";
@@ -83,199 +79,99 @@ export function useHomeFeed() {
 
       console.log("🔍 [HomeFeed] Fetching from web backend with location:", locationData);
 
-              // Fetch main feed data (events, locations, posts) from web backend
+              // Fetch main feed data from web backend
               const feedData = await feedService.getFeed(locationData);
               console.log(
-                `🔍 Web backend feed response - Sections: ${feedData.sections.length}, Total Items: ${feedData.summary.totalItems}`
+                `🌐 Web API response - Sections: ${feedData.sections.length}, Total Items: ${feedData.summary.totalItems}`
               );
 
-              // Extract events, locations, and posts from sections
-              const allEvents: any[] = [];
-              const locations: any[] = [];
-              const socialPosts: any[] = [];
+              // Get topics from the database (for dynamic categories)
+              const { data: topicsData } = await supabase.from("topics").select("*");
+              const topics = topicsData || [];
 
-              feedData.sections.forEach((section) => {
-                section.items.forEach((item) => {
-                  // Check if it's an event (has start_datetime)
-                  if (item.start_datetime) {
-                    allEvents.push(transformEvent(item));
+              // Map web API sections directly to mobile UI sections
+              const mobileFeedData = mapWebApiSectionsToMobile(feedData.sections, topics);
+
+              console.log("🌐 [HomeFeed] Web API mapping complete:");
+              console.log(`🌐 [HomeFeed] - Mobile sections: ${mobileFeedData.sections.length}`);
+              console.log(`🌐 [HomeFeed] - Featured events: ${mobileFeedData.featuredEvents.length}`);
+              console.log(`🌐 [HomeFeed] - Total content: ${mobileFeedData.allContent.length}`);
+
+              // Check if we got no content - then show error
+              if (mobileFeedData.allContent.length === 0) {
+                const hasLocationSetup = () => {
+                  if (!user) return false;
+                  if (user.event_location_preference === 1) {
+                    return userlocation && userlocation.city && userlocation.state;
                   }
-                  // Check if it's a location (has location but no start_datetime)
-                  else if (item.location && !item.start_datetime) {
-                    locations.push(transformLocation(item));
-                  }
-                  // Check if it's a social post (has content)
-                  else if (item.content) {
-                    socialPosts.push(item);
+                  return true;
+                };
+
+                if (!hasLocationSetup()) {
+                  throw new Error(
+                    "Please set up your location preferences in Settings to see events in your area."
+                  );
+                } else if (user?.event_location_preference === 1) {
+                  throw new Error(
+                    `No events found near ${userlocation?.city}, ${userlocation?.state}. Try expanding your search radius or choosing a different city.`
+                  );
+                } else {
+                  throw new Error(
+                    "No events found in your current location. Make sure location permissions are enabled or try setting an Orbit location in Settings."
+                  );
+                }
+              }
+
+              // AGGRESSIVE IMAGE PRELOADING - Start immediately
+              const criticalImages: string[] = [];
+
+              // Priority 1: Featured events (story cards - most visible)
+              mobileFeedData.featuredEvents.forEach((event: any) => {
+                if (event.image_urls && event.image_urls.length > 0) {
+                  criticalImages.push(event.image_urls[0]);
+                }
+              });
+
+              // Priority 2: First few items from each section
+              mobileFeedData.sections.slice(0, 3).forEach((section: any) => {
+                section.data.slice(0, 2).forEach((item: any) => {
+                  if (item.image_urls && item.image_urls.length > 0) {
+                    criticalImages.push(item.image_urls[0]);
                   }
                 });
               });
 
-              console.log(
-                `🔍 Extracted - Events: ${allEvents.length}, Locations: ${locations.length}, Posts: ${socialPosts.length}`
-              );
+              // Preload critical images immediately with highest priority
+              if (criticalImages.length > 0) {
+                imagePreloader.preloadImages(criticalImages, {
+                  priority: "high",
+                  aggressive: false,
+                  cache: true,
+                });
+              }
 
-      // Get topics from the database (topics don't need location filtering)
-      const { data: topicsData } = await supabase.from("topics").select("*");
-      const topics = topicsData || [];
+              // Enhanced feed preloading with all data - delayed and less aggressive
+              setTimeout(() => {
+                imagePreloader.preloadFeedImages({
+                  events: mobileFeedData.allContent.filter(item => !item.isLocation),
+                  locations: mobileFeedData.allContent.filter(item => item.isLocation),
+                  featuredEvents: mobileFeedData.featuredEvents,
+                  posts: mobileFeedData.allContent.filter(item => item.content),
+                });
+              }, 2000);
 
-      console.log("Final data counts:", {
-        locations: locations.length,
-        events: allEvents.length,
-        posts: socialPosts.length,
-        topics: topics.length,
-      });
+              // Log cache stats
+              setTimeout(() => {
+                const stats = imagePreloader.getCacheStats();
+              }, 3000);
 
-      // Check if we got no events AND no locations - then show error
-      if (allEvents.length === 0 && locations.length === 0) {
-        const hasLocationSetup = () => {
-          if (!user) return false;
-          if (user.event_location_preference === 1) {
-            return userlocation && userlocation.city && userlocation.state;
-          }
-          return true;
-        };
-
-        if (!hasLocationSetup()) {
-          throw new Error(
-            "Please set up your location preferences in Settings to see events in your area."
-          );
-        } else if (user?.event_location_preference === 1) {
-          throw new Error(
-            `No events found near ${userlocation?.city}, ${userlocation?.state}. Try expanding your search radius or choosing a different city.`
-          );
-        } else {
-          throw new Error(
-            "No events found in your current location. Make sure location permissions are enabled or try setting an Orbit location in Settings."
-          );
-        }
-      }
-
-      // If we have no events but have locations, show a message and continue
-      if (allEvents.length === 0 && locations.length > 0) {
-        console.log(
-          "⚠️ [HomeFeed] No events found, but showing locations only"
-        );
-      }
-
-      // Combine all content (events + locations + posts)
-      const allContent = [...allEvents, ...locations, ...socialPosts];
-
-      console.log("Total content (events + locations + posts):", allContent.length);
-      console.log("🎯 Events count:", allEvents.length);
-      console.log("🏢 Locations count:", locations.length);
-
-      // Create featured events
-      const featuredEvents = allEvents
-        .sort((a: any, b: any) => {
-          const aAttendees = a.attendees || 0;
-          const bAttendees = b.attendees || 0;
-          if (aAttendees !== bAttendees) return bAttendees - aAttendees;
-          return (
-            new Date(a.start_datetime).getTime() -
-            new Date(b.start_datetime).getTime()
-          );
-        })
-        .slice(0, 5);
-
-      console.log("🌟 Featured events count:", featuredEvents.length);
-
-      // Create sections (expandedSections would be passed from component)
-      const feedSectionResult = createHomeFeedSections(allContent, topics);
-
-      // Add social posts section if we have posts
-      if (socialPosts.length > 0) {
-        console.log("📱 [HomeFeed] Adding social posts section");
-        feedSectionResult.sections.unshift({
-          key: "social-posts",
-          title: "What's Happening",
-          subtitle: "Latest posts from the community",
-          data: socialPosts.slice(0, 10),
-          layout: "list",
-          hasMoreData: socialPosts.length > 10,
-        });
-      }
-
-      // If we have very few sections, add some basic location-only sections
-      if (feedSectionResult.sections.length < 2 && locations.length > 0) {
-        console.log("🔄 [HomeFeed] Adding fallback location-only sections");
-        // Add a basic locations section
-        feedSectionResult.sections.unshift({
-          key: "nearby-places",
-          title: "Places Near You",
-          data: locations.slice(0, 20),
-          layout: "grid",
-          hasMoreData: locations.length > 20,
-        });
-      }
-
-      // Create flat list data
-      const flatListData = [];
-      if (featuredEvents.length > 0) {
-        flatListData.push({ type: "featured", data: featuredEvents });
-      }
-      feedSectionResult.sections.forEach((section: any) => {
-        if (section.data.length > 0) {
-          flatListData.push({ type: "section", data: section });
-        }
-      });
-
-      // AGGRESSIVE IMAGE PRELOADING - Start immediately
-      // Start preloading critical images IMMEDIATELY (don't wait)
-      const criticalImages: string[] = [];
-
-      // Priority 1: Featured events (story cards - most visible)
-      featuredEvents.forEach((event: any) => {
-        if (event.image_urls && event.image_urls.length > 0) {
-          criticalImages.push(event.image_urls[0]);
-        }
-      });
-
-      // Priority 2: First few locations (TikTok cards)
-      locations.slice(0, 5).forEach((location: any) => {
-        if (location.image_urls && location.image_urls.length > 0) {
-          criticalImages.push(location.image_urls[0]);
-        }
-      });
-
-      // Priority 3: First few social posts
-      socialPosts.slice(0, 3).forEach((post: any) => {
-        if (post.media_urls && post.media_urls.length > 0) {
-          criticalImages.push(post.media_urls[0]);
-        }
-      });
-
-      // Preload critical images immediately with highest priority
-      if (criticalImages.length > 0) {
-        imagePreloader.preloadImages(criticalImages, {
-          priority: "high",
-          aggressive: false, // Reduced aggressiveness
-          cache: true,
-        });
-      }
-
-      // Enhanced feed preloading with all data - delayed and less aggressive
-      setTimeout(() => {
-        imagePreloader.preloadFeedImages({
-          events: allEvents,
-          locations: locations,
-          featuredEvents: featuredEvents,
-          posts: socialPosts,
-        });
-      }, 2000); // Increased delay to 2 seconds
-
-      // Log cache stats
-      setTimeout(() => {
-        const stats = imagePreloader.getCacheStats();
-      }, 3000); // Increased delay
-
-      setData({
-        allContent,
-        featuredEvents,
-        sections: feedSectionResult.sections,
-        flatListData,
-        dynamicCategories: feedSectionResult.dynamicCategories,
-      });
+              setData({
+                allContent: mobileFeedData.allContent,
+                featuredEvents: mobileFeedData.featuredEvents,
+                sections: mobileFeedData.sections,
+                flatListData: mobileFeedData.flatListData,
+                dynamicCategories: mobileFeedData.dynamicCategories,
+              });
     } catch (err: any) {
       setError(err?.message || "Error loading feed");
     } finally {
