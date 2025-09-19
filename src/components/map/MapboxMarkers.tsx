@@ -53,6 +53,34 @@ const getLocationCoordinates = (
   return null;
 };
 
+// Helper function to determine marker type
+const getMarkerType = (
+  event: MapEvent
+): "user-event" | "ticketmaster" | "api-event" | "static-location" => {
+  if (event.created_by) {
+    return "user-event";
+  }
+  if ((event as any).is_ticketmaster) {
+    return "ticketmaster";
+  }
+  return "api-event";
+};
+
+// Helper function to get category name for coloring
+const getCategoryName = (event: MapEvent | MapLocation): string => {
+  if (
+    "categories" in event &&
+    event.categories &&
+    event.categories.length > 0
+  ) {
+    return event.categories[0].name;
+  }
+  if ("category" in event && event.category) {
+    return event.category.name;
+  }
+  return "";
+};
+
 interface MapboxMarkersProps {
   // Event clusters
   clustersToday: UnifiedCluster[];
@@ -303,12 +331,9 @@ export function MapboxMarkers({
                 imageUrl={mainEvent.image_urls?.[0]}
                 count={count}
                 isSelected={isSelected}
+                markerType={getMarkerType(mainEvent)}
+                categoryName={getCategoryName(mainEvent)}
                 onPress={handlePress}
-                category={
-                  mainEvent.categories?.[0]?.name || mainEvent.category?.name
-                }
-                type={mainEvent.type}
-                source={mainEvent.source}
               />
             </View>
           </MapboxGL.MarkerView>

@@ -1,5 +1,5 @@
+import React, { useState, useEffect } from "react";
 import { View, Image } from "react-native";
-import { useEffect, useState } from "react";
 
 interface UserMarkerProps {
   avatarUrl?: string | null;
@@ -10,7 +10,7 @@ export const UserMarker = ({ avatarUrl, heading }: UserMarkerProps) => {
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
-    console.log("[UserMarker] Rendering with avatar URL:", avatarUrl);
+    // console.log("[UserMarker] Rendering with avatar URL:", avatarUrl);
     setImageError(false); // Reset error state when URL changes
   }, [avatarUrl]);
 
