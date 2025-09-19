@@ -52,7 +52,6 @@ import { ScreenHeader } from "~/src/components/ui/screen-header";
 import { HomeLoadingScreen } from "~/src/components/feed/HomeLoadingScreen";
 
 // Utils
-import { handleSectionViewMore } from "~/src/lib/utils/sectionViewMore";
 import {
   FilterState,
   generateDefaultFilters,
@@ -310,8 +309,11 @@ const TikTokLocationSection = ({
   title?: string;
 }) => {
   const { theme } = useTheme();
+  const [currentTikTokIndex, setCurrentTikTokIndex] = useState(0);
 
   if (!locations || locations.length === 0) return null;
+
+  const displayLocations = locations.slice(0, 8);
 
   return (
     <View style={styles.tiktokSectionContainer}>
@@ -320,7 +322,7 @@ const TikTokLocationSection = ({
           🔥 {title}
         </Text>
         <Text
-          style={[styles.tiktokSectionSubtitle, { color: theme.colors.text }]}
+          style={[styles.tiktokSectionSubtitle, { color: theme.colors.text + "80" }]}
         >
           Swipe to explore amazing places
         </Text>
@@ -333,8 +335,21 @@ const TikTokLocationSection = ({
         snapToInterval={screenWidth}
         decelerationRate="fast"
         contentContainerStyle={styles.tiktokScrollContent}
+        onMomentumScrollEnd={(event) => {
+          const offsetX = event.nativeEvent.contentOffset.x;
+          const newIndex = Math.round(offsetX / screenWidth);
+          const clampedIndex = Math.max(0, Math.min(newIndex, displayLocations.length - 1));
+          setCurrentTikTokIndex(clampedIndex);
+        }}
+        onScroll={(event) => {
+          const offsetX = event.nativeEvent.contentOffset.x;
+          const newIndex = Math.round(offsetX / screenWidth);
+          const clampedIndex = Math.max(0, Math.min(newIndex, displayLocations.length - 1));
+          setCurrentTikTokIndex(clampedIndex);
+        }}
+        scrollEventThrottle={16}
       >
-        {locations.slice(0, 8).map((location, index) => (
+        {displayLocations.map((location, index) => (
           <TikTokLocationCard
             key={`tiktok-${location.id}-${index}`}
             item={location}
@@ -343,12 +358,33 @@ const TikTokLocationSection = ({
         ))}
       </ScrollView>
 
+      {/* Pagination Dots */}
+      {displayLocations.length > 1 && (
+        <View style={styles.tiktokPaginationDots}>
+          {displayLocations.map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.tiktokDot,
+                {
+                  backgroundColor:
+                    index === currentTikTokIndex
+                      ? theme.colors.primary
+                      : theme.colors.border,
+                  width: index === currentTikTokIndex ? 24 : 8,
+                },
+              ]}
+            />
+          ))}
+        </View>
+      )}
+
       {/* Scroll indicator */}
       <View style={styles.tiktokScrollIndicator}>
         <Text
           style={[
             styles.tiktokScrollIndicatorText,
-            { color: theme.colors.text },
+            { color: theme.colors.text + "60" },
           ]}
         >
           Swipe for more places • {locations.length} total
@@ -418,8 +454,36 @@ export default function Home() {
     }
   }, [data.allContent]);
 
-  const handleViewMore = async (section: any) => {
-    const allSectionData = await handleSectionViewMore(section);
+  const handleViewMore = (section: any) => {
+    console.log("🔍 [See All] Opening section:", section.title, "Key:", section.key);
+    console.log("🔍 [See All] Section data length:", section.data?.length || 0);
+    console.log("🔍 [See All] Section object:", JSON.stringify(section, null, 2));
+    
+    // Use the section's own data - it already contains the filtered items from web API
+    let allSectionData: any[] = [];
+    
+    if (section.data && Array.isArray(section.data)) {
+      // Use the section's data directly
+      allSectionData = section.data;
+      console.log("🔍 [See All] Using section data directly:", allSectionData.length);
+    } else {
+      // Fallback: try to get more data from allContent based on section type
+      if (section.sectionType === "locations" || section.title.toLowerCase().includes("places")) {
+        allSectionData = data.allContent?.filter((item: any) => item.isLocation) || [];
+        console.log("🔍 [See All] Fallback - filtered locations:", allSectionData.length);
+      } else if (section.sectionType === "events" || section.title.toLowerCase().includes("events")) {
+        allSectionData = data.allContent?.filter((item: any) => !item.isLocation) || [];
+        console.log("🔍 [See All] Fallback - filtered events:", allSectionData.length);
+      } else {
+        // Use all content as fallback
+        allSectionData = data.allContent || [];
+        console.log("🔍 [See All] Fallback - using all content:", allSectionData.length);
+      }
+    }
+
+    console.log("🔍 [See All] Final data length:", allSectionData.length);
+
+    // Open sheet with data immediately
     setSectionViewSheet({
       isOpen: true,
       section: section,
@@ -1535,16 +1599,16 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 16,
-    borderWidth: 1,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 18,
+    borderWidth: 1.5,
     backgroundColor: "#FFFFFF",
     shadowColor: "#8B5CF6",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 4,
   },
   searchPlaceholder: {
     flex: 1,
@@ -1553,17 +1617,17 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   filterButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#8B5CF6",
     shadowColor: "#8B5CF6",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
   modernListContent: {
     paddingBottom: 40,
@@ -1851,7 +1915,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 1,
   },
   tiktokSectionContainer: {
-    marginBottom: 20,
+    marginBottom: 28,
   },
   tiktokSectionHeader: {
     paddingHorizontal: 20,
@@ -1870,13 +1934,26 @@ const styles = StyleSheet.create({
   tiktokScrollContent: {
     paddingHorizontal: 0,
   },
+  tiktokPaginationDots: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+  },
+  tiktokDot: {
+    height: 8,
+    borderRadius: 4,
+    marginHorizontal: 4,
+  },
   tiktokScrollIndicator: {
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 20,
   },
   tiktokScrollIndicatorText: {
     fontSize: 12,
+    fontWeight: "500",
   },
   quickFiltersContainer: {
     paddingHorizontal: 20,
@@ -1884,15 +1961,21 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   quickFilterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginRight: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    marginRight: 10,
+    shadowColor: "#8B5CF6",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   quickFilterText: {
     fontSize: 14,
     fontWeight: "600",
+    textAlign: "center",
   },
   filterCount: {
     fontSize: 12,
