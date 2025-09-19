@@ -119,26 +119,6 @@ export class FeedService {
     }
   }
 
-  /**
-   * Get events feed only
-   */
-  async getEventsFeed(params: FeedParams = {}): Promise<FeedResponse> {
-    return this.getFeed({ ...params, includeEvents: true, includeLocations: false, includeTicketmaster: false })
-  }
-
-  /**
-   * Get locations feed only
-   */
-  async getLocationsFeed(params: FeedParams = {}): Promise<FeedResponse> {
-    return this.getFeed({ ...params, includeEvents: false, includeLocations: true, includeTicketmaster: false })
-  }
-
-  /**
-   * Get social posts feed only
-   */
-  async getPostsFeed(params: FeedParams = {}): Promise<FeedResponse> {
-    return this.getFeed({ ...params, includeEvents: false, includeLocations: false, includeTicketmaster: false })
-  }
 }
 
 export const feedService = new FeedService(
