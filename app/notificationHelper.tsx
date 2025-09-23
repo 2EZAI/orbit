@@ -17,10 +17,27 @@ export default async function registerForPushNotificationsAsync() {
       alert('Failed to get push token!');
       return null;
     }
+
+     if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#FF231F7C',
+    });
+  }
+  try{
+
+  
   console.log("finalStatus>",finalStatus);
     const tokenData = await Notifications.getExpoPushTokenAsync();
-    console.log('tokenData>>');
+    console.log('tokenData>>',tokenData);
     return tokenData.data;
+    }
+    catch(e)
+    {
+       console.log("e>>>",e);
+    }
 //   } else {
 //     alert('Use a physical device for push notifications');
 //     return null;

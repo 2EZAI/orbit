@@ -514,10 +514,11 @@ export default function NotificationView() {
     if (
       item?.data?.type === "event_reminder_60" ||
       item?.data?.type === "event_reminder_5" ||
-      item?.data?.type === "event_started"
+      item?.data?.type === "event_started" ||
+      item?.data?.type === "event_invite" 
     ) {
       const eventId = item?.data.event_id;
-      const isTicketmaster = item?.data.is_ticketmaster;
+      let isTicketmaster = item?.data?.is_ticketmaster ?? false;
       console.log("eventId>", eventId);
       console.log("is_ticketmaster>", isTicketmaster);
       if (eventId && typeof isTicketmaster === "boolean") {
@@ -625,7 +626,7 @@ export default function NotificationView() {
         throw new Error(await response.text());
       }
       const data = await response.json();
-      // console.log("event data", data);
+      console.log("event data", data);
       router.replace("/(app)/(map)");
       const mapEvent = {
         id: data?.id,

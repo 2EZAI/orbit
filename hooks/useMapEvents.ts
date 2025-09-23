@@ -73,6 +73,7 @@ export interface MapEvent {
     profiles: EventAttendee[];
   };
   categories: EventCategory[];
+  category: Category;
   type: string;
   created_by?: {
     id: string;

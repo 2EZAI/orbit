@@ -50,8 +50,11 @@ export default function useNotifications() {
 
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
+      
         const content = response.notification.request.content;
         const notificationId = content?.data?.notification_id;
+        console.log("addNotificationResponseReceivedListener>>>",
+        content?.data)
         readNoificationsApi(notificationId);
         if (
           content?.data?.type === "comment" ||
@@ -62,10 +65,11 @@ export default function useNotifications() {
         if (
           content?.data?.type === "event_reminder_60" ||
           content?.data?.type === "event_reminder_5" ||
-          content?.data?.type === "event_started"
+          content?.data?.type === "event_started" ||
+          content?.data?.type === "event_invite" 
         ) {
           const eventId = content?.data.event_id;
-          const isTicketmaster = content?.data.is_ticketmaster;
+          let isTicketmaster = content?.data?.is_ticketmaster ?? false;
           fetchEventDetail(eventId, isTicketmaster);
           // fetchEventDetail("88f252e9-bc5a-4746-857e-859322cdd225"
           // ,false);
@@ -170,12 +174,14 @@ export default function useNotifications() {
           body: JSON.stringify(requestData),
         }
       );
+      console.log("requestData>>",requestData);
       // console.log("session.access_token>>",
       // session.access_token);
       if (!response.ok) {
         throw new Error(await response.text());
       }
       const data = await response.json();
+      console.log("data>>",data);
       router.replace("/(app)/(map)");
       const mapEvent = {
         id: data?.id,

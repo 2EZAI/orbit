@@ -31,16 +31,12 @@
         <array>
           <string>orbit</string>
           <string>com.dovydmcnugget.orbit</string>
-          <string>com.googleusercontent.apps.809354453079-21bet8phmjrskmnt17in7250ehhn97g3</string>
-       <string>com.googleusercontent.apps.809354453079-9k7nsnt1n71ki815t2qtv4i4nqjelkan</string>
         </array>
       </dict>
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
           <string>exp+orbit</string>
-          <string>com.googleusercontent.apps.809354453079-21bet8phmjrskmnt17in7250ehhn97g3</string>
-          <string>com.googleusercontent.apps.809354453079-9k7nsnt1n71ki815t2qtv4i4nqjelkan</string>
         </array>
       </dict>
     </array>
