@@ -8,9 +8,9 @@ import { Redirect } from "expo-router";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import useNotifications from "~/hooks/useNotifications";
 import { useRef } from "react";
-import { Walkthrough } from 'react-native-wlkt';
+import { Walkthrough } from "react-native-wlkt";
 import { useEffect, useState } from "react";
-
+import Toast from "react-native-toast-message";
 
 export default function AppLayout() {
   const { theme } = useTheme();
@@ -28,16 +28,12 @@ export default function AppLayout() {
     }
   }, [session]);
 
-
   if (loading) {
     return null;
   }
 
-  if (!session) {
-    return <Redirect href="/sign-in" />;
-  }
+
   return (
-  
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Tabs
         screenOptions={{
@@ -46,6 +42,24 @@ export default function AppLayout() {
         initialRouteName="(map)"
         tabBar={(props: BottomTabBarProps) => {
           const currentRoute = props.state.routes[props.state.index];
+          console.log("Current route:", currentRoute);
+          if (
+            !session &&
+            (currentRoute.name === "(create)" ||
+              currentRoute.name === "(chat)" ||
+              currentRoute.name === "(profile)" ||
+              currentRoute.name === "(social)")
+          ) {
+            Toast.show({
+              type: "info",
+              text1: "You need to be signed in to access this feature.",
+              position: "top",
+              visibilityTime: 3000,
+              autoHide: true,
+              topOffset: 50,
+            });
+            return <Redirect href="/sign-in" />;
+          }
 
           // Show tab bar everywhere except notifications and specific chat messages
           const isSpecificChatRoute =
@@ -55,7 +69,7 @@ export default function AppLayout() {
               typeof currentRoute.params === "object" &&
               currentRoute.params !== null &&
               "id" in currentRoute.params);
-console.log("currentRoute.name>",currentRoute.name)
+          console.log("currentRoute.name>", currentRoute.name);
           const hideTabBar =
             currentRoute.name === "(notification)" || isSpecificChatRoute;
 
@@ -83,9 +97,7 @@ console.log("currentRoute.name>",currentRoute.name)
         />
         <Tabs.Screen name="(profile)" />
       </Tabs>
-       <Walkthrough/>
+      <Walkthrough />
     </View>
-
-  
   );
 }
