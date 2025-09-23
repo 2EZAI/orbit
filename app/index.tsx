@@ -22,6 +22,7 @@ import { cacheWarmer } from "~/src/lib/cacheWarmer";
 import { ImageCacheManager } from "~/src/components/ui/optimized-image";
 import { cacheMonitor } from "~/src/lib/cacheMonitor";
 import { ChevronRight } from "lucide-react-native";
+import { Icon } from "react-native-elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../src/lib/supabase";
 import { useSocialLoginsApi } from "~/hooks/useSocialLoginsApi";
@@ -519,7 +520,7 @@ export default function LandingPage() {
   // Logo center coordinates
   const logoCenterX = width / 2;
   const logoCenterY = height * 0.3;
-  const { appleLogin , googleLogin } = useSocialLoginsApi();
+  const { appleLogin, googleLogin } = useSocialLoginsApi();
 
   // Redirect authenticated users to the app
   useEffect(() => {
@@ -754,57 +755,6 @@ export default function LandingPage() {
         </Text>
 
         <View style={{ width: "100%", gap: 12 }}>
-          {Platform.OS == 'ios' && 
-           <TouchableOpacity
-            onPress={appleLogin}
-            style={{
-              backgroundColor:  "transparent",
-              paddingVertical: 18,
-              paddingHorizontal: 24,
-              borderRadius: 16,
-              borderWidth: 2,
-              borderColor: theme.colors.border,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <Text
-              style={{
-                color:  theme.colors.text,
-                fontSize: 16,
-                fontWeight: "600",
-              }}
-            >
-              Apple Login
-            </Text>
-          </TouchableOpacity>
-}
-          
-
- <TouchableOpacity
-            onPress={googleLogin}
-            style={{
-              backgroundColor: "transparent",
-              paddingVertical: 18,
-              paddingHorizontal: 24,
-              borderRadius: 16,
-              borderWidth: 2,
-              borderColor: theme.colors.border,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <Text
-              style={{
-                color: theme.colors.text,
-                fontSize: 16,
-                fontWeight: "600",
-              }}
-            >
-              Google Login
-            </Text>
-          </TouchableOpacity>
-
           <TouchableOpacity
             onPress={handleSignUp}
             style={{
@@ -867,6 +817,121 @@ export default function LandingPage() {
               }}
             >
               Login
+            </Text>
+          </TouchableOpacity>
+
+          <View
+            style={{
+              height: "40",
+              alignItems: "center",
+              flexDirection: "row",
+            }}
+          >
+            <View
+              style={{
+                height: "1",
+                width: "46%",
+                backgroundColor: "#000000",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            ></View>
+            <Text
+              style={{
+                marginLeft: "10",
+                marginRight: "10",
+                color: theme.colors.text,
+                fontSize: 16,
+                fontWeight: "600",
+              }}
+            >
+              or
+            </Text>
+            <View
+              style={{
+                height: "1",
+                width: "46%",
+                backgroundColor: "#000000",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            ></View>
+          </View>
+
+          {Platform.OS == "ios" && (
+            <TouchableOpacity
+              onPress={appleLogin}
+              style={{
+                paddingVertical: 18,
+                paddingHorizontal: 24,
+                borderRadius: 16,
+                backgroundColor: "#000000",
+                justifyContent: "center",
+                alignItems: "center",
+                flexDirection: "row",
+              }}
+            >
+              <View
+                style={{
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <Icon
+                  name="apple"
+                  type="font-awesome"
+                  size={18}
+                  color="#ffffff"
+                />
+              </View>
+              <Text
+                style={{
+                  color: theme.colors.background,
+                  fontSize: 16,
+                  fontWeight: "600",
+                  marginLeft: "10",
+                }}
+              >
+                Sign in with Apple
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            onPress={googleLogin}
+            style={{
+              alignItems: "center",
+              flexDirection: "row",
+              backgroundColor: "#F44336",
+              paddingVertical: 18,
+              paddingHorizontal: 24,
+              borderRadius: 16,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <View
+              style={{
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Icon
+                name="google"
+                type="font-awesome"
+                size={18}
+                color="#ffffff"
+              />
+            </View>
+            <Text
+              style={{
+                color: theme.colors.background,
+                fontSize: 16,
+                fontWeight: "600",
+                marginLeft: "10",
+              }}
+            >
+              Sign in with Google
             </Text>
           </TouchableOpacity>
         </View>
