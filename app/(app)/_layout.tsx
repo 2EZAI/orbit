@@ -32,7 +32,6 @@ export default function AppLayout() {
     return null;
   }
 
-
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Tabs
@@ -58,7 +57,8 @@ export default function AppLayout() {
               autoHide: true,
               topOffset: 50,
             });
-            return <Redirect href="/sign-in" />;
+            // Redirect unauthenticated users to the landing index screen
+            return <Redirect href="/" />;
           }
 
           // Show tab bar everywhere except notifications and specific chat messages
