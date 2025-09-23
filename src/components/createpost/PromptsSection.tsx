@@ -1,5 +1,5 @@
 import React from "react";
-import { View, TouchableOpacity } from "react-native";
+import { View, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Category, Prompt } from "~/hooks/useMapEvents";
 import { useTheme } from "~/src/components/ThemeProvider";
@@ -8,15 +8,50 @@ interface PromptsSectionProps {
   categoryList: Partial<Category>;
   selectedPrompts: Partial<Prompt>;
   setSelectedPrompts: (prompts: Partial<Prompt>) => void;
+  isLoadingPrompts?: boolean;
 }
 
 export default function PromptsSection({
   categoryList,
   selectedPrompts,
   setSelectedPrompts,
+  isLoadingPrompts = false,
 }: PromptsSectionProps) {
   const { theme } = useTheme();
 
+  // Show loading state while prompts are being fetched
+  if (isLoadingPrompts) {
+    return (
+      <View
+        style={{
+          backgroundColor: theme.dark
+            ? "rgba(139, 92, 246, 0.1)"
+            : "rgba(255, 255, 255, 0.8)",
+          borderRadius: 32,
+          padding: 32,
+          borderWidth: 1,
+          borderColor: theme.dark
+            ? "rgba(139, 92, 246, 0.2)"
+            : "rgba(139, 92, 246, 0.1)",
+          marginBottom: 24,
+          alignItems: "center",
+        }}
+      >
+        <ActivityIndicator size="small" color="#8B5CF6" />
+        <Text
+          style={{
+            fontSize: 16,
+            color: theme.colors.text + "CC",
+            marginTop: 12,
+          }}
+        >
+          Loading prompts...
+        </Text>
+      </View>
+    );
+  }
+
+  // Don't show section if no prompts available
   if (!categoryList?.prompts || categoryList.prompts.length === 0) {
     return null;
   }

@@ -23,6 +23,7 @@ import Toast from "react-native-toast-message";
 import { useLocalSearchParams } from "expo-router";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { fetchPromptsByCategory } from "~/src/services/promptsService";
 
 // Import modular components
 import BasicInfoSection from "~/src/components/createpost/BasicInfoSection";
@@ -132,6 +133,7 @@ export default function CreateEvent() {
   const [categoryList, setCategoryList] = useState<Partial<Category>>({});
   const [selectedPrompts, setSelectedPrompts] = useState<Partial<Prompt>>({});
   const [showPrompts, setshowPrompts] = useState<boolean>(false);
+  const [isLoadingPrompts, setIsLoadingPrompts] = useState<boolean>(false);
 
   const { showActionSheetWithOptions } = useActionSheet();
   const { user } = useUser();
@@ -156,18 +158,49 @@ export default function CreateEvent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
 
+  // Function to fetch prompts for a category
+  const fetchCategoryWithPrompts = async (categoryId: string, categoryName: string) => {
+    setIsLoadingPrompts(true);
+    try {
+      console.log(`🔍 Fetching prompts for category: ${categoryName} (${categoryId})`);
+      const prompts = await fetchPromptsByCategory(categoryId);
+      
+      const categoryWithPrompts = {
+        id: categoryId,
+        name: categoryName,
+        prompts: prompts,
+      };
+      
+      console.log(`✅ Found ${prompts.length} prompts for category ${categoryName}:`, prompts);
+      console.log(`📝 Category object with prompts:`, categoryWithPrompts);
+      return categoryWithPrompts;
+    } catch (error) {
+      console.error("Error fetching prompts for category:", error);
+      // Return category without prompts if fetch fails
+      return {
+        id: categoryId,
+        name: categoryName,
+        prompts: [],
+      };
+    } finally {
+      setIsLoadingPrompts(false);
+    }
+  };
+
   useEffect(() => {
     console.log("createevent_useEffect");
 
     // Handle router params
     if (params.categoryId && params.categoryName) {
-      const simpleCategory = {
-        id: params.categoryId as string,
-        name: params.categoryName as string,
-      };
-      console.log("🔍 Router params category:", simpleCategory);
-      setCategoryList(simpleCategory as Category);
-      setshowPrompts(true);
+      const categoryId = params.categoryId as string;
+      const categoryName = params.categoryName as string;
+      
+      // Fetch prompts for the category
+      fetchCategoryWithPrompts(categoryId, categoryName).then((categoryWithPrompts) => {
+        console.log("🔍 Router params category with prompts:", categoryWithPrompts);
+        setCategoryList(categoryWithPrompts as Category);
+        setshowPrompts(true);
+      });
     }
 
     if (params.locationId) setlocationId(params.locationId as string);
@@ -206,18 +239,23 @@ export default function CreateEvent() {
         setlongitude(Longitude ? Longitude : undefined);
         setAddress1(address ? address : "");
 
-        // Create simple category object from id and name
+        // Create category object with prompts from id and name
         if (categoryId && categoryName) {
-          const simpleCategory = {
-            id: categoryId,
-            name: categoryName,
-          };
           console.log(
-            `🔍 [${callId}] Created simple category:`,
-            simpleCategory
+            `🔍 [${callId}] Fetching prompts for category:`,
+            categoryId,
+            categoryName
           );
-          setCategoryList(simpleCategory as Partial<Category>);
-          setshowPrompts(true);
+          
+          // Fetch prompts for the category
+          fetchCategoryWithPrompts(categoryId, categoryName).then((categoryWithPrompts) => {
+            console.log(
+              `🔍 [${callId}] Created category with prompts:`,
+              categoryWithPrompts
+            );
+            setCategoryList(categoryWithPrompts as Partial<Category>);
+            setshowPrompts(true);
+          });
         } else {
           console.log(`🔍 [${callId}] No category data, using empty object`);
           setCategoryList({} as Partial<Category>);
@@ -742,6 +780,7 @@ export default function CreateEvent() {
             categoryList={categoryList}
             selectedPrompts={selectedPrompts}
             setSelectedPrompts={setSelectedPrompts}
+            isLoadingPrompts={isLoadingPrompts}
           />
         ) : (
           <View style={{ alignItems: "center", padding: 40 }}>
