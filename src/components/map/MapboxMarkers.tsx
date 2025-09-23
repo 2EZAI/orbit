@@ -239,11 +239,14 @@ export function MapboxMarkers({
       setIsRendering(true);
       isRenderingRef.current = true;
       lastMarkerCountRef.current = allMarkerData.length;
-      
+
       // If we have more data than currently visible, continue from current position
       // Otherwise start from initial batch size
       const currentVisible = visibleMarkers;
-      const startFrom = currentVisible < allMarkerData.length ? currentVisible : PROGRESSIVE_RENDERING_CONFIG.INITIAL_BATCH_SIZE;
+      const startFrom =
+        currentVisible < allMarkerData.length
+          ? currentVisible
+          : PROGRESSIVE_RENDERING_CONFIG.INITIAL_BATCH_SIZE;
       setVisibleMarkers(Math.min(startFrom, allMarkerData.length));
 
       // Start progressive rendering immediately

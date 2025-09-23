@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import { useIsFocused } from "@react-navigation/native";
 import { View, ActivityIndicator } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { useUser } from "~/src/lib/UserProvider";
@@ -29,8 +30,10 @@ import {
 type TimeFrame = "Today" | "Week" | "Weekend";
 
 export default function Map() {
+  const isFocused = useIsFocused();
   const { user, userlocation } = useUser();
-  const { cameraRef, isFollowingUser, handleZoomIn, handleZoomOut } = useMapCamera();
+  const { cameraRef, isFollowingUser, handleZoomIn, handleZoomOut } =
+    useMapCamera();
 
   // Viewport state for performance optimization
   const [mapBounds, setMapBounds] = useState<{
@@ -73,6 +76,11 @@ export default function Map() {
     },
     []
   );
+
+  // Mount heavy map tree only when this screen is focused.
+  if (!isFocused) {
+    return <View className="flex-1" />;
+  }
 
   return (
     <MapStateManager>

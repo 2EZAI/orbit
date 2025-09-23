@@ -534,6 +534,7 @@ export function MapStateManager({ children }: MapStateManagerProps) {
       eventType: event.categories?.[0]?.name || "Unknown",
     });
     // Always update selected event, even if it's the same ID
+    console.log(event);
     setSelectedEvent(event);
     setShowDetails(false);
     setIsEvent(true);

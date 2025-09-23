@@ -35,9 +35,11 @@ export default function AppLayout() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Tabs
-        screenOptions={{
+        screenOptions={({ route }) => ({
           headerShown: false,
-        }}
+          // Unmount specific screens when they lose focus (fix: apply via screenOptions)
+          // unmountOnBlur: true,
+        })}
         initialRouteName="(map)"
         tabBar={(props: BottomTabBarProps) => {
           const currentRoute = props.state.routes[props.state.index];
