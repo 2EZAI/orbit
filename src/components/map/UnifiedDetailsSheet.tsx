@@ -12,7 +12,6 @@ import {
   Linking,
   PanResponder,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import { OptimizedImage } from "~/src/components/ui/optimized-image";
 import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
@@ -57,7 +56,6 @@ import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 import { useLocationEvents } from "~/hooks/useLocationEvents";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "~/src/components/ThemeProvider";
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 type UnifiedData = (MapEvent | MapLocation) & {
   created_by?: {
@@ -68,7 +66,6 @@ type UnifiedData = (MapEvent | MapLocation) & {
   };
   join_status?: boolean;
   external_url?: string;
-  external_title?: string;
   category?: Category;
   categories?: Category[];
   attendees?: {
@@ -135,9 +132,6 @@ export const UnifiedDetailsSheet = React.memo(
       () => isEventData(data, isEvent),
       [data?.id, isEvent]
     );
-    console.log("data>",data)
-    console.log("isEventType>",isEventType)
-     console.log("isEvent>",isEvent)
 
     // Use our new hook for location events
     const locationIdForEvents = !isEventType ? data.id : null;
@@ -342,13 +336,12 @@ export const UnifiedDetailsSheet = React.memo(
         params: {
           locationId: locationData.id,
           locationType: (locationData as any).type || "",
-          latitude: (locationData as any).location?.coordinates?.[1]?.toString() || "",
+          latitude: (locationData as any).location?.latitude?.toString() || "",
           longitude:
-            (locationData as any).location?.coordinates?.[0]?.toString() || "",
+            (locationData as any).location?.longitude?.toString() || "",
           address: (locationData as any).address || "",
           categoryId: simplifiedCategory.id,
           categoryName: simplifiedCategory.name,
-           prompts:JSON.stringify(locationData?.category?.prompts ?? []),
         },
       });
     };
@@ -357,7 +350,7 @@ export const UnifiedDetailsSheet = React.memo(
       const currentData = detailData || data;
       const lat = currentData.location?.coordinates[1];
       const lng = currentData.location?.coordinates[0];
-console.log("lat>lng>",lng)
+
       if (lat && lng) {
         const url = `https://maps.apple.com/?daddr=${lat},${lng}`;
         Linking.openURL(url);
@@ -429,15 +422,11 @@ console.log("lat>lng>",lng)
         setManuallyUpdated(true);
 
         setLoading(false);
-        // Emit event to reload map and show event card
-    DeviceEventEmitter.emit("refreshMapData", true);        
       } catch (error) {
         console.error("❌ Error joining event:", error);
         setLoading(false);
       }
     };
-
-  
 
     const handleLeaveEvent = async () => {
       if (!isEventType) return;
@@ -453,8 +442,6 @@ console.log("lat>lng>",lng)
         setManuallyUpdated(true);
 
         setLoading(false);
-         // Emit event to reload map and show event card
-    DeviceEventEmitter.emit("refreshMapData", true);
       } catch (error) {
         console.error("❌ Error leaving event:", error);
         setLoading(false);
@@ -578,17 +565,21 @@ console.log("lat>lng>",lng)
 
     const categoryName = getPrimaryCategory();
     const hasTickets = currentData.external_url;
-    const hasTitle = currentData?.external_title;
     const isJoined = (currentData as any).join_status;
     const attendeeCount = (currentData as any).attendees?.count || 0;
     const attendeeProfiles = (currentData as any).attendees?.profiles || [];
-    const [currentIndex, setCurrentIndex] = useState(0);
 
-const handleScroll = (event) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / SCREEN_WIDTH);
-    setCurrentIndex(index);
-  };
+    // Determine event source and type for proper button logic
+    const eventSource = (currentData as any).source;
+    const isTicketmasterEvent = (currentData as any).is_ticketmaster === true;
+    const isUserEvent = eventSource === "user";
+    const isGoogleApiEvent =
+      eventSource &&
+      (eventSource === "googleapi" ||
+        eventSource === "google" ||
+        eventSource === "api" ||
+        eventSource.includes("google") ||
+        eventSource.includes("api"));
 
     return (
       <Modal
@@ -599,8 +590,6 @@ const handleScroll = (event) => {
         statusBarTranslucent={true}
         presentationStyle="overFullScreen"
       >
-          <GestureHandlerRootView style={{ flex: 1 }}>
-
         <View style={{ flex: 1 }}>
           {/* Full Screen Backdrop */}
           <View
@@ -632,8 +621,6 @@ const handleScroll = (event) => {
             style={{ zIndex: 99999, elevation: 99999 }}
             containerStyle={{ zIndex: 99999, elevation: 99999 }}
           >
-                    <SafeAreaView style={{flex:1,marginTop:20}}>
-
             <BottomSheetScrollView
               contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
               showsVerticalScrollIndicator={false}
@@ -643,7 +630,6 @@ const handleScroll = (event) => {
                 <ScrollView
                   horizontal
                   pagingEnabled
-                  onScroll={handleScroll}
                   showsHorizontalScrollIndicator={false}
                   style={{ height: SCREEN_HEIGHT * 0.35 }}
                 >
@@ -730,9 +716,7 @@ const handleScroll = (event) => {
                       {(currentData?.image_urls || []).map((_, index) => (
                         <View
                           key={index}
-                           className={`w-2 h-2 rounded-full mx-0.5 ${
-        index === currentIndex ? 'bg-yellow-400' : 'bg-white/70'
-      }`}
+                          className="w-2 h-2 rounded-full bg-white/70 mx-0.5"
                         />
                       ))}
                     </View>
@@ -1740,72 +1724,106 @@ const handleScroll = (event) => {
             >
               {isEventType ? (
                 <View className="flex-row gap-3">
-                  {/* Tickets Button - Only show for Ticketmaster events */}
-                  {hasTickets &&
-                    !isJoined && (
-                      <TouchableOpacity
-                        onPress={handleTicketPurchase}
-                        className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
-                      >
-                        <Text className="text-lg font-semibold text-purple-600">
-                          {hasTitle ? hasTitle :"Buy Tickets"}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-
-                  {/* Join/Create Orbit/Leave Button */}
+                  {/* Loading State */}
                   {loading ? (
                     <View className="flex-1 items-center py-4 bg-purple-600 rounded-2xl">
                       <ActivityIndicator size="small" color="white" />
                     </View>
-                  ) : isJoined ? (
-                    <>
-                      {/* Create Orbit Button */}
-                      <TouchableOpacity
-                        onPress={handleCreateOrbit}
-                        className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
-                      >
-                        <Text className="text-lg font-semibold text-white">
-                          Create Orbit
-                        </Text>
-                      </TouchableOpacity>
-
-                      {/* Leave Event Button */}
-                      <TouchableOpacity
-                        onPress={handleLeaveEvent}
-                        className="flex-1 items-center py-4 bg-red-600 rounded-2xl"
-                      >
-                        <Text className="text-lg font-semibold text-white">
-                          Leave Event
-                        </Text>
-                      </TouchableOpacity>
-                    </>
                   ) : (
-                    <TouchableOpacity
-                      onPress={handleJoinEvent}
-                      className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
-                    >
-                      <Text className="text-lg font-semibold text-white">
-                        Join Event
-                      </Text>
-                    </TouchableOpacity>
+                    <>
+                      {/* Ticketmaster Events - Show Buy Tickets */}
+                      {isTicketmasterEvent && hasTickets && !isJoined && (
+                        <TouchableOpacity
+                          onPress={handleTicketPurchase}
+                          className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
+                        >
+                          <Text className="text-lg font-semibold text-purple-600">
+                            Buy Tickets
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+
+                      {/* User Events - Show Join/Create Orbit/Leave */}
+                      {isUserEvent && (
+                        <>
+                          {isJoined ? (
+                            <>
+                              {/* Create Orbit Button */}
+                              <TouchableOpacity
+                                onPress={handleCreateOrbit}
+                                className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
+                              >
+                                <Text className="text-lg font-semibold text-white">
+                                  Create Orbit
+                                </Text>
+                              </TouchableOpacity>
+
+                              {/* Leave Event Button */}
+                              <TouchableOpacity
+                                onPress={handleLeaveEvent}
+                                className="flex-1 items-center py-4 bg-red-600 rounded-2xl"
+                              >
+                                <Text className="text-lg font-semibold text-white">
+                                  Leave Event
+                                </Text>
+                              </TouchableOpacity>
+                            </>
+                          ) : (
+                            <TouchableOpacity
+                              onPress={handleJoinEvent}
+                              className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
+                            >
+                              <Text className="text-lg font-semibold text-white">
+                                Join Event
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </>
+                      )}
+
+                      {/* Google API Events - Show Create Event Here */}
+                      {isGoogleApiEvent && (
+                        <TouchableOpacity
+                          onPress={handleCreateEvent}
+                          className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
+                        >
+                          <Text className="text-lg font-semibold text-white">
+                            Create Event Here
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+
+                      {/* Fallback for other event types */}
+                      {!isTicketmasterEvent &&
+                        !isUserEvent &&
+                        !isGoogleApiEvent && (
+                          <TouchableOpacity
+                            onPress={handleCreateEvent}
+                            className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
+                          >
+                            <Text className="text-lg font-semibold text-white">
+                              Create Event Here
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                    </>
                   )}
                 </View>
               ) : (
                 <View className="flex-row gap-3">
                   {/* Tickets Button for Location - Only show for Ticketmaster events */}
-                  {hasTickets && (
+                  {hasTickets && isTicketmasterEvent && (
                     <TouchableOpacity
                       onPress={handleTicketPurchase}
                       className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
                     >
                       <Text className="text-lg font-semibold text-purple-600">
-                         {hasTitle ? hasTitle :"Buy Tickets"}
+                        Buy Tickets
                       </Text>
                     </TouchableOpacity>
                   )}
 
-                  {/* Create Event Button */}
+                  {/* Create Event Button for Locations */}
                   <TouchableOpacity
                     onPress={handleCreateEvent}
                     className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
@@ -1817,7 +1835,6 @@ const handleScroll = (event) => {
                 </View>
               )}
             </View>
-               </SafeAreaView>
           </BottomSheet>
 
           {/* Enhanced Image Viewer Modal with Swiping */}
@@ -2053,8 +2070,6 @@ const handleScroll = (event) => {
             />
           )}
         </View>
-              </GestureHandlerRootView>
-
       </Modal>
     );
   }

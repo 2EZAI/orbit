@@ -1,13 +1,12 @@
-import React, { useEffect, useRef, useState } from "react";
-import { View, Animated, TouchableOpacity } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { View, TouchableOpacity, Text, Animated } from "react-native";
 import FastImage from "react-native-fast-image";
-import { Text } from "../ui/text";
 
 interface EventMarkerProps {
   imageUrl?: string;
   count?: number;
   isSelected?: boolean;
-  markerType?: "user-event" | "ticketmaster" | "static-location" | "api-event";
+  markerType?: "user-event" | "ticketmaster" | "api-event" | "static-location";
   categoryName?: string;
   onPress?: () => void;
 }
@@ -108,23 +107,25 @@ export const EventMarker = React.memo(
             return "#3B82F6";
           if (category.includes("party") || category.includes("nightlife"))
             return "#A855F7";
+          if (category.includes("education")) return "#8B5CF6";
+          if (category.includes("health")) return "#10B981";
+          if (category.includes("technology")) return "#3B82F6";
           return "#8B5CF6";
       }
     };
 
-    // Simple pulse with leak prevention
     const handlePress = () => {
       if (!isMounted) return;
 
-      const currentValue = isSelected ? 1.15 : 1;
+      // Simple pulse animation
       const pulseAnimation = Animated.sequence([
         Animated.timing(scaleAnim, {
-          toValue: currentValue * 0.9,
+          toValue: 0.9,
           duration: 100,
           useNativeDriver: true,
         }),
         Animated.timing(scaleAnim, {
-          toValue: currentValue,
+          toValue: isSelected ? 1.15 : 1,
           duration: 100,
           useNativeDriver: true,
         }),

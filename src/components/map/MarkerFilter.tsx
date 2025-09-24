@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo } from "react";
 import { View, TouchableOpacity, ScrollView } from "react-native";
 import { Text } from "../ui/text";
 import { Sheet } from "../ui/sheet";
@@ -109,15 +109,6 @@ export function MarkerFilter({
   locationsList,
 }: MarkerFilterProps) {
   const { theme } = useTheme();
-  const [isAllTrue, setIsAllTrue] = useState(false);
-
-  useEffect(() => {
-    setTimeout(() => {
-      // console.log("filters>", filters);
-      const areAllTrue = Object.values(filters).every(value => value === true);
-      setIsAllTrue(areAllTrue);
-    }, 200);
-  }, []);
 
   // Generate dynamic filters based on actual data
   const dynamicFilters = useMemo(() => {
@@ -140,7 +131,6 @@ export function MarkerFilter({
         count: (existing?.count || 0) + 1,
         type: "source",
       });
-      // setIsAllTrue(existing ? true : false);
 
       // Event categories
       if (event.categories && Array.isArray(event.categories)) {
@@ -154,18 +144,11 @@ export function MarkerFilter({
               count: (existing?.count || 0) + 1,
               type: "event-category",
             });
-            // setIsAllTrue(existing ? true : false);
           }
         });
       }
     });
 
-    // Analyze location data - prioritize categories over types
-    console.log(
-      "🔍 [MarkerFilter] Processing",
-      locationsList.length,
-      "locations"
-    );
     let locationsWithCategories = 0;
     let locationsWithTypes = 0;
 
@@ -185,15 +168,6 @@ export function MarkerFilter({
           count: (existing?.count || 0) + 1,
           type: "location-category",
         });
-
-        if (locationsWithCategories <= 5) {
-          console.log(
-            "📍 [MarkerFilter] Location category:",
-            location.category.name,
-            "for",
-            location.name
-          );
-        }
       }
 
       // PRIORITY 2: Location types (only if no category is available)
@@ -222,22 +196,7 @@ export function MarkerFilter({
           count: (existing?.count || 0) + 1,
           type: "location-type",
         });
-
-        if (locationsWithTypes <= 5) {
-          console.log(
-            "🏷️ [MarkerFilter] Location type:",
-            location.type,
-            "for",
-            location.name
-          );
-        }
       }
-    });
-
-    console.log("📊 [MarkerFilter] Summary:", {
-      locationsWithCategories,
-      locationsWithTypes,
-      totalCategories: categories.size,
     });
 
     // Convert to filter options
@@ -320,21 +279,6 @@ export function MarkerFilter({
         category,
         count: value.count,
       });
-
-      // Debug the first few filter options
-      if (filterOptions.length <= 10) {
-        console.log("🏷️ [MarkerFilter] Filter created:", {
-          key,
-          label,
-          category: value.type,
-          count: value.count,
-        });
-      }
-    });
-
-    console.log("🎯 [MarkerFilter] Final filter summary:", {
-      totalFilters: filterOptions.length,
-      filterLabels: filterOptions.map((f) => f.label).slice(0, 10),
     });
 
     // Sort by count (highest first) within each category
@@ -360,7 +304,6 @@ export function MarkerFilter({
       return acc;
     }, {} as FilterState);
     onFilterChange(allTrue);
-    setIsAllTrue(allTrue);
   };
 
   const selectNone = () => {
@@ -369,7 +312,6 @@ export function MarkerFilter({
       return acc;
     }, {} as FilterState);
     onFilterChange(allFalse);
-    setIsAllTrue(false);
   };
 
   const getFiltersByCategory = (category: string) => {
@@ -621,7 +563,7 @@ export function MarkerFilter({
             }}
           >
             <Text style={{ color: "white", fontWeight: "600" }}>
-              {isAllTrue ? "All Selected" : "Select All"}
+              Select All
             </Text>
           </TouchableOpacity>
 
@@ -661,9 +603,16 @@ export const generateDefaultFilters = (
 ): FilterState => {
   const filters: FilterState = {};
 
+  // Safety checks for input arrays
+  if (!eventsList || !Array.isArray(eventsList)) eventsList = [];
+  if (!locationsList || !Array.isArray(locationsList)) locationsList = [];
+
+  // CRITICAL FIX: ENABLE ALL FILTERS BY DEFAULT
   // Add event source types - user-friendly names only
   const sources = new Set<string>();
   eventsList.forEach((event) => {
+    if (!event || typeof event !== "object") return;
+
     if (event.source === "user") sources.add("community-events");
     else if (
       (typeof event.source === "string" && event.source.includes("ticket")) ||
@@ -674,16 +623,18 @@ export const generateDefaultFilters = (
   });
 
   sources.forEach((source) => {
-    filters[source] = true;
+    filters[source] = true; // ENABLED BY DEFAULT
   });
 
   // Add event categories
   eventsList.forEach((event) => {
+    if (!event || typeof event !== "object") return;
+
     if (event.categories && Array.isArray(event.categories)) {
       event.categories.forEach((cat: any) => {
         if (cat && cat.name && typeof cat.name === "string") {
           const key = `event-${cat.name.toLowerCase().replace(/\s+/g, "-")}`;
-          filters[key] = true;
+          filters[key] = true; // ENABLED BY DEFAULT
         }
       });
     }
@@ -691,6 +642,8 @@ export const generateDefaultFilters = (
 
   // Add location categories
   locationsList.forEach((location) => {
+    if (!location || typeof location !== "object") return;
+
     if (
       location.category &&
       location.category.name &&
@@ -699,13 +652,12 @@ export const generateDefaultFilters = (
       const key = `location-${location.category.name
         .toLowerCase()
         .replace(/\s+/g, "-")}`;
-      filters[key] = true;
+      filters[key] = true; // ENABLED BY DEFAULT
     }
     if (location.type && typeof location.type === "string") {
       const key = `type-${location.type.toLowerCase().replace(/\s+/g, "-")}`;
-      filters[key] = true;
+      filters[key] = true; // ENABLED BY DEFAULT
     }
   });
-
   return filters;
 };
