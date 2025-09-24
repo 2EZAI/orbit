@@ -787,123 +787,25 @@ export function useUnifiedMapData({
           limitedEvents
         );
 
-        // STAGE 2: Fetch user-location data in background (silently, only for 'today')
+        // STAGE 2: DISABLED FOR PERFORMANCE (like web app)
+        // The web app disabled the second API call for performance reasons
+        // We're doing the same here to prevent app hanging
+        console.log("🚫 USER-LOCATIONS API: DISABLED for performance (like web app)");
         setIsLoadingComplete(true);
 
-        // Only load 'today' data from user-location API in background
+        // DISABLED: Second API call removed for performance
+        /*
         setTimeout(async () => {
           try {
             console.log(
               "🔄 USER-LOCATIONS API: Starting background fetch for 'today'"
             );
-
-            const userLocationRequestData = {
-              latitude: requestData.latitude,
-              longitude: requestData.longitude,
-              radius: radius || 500000,
-              timeRange: "today" as const, // Always load 'today' data in background
-              includeTicketmaster: true,
-            };
-
-            const userLocationData = await mapDataService.getMapData(
-              userLocationRequestData
-            );
-
-            console.log(
-              `✅ USER-LOCATIONS API: Received ${
-                userLocationData.events?.length || 0
-              } events, ${userLocationData.locations?.length || 0} locations`
-            );
-
-            if (!isMountedRef.current) return;
-
-            // Process user-location data
-            let userLocationValidEvents: MapEvent[] = [];
-            let userLocationValidLocations: MapLocation[] = [];
-
-            try {
-              userLocationValidEvents = validateData(
-                userLocationData.events || [],
-                "event"
-              ) as MapEvent[];
-              userLocationValidLocations = validateData(
-                userLocationData.locations || [],
-                "location"
-              ) as MapLocation[];
-            } catch (error) {
-              console.error(
-                "[UnifiedMapData] Error validating user-location data:",
-                error
-              );
-              userLocationValidEvents = [];
-              userLocationValidLocations = [];
-            }
-
-            // Merge with existing nearby data (add new markers silently)
-            const mergedEvents = [
-              ...validEvents,
-              ...userLocationValidEvents.filter(
-                (event) =>
-                  !validEvents.some((existing) => existing.id === event.id)
-              ),
-            ];
-            const mergedLocations = [
-              ...validLocations,
-              ...userLocationValidLocations.filter(
-                (location) =>
-                  !validLocations.some(
-                    (existing) => existing.id === location.id
-                  )
-              ),
-            ];
-
-            // Update state with merged data
-            cachedEventsRef.current = mergedEvents;
-            cachedLocationsRef.current = mergedLocations;
-
-            setEvents(mergedEvents);
-            setLocations(mergedLocations);
-
-            // Filter events by time
-            const mergedNowEvents = filterEventsByTime(
-              mergedEvents || [],
-              "today"
-            );
-            const mergedTodayEvents = filterEventsByTime(
-              mergedEvents || [],
-              "today"
-            );
-            const mergedTomorrowEvents = filterEventsByTime(
-              mergedEvents || [],
-              "weekend"
-            );
-
-            setEventsNow(mergedNowEvents);
-            setEventsToday(mergedTodayEvents);
-            setEventsTomorrow(mergedTomorrowEvents);
-
-            // Create clusters for merged data - use all events for initial display
-            await processClusters(
-              mergedEvents,
-              mergedLocations,
-              mergedEvents,
-              mergedEvents,
-              mergedEvents
-            );
-
-            console.log(
-              "✅ USER-LOCATIONS API: Background fetch completed and data merged"
-            );
-          } catch (error) {
-            console.error(
-              "[UnifiedMapData] Error loading user-location data:",
-              error
-            );
-            // Don't show error to user, just log it
+            // ... (rest of the original setTimeout block)
           } finally {
             setIsLoadingComplete(false);
           }
         }, 2000); // 500ms delay
+        */
 
         setError(null);
       } catch (err) {
