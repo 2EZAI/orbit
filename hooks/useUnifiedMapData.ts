@@ -750,17 +750,25 @@ export function useUnifiedMapData({
         cachedLocationsRef.current = validLocations || [];
         lastFetchTimeRef.current = Date.now();
 
-        setEvents(validEvents || []);
-        setLocations(validLocations || []);
+        // Simple limit like web app: 500 total markers
+        const MAX_MARKERS = 500;
+        const limitedEvents = (validEvents || []).slice(0, Math.min(validEvents.length, MAX_MARKERS));
+        const limitedLocations = (validLocations || []).slice(0, Math.min(validLocations.length, MAX_MARKERS - limitedEvents.length));
+
+        setEvents(limitedEvents);
+        setLocations(limitedLocations);
 
         console.log(
           `🔍 NEARBY API: After validation - ${validEvents.length} events, ${validLocations.length} locations`
         );
+        console.log(
+          `📊 TOTAL VISIBLE MARKERS: ${limitedEvents.length + limitedLocations.length} (${limitedEvents.length} events + ${limitedLocations.length} locations) - LIMITED to 500 like web app`
+        );
 
-        // Filter events by time
-        const nowEvents = filterEventsByTime(validEvents || [], "today");
-        const todayEvents = filterEventsByTime(validEvents || [], "today");
-        const tomorrowEvents = filterEventsByTime(validEvents || [], "weekend");
+        // Filter events by time using limited data
+        const nowEvents = filterEventsByTime(limitedEvents, "today");
+        const todayEvents = filterEventsByTime(limitedEvents, "today");
+        const tomorrowEvents = filterEventsByTime(limitedEvents, "weekend");
 
         console.log(
           `🔍 NEARBY API: After time filtering - now: ${nowEvents.length}, today: ${todayEvents.length}, tomorrow: ${tomorrowEvents.length}`
@@ -770,13 +778,13 @@ export function useUnifiedMapData({
         setEventsToday(todayEvents);
         setEventsTomorrow(tomorrowEvents);
 
-        // Create clusters for nearby data - use all events for initial display
+        // Create clusters for nearby data - use limited data like web app
         await processClusters(
-          validEvents,
-          validLocations,
-          validEvents,
-          validEvents,
-          validEvents
+          limitedEvents,
+          limitedLocations,
+          limitedEvents,
+          limitedEvents,
+          limitedEvents
         );
 
         // STAGE 2: Fetch user-location data in background (silently, only for 'today')

@@ -142,7 +142,6 @@ export class MapDataService {
       body: JSON.stringify({
         latitude,
         longitude,
-        timeRange,
         includeTicketmaster,
       }),
     })
