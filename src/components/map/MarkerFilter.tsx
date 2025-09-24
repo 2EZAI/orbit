@@ -149,12 +149,6 @@ export function MarkerFilter({
       }
     });
 
-    // Analyze location data - prioritize categories over types
-    console.log(
-      "🔍 [MarkerFilter] Processing",
-      locationsList.length,
-      "locations"
-    );
     let locationsWithCategories = 0;
     let locationsWithTypes = 0;
 
@@ -174,15 +168,6 @@ export function MarkerFilter({
           count: (existing?.count || 0) + 1,
           type: "location-category",
         });
-
-        if (locationsWithCategories <= 5) {
-          console.log(
-            "📍 [MarkerFilter] Location category:",
-            location.category.name,
-            "for",
-            location.name
-          );
-        }
       }
 
       // PRIORITY 2: Location types (only if no category is available)
@@ -212,22 +197,9 @@ export function MarkerFilter({
           type: "location-type",
         });
 
-        if (locationsWithTypes <= 5) {
-          console.log(
-            "🏷️ [MarkerFilter] Location type:",
-            location.type,
-            "for",
-            location.name
-          );
-        }
       }
     });
 
-    console.log("📊 [MarkerFilter] Summary:", {
-      locationsWithCategories,
-      locationsWithTypes,
-      totalCategories: categories.size,
-    });
 
     // Convert to filter options
     const filterOptions: FilterOption[] = [];
@@ -309,21 +281,6 @@ export function MarkerFilter({
         category,
         count: value.count,
       });
-
-      // Debug the first few filter options
-      if (filterOptions.length <= 10) {
-        console.log("🏷️ [MarkerFilter] Filter created:", {
-          key,
-          label,
-          category: value.type,
-          count: value.count,
-        });
-      }
-    });
-
-    console.log("🎯 [MarkerFilter] Final filter summary:", {
-      totalFilters: filterOptions.length,
-      filterLabels: filterOptions.map((f) => f.label).slice(0, 10),
     });
 
     // Sort by count (highest first) within each category
@@ -704,19 +661,5 @@ export const generateDefaultFilters = (
       filters[key] = true; // ENABLED BY DEFAULT
     }
   });
-
-  // CRITICAL FIX: If no filters were created, create a fallback to show everything
-  if (Object.keys(filters).length === 0) {
-    console.log(
-      "🚨 [MarkerFilter] No filters created, enabling fallback filters"
-    );
-    filters["show-all"] = true;
-  }
-
-  console.log(
-    "✅ [MarkerFilter] Generated filters:",
-    Object.keys(filters).length,
-    "filters enabled by default"
-  );
   return filters;
 };
