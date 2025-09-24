@@ -138,6 +138,7 @@ export const UnifiedDetailsSheet = React.memo(
     console.log("data>",data)
     console.log("isEventType>",isEventType)
      console.log("isEvent>",isEvent)
+     console.log("ddsd>")
 
     // Use our new hook for location events
     const locationIdForEvents = !isEventType ? data.id : null;
