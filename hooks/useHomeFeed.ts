@@ -71,7 +71,6 @@ export function useHomeFeed() {
         limit: 10, // Results per section (like web)
       };
 
-
       // Set auth token for feed service
       const session = await supabase.auth.getSession();
       if (session?.data?.session) {
@@ -80,13 +79,16 @@ export function useHomeFeed() {
 
       // Fetch main feed data from web backend
       const feedData = await feedService.getFeed(locationData);
-
+      console.log("Fetched feed data:", JSON.stringify(feedData, null, 2));
       // Get topics from the database (for dynamic categories)
       const { data: topicsData } = await supabase.from("topics").select("*");
       const topics = topicsData || [];
 
       // Map web API sections directly to mobile UI sections
-      const mobileFeedData = mapFeedCategoriesFromAPI(feedData.sections, topics);
+      const mobileFeedData = mapFeedCategoriesFromAPI(
+        feedData.sections,
+        topics
+      );
 
       // Check if we got no content - then show error
       if (mobileFeedData.allContent.length === 0) {
@@ -144,10 +146,12 @@ export function useHomeFeed() {
       // Enhanced feed preloading with all data - delayed and less aggressive
       setTimeout(() => {
         imagePreloader.preloadFeedImages({
-          events: mobileFeedData.allContent.filter(item => !item.isLocation),
-          locations: mobileFeedData.allContent.filter(item => item.isLocation),
+          events: mobileFeedData.allContent.filter((item) => !item.isLocation),
+          locations: mobileFeedData.allContent.filter(
+            (item) => item.isLocation
+          ),
           featuredEvents: mobileFeedData.featuredEvents,
-          posts: mobileFeedData.allContent.filter(item => item.content),
+          posts: mobileFeedData.allContent.filter((item) => item.content),
         });
       }, 2000);
 

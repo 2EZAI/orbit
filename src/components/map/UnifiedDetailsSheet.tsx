@@ -321,7 +321,7 @@ export const UnifiedDetailsSheet = React.memo(
       if (isEventType) return;
 
       const locationData = data;
-
+      
       // Close the sheet first
       onClose();
 
@@ -336,9 +336,10 @@ export const UnifiedDetailsSheet = React.memo(
         params: {
           locationId: locationData.id,
           locationType: (locationData as any).type || "",
-          latitude: (locationData as any).location?.latitude?.toString() || "",
+          latitude:
+            (locationData as any).coordinates?.latitude?.toString() || "",
           longitude:
-            (locationData as any).location?.longitude?.toString() || "",
+            (locationData as any).coordinates?.longitude?.toString() || "",
           address: (locationData as any).address || "",
           categoryId: simplifiedCategory.id,
           categoryName: simplifiedCategory.name,
@@ -571,8 +572,8 @@ export const UnifiedDetailsSheet = React.memo(
 
     // Determine event source and type for proper button logic
     const eventSource = (currentData as any).source;
-    const isTicketmasterEvent = 
-      (currentData as any).is_ticketmaster === true || 
+    const isTicketmasterEvent =
+      (currentData as any).is_ticketmaster === true ||
       eventSource === "ticketmaster";
     const isUserEvent = eventSource === "user";
     const isGoogleApiEvent =
@@ -582,7 +583,6 @@ export const UnifiedDetailsSheet = React.memo(
         eventSource === "api" ||
         eventSource.includes("google") ||
         eventSource.includes("api"));
-
 
     return (
       <Modal
