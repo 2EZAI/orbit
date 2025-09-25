@@ -367,7 +367,6 @@ export default function Home() {
   // Home feed data
   const { data, loading, error, refetch } = useHomeFeed();
 
-  // UI State
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const [isSelectedItemLocation, setIsSelectedItemLocation] = useState(false);
   const [currentFeaturedIndex, setCurrentFeaturedIndex] = useState(0);
