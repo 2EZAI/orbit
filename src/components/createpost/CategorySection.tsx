@@ -1,12 +1,13 @@
 import React from "react";
 import { View } from "react-native";
 import { Text } from "~/src/components/ui/text";
-import { TopicListSingleSelection } from "~/src/components/topics/TopicListSingleSelection";
+// import { TopicListSingleSelection } from "~/src/components/topics/TopicListSingleSelection";
+import TopicSingleSelectDropdown from "~/src/components/topics/TopicSingleSelectDropdown";
 import { useTheme } from "~/src/components/ThemeProvider";
 
 interface CategorySectionProps {
   selectedTopics: string;
-  selectedTopicsName:string;
+  selectedTopicsName: string;
   onSelectTopic: (topic: string) => void;
 }
 
@@ -58,13 +59,13 @@ export default function CategorySection({
           Choose a category for your event
         </Text>
       </View>
-      
-      <TopicListSingleSelection
-        selectedTopics={selectedTopics}
-        selectedTopicsName={selectedTopicsName}
-        onSelectTopic={onSelectTopic}
+
+      <TopicSingleSelectDropdown
+        selectedId={selectedTopics}
+        selectedName={selectedTopicsName}
+        onSelect={onSelectTopic}
+        placeholder="Choose a category"
       />
-       
     </View>
   );
 }
