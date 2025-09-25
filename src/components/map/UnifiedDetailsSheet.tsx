@@ -571,7 +571,9 @@ export const UnifiedDetailsSheet = React.memo(
 
     // Determine event source and type for proper button logic
     const eventSource = (currentData as any).source;
-    const isTicketmasterEvent = (currentData as any).is_ticketmaster === true;
+    const isTicketmasterEvent = 
+      (currentData as any).is_ticketmaster === true || 
+      eventSource === "ticketmaster";
     const isUserEvent = eventSource === "user";
     const isGoogleApiEvent =
       eventSource &&
@@ -580,6 +582,7 @@ export const UnifiedDetailsSheet = React.memo(
         eventSource === "api" ||
         eventSource.includes("google") ||
         eventSource.includes("api"));
+
 
     return (
       <Modal
