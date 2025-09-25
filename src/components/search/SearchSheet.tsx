@@ -1,27 +1,23 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { router } from "expo-router";
+import { Calendar, MapPin, Search, Users, X } from "lucide-react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  View,
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  Image,
-  ActivityIndicator,
-  Dimensions,
-  Text,
+  View
 } from "react-native";
-import { router } from "expo-router";
-import { Sheet } from "../ui/sheet";
-import { OptimizedImage } from "../ui/optimized-image";
-import { Input } from "../ui/input";
-import { Calendar, MapPin, Users, Search, X } from "lucide-react-native";
-import { useAuth } from "../../lib/auth";
-import { useTheme } from "../ThemeProvider";
 import { useUser } from "~/src/lib/UserProvider";
-import { supabase } from "../../lib/supabase";
-import * as Location from "expo-location";
-import { debounce } from "lodash";
 import { useRealtimeSearch } from "../../hooks/useSearch";
-import { searchService, UserResult, EventResult, LocationResult } from "../../services/searchService";
+import { useAuth } from "../../lib/auth";
+import { EventResult, LocationResult, searchService, UserResult } from "../../services/searchService";
+import { useTheme } from "../ThemeProvider";
+import { Input } from "../ui/input";
+import { OptimizedImage } from "../ui/optimized-image";
+import { Sheet } from "../ui/sheet";
 
 interface SearchSheetProps {
   isOpen: boolean;
