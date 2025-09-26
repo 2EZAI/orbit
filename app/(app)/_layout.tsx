@@ -1,5 +1,5 @@
 // ~/app/(app)/_layout.tsx
-import { Tabs } from "expo-router";
+import { router, Tabs } from "expo-router";
 import { View } from "react-native";
 import { useAuth } from "~/src/lib/auth";
 import { useTheme } from "~/src/components/ThemeProvider";
@@ -57,8 +57,10 @@ export default function AppLayout() {
               autoHide: true,
               topOffset: 50,
             });
+            // router.back();
             // Redirect unauthenticated users to the landing index screen
-            return <Redirect href="/" />;
+            router.dismissAll();
+            return null;
           }
 
           // Show tab bar everywhere except notifications and specific chat messages
