@@ -17,10 +17,15 @@ export function transformEvent(event: any) {
 }
 
 export function transformLocation(location: any) {
+  console.log("Transforming location:", location);
   return {
     ...location,
     image: location.image_urls?.[0] || FALLBACK_IMAGE,
     title: location.name || "Untitled Location",
+    coordinates: {
+      latitude: location.location.coordinates[1],
+      longitude: location.location.coordinates[0],
+    },
     // Remove fake date fields - locations don't have dates!
     location: location.address || location.type || "Location",
     category: location.category || location.type,

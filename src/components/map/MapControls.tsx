@@ -72,7 +72,7 @@ export function MapControls({
   }, []);
 
   useEffect(() => {
-    // console.log("unReadCounta>>", unReadCount);
+    console.log("unReadCounta>>", unReadCount);
   }, [unReadCount]);
 
   const hitNotificationCount = async () => {
@@ -260,12 +260,7 @@ export function MapControls({
           >
             {/* Notification */}
             <TouchableOpacity
-              onPress={() => {
-                router.push({
-                  pathname: `/(app)/(notification)`,
-                  params: { from: "map" },
-                });
-              }}
+              onPress={() => router.push("/(app)/(notification)")}
               style={{
                 width: 42,
                 height: 42,

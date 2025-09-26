@@ -69,6 +69,7 @@ export interface MapEvent {
     username: string;
     avatar_url: string | null;
   };
+  source: string;
 }
 
 interface UseUserReturn {
@@ -116,9 +117,10 @@ export function useUpdateEvents(): UseUserReturn {
       const eventData = {
         user_id: session.user.id,
         status: "joined",
-        source: event.is_ticketmaster ? "ticketmaster" : "supabase",
+        source: event?.source === "ticketmaster" ? "ticketmaster" : "supabase",
         joined_at: new Date().toISOString(),
       };
+      console.log(eventData);
       const response = await fetch(
         `${process.env.BACKEND_MAP_URL}/api/events/join/${event.id}`,
         {

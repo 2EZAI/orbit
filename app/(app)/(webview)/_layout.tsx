@@ -39,11 +39,12 @@ export default function WebviewLayout() {
     }
   };
   const hitUpdaeEventApi = async () => {
-    console.log("hitUpdaeEventApi");
-    let result = await UpdateEventStatus(event);
     setShowOverlay(false);
+    router.back();
+    let result = await UpdateEventStatus(event);
+
     setTimeout(() => {
-      router.back(); // user confirms navigation
+      // router.back(); // user confirms navigation
       DeviceEventEmitter.emit("refreshEventDetail", true);
     }, 2000); // 2000ms = 2 seconds
   };
@@ -67,7 +68,7 @@ export default function WebviewLayout() {
             headerTitleAlign: "center",
             headerTitle: () => (
               <Text style={{ fontSize: 18, fontWeight: "bold" }}>
-                {title!== undefined ? title : 'Book Event'}
+                {title !== undefined ? title : "Book Event"}
               </Text>
             ),
             headerLeft: () => (

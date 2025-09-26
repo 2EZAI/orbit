@@ -367,7 +367,6 @@ export default function Home() {
   // Home feed data
   const { data, loading, error, refetch } = useHomeFeed();
 
-  // UI State
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const [isSelectedItemLocation, setIsSelectedItemLocation] = useState(false);
   const [currentFeaturedIndex, setCurrentFeaturedIndex] = useState(0);
@@ -919,9 +918,6 @@ export default function Home() {
   };
 
   const handleLocationSelect = (location: any) => {
-    console.log(
-      `[Home] handleLocationSelect called for: ${location.id}, setting isSelectedItemLocation=true`
-    );
     setSelectedEvent(location);
     setIsSelectedItemLocation(true);
   };
@@ -965,14 +961,8 @@ export default function Home() {
                       eventItem.isLocation ||
                       eventItem.type === "googleApi"
                     ) {
-                      console.log(
-                        `[Home] CompactEventCard clicked - calling handleLocationSelect for: ${eventItem.id}`
-                      );
                       handleLocationSelect(eventItem);
                     } else {
-                      console.log(
-                        `[Home] CompactEventCard clicked - calling handleEventSelect for: ${eventItem.id}`
-                      );
                       handleEventSelect(eventItem);
                     }
                     trackSectionEngagement(item.data.key, "click");
@@ -987,14 +977,8 @@ export default function Home() {
                       eventItem.isLocation ||
                       eventItem.type === "googleApi"
                     ) {
-                      console.log(
-                        `[Home] EventCard clicked - calling handleLocationSelect for: ${eventItem.id}`
-                      );
                       handleLocationSelect(eventItem);
                     } else {
-                      console.log(
-                        `[Home] EventCard clicked - calling handleEventSelect for: ${eventItem.id}`
-                      );
                       handleEventSelect(eventItem);
                     }
                     trackSectionEngagement(item.data.key, "click");
@@ -1491,13 +1475,7 @@ export default function Home() {
             }
           }}
           onShowControler={() => {}}
-          isEvent={(() => {
-            const isEventValue = !isSelectedItemLocation;
-            console.log(
-              `[Home] Passing to UnifiedDetailsSheet: isSelectedItemLocation=${isSelectedItemLocation}, isEvent=${isEventValue}, selectedEvent.id=${selectedEvent.id}`
-            );
-            return isEventValue;
-          })()}
+          isEvent={!isSelectedItemLocation}
         />
       )}
 
