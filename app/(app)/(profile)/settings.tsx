@@ -1,43 +1,42 @@
-import React, { useState } from "react";
-import {
-  View,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  Platform,
-} from "react-native";
 import { router } from "expo-router";
-import { Text } from "~/src/components/ui/text";
-import { supabase } from "~/src/lib/supabase";
-import { useTheme } from "~/src/components/ThemeProvider";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ArrowLeft,
   ChevronRight,
-  User,
   Edit3,
-  Mail,
-  Lock,
-  MapPin,
+  FileText,
   Heart,
-  Map,
+  Lock,
+  LogOut,
+  Mail,
+  MapPin,
   Shield,
   Trash2,
-  FileText,
-  LogOut,
+  User,
 } from "lucide-react-native";
+import React, { useState } from "react";
+import {
+  ActivityIndicator,
+  Platform,
+  ScrollView,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { Text } from "~/src/components/ui/text";
+import { supabase } from "~/src/lib/supabase";
 
 // Import modal components (we'll create these next)
+import { PasswordModal } from "~/src/components/settings/PasswordModal";
 import { PersonalInfoModal } from "~/src/components/settings/PersonalInfoModal";
 import { UsernameModal } from "~/src/components/settings/UsernameModal";
-import { PasswordModal } from "~/src/components/settings/PasswordModal";
 
+import { SafeAreaView } from "react-native-safe-area-context";
 import { DeleteAccountModal } from "~/src/components/settings/DeleteAccountModal";
 import { EmailModal } from "~/src/components/settings/EmailModal";
-import { LocationPreferencesModal } from "~/src/components/settings/LocationPreferencesModal";
 import { InterestsModal } from "~/src/components/settings/InterestsModal";
+import { LocationPreferencesModal } from "~/src/components/settings/LocationPreferencesModal";
 import { PrivacyModal } from "~/src/components/settings/PrivacyModal";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 interface SettingItemProps {
   icon: React.ReactNode;
@@ -172,8 +171,10 @@ export default function SettingsScreen() {
 
       // Sign out from Supabase
       await supabase.auth.signOut();
-      // Reset navigation to the first screen (e.g., "/")
-  //  router.replace("/");
+      // Reset navigation to the first screen (e.g., "/")router.back();
+      router.back();
+
+      router.replace("/(app)/(map)");
       console.log("Logout successful - app layout will handle redirect");
     } catch (error) {
       console.error("Error logging out:", error);
@@ -190,7 +191,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 , backgroundColor: theme.colors.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       {/* Header */}
       <View
         style={{
@@ -231,7 +232,7 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView
-        style={{ flex: 1 ,marginBottom: Platform.OS === 'android' ? 90 : 0}}
+        style={{ flex: 1, marginBottom: Platform.OS === "android" ? 90 : 0 }}
         showsVerticalScrollIndicator={false}
         // iOS page-sheet modals add large automatic bottom insets for scroll views.
         // Disable that and pad manually using the device safe-area bottom inset.

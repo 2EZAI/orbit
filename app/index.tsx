@@ -1,31 +1,24 @@
-import React, { useEffect, useState } from "react";
-import * as AppleAuthentication from "expo-apple-authentication";
-import {
-  View,
-  TouchableOpacity,
-  Dimensions,
-  StatusBar,
-  Image,
-  Animated,
-  Platform,
-} from "react-native";
-import {
-  GoogleSignin,
-  GoogleSigninButton,
-  statusCodes,
-} from "@react-native-google-signin/google-signin";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import { Text } from "~/src/components/ui/text";
-import { useTheme } from "~/src/components/ThemeProvider";
-import { useAuth } from "~/src/lib/auth";
-import { cacheWarmer } from "~/src/lib/cacheWarmer";
-import { ImageCacheManager } from "~/src/components/ui/optimized-image";
-import { cacheMonitor } from "~/src/lib/cacheMonitor";
 import { ChevronRight } from "lucide-react-native";
+import React, { useEffect, useState } from "react";
+import {
+  Animated,
+  Dimensions,
+  Image,
+  Platform,
+  StatusBar,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { supabase } from "../src/lib/supabase";
 import { useSocialLoginsApi } from "~/hooks/useSocialLoginsApi";
-
+import { useTheme } from "~/src/components/ThemeProvider";
+import { ImageCacheManager } from "~/src/components/ui/optimized-image";
+import { Text } from "~/src/components/ui/text";
+import { useAuth } from "~/src/lib/auth";
+import { cacheMonitor } from "~/src/lib/cacheMonitor";
+import { cacheWarmer } from "~/src/lib/cacheWarmer";
 const { width, height } = Dimensions.get("window");
 
 // Background images data
@@ -514,19 +507,28 @@ export default function LandingPage() {
   const [isReady, setIsReady] = useState(false);
   const [orbitingImages, setOrbitingImages] = useState<any[]>([]);
   const [fireflies, setFireflies] = useState<string[]>([]);
-
+  const [isFirstTime, setIsFirstTime] = useState(false);
   const mainRotation = useState(() => new Animated.Value(0))[0];
   // Logo center coordinates
   const logoCenterX = width / 2;
   const logoCenterY = height * 0.3;
   const { appleLogin, googleLogin } = useSocialLoginsApi();
-
+  const checkIfFirstTime = async () => {
+    const isAlreadyGetStarted = await AsyncStorage.getItem("hasStarted");
+    if (isAlreadyGetStarted) {
+      setIsFirstTime(false);
+    } else {
+      setIsFirstTime(true);
+    }
+  };
   // Redirect authenticated users to the app
   useEffect(() => {
     if (!loading && session) {
       console.log("Landing page: User is authenticated, redirecting to app");
       router.replace("/(app)/(map)");
+      return;
     }
+    checkIfFirstTime();
   }, [session, loading]);
 
   useEffect(() => {
@@ -584,8 +586,9 @@ export default function LandingPage() {
     router.push("/(auth)/sign-in");
   };
 
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
     // router.push("/(auth)/sign-up");
+    await AsyncStorage.setItem("hasStarted", "true");
     router.push("/(app)/(map)");
   };
 
@@ -755,56 +758,59 @@ export default function LandingPage() {
         </Text>
 
         <View style={{ width: "100%", gap: 12 }}>
-          {Platform.OS == "ios" && (
-            <TouchableOpacity
-              onPress={appleLogin}
-              style={{
-                backgroundColor: "transparent",
-                paddingVertical: 18,
-                paddingHorizontal: 24,
-                borderRadius: 16,
-                borderWidth: 2,
-                borderColor: theme.colors.border,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Text
+          {!isFirstTime ? (
+            <>
+              {Platform.OS == "ios" && (
+                <TouchableOpacity
+                  onPress={appleLogin}
+                  style={{
+                    backgroundColor: "transparent",
+                    paddingVertical: 18,
+                    paddingHorizontal: 24,
+                    borderRadius: 16,
+                    borderWidth: 2,
+                    borderColor: theme.colors.border,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: theme.colors.text,
+                      fontSize: 16,
+                      fontWeight: "600",
+                    }}
+                  >
+                    Apple Login
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                onPress={googleLogin}
                 style={{
-                  color: theme.colors.text,
-                  fontSize: 16,
-                  fontWeight: "600",
+                  backgroundColor: "transparent",
+                  paddingVertical: 18,
+                  paddingHorizontal: 24,
+                  borderRadius: 16,
+                  borderWidth: 2,
+                  borderColor: theme.colors.border,
+                  justifyContent: "center",
+                  alignItems: "center",
                 }}
               >
-                Apple Login
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            onPress={googleLogin}
-            style={{
-              backgroundColor: "transparent",
-              paddingVertical: 18,
-              paddingHorizontal: 24,
-              borderRadius: 16,
-              borderWidth: 2,
-              borderColor: theme.colors.border,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <Text
-              style={{
-                color: theme.colors.text,
-                fontSize: 16,
-                fontWeight: "600",
-              }}
-            >
-              Google Login
-            </Text>
-          </TouchableOpacity>
-
+                <Text
+                  style={{
+                    color: theme.colors.text,
+                    fontSize: 16,
+                    fontWeight: "600",
+                  }}
+                >
+                  Google Login
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : null}
           <TouchableOpacity
             onPress={handleSignUp}
             style={{
@@ -846,29 +852,31 @@ export default function LandingPage() {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={handleGetStarted}
-            style={{
-              backgroundColor: "transparent",
-              paddingVertical: 18,
-              paddingHorizontal: 24,
-              borderRadius: 16,
-              borderWidth: 2,
-              borderColor: theme.colors.border,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <Text
+          {!isFirstTime ? (
+            <TouchableOpacity
+              onPress={handleGetStarted}
               style={{
-                color: theme.colors.text,
-                fontSize: 16,
-                fontWeight: "600",
+                backgroundColor: "transparent",
+                paddingVertical: 18,
+                paddingHorizontal: 24,
+                borderRadius: 16,
+                borderWidth: 2,
+                borderColor: theme.colors.border,
+                justifyContent: "center",
+                alignItems: "center",
               }}
             >
-              Login
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={{
+                  color: theme.colors.text,
+                  fontSize: 16,
+                  fontWeight: "600",
+                }}
+              >
+                Login
+              </Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
     </View>
