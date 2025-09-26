@@ -585,8 +585,8 @@ export default function LandingPage() {
   };
 
   const handleSignUp = () => {
-    router.push("/(auth)/sign-up");
-    // router.push("/(app)/(map)");
+    // router.push("/(auth)/sign-up");
+    router.push("/(app)/(map)");
   };
 
   // Show loading while checking authentication
