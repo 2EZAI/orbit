@@ -222,8 +222,10 @@ export function MapStateManager({ children }: MapStateManagerProps) {
 
       // Only fetch additional data for week/weekend tabs
       if (timeFrame === "Week") {
+        console.log("🗓️ [MapStateManager] Loading Week data (nearby only)");
         fetchTimeframeData("week");
       } else if (timeFrame === "Weekend") {
+        console.log("🗓️ [MapStateManager] Loading Weekend data (nearby only)");
         fetchTimeframeData("weekend");
       }
       // For "Today", we already have the data from initial load

@@ -5,122 +5,121 @@
  */
 
 export interface FeedParams {
-  latitude?: number
-  longitude?: number
-  radius?: number // Radius in meters (web uses 100000 = ~62 miles)
-  limit?: number // Results per section
-  includeEvents?: boolean
-  includeLocations?: boolean
-  includeTicketmaster?: boolean
+  latitude?: number;
+  longitude?: number;
+  radius?: number; // Radius in meters (web uses 100000 = ~62 miles)
+  limit?: number; // Results per section
+  includeEvents?: boolean;
+  includeLocations?: boolean;
+  includeTicketmaster?: boolean;
 }
 
 export interface FeedSection {
-  id: string
-  title: string
-  subtitle?: string
-  items: any[] // Events, locations, or posts
-  itemCount: number
-  sectionType: string
-  algorithm: string
+  id: string;
+  title: string;
+  subtitle?: string;
+  items: any[]; // Events, locations, or posts
+  itemCount: number;
+  sectionType: string;
+  algorithm: string;
   metadata?: {
     timeRange?: {
-      start: string
-      end: string
-    }
-  }
+      start: string;
+      end: string;
+    };
+  };
 }
 
 export interface FeedResponse {
-  sections: FeedSection[]
+  sections: FeedSection[];
   summary: {
-    totalSections: number
-    totalItems: number
-    totalEvents: number
-    totalLocations: number
-    totalTicketmasterEvents: number
+    totalSections: number;
+    totalItems: number;
+    totalEvents: number;
+    totalLocations: number;
+    totalTicketmasterEvents: number;
     locationFilter?: {
-      latitude: number
-      longitude: number
-      radiusMeters: number
-      radiusMiles: number
-    }
-    generatedAt: string
-  }
-  isAuthenticated: boolean
+      latitude: number;
+      longitude: number;
+      radiusMeters: number;
+      radiusMiles: number;
+    };
+    generatedAt: string;
+  };
+  isAuthenticated: boolean;
 }
 
 export class FeedService {
-  private baseUrl: string
-  private authToken: string | null = null
+  private baseUrl: string;
+  private authToken: string | null = null;
 
   constructor(baseUrl: string) {
-    this.baseUrl = baseUrl
+    this.baseUrl = "https://orbit-web-backend.onrender.com";
   }
 
   setAuthToken(token: string | null) {
-    this.authToken = token
+    this.authToken = token;
   }
 
   /**
    * Get main feed data (events, locations, posts)
    */
   async getFeed(params: FeedParams = {}): Promise<FeedResponse> {
-    const { 
-      latitude, 
-      longitude, 
+    const {
+      latitude,
+      longitude,
       radius = 100000, // Default to 100km like web
-      limit = 10, 
+      limit = 10,
       includeEvents = true,
       includeLocations = true,
-      includeTicketmaster = true
-    } = params
+      includeTicketmaster = true,
+    } = params;
 
     const requestBody: any = {
       includeEvents,
       includeLocations,
       includeTicketmaster,
       limit,
-    }
+    };
 
     if (latitude !== undefined && longitude !== undefined) {
-      requestBody.latitude = latitude
-      requestBody.longitude = longitude
-      requestBody.radius = radius
+      requestBody.latitude = latitude;
+      requestBody.longitude = longitude;
+      requestBody.radius = radius;
     }
 
     try {
       const response = await fetch(`${this.baseUrl}/api/feed`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           ...(this.authToken && {
             Authorization: `Bearer ${this.authToken}`,
           }),
         },
         body: JSON.stringify(requestBody),
-      })
+      });
 
       if (!response.ok) {
         const error = await response
           .json()
-          .catch(() => ({ error: 'Feed fetch failed' }))
+          .catch(() => ({ error: "Feed fetch failed" }));
         throw new Error(
-          error.error || `Feed fetch failed with status ${response.status}`,
-        )
+          error.error || `Feed fetch failed with status ${response.status}`
+        );
       }
 
-      const data = await response.json()
+      const data = await response.json();
 
       // Return the response as-is since it matches our interface
-      return data as FeedResponse
+      return data as FeedResponse;
     } catch (error) {
-      console.error('❌ [FeedService] Feed fetch error:', error)
-      throw error
+      console.error("❌ [FeedService] Feed fetch error:", error);
+      throw error;
     }
   }
-
 }
 
 export const feedService = new FeedService(
-  'https://orbit-web-backend.onrender.com',
-)
+  "https://orbit-web-backend.onrender.com"
+);

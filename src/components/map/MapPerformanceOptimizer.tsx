@@ -103,9 +103,14 @@ export function MapPerformanceOptimizer({
             ? "ticketed-events"
             : "featured-events";
 
-        // If this source filter exists and is disabled, hide the item
-        if (filters.hasOwnProperty(sourceKey) && !filters[sourceKey]) {
-          shouldShow = false;
+        // If this source filter exists and is enabled, show the item
+        if (filters.hasOwnProperty(sourceKey) && filters[sourceKey]) {
+          return true; // Show this item
+        } else if (filters.hasOwnProperty(sourceKey) && !filters[sourceKey]) {
+          console.log(
+            `🚫 Filtering out event: ${event.name} (${sourceKey} filter disabled)`
+          );
+          return false; // Hide this item
         }
       }
 
@@ -117,9 +122,11 @@ export function MapPerformanceOptimizer({
       ) {
         for (const cat of event.categories) {
           const catKey = `event-${cat.name.toLowerCase().replace(/\s+/g, "-")}`;
-          // If this category filter exists and is disabled, hide the item
-          if (filters.hasOwnProperty(catKey) && !filters[catKey]) {
-            shouldShow = false;
+          // If this category filter exists and is enabled, show the item
+          if (filters.hasOwnProperty(catKey) && filters[catKey]) {
+            return true; // Show this item
+          } else if (filters.hasOwnProperty(catKey) && !filters[catKey]) {
+            shouldShow = false; // Hide this item
             break;
           }
         }
@@ -130,9 +137,11 @@ export function MapPerformanceOptimizer({
         const catKey = `location-${event.category.name
           .toLowerCase()
           .replace(/\s+/g, "-")}`;
-        // If this category filter exists and is disabled, hide the item
-        if (filters.hasOwnProperty(catKey) && !filters[catKey]) {
-          shouldShow = false;
+        // If this category filter exists and is enabled, show the item
+        if (filters.hasOwnProperty(catKey) && filters[catKey]) {
+          return true; // Show this item
+        } else if (filters.hasOwnProperty(catKey) && !filters[catKey]) {
+          shouldShow = false; // Hide this item
         }
       }
 
@@ -143,9 +152,11 @@ export function MapPerformanceOptimizer({
         !("category" in event && event.category)
       ) {
         const typeKey = `type-${event.type.toLowerCase().replace(/\s+/g, "-")}`;
-        // If this type filter exists and is disabled, hide the item
-        if (filters.hasOwnProperty(typeKey) && !filters[typeKey]) {
-          shouldShow = false;
+        // If this type filter exists and is enabled, show the item
+        if (filters.hasOwnProperty(typeKey) && filters[typeKey]) {
+          return true; // Show this item
+        } else if (filters.hasOwnProperty(typeKey) && !filters[typeKey]) {
+          shouldShow = false; // Hide this item
         }
       }
 
@@ -160,6 +171,11 @@ export function MapPerformanceOptimizer({
       if (!clusters || !Array.isArray(clusters)) {
         return [];
       }
+
+      console.log(
+        `🔍 Filtering ${clusters.length} clusters with filters:`,
+        filters
+      );
 
       const filtered = clusters
         .filter((cluster) => {
@@ -180,6 +196,9 @@ export function MapPerformanceOptimizer({
           } else {
             // For event clusters, check if the main event should be shown
             if (cluster.mainEvent && !shouldShowMarker(cluster.mainEvent)) {
+              console.log(
+                `🚫 Filtering out cluster with main event: ${cluster.mainEvent.name}`
+              );
               return false;
             }
 
@@ -189,6 +208,15 @@ export function MapPerformanceOptimizer({
             );
 
             // Only show cluster if it has at least one visible event
+            if (
+              filteredEvents.length === 0 &&
+              cluster.events &&
+              cluster.events.length > 0
+            ) {
+              console.log(
+                `🚫 Filtering out cluster with ${cluster.events.length} events (all filtered out)`
+              );
+            }
             return filteredEvents.length > 0;
           }
         })
@@ -208,7 +236,7 @@ export function MapPerformanceOptimizer({
 
       return filtered;
     },
-    [shouldShowMarker]
+    [shouldShowMarker, filters]
   );
 
   // CRITICAL FIX: SHOW ALL CLUSTERS IMMEDIATELY - NO VIEWPORT FILTERING
@@ -218,30 +246,45 @@ export function MapPerformanceOptimizer({
   }, []);
 
   // Memoize filtered clusters to prevent repeated filtering
-  const filteredClustersToday = useMemo(
-    () => filterClusters(clustersToday),
-    [clustersToday, filterClusters]
-  );
+  const filteredClustersToday = useMemo(() => {
+    const filtered = filterClusters(clustersToday);
+    console.log(
+      `🔍 Filtering clusters: ${clustersToday.length} → ${filtered.length} (Today)`
+    );
+    return filtered;
+  }, [clustersToday, filterClusters]);
 
-  const filteredClustersNow = useMemo(
-    () => filterClusters(clustersNow),
-    [clustersNow, filterClusters]
-  );
+  const filteredClustersNow = useMemo(() => {
+    const filtered = filterClusters(clustersNow);
+    console.log(
+      `🔍 Filtering clusters: ${clustersNow.length} → ${filtered.length} (Now)`
+    );
+    return filtered;
+  }, [clustersNow, filterClusters]);
 
-  const filteredClustersTomorrow = useMemo(
-    () => filterClusters(clustersTomorrow),
-    [clustersTomorrow, filterClusters]
-  );
+  const filteredClustersTomorrow = useMemo(() => {
+    const filtered = filterClusters(clustersTomorrow);
+    console.log(
+      `🔍 Filtering clusters: ${clustersTomorrow.length} → ${filtered.length} (Tomorrow)`
+    );
+    return filtered;
+  }, [clustersTomorrow, filterClusters]);
 
-  const filteredClusters = useMemo(
-    () => filterClusters(clusters),
-    [clusters, filterClusters]
-  );
+  const filteredClusters = useMemo(() => {
+    const filtered = filterClusters(clusters);
+    console.log(
+      `🔍 Filtering clusters: ${clusters.length} → ${filtered.length} (All)`
+    );
+    return filtered;
+  }, [clusters, filterClusters]);
 
-  const filteredClustersLocations = useMemo(
-    () => filterClusters(clustersLocations),
-    [clustersLocations, filterClusters]
-  );
+  const filteredClustersLocations = useMemo(() => {
+    const filtered = filterClusters(clustersLocations);
+    console.log(
+      `🔍 Filtering clusters: ${clustersLocations.length} → ${filtered.length} (Locations)`
+    );
+    return filtered;
+  }, [clustersLocations, filterClusters]);
 
   // Get visible clusters for each timeframe
   const visibleClustersToday = useMemo(

@@ -171,14 +171,10 @@ export default function Map() {
                           zoomLevel &&
                           typeof zoomLevel === "number" &&
                           state.setHideCount &&
-                          state.setCurrentZoomLevel &&
                           zoomLevel !== state.currentZoomLevel
                         ) {
                           state.setHideCount(zoomLevel <= 12);
-                          state.setCurrentZoomLevel(zoomLevel);
-                          console.log(
-                            `🗺️ [Map] Updated zoom level to: ${zoomLevel}`
-                          );
+                          // Don't update zoom level state to prevent rerenders
                         }
 
                         // Call the event handler
@@ -191,11 +187,7 @@ export default function Map() {
                         // Continue without crashing
                       }
                     },
-                    [
-                      state.setHideCount,
-                      state.setCurrentZoomLevel,
-                      eventHandlers,
-                    ]
+                    [state.setHideCount, eventHandlers]
                   );
 
                   // REMOVED: Timing logs to reduce noise
@@ -229,13 +221,7 @@ export default function Map() {
                         latitude: parseFloat(userlocation.latitude),
                         longitude: parseFloat(userlocation.longitude),
                       });
-                      // Force refresh data for new location
-                      if (state.forceRefresh) {
-                        console.log(
-                          "🗺️ [Map] Force refreshing data for orbit location"
-                        );
-                        state.forceRefresh();
-                      }
+                      // Don't refresh data - just center the map
                     } else if (
                       state.location?.latitude &&
                       state.location?.longitude
@@ -243,13 +229,7 @@ export default function Map() {
                       // User is in current mode - recenter to GPS location
                       console.log("🗺️ [Map] Recentering to GPS location");
                       eventHandlers.handleRecenter(state.location);
-                      // Force refresh data for new location
-                      if (state.forceRefresh) {
-                        console.log(
-                          "🗺️ [Map] Force refreshing data for GPS location"
-                        );
-                        state.forceRefresh();
-                      }
+                      // Don't refresh data - just center the map
                     } else {
                       // Fallback: get current location if no location available
                       console.log(

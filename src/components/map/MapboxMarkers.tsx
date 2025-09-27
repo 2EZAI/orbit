@@ -153,17 +153,32 @@ export function MapboxMarkers({
   const getMapboxMarkerData = useCallback(
     (clusters: UnifiedCluster[], prefix: string) => {
       // OLD BEHAVIOR: Each cluster is a single marker with count
-      return clusters.map((cluster, index) => ({
-        cluster,
-        index,
-        key: `${prefix}-${cluster.coordinate[0].toFixed(
-          3
-        )}-${cluster.coordinate[1].toFixed(3)}-${index}`,
-        coordinate: cluster.coordinate, // Already in [lng, lat] format
-        // Each cluster represents multiple events/locations
-        mainEvent: cluster.events?.[0] || cluster.locations?.[0],
-        count: (cluster.events?.length || 0) + (cluster.locations?.length || 0),
-      }));
+      return clusters.map((cluster, index) => {
+        // PRIORITIZE REGULAR EVENTS OVER TICKETMASTER
+        let mainEvent = cluster.events?.[0] || cluster.locations?.[0];
+
+        if (cluster.events && cluster.events.length > 0) {
+          // Find first non-Ticketmaster event
+          const regularEvent = cluster.events.find(
+            (e) => !(e as any).is_ticketmaster
+          );
+          if (regularEvent) {
+            mainEvent = regularEvent;
+          }
+        }
+
+        return {
+          cluster,
+          index,
+          key: `${prefix}-${cluster.coordinate[0].toFixed(
+            3
+          )}-${cluster.coordinate[1].toFixed(3)}-${index}`,
+          coordinate: cluster.coordinate, // Already in [lng, lat] format
+          mainEvent,
+          count:
+            (cluster.events?.length || 0) + (cluster.locations?.length || 0),
+        };
+      });
     },
     []
   );
@@ -347,18 +362,6 @@ export function MapboxMarkers({
     },
     [onClusterPress, selectedEvent]
   );
-
-  // OPTIMIZATION: Move console.log outside JSX to prevent re-renders
-  // Only log when rendering state actually changes
-  useEffect(() => {
-    if (allMarkerData.length > 0) {
-      console.log(
-        `[MapboxMarkers] Progressive rendering: ${visibleMarkers}/${
-          allMarkerData.length
-        } markers visible (${isRendering ? "rendering..." : "complete"})`
-      );
-    }
-  }, [visibleMarkers, allMarkerData.length, isRendering]);
 
   return (
     <>

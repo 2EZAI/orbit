@@ -110,6 +110,7 @@ export function useUnifiedMapData({
   // STATE
   // ============================================================================
 
+  // Simple data states - only nearby data
   const [events, setEvents] = useState<MapEvent[]>([]);
   const [locations, setLocations] = useState<MapLocation[]>([]);
   const [eventsNow, setEventsNow] = useState<MapEvent[]>([]);
@@ -138,6 +139,10 @@ export function useUnifiedMapData({
   const lastFetchTimeRef = useRef(0);
   const cachedEventsRef = useRef<MapEvent[]>([]);
   const cachedLocationsRef = useRef<MapLocation[]>([]);
+
+  // ============================================================================
+  // HELPER FUNCTIONS
+  // ============================================================================
 
   // ============================================================================
   // UTILITY FUNCTIONS
@@ -707,19 +712,38 @@ export function useUnifiedMapData({
           nearbyRequestData
         );
 
-        console.log(
-          `✅ NEARBY API: Received ${nearbyData.events?.length || 0} events, ${
-            nearbyData.locations?.length || 0
-          } locations`
+        // Detailed breakdown of initial data
+        const initialEvents = nearbyData.events || [];
+        const initialLocations = nearbyData.locations || [];
+        const initialTicketmasterEvents = initialEvents.filter(
+          (e) => e.is_ticketmaster === true
         );
-        console.log(
-          `🔍 NEARBY API: First few events:`,
-          nearbyData.events?.slice(0, 3).map((e) => ({
-            id: e.id,
-            name: e.name,
-            start_datetime: e.start_datetime,
-          }))
+        const initialRegularEvents = initialEvents.filter(
+          (e) => e.is_ticketmaster !== true
         );
+
+        console.log(
+          `✅ NEARBY API: Received ${initialEvents.length} events, ${initialLocations.length} locations`
+        );
+        console.log(`📊 INITIAL Event Breakdown:`);
+        console.log(
+          `   • Ticketmaster Events: ${initialTicketmasterEvents.length}`
+        );
+        console.log(`   • Regular Events: ${initialRegularEvents.length}`);
+        console.log(`   • Total Events: ${initialEvents.length}`);
+        console.log(`   • Total Locations: ${initialLocations.length}`);
+
+        // Log sample events
+        if (initialEvents.length > 0) {
+          console.log(`🔍 Sample Initial Events:`);
+          initialEvents.slice(0, 3).forEach((event, index) => {
+            console.log(
+              `   ${index + 1}. ${event.name} (${
+                event.is_ticketmaster ? "Ticketmaster" : "Regular"
+              })`
+            );
+          });
+        }
 
         // Process nearby data immediately
         let validEvents: MapEvent[] = [];
@@ -745,7 +769,7 @@ export function useUnifiedMapData({
 
         if (!isMountedRef.current) return;
 
-        // Update state with nearby data
+        // Update cache
         cachedEventsRef.current = validEvents || [];
         cachedLocationsRef.current = validLocations || [];
         lastFetchTimeRef.current = Date.now();
@@ -761,6 +785,7 @@ export function useUnifiedMapData({
           Math.min(validLocations.length, MAX_MARKERS - limitedEvents.length)
         );
 
+        // Show data immediately
         setEvents(limitedEvents);
         setLocations(limitedLocations);
 
@@ -842,7 +867,7 @@ export function useUnifiedMapData({
       if (!center || center[0] === 0 || center[1] === 0) return;
 
       console.log(
-        `🔄 USER-LOCATIONS API: Fetching ${timeframe} data on tab click`
+        `🔄 NEARBY API: Fetching ${timeframe} data on tab click (nearby only)`
       );
 
       try {
@@ -873,7 +898,7 @@ export function useUnifiedMapData({
           }
         }
 
-        // Prepare request data
+        // Prepare request data for nearby API only
         const requestData = {
           latitude:
             user?.event_location_preference == 1 &&
@@ -885,33 +910,54 @@ export function useUnifiedMapData({
             userLocation?.longitude != null
               ? parseFloat(String(userLocation.longitude))
               : center[0],
-          radius: radius || 500000,
           timeRange: timeframe,
           includeTicketmaster: true,
         };
 
-        const timeframeData = await mapDataService.getMapData(requestData);
+        // Use nearby API only (no nationwide)
+        const timeframeData = await mapDataService.getNearbyData(requestData);
+
+        // Detailed breakdown for timeframe data
+        const events = timeframeData.events || [];
+        const locations = timeframeData.locations || [];
+        const ticketmasterEvents = events.filter(
+          (e) => e.is_ticketmaster === true
+        );
+        const regularEvents = events.filter((e) => e.is_ticketmaster !== true);
 
         console.log(
-          `✅ USER-LOCATIONS API: Received ${
-            timeframeData.events?.length || 0
-          } events, ${
-            timeframeData.locations?.length || 0
-          } locations for ${timeframe}`
+          `✅ NEARBY API: Received ${events.length} events, ${locations.length} locations for ${timeframe}`
         );
+        console.log(`📊 ${timeframe.toUpperCase()} Event Breakdown:`);
+        console.log(`   • Ticketmaster Events: ${ticketmasterEvents.length}`);
+        console.log(`   • Regular Events: ${regularEvents.length}`);
+        console.log(`   • Total Events: ${events.length}`);
+        console.log(`   • Total Locations: ${locations.length}`);
+
+        // Log sample events for this timeframe
+        if (events.length > 0) {
+          console.log(`🔍 Sample ${timeframe} Events:`);
+          events.slice(0, 3).forEach((event, index) => {
+            console.log(
+              `   ${index + 1}. ${event.name} (${
+                event.is_ticketmaster ? "Ticketmaster" : "Regular"
+              })`
+            );
+          });
+        }
 
         if (!isMountedRef.current) return;
 
         // Process timeframe data
-        let timeframeValidEvents: MapEvent[] = [];
-        let timeframeValidLocations: MapLocation[] = [];
+        let validEvents: MapEvent[] = [];
+        let validLocations: MapLocation[] = [];
 
         try {
-          timeframeValidEvents = validateData(
+          validEvents = validateData(
             timeframeData.events || [],
             "event"
           ) as MapEvent[];
-          timeframeValidLocations = validateData(
+          validLocations = validateData(
             timeframeData.locations || [],
             "location"
           ) as MapLocation[];
@@ -920,59 +966,36 @@ export function useUnifiedMapData({
             `[UnifiedMapData] Error validating ${timeframe} data:`,
             error
           );
-          timeframeValidEvents = [];
-          timeframeValidLocations = [];
+          validEvents = [];
+          validLocations = [];
         }
 
-        // Merge with existing data
-        const mergedEvents = [
-          ...events,
-          ...timeframeValidEvents.filter(
-            (event) => !events.some((existing) => existing.id === event.id)
-          ),
-        ];
-        const mergedLocations = [
-          ...locations,
-          ...timeframeValidLocations.filter(
-            (location) =>
-              !locations.some((existing) => existing.id === location.id)
-          ),
-        ];
+        // Update cache and state
+        cachedEventsRef.current = validEvents;
+        cachedLocationsRef.current = validLocations;
 
-        // Update state with merged data
-        cachedEventsRef.current = mergedEvents;
-        cachedLocationsRef.current = mergedLocations;
-
-        setEvents(mergedEvents);
-        setLocations(mergedLocations);
+        setEvents(validEvents);
+        setLocations(validLocations);
 
         // Filter events by time
-        const mergedNowEvents = filterEventsByTime(mergedEvents || [], "today");
-        const mergedTodayEvents = filterEventsByTime(
-          mergedEvents || [],
-          "today"
-        );
-        const mergedTomorrowEvents = filterEventsByTime(
-          mergedEvents || [],
-          "weekend"
-        );
+        const nowEvents = filterEventsByTime(validEvents, "today");
+        const todayEvents = filterEventsByTime(validEvents, "today");
+        const tomorrowEvents = filterEventsByTime(validEvents, "weekend");
 
-        setEventsNow(mergedNowEvents);
-        setEventsToday(mergedTodayEvents);
-        setEventsTomorrow(mergedTomorrowEvents);
+        setEventsNow(nowEvents);
+        setEventsToday(todayEvents);
+        setEventsTomorrow(tomorrowEvents);
 
-        // Create clusters for merged data - use all events for initial display
+        // Create clusters
         await processClusters(
-          mergedEvents,
-          mergedLocations,
-          mergedEvents,
-          mergedEvents,
-          mergedEvents
+          validEvents,
+          validLocations,
+          validEvents,
+          validEvents,
+          validEvents
         );
 
-        console.log(
-          `✅ USER-LOCATIONS API: ${timeframe} data loaded and merged on tab click`
-        );
+        console.log(`✅ NEARBY API: ${timeframe} data loaded successfully`);
       } catch (error) {
         console.error(
           `[UnifiedMapData] Error loading ${timeframe} data:`,
@@ -981,15 +1004,7 @@ export function useUnifiedMapData({
         setError(error instanceof Error ? error.message : "An error occurred");
       }
     },
-    [
-      center,
-      radius,
-      session,
-      events,
-      locations,
-      validateData,
-      filterEventsByTime,
-    ]
+    [center, session, validateData, filterEventsByTime]
   );
 
   // ============================================================================
