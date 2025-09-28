@@ -512,7 +512,7 @@ export function MapStateManager({ children }: MapStateManagerProps) {
             searchName.toLowerCase().includes(l.name?.toLowerCase())
         );
       }
-
+      console.log("Location search result:", location, params);
       if (location) {
         setIsEvent(false);
         handleLocationClick(location);
@@ -535,11 +535,12 @@ export function MapStateManager({ children }: MapStateManagerProps) {
       eventName: event.name,
       eventType: event.categories?.[0]?.name || "Unknown",
     });
-    // Always update selected event, even if it's the same ID
-    console.log(event);
+
+    console.log(JSON.stringify(event, null, 2));
     setSelectedEvent(event);
     setShowDetails(false);
     setIsEvent(true);
+
     console.log(
       "🎯 [MapStateManager] selectedEvent state updated, UnifiedCard should show"
     );

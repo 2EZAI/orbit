@@ -370,7 +370,7 @@ export const UnifiedCard = React.memo(
           handleShowDetails();
           break;
         case "create":
-          if (treatAsEvent) {
+          if (detailData?.source === "user" && detailData?.join_status) {
             // For EVENTS: "Create Orbit" -> creates group chat
             handleCreateOrbit();
           } else {
@@ -496,11 +496,16 @@ export const UnifiedCard = React.memo(
     };
 
     const handleCreateEvent = () => {
-      if (treatAsEvent) return;
+      // console.log(
+      //   "Create Event clicked for location:",
+      //   detailData || data,
+      //   treatAsEvent
+      // );
+      // if (treatAsEvent) return;
 
       // For LOCATIONS: Navigate to create event page with location details prefilled
       const locationData = detailData || data;
-
+      console.log(locationData);
       // Simplify category to just essential info for URL params
       const simplifiedCategory = {
         id: (locationData as any).category?.id || "",
@@ -517,9 +522,10 @@ export const UnifiedCard = React.memo(
         params: {
           locationId: locationData.id,
           locationType: (locationData as any).type || "",
-          latitude: (locationData as any).location?.latitude?.toString() || "",
+          latitude:
+            (locationData as any).location?.coordinates?.[1]?.toString() || "",
           longitude:
-            (locationData as any).location?.longitude?.toString() || "",
+            (locationData as any).location?.coordinates?.[0]?.toString() || "",
           address: (locationData as any).address || "",
           categoryId: simplifiedCategory.id,
           categoryName: simplifiedCategory.name,
