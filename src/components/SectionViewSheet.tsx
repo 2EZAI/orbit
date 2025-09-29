@@ -9,6 +9,7 @@ import {
   Dimensions,
   Modal,
   SafeAreaView,
+  ActivityIndicator,
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { X, Search, MapPin, Clock, Users } from "lucide-react-native";
@@ -19,6 +20,7 @@ interface SectionViewSheetProps {
   isOpen: boolean;
   section: any;
   data: any[];
+  isLoading?: boolean;
   onClose: () => void;
   onItemSelect: (item: any) => void;
   theme: any;
@@ -28,6 +30,7 @@ export function SectionViewSheet({
   isOpen,
   section,
   data,
+  isLoading = false,
   onClose,
   onItemSelect,
   theme,
@@ -156,15 +159,24 @@ export function SectionViewSheet({
         </View>
 
         {/* Items List */}
-        <FlatList
-          data={filteredData}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContent}
-          columnWrapperStyle={styles.row}
-        />
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#8B5CF6" />
+            <Text style={[styles.loadingText, { color: theme.colors.text }]}>
+              Loading {section?.title || "items"}...
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredData}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.id}
+            numColumns={2}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+            columnWrapperStyle={styles.row}
+          />
+        )}
       </SafeAreaView>
     </Modal>
   );
@@ -301,5 +313,16 @@ const styles = StyleSheet.create({
   ticketmasterBadgeText: {
     fontSize: 10,
     fontWeight: "600",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: "500",
   },
 });

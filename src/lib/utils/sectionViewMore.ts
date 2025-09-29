@@ -17,6 +17,16 @@ function shuffleArray(array: any[]) {
 
 export async function handleSectionViewMore(section: any): Promise<any[]> {
   try {
+    if (!section) {
+      console.error("❌ Section is undefined or null");
+      return [];
+    }
+    
+    if (!section.key) {
+      console.error("❌ Section key is missing");
+      return [];
+    }
+    
     let allSectionData: any[] = [];
     const now = new Date();
 
@@ -25,20 +35,33 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
       const [eventsResponse, locationsResponse] = await Promise.all([
         supabase
           .from("events")
-          .select("*")
+          .select("id, name, start_datetime, address, image_urls, event_joins")
           .gte("start_datetime", now.toISOString())
-          .order("start_datetime", { ascending: true }),
-        supabase.from("static_locations").select("*"),
+          .order("start_datetime", { ascending: true })
+          .limit(50), // Limit to 50 events for performance
+        supabase
+          .from("static_locations")
+          .select("id, name, address, image_urls, location, category, type, operation_hours, rating")
+          .limit(50), // Limit to 50 locations for performance
       ]);
-      const events = (eventsResponse.data || []).map(transformEvent);
-      const locations = (locationsResponse.data || []).map(transformLocation);
+      
+      if (eventsResponse.error) {
+        console.error("❌ Events query error:", eventsResponse.error);
+      }
+      if (locationsResponse.error) {
+        console.error("❌ Locations query error:", locationsResponse.error);
+      }
+      
+      const events = (eventsResponse.data || []).map(transformEvent).filter(Boolean);
+      const locations = (locationsResponse.data || []).map(transformLocation).filter(Boolean);
       allSectionData = shuffleArray([...events, ...locations]);
     } else if (section.key === "popular-places") {
       // Get all locations
       const locationsResponse = await supabase
         .from("static_locations")
-        .select("*");
-      allSectionData = (locationsResponse.data || []).map(transformLocation);
+        .select("id, name, address, image_urls, location, category, type, operation_hours, rating")
+        .limit(100); // Limit for performance
+      allSectionData = (locationsResponse.data || []).map(transformLocation).filter(Boolean);
     } else if (section.key === "upcoming") {
       // Get all upcoming events (30 days)
       const eventsResponse = await supabase
@@ -46,7 +69,7 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         .select("*")
         .gte("start_datetime", now.toISOString())
         .order("start_datetime", { ascending: true });
-      const events = (eventsResponse.data || []).map(transformEvent);
+      const events = (eventsResponse.data || []).map(transformEvent).filter(Boolean);
       allSectionData = events.filter((event) => {
         if (event.is_ticketmaster) return false;
         const eventDate = new Date(event.start_datetime);
@@ -61,7 +84,7 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         .select("*")
         .gte("start_datetime", now.toISOString())
         .order("start_datetime", { ascending: true });
-      const events = (eventsResponse.data || []).map(transformEvent);
+      const events = (eventsResponse.data || []).map(transformEvent).filter(Boolean);
       allSectionData = events.filter((event) => {
         if (event.is_ticketmaster) return false;
         const eventDate = new Date(event.start_datetime);
@@ -77,7 +100,7 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
         .select("*")
         .gte("start_datetime", now.toISOString())
         .order("start_datetime", { ascending: true });
-      const events = (eventsResponse.data || []).map(transformEvent);
+      const events = (eventsResponse.data || []).map(transformEvent).filter(Boolean);
       const nextMonth = new Date();
       nextMonth.setMonth(nextMonth.getMonth() + 1);
       allSectionData = events.filter((event) => {
@@ -125,32 +148,32 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
     } else if (section.key === "nearby-locations") {
       // Get all locations
       const { data: rpcData } = await supabase.rpc("get_home_feed_data", {});
-      const locations = (rpcData?.locations || []).map(transformLocation);
+      const locations = (rpcData?.locations || []).map(transformLocation).filter(Boolean);
       allSectionData = locations.slice(0, 100) || [];
     } else if (section.key === "trending-locations") {
       // Get all locations
       const { data: rpcData } = await supabase.rpc("get_home_feed_data", {});
-      const locations = (rpcData?.locations || []).map(transformLocation);
+      const locations = (rpcData?.locations || []).map(transformLocation).filter(Boolean);
       allSectionData = locations.slice(0, 100) || [];
     } else if (section.key === "featured-locations") {
       // Get all locations
       const { data: rpcData } = await supabase.rpc("get_home_feed_data", {});
-      const locations = (rpcData?.locations || []).map(transformLocation);
+      const locations = (rpcData?.locations || []).map(transformLocation).filter(Boolean);
       allSectionData = locations.slice(0, 100) || [];
     } else if (section.key === "new-locations") {
       // Get all locations
       const { data: rpcData } = await supabase.rpc("get_home_feed_data", {});
-      const locations = (rpcData?.locations || []).map(transformLocation);
+      const locations = (rpcData?.locations || []).map(transformLocation).filter(Boolean);
       allSectionData = locations.slice(0, 100) || [];
     } else if (section.key === "hot-locations") {
       // Get all locations
       const { data: rpcData } = await supabase.rpc("get_home_feed_data", {});
-      const locations = (rpcData?.locations || []).map(transformLocation);
+      const locations = (rpcData?.locations || []).map(transformLocation).filter(Boolean);
       allSectionData = locations.slice(0, 100) || [];
     } else if (section.key === "local-locations") {
       // Get all locations
       const { data: rpcData } = await supabase.rpc("get_home_feed_data", {});
-      const locations = (rpcData?.locations || []).map(transformLocation);
+      const locations = (rpcData?.locations || []).map(transformLocation).filter(Boolean);
       allSectionData = locations.slice(0, 100) || [];
     } else if (section.key === "this-week") {
       // Get all events and filter for this week
@@ -511,8 +534,8 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
           .select("*")
           .eq("category_id", categoryId),
       ]);
-      const events = (eventsResponse.data || []).map(transformEvent);
-      const locations = (locationsResponse.data || []).map(transformLocation);
+      const events = (eventsResponse.data || []).map(transformEvent).filter(Boolean);
+      const locations = (locationsResponse.data || []).map(transformLocation).filter(Boolean);
       allSectionData = [...events, ...locations];
     } else if (section.key === "more") {
       // Get all remaining events and locations
@@ -524,30 +547,31 @@ export async function handleSectionViewMore(section: any): Promise<any[]> {
           .order("start_datetime", { ascending: true }),
         supabase.from("static_locations").select("*"),
       ]);
-      const events = (eventsResponse.data || []).map(transformEvent);
-      const locations = (locationsResponse.data || []).map(transformLocation);
+      const events = (eventsResponse.data || []).map(transformEvent).filter(Boolean);
+      const locations = (locationsResponse.data || []).map(transformLocation).filter(Boolean);
       allSectionData = shuffleArray([...events, ...locations]);
     } else {
       // For any other section, get all events and locations
       const [eventsResponse, locationsResponse] = await Promise.all([
         supabase
           .from("events")
-          .select("*")
+          .select("id, name, start_datetime, address, image_urls, event_joins")
           .gte("start_datetime", now.toISOString())
-          .order("start_datetime", { ascending: true }),
-        supabase.from("static_locations").select("*"),
+          .order("start_datetime", { ascending: true })
+          .limit(100),
+        supabase
+          .from("static_locations")
+          .select("id, name, address, image_urls, location, category, type, operation_hours, rating")
+          .limit(100),
       ]);
-      const events = (eventsResponse.data || []).map(transformEvent);
-      const locations = (locationsResponse.data || []).map(transformLocation);
+      const events = (eventsResponse.data || []).map(transformEvent).filter(Boolean);
+      const locations = (locationsResponse.data || []).map(transformLocation).filter(Boolean);
       allSectionData = shuffleArray([...events, ...locations]);
     }
 
-    console.log(
-      `🔍 See All: ${section.title} - Found ${allSectionData.length} total items`
-    );
     return allSectionData;
   } catch (error) {
-    console.error("Error fetching section data:", error);
+    console.error("❌ Error fetching section data:", error);
     return [];
   }
 }

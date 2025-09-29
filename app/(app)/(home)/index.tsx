@@ -366,6 +366,7 @@ export default function Home() {
 
   // Home feed data
   const { data, loading, error, refetch } = useHomeFeed();
+  
 
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const [isSelectedItemLocation, setIsSelectedItemLocation] = useState(false);
@@ -393,10 +394,12 @@ export default function Home() {
     isOpen: boolean;
     section: any | null;
     allSectionData: any[];
+    isLoading: boolean;
   }>({
     isOpen: false,
     section: null,
     allSectionData: [],
+    isLoading: false,
   });
 
   // Animation
@@ -417,13 +420,104 @@ export default function Home() {
     }
   }, [data.allContent]);
 
+  // Helper function to filter content based on section criteria
+  const filterContentBySection = (allContent: any[], section: any) => {
+    if (!section || !allContent) return [];
+    
+    const now = new Date();
+    let filtered = [...allContent];
+    
+    // Filter based on section type
+    if (section.sectionType === "events" || section.title.toLowerCase().includes("events")) {
+      filtered = filtered.filter(item => !item.isLocation);
+    } else if (section.sectionType === "locations" || section.title.toLowerCase().includes("places")) {
+      filtered = filtered.filter(item => item.isLocation);
+    }
+    
+    // Filter based on time criteria
+    if (section.title.toLowerCase().includes("this week")) {
+      const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      filtered = filtered.filter(item => {
+        if (item.isLocation) return true; // Locations don't have dates
+        if (!item.start_datetime) return false;
+        const itemDate = new Date(item.start_datetime);
+        return itemDate >= now && itemDate <= weekFromNow;
+      });
+    } else if (section.title.toLowerCase().includes("this month")) {
+      const monthFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      filtered = filtered.filter(item => {
+        if (item.isLocation) return true;
+        if (!item.start_datetime) return false;
+        const itemDate = new Date(item.start_datetime);
+        return itemDate >= now && itemDate <= monthFromNow;
+      });
+    }
+    
+    // Filter based on algorithm
+    if (section.algorithm === "popularity" || section.title.toLowerCase().includes("popular")) {
+      filtered = filtered.sort((a, b) => (b.attendees || 0) - (a.attendees || 0));
+    } else if (section.algorithm === "trending" || section.title.toLowerCase().includes("trending")) {
+      // Sort by recent events or popular items
+      filtered = filtered.sort((a, b) => {
+        if (a.start_datetime && b.start_datetime) {
+          return new Date(b.start_datetime).getTime() - new Date(a.start_datetime).getTime();
+        }
+        return (b.attendees || 0) - (a.attendees || 0);
+      });
+    }
+    
+    return filtered.slice(0, 100); // Limit to 100 items for performance
+  };
+
   const handleViewMore = async (section: any) => {
-    const allSectionData = await handleSectionViewMore(section);
+    if (!section) {
+      console.error("❌ Section is undefined or null");
+      return;
+    }
+    
+    // Show loading state immediately
     setSectionViewSheet({
       isOpen: true,
       section: section,
-      allSectionData: allSectionData,
+      allSectionData: [],
+      isLoading: true,
     });
+    
+    try {
+      // Use the existing data from the section instead of making new API calls
+      let allSectionData = [];
+      
+      if (section.data && section.data.length > 0) {
+        // Use the data that's already in the section
+        allSectionData = section.data;
+        console.log("✅ Section data loaded");
+      } else {
+        // If section has no data, try to get more data from the same source
+        allSectionData = await handleSectionViewMore(section);
+        console.log("✅ Section data fetched from API");
+      }
+      
+      // If we have data but want to show more, we can filter the existing allContent
+      if (allSectionData.length === 0 && data.allContent.length > 0) {
+        allSectionData = filterContentBySection(data.allContent, section);
+        console.log("✅ Section data filtered from content");
+      }
+      
+      setSectionViewSheet({
+        isOpen: true,
+        section: section,
+        allSectionData: allSectionData,
+        isLoading: false,
+      });
+    } catch (error) {
+      console.error("❌ Error loading section data:", error);
+      setSectionViewSheet({
+        isOpen: false,
+        section: null,
+        allSectionData: [],
+        isLoading: false,
+      });
+    }
   };
 
   // Get count for each quick filter
@@ -1438,11 +1532,13 @@ export default function Home() {
           isOpen={sectionViewSheet.isOpen}
           section={sectionViewSheet.section}
           data={sectionViewSheet.allSectionData}
+          isLoading={sectionViewSheet.isLoading}
           onClose={() =>
             setSectionViewSheet({
               isOpen: false,
               section: null,
               allSectionData: [],
+              isLoading: false,
             })
           }
           onItemSelect={(item: any) => {

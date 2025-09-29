@@ -16,7 +16,7 @@ export interface HomeFeedData {
 }
 
 export function useHomeFeed() {
-  const { user, userlocation } = useUser();
+  const { user, userlocation, loading: userLoading } = useUser();
   const [data, setData] = useState<HomeFeedData>({
     allContent: [],
     featuredEvents: [],
@@ -46,7 +46,6 @@ export function useHomeFeed() {
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
         };
-        console.log("Got current device location:", currentDeviceLocation);
       } catch (locationError) {
         console.log("Could not get user location:", locationError);
       }
@@ -79,7 +78,7 @@ export function useHomeFeed() {
 
       // Fetch main feed data from web backend
       const feedData = await feedService.getFeed(locationData);
-      console.log("Fetched feed data:", JSON.stringify(feedData, null, 2));
+      console.log("✅ Home feed data loaded");
       // Get topics from the database (for dynamic categories)
       const { data: topicsData } = await supabase.from("topics").select("*");
       const topics = topicsData || [];
@@ -93,7 +92,7 @@ export function useHomeFeed() {
       // Check if we got no content - then show error
       if (mobileFeedData.allContent.length === 0) {
         const hasLocationSetup = () => {
-          if (!user) return false;
+          if (!user) return true; // Anonymous users can use device location
           if (user.event_location_preference === 1) {
             return userlocation && userlocation.city && userlocation.state;
           }
@@ -168,6 +167,7 @@ export function useHomeFeed() {
         dynamicCategories: mobileFeedData.dynamicCategories,
       });
     } catch (err: any) {
+      console.error("❌ Error loading home feed:", err);
       setError(err?.message || "Error loading feed");
     } finally {
       setLoading(false);
@@ -177,35 +177,45 @@ export function useHomeFeed() {
   // Add debounced refresh to prevent rapid successive calls
   const debouncedRefresh = useCallback(
     debounce(() => {
-      if (user) {
-        const newCacheKey = `${user.id}-${user.event_location_preference}-${
-          userlocation?.city || "current"
-        }-${userlocation?.state || "location"}`;
+      // Create cache key based on user data (or default if no user)
+      const userId = user?.id || "anonymous";
+      const locationPreference = user?.event_location_preference || 0;
+      const newCacheKey = `${userId}-${locationPreference}-${
+        userlocation?.city || "current"
+      }-${userlocation?.state || "location"}`;
 
-        // Check if we have cached data that's still fresh (5 minutes)
-        const now = Date.now();
-        const cacheExpiry = 5 * 60 * 1000; // 5 minutes
-        const isCacheValid =
-          cacheKey === newCacheKey &&
-          now - lastFetchTime < cacheExpiry &&
-          data.allContent.length > 0;
+      // Check if we have cached data that's still fresh (5 minutes)
+      const now = Date.now();
+      const cacheExpiry = 5 * 60 * 1000; // 5 minutes
+      const isCacheValid =
+        cacheKey === newCacheKey &&
+        now - lastFetchTime < cacheExpiry &&
+        data.allContent.length > 0;
 
-        if (isCacheValid) {
-          console.log("📱 Using cached home feed data");
-          setLoading(false);
-          return;
-        }
-
-        console.log("🔄 Fetching fresh home feed data");
-        setCacheKey(newCacheKey);
-        setLastFetchTime(now);
-        fetchHomeFeedData();
+      // Log cache key change for debugging (only for authenticated users)
+      if (user && cacheKey !== newCacheKey) {
+        console.log("🔄 Cache key changed for user:", userId);
       }
+
+      if (isCacheValid) {
+        console.log("📱 Using cached home feed data");
+        setLoading(false);
+        return;
+      }
+
+      if (user) {
+        console.log("🔄 Loading fresh home feed data for authenticated user");
+      } else {
+        console.log("🔄 Loading fresh home feed data for anonymous user");
+      }
+      setCacheKey(newCacheKey);
+      setLastFetchTime(now);
+      fetchHomeFeedData();
     }, 500), // 500ms debounce
-    [user, userlocation, cacheKey, lastFetchTime, data.allContent.length]
+    [user, userlocation, userLoading, cacheKey, lastFetchTime, data.allContent.length]
   );
 
-  // Warm cache on app startup and fetch data when user is available
+  // Warm cache on app startup and fetch data when user or location changes
   useEffect(() => {
     debouncedRefresh();
   }, [user, userlocation]); // Re-fetch when user or location changes
