@@ -523,12 +523,12 @@ export default function LandingPage() {
   };
   // Redirect authenticated users to the app
   useEffect(() => {
+    checkIfFirstTime();
     if (!loading && session) {
       console.log("Landing page: User is authenticated, redirecting to app");
       router.replace("/(app)/(map)");
       return;
     }
-    checkIfFirstTime();
   }, [session, loading]);
 
   useEffect(() => {
