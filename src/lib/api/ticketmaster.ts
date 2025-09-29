@@ -99,15 +99,19 @@ export async function fetchAllEvents(options?: {
           ? parseFloat(userLocation.longitude)
           : currentDeviceLocation?.longitude != null
           ? currentDeviceLocation.longitude
-          : null,
+          : 25.7617, // Fallback to Miami
+      longitude:
+        providedLng != null
+          ? providedLng
+          : user?.event_location_preference === 1 &&
+            userLocation?.longitude != null
+          ? parseFloat(userLocation.longitude)
+          : currentDeviceLocation?.longitude != null
+          ? currentDeviceLocation.longitude
+          : -80.1918, // Fallback to Miami
     };
 
-    // Only proceed if we have valid coordinates
-    if (eventData.latitude == null || eventData.longitude == null) {
-      console.log("No valid coordinates available, returning empty events");
-      return [];
-    }
-
+    // We always have valid coordinates now (Miami fallback)
     console.log("Using coordinates for events:", eventData);
 
     const fetchPromise = fetch(
@@ -282,23 +286,18 @@ export async function fetchAllEventsUnlimited(options?: {
             ? parseFloat(userLocation.latitude)
             : currentDeviceLocation?.latitude != null
             ? currentDeviceLocation.latitude
-            : null,
+            : 25.7617, // Fallback to Miami
         longitude:
           user?.event_location_preference === 1 &&
           userLocation?.longitude != null
             ? parseFloat(userLocation.longitude)
             : currentDeviceLocation?.longitude != null
             ? currentDeviceLocation.longitude
-            : null,
+            : -80.1918, // Fallback to Miami
       };
     }
 
-    // Only proceed if we have valid coordinates
-    if (eventData.latitude == null || eventData.longitude == null) {
-      console.log("No valid coordinates available, returning empty events");
-      return [];
-    }
-
+    // We always have valid coordinates now (Miami fallback)
     console.log("Using coordinates for unlimited events:", eventData);
 
     // Use /all endpoint to get both Supabase AND Ticketmaster events

@@ -58,17 +58,28 @@ export function useHomeFeed() {
             ? parseFloat(userlocation.latitude)
             : currentDeviceLocation?.latitude != null
             ? currentDeviceLocation.latitude
-            : 33.4484, // Fallback to SF
+            : 25.7617, // Fallback to Miami
         longitude:
           user?.event_location_preference === 1 &&
           userlocation?.longitude != null
             ? parseFloat(userlocation.longitude)
             : currentDeviceLocation?.longitude != null
             ? currentDeviceLocation.longitude
-            : -112.074, // Fallback to SF
+            : -80.1918, // Fallback to Miami
         radius: 100000, // 100km radius (like web)
         limit: 10, // Results per section (like web)
       };
+
+      // Log location data being sent to API
+      console.log("📍 Location data for API:", {
+        userLoggedIn: !!user,
+        userLocationPreference: user?.event_location_preference,
+        usingUserLocation: user?.event_location_preference === 1 && userlocation?.latitude != null,
+        usingDeviceLocation: currentDeviceLocation?.latitude != null,
+        usingFallback: !currentDeviceLocation?.latitude && !(user?.event_location_preference === 1 && userlocation?.latitude != null),
+        coordinates: `${locationData.latitude}, ${locationData.longitude}`,
+        location: currentDeviceLocation ? 'device' : (user?.event_location_preference === 1 ? 'user_set' : 'miami_fallback')
+      });
 
       // Set auth token for feed service
       const session = await supabase.auth.getSession();

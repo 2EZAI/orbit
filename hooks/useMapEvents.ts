@@ -337,7 +337,7 @@ export function useMapEvents({
             ? parseFloat(userLocation.latitude)
             : center && center[0] && center[0] !== 0
             ? center[0]
-            : null, // Don't use hardcoded fallback
+            : 25.7617, // Fallback to Miami
         longitude:
           currentDeviceLocation?.longitude != null
             ? currentDeviceLocation.longitude
@@ -347,7 +347,7 @@ export function useMapEvents({
             ? parseFloat(userLocation.longitude)
             : center && center[1] && center[1] !== 0
             ? center[1]
-            : null, // Don't use hardcoded fallback
+            : -80.1918, // Fallback to Miami
         category:
           selectedCat != null
             ? selectedCat !== "All Events"
@@ -356,10 +356,8 @@ export function useMapEvents({
             : "",
       };
 
-      // Only proceed if we have valid coordinates
-      if (eventData.latitude == null || eventData.longitude == null) {
-        return [] as MapEvent[];
-      }
+      // We always have valid coordinates now (Miami fallback)
+      console.log("📍 Map events API coordinates:", `${eventData.latitude}, ${eventData.longitude}`);
 
       try {
         if (!session?.user?.id) {
