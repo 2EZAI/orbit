@@ -10,7 +10,7 @@ import { useTheme } from "../ThemeProvider";
 import { Text } from "../ui/text";
 import { Avatar } from "../ui/avatar";
 import { Phone, Video, Users, PhoneCall } from "lucide-react-native";
-import { useVideo } from "../../lib/video";
+import { useVideo, useVideoCallService } from "../../lib/video";
 
 interface ActiveCallBannerProps {
   channelId: string;
@@ -46,6 +46,7 @@ export default function ActiveCallBanner({
   const router = useRouter();
   const { theme } = useTheme();
   const { getActiveCalls } = useVideo();
+  const callService = useVideoCallService();
 
   const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
   const [loading, setLoading] = useState(false);
@@ -54,13 +55,23 @@ export default function ActiveCallBanner({
   useEffect(() => {
     const checkForActiveCalls = async () => {
       try {
-        setLoading(true);
+        // Only show loading on first check, not on subsequent polls
+        if (!activeCall) {
+          setLoading(true);
+        }
         const { active_calls } = await getActiveCalls();
 
         // Look for calls that match this channel
         const channelCall = active_calls?.find((call: ActiveCall) =>
           call.call_id.includes(`channel-call-${channelId}`)
         );
+
+        console.log("🔍 ActiveCallBanner check:", {
+          channelId,
+          activeCallsCount: active_calls?.length || 0,
+          foundCall: !!channelCall,
+          callId: channelCall?.call_id
+        });
 
         setActiveCall(channelCall || null);
       } catch (error) {
@@ -74,7 +85,7 @@ export default function ActiveCallBanner({
 
     checkForActiveCalls();
 
-    // Poll for updates every 10 seconds
+    // Poll for updates every 10 seconds (less frequent to reduce blinking)
     const interval = setInterval(checkForActiveCalls, 10000);
 
     return () => clearInterval(interval);
@@ -91,6 +102,27 @@ export default function ActiveCallBanner({
         create: "false", // Joining existing call
       },
     });
+  };
+
+  const handleClearCall = async () => {
+    if (!activeCall || !callService) return;
+    
+    try {
+      console.log("🧹 Manually clearing stale call:", activeCall.call_id);
+      
+      // Update the call status to ended
+      await callService.updateCallStatus(activeCall.call_id, "ended", {
+        reason: "manually_cleared",
+        participantCount: 0
+      });
+      
+      // Clear the local state
+      setActiveCall(null);
+      
+      console.log("✅ Stale call cleared");
+    } catch (error) {
+      console.error("❌ Failed to clear stale call:", error);
+    }
   };
 
   const formatDuration = (startTime: string): string => {
@@ -197,23 +229,42 @@ export default function ActiveCallBanner({
               </View>
             </View>
 
-            {/* Join Button */}
-            <TouchableOpacity
-              style={[
-                styles.joinButton,
-                { backgroundColor: theme.colors.primary },
-              ]}
-              onPress={handleJoinCall}
-            >
-              <Text
+            {/* Action Buttons */}
+            <View style={styles.actionButtons}>
+              <TouchableOpacity
                 style={[
-                  styles.joinButtonText,
-                  { color: theme.colors.background },
+                  styles.joinButton,
+                  { backgroundColor: theme.colors.primary },
                 ]}
+                onPress={handleJoinCall}
               >
-                Join
-              </Text>
-            </TouchableOpacity>
+                <Text
+                  style={[
+                    styles.joinButtonText,
+                    { color: theme.colors.background },
+                  ]}
+                >
+                  Join
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.clearButton,
+                  { borderColor: theme.colors.border },
+                ]}
+                onPress={handleClearCall}
+              >
+                <Text
+                  style={[
+                    styles.clearButtonText,
+                    { color: theme.colors.text },
+                  ]}
+                >
+                  Clear
+                </Text>
+              </TouchableOpacity>
+            </View>
           </>
         ) : null}
       </View>
@@ -294,6 +345,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginLeft: 4,
   },
+  actionButtons: {
+    flexDirection: "row",
+    gap: 8,
+  },
   joinButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -302,5 +357,16 @@ const styles = StyleSheet.create({
   joinButtonText: {
     fontSize: 14,
     fontWeight: "600",
+  },
+  clearButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: "center",
+  },
+  clearButtonText: {
+    fontSize: 12,
+    fontWeight: "500",
   },
 });

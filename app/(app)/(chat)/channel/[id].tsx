@@ -940,8 +940,7 @@ export default function ChannelScreen() {
         }}
       />
 
-      {/* Active Call Banner - HIDDEN during development */}
-      {/* 
+      {/* Active Call Banner */}
       {channel && (
         <ActiveCallBanner
           channelId={channel.id as string}
@@ -949,7 +948,6 @@ export default function ChannelScreen() {
           channelName={channel.data?.name}
         />
       )}
-      */}
 
       {loading ? (
         <View className="flex-1 justify-center items-center">

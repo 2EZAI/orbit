@@ -45,8 +45,6 @@ export default function AppLayout() {
           if (
             !session &&
             (currentRoute.name === "(create)" ||
-              currentRoute.name === "(chat)" ||
-              currentRoute.name === "(profile)" ||
               currentRoute.name === "(social)")
           ) {
             Toast.show({

@@ -325,6 +325,32 @@ export class VideoCallService {
       throw error;
     }
   }
+
+  /**
+   * Clean up stale calls (calls that are marked as active but should be ended)
+   */
+  async cleanupStaleCalls(): Promise<void> {
+    try {
+      console.log("🧹 Cleaning up stale calls...");
+      
+      const response = await fetch(`${BACKEND_CHAT_URL}/video/calls/cleanup`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.authToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        console.warn("Failed to cleanup stale calls:", response.status);
+      } else {
+        const result = await response.json();
+        console.log("✅ Stale calls cleaned up:", result);
+      }
+    } catch (error) {
+      console.error("Error cleaning up stale calls:", error);
+    }
+  }
 }
 
 /**

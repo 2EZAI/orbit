@@ -7,6 +7,7 @@ import {
 import { useAuth } from "./auth";
 import { supabase } from "./supabase";
 import Constants from "expo-constants";
+import { VideoCallService, createVideoCallService } from "./videoCallService";
 
 const STREAM_VIDEO_API_KEY = Constants.expoConfig?.extra?.streamApiKey;
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl;
@@ -24,6 +25,7 @@ if (!BACKEND_URL) {
 
 type VideoContextType = {
   videoClient: StreamVideoClient | null;
+  callService: VideoCallService | null;
   isConnecting: boolean;
   isConnected: boolean;
   connectionError: Error | null;
@@ -39,6 +41,7 @@ type VideoContextType = {
 
 const VideoContext = createContext<VideoContextType>({
   videoClient: null,
+  callService: null,
   isConnecting: false,
   isConnected: false,
   connectionError: null,
@@ -60,6 +63,7 @@ export function VideoProvider({ children }: { children: React.ReactNode }) {
   const [videoClient, setVideoClient] = useState<StreamVideoClient | null>(
     null
   );
+  const [callService, setCallService] = useState<VideoCallService | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<Error | null>(null);
@@ -94,6 +98,7 @@ export function VideoProvider({ children }: { children: React.ReactNode }) {
             console.error("Error disconnecting Stream Video client:", error);
           }
           setVideoClient(null);
+          setCallService(null);
           setIsConnected(false);
         }
         return;
@@ -156,6 +161,11 @@ export function VideoProvider({ children }: { children: React.ReactNode }) {
         });
 
         setVideoClient(currentClient);
+        
+        // Create call service instance
+        const service = createVideoCallService(currentClient, session.access_token);
+        setCallService(service);
+        
         setIsConnected(true);
         console.log("Video initialization complete");
       } catch (error) {
@@ -169,6 +179,7 @@ export function VideoProvider({ children }: { children: React.ReactNode }) {
         if (currentClient) {
           currentClient.disconnectUser();
         }
+        setCallService(null);
       } finally {
         setIsConnecting(false);
       }
@@ -182,6 +193,7 @@ export function VideoProvider({ children }: { children: React.ReactNode }) {
         console.log("Disconnecting Stream Video client...");
         currentClient.disconnectUser();
         setVideoClient(null);
+        setCallService(null);
         setIsConnected(false);
       }
     };
@@ -354,6 +366,7 @@ export function VideoProvider({ children }: { children: React.ReactNode }) {
     <VideoContext.Provider
       value={{
         videoClient,
+        callService,
         isConnecting,
         isConnected,
         connectionError,
@@ -370,4 +383,9 @@ export function VideoProvider({ children }: { children: React.ReactNode }) {
 
 export function useVideo() {
   return useContext(VideoContext);
+}
+
+export function useVideoCallService() {
+  const { callService } = useVideo();
+  return callService;
 }

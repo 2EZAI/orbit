@@ -190,9 +190,23 @@ export default function VideoCallScreen({
   useEffect(() => {
     if (call) {
       // Listen for call ended event
-      const unsubscribeEnded = call.on("call.ended", () => {
-      console.log("🎬 Call ended event received");
-      router.back();
+      const unsubscribeEnded = call.on("call.ended", async () => {
+        console.log("🎬 Call ended event received");
+        
+        // Update backend status to ended
+        if (callService && callId) {
+          try {
+            await callService.updateCallStatus(callId, "ended", { 
+              reason: "call_ended_event",
+              participantCount: 0 
+            });
+            console.log("✅ Call status updated to ended in backend");
+          } catch (error) {
+            console.error("❌ Failed to update call status:", error);
+          }
+        }
+        
+        router.back();
       });
 
       // Listen for participant changes to detect when call becomes empty
