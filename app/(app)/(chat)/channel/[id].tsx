@@ -480,6 +480,7 @@ export default function ChannelScreen() {
   const [searchResults, setSearchResults] = useState<Event[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [orbitMsg, setorbitMsg] = useState<any>(null);
+  const [isCreatingCall, setIsCreatingCall] = useState(false);
   const { videoClient } = useVideo();
 
   const handleInfoPress = useCallback(() => {
@@ -489,42 +490,98 @@ export default function ChannelScreen() {
     router.push(`/(app)/(chat)/channel/${channel.id}/settings`);
   }, [channel, router]);
 
-  const handleVideoCall = useCallback(() => {
+  const handleVideoCall = useCallback(async () => {
     if (!channel || !videoClient) {
       Alert.alert("Error", "Unable to start video call");
       return;
     }
 
-    // Generate a unique call ID based on channel ID
-    const callId = `channel-call-${channel.id}-${Date.now()}`;
+    try {
+      setIsCreatingCall(true);
+      
+      // Generate a unique call ID based on channel ID
+      const callId = `channel-call-${channel.id}-${Date.now()}`;
 
-    router.push({
-      pathname: "/call/[id]" as const,
-      params: {
-        id: callId,
-        type: "default",
-        create: "true",
-      },
-    });
+      console.log("🎥 Starting video call:", callId);
+
+      // Send notification message to channel members
+      try {
+        await channel.sendMessage({
+          text: "📹 Started a video call",
+          type: "system",
+          custom: {
+            callId,
+            callType: "default",
+            action: "call_started",
+          },
+        });
+        console.log("📢 Call notification sent to channel");
+      } catch (notificationError) {
+        console.warn("Failed to send call notification:", notificationError);
+        // Continue anyway - call should still work
+      }
+
+      router.push({
+        pathname: "/call/[id]" as const,
+        params: {
+          id: callId,
+          type: "default",
+          create: "true",
+        },
+      });
+    } catch (error) {
+      console.error("Error starting video call:", error);
+      Alert.alert("Error", "Failed to start video call");
+    } finally {
+      setIsCreatingCall(false);
+    }
   }, [channel, videoClient, router]);
 
-  const handleAudioCall = useCallback(() => {
+  const handleAudioCall = useCallback(async () => {
     if (!channel || !videoClient) {
       Alert.alert("Error", "Unable to start audio call");
       return;
     }
 
-    // Generate a unique call ID based on channel ID
-    const callId = `channel-call-${channel.id}-${Date.now()}`;
+    try {
+      setIsCreatingCall(true);
+      
+      // Generate a unique call ID based on channel ID
+      const callId = `channel-call-${channel.id}-${Date.now()}`;
 
-    router.push({
-      pathname: "/call/[id]" as const,
-      params: {
-        id: callId,
-        type: "audio_room",
-        create: "true",
-      },
-    });
+      console.log("📞 Starting audio call:", callId);
+
+      // Send notification message to channel members
+      try {
+        await channel.sendMessage({
+          text: "📞 Started an audio call",
+          type: "system",
+          custom: {
+            callId,
+            callType: "audio_room",
+            action: "call_started",
+          },
+        });
+        console.log("📢 Call notification sent to channel");
+      } catch (notificationError) {
+        console.warn("Failed to send call notification:", notificationError);
+        // Continue anyway - call should still work
+      }
+
+      router.push({
+        pathname: "/call/[id]" as const,
+        params: {
+          id: callId,
+          type: "audio_room",
+          create: "true",
+        },
+      });
+    } catch (error) {
+      console.error("Error starting audio call:", error);
+      Alert.alert("Error", "Failed to start audio call");
+    } finally {
+      setIsCreatingCall(false);
+    }
   }, [channel, videoClient, router]);
 
   useEffect(() => {
@@ -820,25 +877,31 @@ export default function ChannelScreen() {
           headerRight: () =>
             channel?.data?.name !== "Orbit App" ? (
               <View style={{ flexDirection: "row", paddingRight: 8, gap: 12 }}>
-                {/* Audio Call Button - HIDDEN during development */}
-                {/* 
+                {/* Audio Call Button */}
                 <TouchableOpacity
                   onPress={handleAudioCall}
                   style={{ padding: 4 }}
+                  disabled={isCreatingCall}
                 >
-                  <Phone size={20} color={theme.colors.text} strokeWidth={2} />
+                  {isCreatingCall ? (
+                    <ActivityIndicator size="small" color={theme.colors.text} />
+                  ) : (
+                    <Phone size={20} color={theme.colors.text} strokeWidth={2} />
+                  )}
                 </TouchableOpacity>
-                */}
 
-                {/* Video Call Button - HIDDEN during development */}
-                {/* 
+                {/* Video Call Button */}
                 <TouchableOpacity
                   onPress={handleVideoCall}
                   style={{ padding: 4 }}
+                  disabled={isCreatingCall}
                 >
-                  <Video size={20} color={theme.colors.text} strokeWidth={2} />
+                  {isCreatingCall ? (
+                    <ActivityIndicator size="small" color={theme.colors.text} />
+                  ) : (
+                    <Video size={20} color={theme.colors.text} strokeWidth={2} />
+                  )}
                 </TouchableOpacity>
-                */}
 
                 {/* Settings Button */}
                 <TouchableOpacity

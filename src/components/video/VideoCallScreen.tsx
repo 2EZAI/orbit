@@ -156,13 +156,53 @@ export default function VideoCallScreen({
   useEffect(() => {
     if (call) {
       // Listen for call ended event
-      const unsubscribe = call.on("call.ended", () => {
-        console.log("Call ended");
-        router.back();
+      const unsubscribeEnded = call.on("call.ended", () => {
+      console.log("🎬 Call ended event received");
+      router.back();
+      });
+
+      // Listen for participant changes to detect when call becomes empty
+      const unsubscribeJoined = call.on("call.session_participant_joined", (event) => {
+        console.log("👋 Participant joined:", event.participant.userId);
+      });
+
+      const unsubscribeLeft = call.on("call.session_participant_left", (event) => {
+        console.log("👋 Participant left:", event.participant.userId);
+        
+        // Check if call is now empty (only creator left or no participants)
+        setTimeout(async () => {
+          if (callService && callId) {
+            try {
+              const shouldEnd = await callService.shouldEndCall(call);
+              
+              if (shouldEnd) {
+                console.log("🏁 No active participants, ending call");
+                await callService.endEmptyCall(call, callId);
+                router.back();
+              }
+            } catch (error) {
+              console.error("Error checking/ending empty call:", error);
+            }
+          }
+        }, 1500); // Wait 1.5 seconds to ensure state is updated
+      });
+
+      // Listen for call state changes
+      const unsubscribeStateChange = call.on("call.state_changed", (event) => {
+        console.log("Call state changed:", event.state.callingState);
+        
+        // If call state is 'left', navigate back
+        if (event.state.callingState === "left") {
+          console.log("Call state is 'left', navigating back");
+          router.back();
+        }
       });
 
       return () => {
-        unsubscribe();
+        unsubscribeEnded();
+        unsubscribeJoined();
+        unsubscribeLeft();
+        unsubscribeStateChange();
       };
     }
   }, [call]);
@@ -172,23 +212,33 @@ export default function VideoCallScreen({
     return () => {
       if (call && callService && callId) {
         console.log("Cleaning up call on unmount:", callId);
+        
         // Check if call is still active before trying to leave
-        if (call.state.callingState !== "left") {
+        if (call.state.callingState !== "left" && call.state.callingState !== "ended") {
+          console.log("Leaving call on unmount, current state:", call.state.callingState);
+          
+          // Try to leave the call
           call.leave().catch((error) => {
             // Only log if it's not the "already left" error
-            if (!error.message?.includes("already been left")) {
+            if (!error.message?.includes("already been left") && 
+                !error.message?.includes("call has already ended")) {
               console.error("Error leaving call on unmount:", error);
             }
           });
         }
 
-        // Track leave for analytics
+        // Track leave for analytics (don't wait for it to complete)
         callService.trackLeave(callId).catch((error) => {
           console.error("Error tracking leave on unmount:", error);
         });
+        
+        // Update call status to ended in backend
+        callService.updateCallStatus(callId, "ended").catch((error) => {
+          console.error("Error updating call status on unmount:", error);
+        });
       }
     };
-  }, []);
+  }, [call, callService, callId]);
 
   // Loading state
   if (isLoading || isInitializing) {

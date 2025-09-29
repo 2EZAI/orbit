@@ -23,7 +23,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   return {
     ...config,
     name: "Orbit",
-    slug: "orbit",
+    slug: "orbit-social-app",
     scheme: "orbit",
     version: "1.0.0",
     orientation: "portrait",
@@ -37,7 +37,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       backendUrl,
       eas: {
         // projectId: "04abef5f-862b-4691-bded-b1014ac6dc90",
-        projectId: "6b459c07-abd5-4900-bf95-9ac72753d335",
+        projectId: "f0ecd39d-ce43-4269-acb5-3896f7c7c635",
       },
     },
     plugins: [
@@ -52,7 +52,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ],
     ios: {
       bundleIdentifier: "com.dovydmcnugget.orbit",
-      buildNumber: "1.0.1",
+      buildNumber: "11",
       supportsTablet: true,
       config: {
         usesNonExemptEncryption: false,

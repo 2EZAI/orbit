@@ -140,19 +140,32 @@ export class VideoCallService {
    */
   async updateCallStatus(
     callId: string,
-    status: "created" | "active" | "ended" | "cancelled"
+    status: "created" | "active" | "ended" | "cancelled",
+    metadata?: { participantCount?: number; reason?: string }
   ): Promise<void> {
     if (!this.authToken) return;
 
     try {
-      await fetch(`${BACKEND_CHAT_URL}/video/calls/${callId}/status`, {
+      const response = await fetch(`${BACKEND_CHAT_URL}/video/calls/${callId}/status`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${this.authToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ 
+          status,
+          metadata: {
+            ...metadata,
+            updatedAt: new Date().toISOString(),
+          }
+        }),
       });
+
+      if (!response.ok) {
+        console.warn(`Failed to update call status: ${response.status}`);
+      } else {
+        console.log(`Call status updated to ${status} for call ${callId}`);
+      }
     } catch (error) {
       console.error("Failed to update call status:", error);
       // Don't throw - this is for tracking only
@@ -268,6 +281,49 @@ export class VideoCallService {
    */
   static generateAudioCallId(): string {
     return `audio-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * Check if a call should be ended (no active participants)
+   */
+  async shouldEndCall(call: Call): Promise<boolean> {
+    try {
+      const participants = call.state.participants;
+      const activeParticipants = participants.filter(p => 
+        p.isSpeaking || p.isVideoEnabled || p.isAudioEnabled
+      );
+      
+      console.log(`Call ${call.id} has ${participants.length} participants, ${activeParticipants.length} active`);
+      
+      // If no active participants and only 1 or fewer total participants, end the call
+      return activeParticipants.length === 0 && participants.length <= 1;
+    } catch (error) {
+      console.error("Error checking if call should be ended:", error);
+      return false;
+    }
+  }
+
+  /**
+   * End an empty call and update backend status
+   */
+  async endEmptyCall(call: Call, callId: string): Promise<void> {
+    try {
+      console.log(`Ending empty call ${callId}`);
+      
+      // Update backend status first
+      await this.updateCallStatus(callId, "ended", { 
+        reason: "no_active_participants",
+        participantCount: 0 
+      });
+      
+      // End the call
+      await call.endCall();
+      
+      console.log(`Successfully ended empty call ${callId}`);
+    } catch (error) {
+      console.error(`Error ending empty call ${callId}:`, error);
+      throw error;
+    }
   }
 }
 
