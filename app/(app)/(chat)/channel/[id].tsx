@@ -496,6 +496,10 @@ export default function ChannelScreen() {
       return;
     }
 
+    if (isCreatingCall) {
+      return; // Prevent multiple calls
+    }
+
     try {
       setIsCreatingCall(true);
       
@@ -521,6 +525,7 @@ export default function ChannelScreen() {
         // Continue anyway - call should still work
       }
 
+      // Navigate immediately - don't wait for state cleanup
       router.push({
         pathname: "/call/[id]" as const,
         params: {
@@ -529,18 +534,26 @@ export default function ChannelScreen() {
           create: "true",
         },
       });
+      
+      // Reset state after navigation
+      setTimeout(() => {
+        setIsCreatingCall(false);
+      }, 1000);
     } catch (error) {
       console.error("Error starting video call:", error);
       Alert.alert("Error", "Failed to start video call");
-    } finally {
       setIsCreatingCall(false);
     }
-  }, [channel, videoClient, router]);
+  }, [channel, videoClient, router, isCreatingCall]);
 
   const handleAudioCall = useCallback(async () => {
     if (!channel || !videoClient) {
       Alert.alert("Error", "Unable to start audio call");
       return;
+    }
+
+    if (isCreatingCall) {
+      return; // Prevent multiple calls
     }
 
     try {
@@ -568,6 +581,7 @@ export default function ChannelScreen() {
         // Continue anyway - call should still work
       }
 
+      // Navigate immediately - don't wait for state cleanup
       router.push({
         pathname: "/call/[id]" as const,
         params: {
@@ -576,13 +590,17 @@ export default function ChannelScreen() {
           create: "true",
         },
       });
+      
+      // Reset state after navigation
+      setTimeout(() => {
+        setIsCreatingCall(false);
+      }, 1000);
     } catch (error) {
       console.error("Error starting audio call:", error);
       Alert.alert("Error", "Failed to start audio call");
-    } finally {
       setIsCreatingCall(false);
     }
-  }, [channel, videoClient, router]);
+  }, [channel, videoClient, router, isCreatingCall]);
 
   useEffect(() => {
     if (!client || !id || channelRef.current) {

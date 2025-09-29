@@ -6,8 +6,10 @@ import {
   SafeAreaView,
   TouchableOpacity,
   StyleSheet,
+  Platform,
 } from "react-native";
 import { router } from "expo-router";
+import Constants from "expo-constants";
 import {
   StreamVideo,
   StreamCall,
@@ -69,6 +71,10 @@ export default function VideoCallScreen({
       setIsLoading(true);
       setError(null);
 
+      // Check if running on simulator
+      const isSimulator = Constants.platform?.ios?.simulator || Constants.platform?.android?.emulator;
+      console.log("🔍 Running on simulator:", isSimulator);
+
       let callInstance: Call;
 
       if (isCreator) {
@@ -79,13 +85,13 @@ export default function VideoCallScreen({
           members: parsedMembers,
           settings: {
             video: {
-              enabled: callType !== "audio_room",
+              enabled: callType !== "audio_room" && !isSimulator, // Disable video on simulator
             },
             audio: {
               default_device: "speaker",
             },
             screensharing: {
-              enabled: callType !== "audio_room",
+              enabled: callType !== "audio_room" && !isSimulator, // Disable screenshare on simulator
             },
           },
         });
@@ -95,21 +101,38 @@ export default function VideoCallScreen({
         callInstance = await callService.joinCall(callId, callType);
       }
 
-      // Disable video for audio-only calls
-      if (callType === "audio_room") {
-        await callInstance.camera.disable();
+      // Disable video for audio-only calls or on simulator
+      if (callType === "audio_room" || isSimulator) {
+        try {
+          await callInstance.camera.disable();
+          console.log("📷 Camera disabled for", callType === "audio_room" ? "audio call" : "simulator");
+        } catch (cameraError) {
+          console.warn("Could not disable camera:", cameraError);
+          // Continue anyway - audio-only calls should work without camera
+        }
       }
 
       setCall(callInstance);
       console.log("Call initialized successfully");
     } catch (error) {
       console.error("Failed to initialize call:", error);
-      setError(
-        error instanceof Error ? error.message : "Failed to initialize call"
-      );
+      
+      // Handle specific error types
+      let errorMessage = "Failed to join the call. Please try again.";
+      if (error instanceof Error) {
+        if (error.message.includes("permission") || error.message.includes("Permission")) {
+          errorMessage = "Camera or microphone permission is required for calls. Please enable permissions in Settings.";
+        } else if (error.message.includes("No permission to publish")) {
+          errorMessage = "Camera permission is required for video calls. Please enable camera access in Settings.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      setError(errorMessage);
 
       // Show error and go back
-      Alert.alert("Call Error", "Failed to join the call. Please try again.", [
+      Alert.alert("Call Error", errorMessage, [
         {
           text: "OK",
           onPress: () => router.back(),
@@ -143,6 +166,17 @@ export default function VideoCallScreen({
       router.back();
     }
   }, [call, callService, callId]);
+
+  // Check if running on simulator (no permission requests needed)
+  useEffect(() => {
+    const isSimulator = Constants.platform?.ios?.simulator || Constants.platform?.android?.emulator;
+    console.log("🔍 Running on simulator:", isSimulator);
+    
+    if (isSimulator) {
+      console.log("📱 Simulator detected - skipping permission checks");
+      // On simulator, we'll handle permissions through Stream SDK
+    }
+  }, []);
 
   // Initialize call when ready
   useEffect(() => {
@@ -240,15 +274,26 @@ export default function VideoCallScreen({
     };
   }, [call, callService, callId]);
 
-  // Loading state
+
+  // Loading state - only show when actually loading
   if (isLoading || isInitializing) {
     return (
       <SafeAreaView className="flex-1 bg-background">
         <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
         <View className="flex-1 justify-center items-center">
-          <Text className="text-lg">
-            {isCreator ? "Starting call..." : "Joining call..."}
-          </Text>
+          <View className="items-center">
+            <View className="w-16 h-16 bg-primary rounded-full items-center justify-center mb-4">
+              <Text className="text-white text-2xl">
+                {callType === "audio_room" ? "📞" : "📹"}
+              </Text>
+            </View>
+            <Text className="text-lg font-semibold mb-2">
+              {isCreator ? "Starting call..." : "Joining call..."}
+            </Text>
+            <Text className="text-sm text-gray-500 dark:text-gray-400">
+              Please wait while we connect you
+            </Text>
+          </View>
         </View>
       </SafeAreaView>
     );
