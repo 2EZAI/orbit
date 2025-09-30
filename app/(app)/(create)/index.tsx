@@ -35,6 +35,8 @@ import ImagesSection from "~/src/components/createpost/ImagesSection";
 import LocationSection from "~/src/components/createpost/LocationSection";
 import DateTimeSection from "~/src/components/createpost/DateTimeSection";
 import AdditionalInfoSection from "~/src/components/createpost/AdditionalInfoSection";
+import CreateTicketSection from "~/src/components/createpost/CreateTicketSection";
+
 import StepIndicator from "~/src/components/createpost/StepIndicator";
 
 interface EventImage {
@@ -956,6 +958,14 @@ showsVerticalScrollIndicator={false}
             externalUrlTitle={externalTitle}
             setExternalUrlTitle={setExternalTitle}
           />
+
+          <CreateTicketSection
+            externalUrl={externalUrl}
+            setExternalUrl={setExternalUrl}
+            externalUrlTitle={externalTitle}
+            setExternalUrlTitle={setExternalTitle}
+          />
+          
         
 </View>
 </ScrollView>
