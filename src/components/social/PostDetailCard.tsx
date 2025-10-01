@@ -86,19 +86,37 @@ export function PostDetailCard({
 
   const renderComment = (comment: Comment) => (
     <View key={comment.id} className="flex-row p-4 border-b border-gray-100">
-      <UserAvatar
-        size={32}
-        user={{
-          id: comment.user.id,
-          name: comment.user.username || "Anonymous",
-          image: comment.user.avatar_url,
+      <TouchableOpacity
+        onPress={() => {
+          router.push({
+            pathname: "/(app)/profile/[username]",
+            params: { username: comment.user.id },
+          });
         }}
-      />
+      >
+        <UserAvatar
+          size={32}
+          user={{
+            id: comment.user.id,
+            name: comment.user.username || "Anonymous",
+            image: comment.user.avatar_url,
+          }}
+        />
+      </TouchableOpacity>
       <View className="flex-1 ml-3">
         <View className="flex-row items-center">
-          <Text className="text-sm font-semibold">
-            {comment.user.username || "Anonymous"}
-          </Text>
+          <TouchableOpacity
+            onPress={() => {
+              router.push({
+                pathname: "/(app)/profile/[username]",
+                params: { username: comment.user.id },
+              });
+            }}
+          >
+            <Text className="text-sm font-semibold">
+              {comment.user.username || "Anonymous"}
+            </Text>
+          </TouchableOpacity>
           <Text className="ml-2 text-sm text-gray-500">
             {format(new Date(comment.created_at), "MMM d")}
           </Text>

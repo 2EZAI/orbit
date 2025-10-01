@@ -56,6 +56,7 @@ interface Comment {
   content: string;
   created_at: string;
   user: {
+    id: string;
     username: string | null;
     avatar_url: string | null;
   };
@@ -239,6 +240,7 @@ export default function PostView() {
           `
           *,
           user:users!inner (
+            id,
             username,
             avatar_url
           )
@@ -664,30 +666,48 @@ console.log("error_catch>",e);
                   key={comment.id}
                   style={{ flexDirection: "row", marginBottom: 16 }}
                 >
-                  <Image
-                    source={
-                      comment.user.avatar_url
-                        ? { uri: comment.user.avatar_url }
-                        : require("~/assets/favicon.png")
-                    }
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 16,
-                      backgroundColor: theme.colors.border,
+                  <TouchableOpacity
+                    onPress={() => {
+                      router.push({
+                        pathname: "/(app)/profile/[username]",
+                        params: { username: comment.user.id },
+                      });
                     }}
-                  />
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text
+                  >
+                    <Image
+                      source={
+                        comment.user.avatar_url
+                          ? { uri: comment.user.avatar_url }
+                          : require("~/assets/favicon.png")
+                      }
                       style={{
-                        fontWeight: "500",
-                        color: theme.colors.text,
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        backgroundColor: theme.colors.border,
+                      }}
+                    />
+                  </TouchableOpacity>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        router.push({
+                          pathname: "/(app)/profile/[username]",
+                          params: { username: comment.user.id },
+                        });
                       }}
                     >
-                      {comment.user.username
-                        ? `@${comment.user.username}`
-                        : "User"}
-                    </Text>
+                      <Text
+                        style={{
+                          fontWeight: "500",
+                          color: theme.colors.text,
+                        }}
+                      >
+                        {comment.user.username
+                          ? `@${comment.user.username}`
+                          : "User"}
+                      </Text>
+                    </TouchableOpacity>
                     <Text style={{ color: theme.colors.text, marginTop: 2 }}>
                       {comment.content}
                     </Text>
