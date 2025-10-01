@@ -583,8 +583,8 @@ export function LocationPreferencesModal({
                     style={{ flex: 1 }}
                     styleURL={
                       isDarkMode
-                        ? MapboxGL.StyleURL.Dark
-                        : MapboxGL.StyleURL.Street
+                        ? "mapbox://styles/mapbox/dark-v11"
+                        : "mapbox://styles/mapbox/light-v11"
                     }
                     centerCoordinate={orbitLocation.coordinates}
                     zoomLevel={10}

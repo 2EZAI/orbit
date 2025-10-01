@@ -66,7 +66,9 @@ export function MapboxContainer({
         ref={mapRef}
         style={styles.map}
         styleURL={
-          isDarkMode ? MapboxGL.StyleURL.Dark : MapboxGL.StyleURL.Street
+          isDarkMode 
+            ? "mapbox://styles/mapbox/dark-v11" 
+            : "mapbox://styles/mapbox/light-v11"
         }
         onMapIdle={onRegionChange}
         onTouchStart={onMapTap}
