@@ -83,8 +83,8 @@ export default function Map() {
   }
 
   return (
-    <MapStateManager>
-      {(state) => (
+      <MapStateManager cameraRef={cameraRef}>
+        {(state) => (
         <MapEventHandlers>
           {(eventHandlers) => (
             <>

@@ -15,12 +15,12 @@ import {
   FilterState,
   generateDefaultFilters,
 } from "~/src/components/map/MarkerFilter";
-import { useMapCamera } from "~/src/hooks/useMapCamera";
 
 type TimeFrame = "Today" | "Week" | "Weekend";
 
 interface MapStateManagerProps {
   children: (state: MapState) => React.ReactNode;
+  cameraRef: React.RefObject<any>;
 }
 
 interface MapState {
@@ -92,11 +92,39 @@ interface MapState {
   forceRefresh: () => void;
 }
 
-export function MapStateManager({ children }: MapStateManagerProps) {
+export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
   const params = useLocalSearchParams();
   const { session } = useAuth();
   const { user, userlocation, updateUserLocations } = useUser();
-  const { cameraRef } = useMapCamera();
+
+  // Helper function to extract coordinates from location object
+  const getLocationCoordinates = (
+    location: any
+  ): { latitude: number; longitude: number } | null => {
+    if (!location) return null;
+
+    // Handle GeoJSON format (new API format)
+    if (
+      location.type === "Point" &&
+      location.coordinates &&
+      Array.isArray(location.coordinates)
+    ) {
+      const [longitude, latitude] = location.coordinates;
+      if (typeof latitude === "number" && typeof longitude === "number") {
+        return { latitude, longitude };
+      }
+    }
+
+    // Handle old format (fallback)
+    if (
+      typeof location.latitude === "number" &&
+      typeof location.longitude === "number"
+    ) {
+      return { latitude: location.latitude, longitude: location.longitude };
+    }
+
+    return null;
+  };
 
   // Core state
   const [selectedTimeFrame, setSelectedTimeFrame] =
@@ -601,14 +629,69 @@ export function MapStateManager({ children }: MapStateManagerProps) {
     setShowDetails(false);
     setIsEvent(true);
 
+    // Focus camera on the selected event
+    const coords = getLocationCoordinates(event.location);
+    console.log("🎯 [MapStateManager] Camera focus debug:", {
+      cameraRefExists: !!cameraRef.current,
+      eventLocation: event.location,
+      extractedCoords: coords,
+      eventName: event.name
+    });
+    
+    if (cameraRef.current && coords) {
+      console.log("🎯 [MapStateManager] Setting camera to coordinates:", coords);
+      
+      try {
+        cameraRef.current.setCamera({
+          centerCoordinate: [coords.longitude, coords.latitude],
+          zoomLevel: 16,
+          animationDuration: 800,
+          animationMode: "flyTo",
+        });
+        console.log("🎯 [MapStateManager] Camera focused on event:", event.name);
+      } catch (error) {
+        console.error("🎯 [MapStateManager] Camera focus error:", error);
+      }
+    } else {
+      console.log("🎯 [MapStateManager] Camera focus skipped - missing camera ref or coordinates");
+    }
+
     console.log(
       "🎯 [MapStateManager] selectedEvent state updated, UnifiedCard should show"
     );
-  }, []);
+  }, [cameraRef]);
 
   const handleLocationClick = useCallback(
     (location: MapLocation) => {
       setIsEvent(false);
+      
+      // Focus camera on the selected location
+      const coords = getLocationCoordinates(location.location);
+      console.log("🎯 [MapStateManager] Location camera focus debug:", {
+        cameraRefExists: !!cameraRef.current,
+        locationData: location.location,
+        extractedCoords: coords,
+        locationName: location.name
+      });
+      
+      if (cameraRef.current && coords) {
+        console.log("🎯 [MapStateManager] Setting camera to location coordinates:", coords);
+        
+        try {
+          cameraRef.current.setCamera({
+            centerCoordinate: [coords.longitude, coords.latitude],
+            zoomLevel: 16,
+            animationDuration: 800,
+            animationMode: "flyTo",
+          });
+          console.log("🎯 [MapStateManager] Camera focused on location:", location.name);
+        } catch (error) {
+          console.error("🎯 [MapStateManager] Location camera focus error:", error);
+        }
+      } else {
+        console.log("🎯 [MapStateManager] Location camera focus skipped - missing camera ref or coordinates");
+      }
+      
       const locationAsEvent = {
         ...location,
         start_datetime: new Date().toISOString(),
@@ -620,7 +703,7 @@ export function MapStateManager({ children }: MapStateManagerProps) {
 
       handleEventClick(locationAsEvent);
     },
-    [handleEventClick]
+    [handleEventClick, cameraRef]
   );
 
   const handleClusterPress = useCallback(
