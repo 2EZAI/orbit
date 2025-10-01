@@ -35,7 +35,7 @@ export function EventCard({ item, onPress }: EventCardProps) {
         <OptimizedImage
           uri={item.image_urls?.[0]}
           width={CARD_WIDTH}
-          height={160}
+          height={200}
           quality={85}
           thumbnail={true}
           lazy={true}
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   },
   eventImage: {
     width: "100%",
-    height: 160,
+    height: 200,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
@@ -160,8 +160,8 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   contentContainer: {
-    padding: 16,
-    paddingTop: 12,
+    padding: 10,
+    paddingTop: 6,
   },
   dateBadge: {
     flexDirection: "row",
@@ -180,14 +180,14 @@ const styles = StyleSheet.create({
   eventTitle: {
     fontSize: 16,
     fontWeight: "700",
-    lineHeight: 22,
-    marginBottom: 10,
-    minHeight: 44, // Ensures consistent height for 2 lines
+    lineHeight: 18,
+    marginBottom: 1,
+    minHeight: 36, // Further reduced height
   },
   locationContainer: {
     flexDirection: "row",
     alignItems: "flex-start",
-    marginBottom: 8,
+    marginBottom: 2,
   },
   locationText: {
     fontSize: 13,

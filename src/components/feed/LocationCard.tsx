@@ -35,7 +35,7 @@ export function LocationCard({ item, onPress }: LocationCardProps) {
         <OptimizedImage
           uri={item.image_urls?.[0]}
           width={140}
-          height={120}
+          height={160}
           quality={85}
           thumbnail={true}
           lazy={true}
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   },
   locationImage: {
     width: 140,
-    height: "100%",
+    height: 160,
     borderTopLeftRadius: 20,
     borderBottomLeftRadius: 20,
   },
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   },
   contentSection: {
     flex: 1,
-    padding: 16,
+    padding: 10,
     justifyContent: "space-between",
   },
   categoryBadge: {
@@ -189,14 +189,14 @@ const styles = StyleSheet.create({
   locationTitle: {
     fontSize: 16,
     fontWeight: "700",
-    lineHeight: 22,
-    marginBottom: 6,
+    lineHeight: 18,
+    marginBottom: 1,
   },
   locationSubtitle: {
     fontSize: 13,
     fontWeight: "500",
-    lineHeight: 18,
-    marginBottom: 12,
+    lineHeight: 15,
+    marginBottom: 6,
   },
   actionSection: {
     flexDirection: "row",
