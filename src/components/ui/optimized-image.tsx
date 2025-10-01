@@ -177,7 +177,11 @@ export function OptimizedImage({
       <View
         className={className}
         style={[
-          { width, height, backgroundColor: "rgba(139, 92, 246, 0.05)" },
+          { 
+            width: isNaN(width) ? 100 : width, 
+            height: isNaN(height) ? 100 : height, 
+            backgroundColor: "rgba(139, 92, 246, 0.05)" 
+          },
           style,
         ]}
       />
@@ -194,7 +198,10 @@ export function OptimizedImage({
             : FastImage.priority.high,
           cache: FastImage.cacheControl.immutable, // Most aggressive caching
         }}
-        style={{ width, height }}
+        style={{ 
+          width: isNaN(width) ? 100 : width, 
+          height: isNaN(height) ? 100 : height 
+        }}
         resizeMode={fastImageResizeMode}
         onError={handleImageError}
         onLoad={handleImageLoad}
