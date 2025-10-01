@@ -1,52 +1,43 @@
-import React, { useEffect,useCallback, useState, useRef } from "react";
-import {
-  View,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  RefreshControl,
-  Pressable,
-  Share,
-  Alert,
-  Animated,
-  StatusBar,
-  Platform,
-  Dimensions,
-} from "react-native";
-import { useFocusEffect } from '@react-navigation/native';
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Text } from "~/src/components/ui/text";
-import { useAuth } from "~/src/lib/auth";
-import { useUser } from "~/src/lib/UserProvider";
-import { useFollow } from "~/hooks/useFollow";
-import {
-  Settings,
-  ArrowLeft,
-  UserPlus,
-  UserMinus,
-  Share2,
-  MessageCircle,
-  Edit3,
-} from "lucide-react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
-import { Button } from "~/src/components/ui/button";
-import { UserAvatar } from "~/src/components/ui/user-avatar";
-import { RichText } from "~/src/components/ui/rich-text";
-import { useTheme } from "~/src/components/ThemeProvider";
-import { supabase } from "~/src/lib/supabase";
+import {
+  ArrowLeft,
+  MessageCircle,
+  Settings,
+  Share2,
+  UserMinus,
+  UserPlus,
+} from "lucide-react-native";
+import React, { useCallback, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Share,
+  StatusBar,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
+import { useFollow } from "~/hooks/useFollow";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { RichText } from "~/src/components/ui/rich-text";
+import { Text } from "~/src/components/ui/text";
+import { UserAvatar } from "~/src/components/ui/user-avatar";
+import { useAuth } from "~/src/lib/auth";
 import { useChat } from "~/src/lib/chat";
+import { supabase } from "~/src/lib/supabase";
+import { useUser } from "~/src/lib/UserProvider";
 
 // Import tab components
-import UnifiedPostsTab from "./UnifiedPostsTab";
 import UnifiedEventsTab from "./UnifiedEventsTab";
 import UnifiedInfoTab from "./UnifiedInfoTab";
+import UnifiedPostsTab from "./UnifiedPostsTab";
 
 type Tab = "Posts" | "Events" | "Info";
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-const HEADER_MAX_HEIGHT = 140;
-const HEADER_MIN_HEIGHT = 80;
 
 interface UserProfile {
   id: string;
@@ -98,15 +89,15 @@ export function UnifiedProfilePage({
   // }, []);
 
   useFocusEffect(
-  useCallback(() => {
-    if (targetUserId) {
-      loadProfile();
-    }
-    return () => {
-      console.log('Screen is unfocused');
-    };
-  }, [targetUserId])
-);
+    useCallback(() => {
+      if (targetUserId) {
+        loadProfile();
+      }
+      return () => {
+        console.log("Screen is unfocused");
+      };
+    }, [targetUserId])
+  );
 
   const loadProfile = async () => {
     if (!targetUserId) return;
@@ -527,6 +518,7 @@ export function UnifiedProfilePage({
           }}
         >
           {/* Profile Picture */}
+
           <View style={{ alignItems: "center", marginBottom: 16 }}>
             <UserAvatar
               size={100}
@@ -543,6 +535,7 @@ export function UnifiedProfilePage({
             <Text
               style={{
                 fontSize: 24,
+                lineHeight: 26,
                 fontWeight: "800",
                 color: theme.colors.text,
                 marginBottom: 4,
