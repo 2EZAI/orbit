@@ -110,7 +110,7 @@ export function HomeLoadingScreen({
 
   const contentStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
-    transform: [{ scale: scale.value }, { scale: pulseScale.value }],
+    transform: [{ scale: scale.value }],
   }));
 
   const loaderStyle = useAnimatedStyle(() => ({
@@ -228,6 +228,7 @@ export function HomeLoadingScreen({
             shadowRadius: 24,
             elevation: 12,
             width: SCREEN_WIDTH - 64,
+            minHeight: 280,
             alignSelf: "center",
           },
           contentStyle,
@@ -268,6 +269,7 @@ export function HomeLoadingScreen({
               color: theme.colors.text,
               marginBottom: 8,
               textAlign: "center",
+              width: "100%",
             },
           ]}
         >
@@ -282,6 +284,7 @@ export function HomeLoadingScreen({
               textAlign: "center",
               lineHeight: 20,
               paddingHorizontal: 16,
+              width: "100%",
             },
           ]}
         >
