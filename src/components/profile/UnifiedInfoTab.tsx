@@ -1,25 +1,26 @@
-import React, { useEffect, useState } from "react";
 import {
-  View,
-  ScrollView,
-  RefreshControl,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
-import { Text } from "~/src/components/ui/text";
-import { useTheme } from "~/src/components/ThemeProvider";
-import { useAuth } from "~/src/lib/auth";
-import { useUser } from "~/src/lib/UserProvider";
-import { supabase } from "~/src/lib/supabase";
-import {
-  MapPin,
-  Calendar,
-  Users,
   Briefcase,
+  Calendar,
   GraduationCap,
   Heart,
   Info,
+  MapPin,
+  Users,
 } from "lucide-react-native";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { Text } from "~/src/components/ui/text";
+import { useAuth } from "~/src/lib/auth";
+import { supabase } from "~/src/lib/supabase";
+import { useUser } from "~/src/lib/UserProvider";
+import InterestsSheet from "./IntrestsSheet";
 
 interface ProfileInfo {
   bio?: string;
@@ -65,7 +66,7 @@ export default function UnifiedInfoTab({
   const [profileInfo, setProfileInfo] = useState<ProfileInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
+  const [showInterestsSheet, setShowInterestsSheet] = useState(false);
   useEffect(() => {
     loadProfileInfo();
   }, [userId]);
@@ -81,8 +82,8 @@ export default function UnifiedInfoTab({
           education: currentUser.education || undefined,
           occupation: undefined, // Will be fetched from database if needed
           gender: currentUser.gender || undefined,
-          topics: Array.isArray(userTopicsList) 
-            ? userTopicsList.map(topic => ({
+          topics: Array.isArray(userTopicsList)
+            ? userTopicsList.map((topic) => ({
                 id: topic,
                 name: topic,
                 icon: undefined,
@@ -95,9 +96,18 @@ export default function UnifiedInfoTab({
           events_count: 0,
         };
 
-        console.log("🔍 [UnifiedInfoTab] Current user topics from UserProvider:", userTopicsList);
-        console.log("🔍 [UnifiedInfoTab] userTopicsList type:", typeof userTopicsList);
-        console.log("🔍 [UnifiedInfoTab] userTopicsList is array:", Array.isArray(userTopicsList));
+        console.log(
+          "🔍 [UnifiedInfoTab] Current user topics from UserProvider:",
+          userTopicsList
+        );
+        console.log(
+          "🔍 [UnifiedInfoTab] userTopicsList type:",
+          typeof userTopicsList
+        );
+        console.log(
+          "🔍 [UnifiedInfoTab] userTopicsList is array:",
+          Array.isArray(userTopicsList)
+        );
         setProfileInfo(currentUserProfileData);
       } else {
         // Fetch other user's profile info
@@ -146,7 +156,6 @@ export default function UnifiedInfoTab({
           .select("topic")
           .eq("user_id", userId);
 
-
         // Note: locationError and topicsError are expected if user has no data
 
         // Get counts
@@ -182,14 +191,16 @@ export default function UnifiedInfoTab({
           gender: userData.gender || undefined,
           hometown: userLocationData || undefined,
           topics:
-            userTopicsData?.map((ut: any) => {
-              console.log("🔍 [UnifiedInfoTab] Raw topic data:", ut);
-              return {
-                id: ut.topic, // Use topic text as ID for now
-                name: ut.topic,
-                icon: undefined, // No icon available from current schema
-              };
-            }).filter(topic => topic.name && topic.name.trim() !== "") || [],
+            userTopicsData
+              ?.map((ut: any) => {
+                console.log("🔍 [UnifiedInfoTab] Raw topic data:", ut);
+                return {
+                  id: ut.topic, // Use topic text as ID for now
+                  name: ut.topic,
+                  icon: undefined, // No icon available from current schema
+                };
+              })
+              .filter((topic) => topic.name && topic.name.trim() !== "") || [],
           member_since: userData.created_at,
           posts_count: postsCount || 0,
           followers_count: followersCount || 0,
@@ -322,6 +333,10 @@ export default function UnifiedInfoTab({
 
   // If no onScroll prop provided, render as regular view to avoid ScrollView nesting
   if (!onScroll) {
+    const handleViewAllInterests = () => {
+      // Handle view all interests action
+      setShowInterestsSheet(true);
+    };
     return (
       <View style={{ backgroundColor: theme.colors.card, paddingBottom: 20 }}>
         <View style={{ padding: 16 }}>
@@ -445,6 +460,7 @@ export default function UnifiedInfoTab({
               >
                 {profileInfo.topics
                   .filter((topic) => topic.name && topic.name.trim() !== "")
+                  .slice(0, 4)
                   .map((topic, index) => (
                     <View
                       key={topic.id || `topic-${index}`}
@@ -468,10 +484,38 @@ export default function UnifiedInfoTab({
                       </Text>
                     </View>
                   ))}
+                {profileInfo.topics.length > 4 && (
+                  <TouchableOpacity
+                    onPress={handleViewAllInterests}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      backgroundColor: theme.colors.primary + "20",
+                      borderRadius: 16,
+                      borderWidth: 1,
+                      borderColor: theme.colors.primary + "40",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: "500",
+                        color: theme.colors.primary,
+                        textDecorationLine: "underline",
+                      }}
+                    >
+                      View All
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           )}
-
+          <InterestsSheet
+            isOpen={showInterestsSheet}
+            onClose={() => setShowInterestsSheet(false)}
+            interests={profileInfo?.topics || []}
+          />
           {/* Empty State */}
           {!profileInfo?.bio &&
             !profileInfo?.location &&
