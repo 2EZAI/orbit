@@ -11,7 +11,7 @@ import {
   FlatList,
   Image,
 } from "react-native";
-import { useLocalSearchParams, useRouter, Stack } from "expo-router";
+import { useLocalSearchParams, useRouter, Stack, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useChat } from "~/src/lib/chat";
@@ -27,7 +27,6 @@ import {
   Shield,
   UserMinus,
   LogOut,
-  Ban,
   Volume2,
   VolumeX,
 } from "lucide-react-native";
@@ -54,34 +53,41 @@ export default function ChatSettingsScreen() {
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [newChannelName, setNewChannelName] = useState("");
 
+  const loadChannelData = async () => {
+    if (!client || !id) return;
+
+    try {
+      setLoading(true);
+      // Get the channel instance and refresh its data
+      const channelInstance = client.channel("messaging", id);
+      
+      // Query fresh member data to get updated count
+      const membersResponse = await channelInstance.queryMembers({});
+      
+      setChannel(channelInstance);
+      setNewChannelName(channelInstance.data?.name || "");
+      setIsMuted(channelInstance.muteStatus().muted);
+      
+      // Use fresh member data from the query
+      setMembers(membersResponse.members);
+    } catch (error) {
+      console.error("Error loading channel data:", error);
+      Alert.alert("Error", "Failed to load channel settings");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadChannelData = () => {
-      if (!client || !id) return;
-
-      try {
-        // Get the channel instance WITHOUT calling watch() (no API call)
-        const channelInstance = client.channel("messaging", id);
-
-        // Use the channel data that's already loaded from the main chat screen
-        setChannel(channelInstance);
-        setNewChannelName(channelInstance.data?.name || "");
-        setIsMuted(channelInstance.muteStatus().muted);
-
-        // Use existing member data from channel state (no API call)
-        const existingMembers = Object.values(
-          channelInstance.state.members || {}
-        );
-        setMembers(existingMembers);
-      } catch (error) {
-        console.error("Error loading channel data:", error);
-        Alert.alert("Error", "Failed to load channel settings");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadChannelData();
   }, [client, id]);
+
+  // Refresh data when screen comes into focus (e.g., returning from add members)
+  useFocusEffect(
+    React.useCallback(() => {
+      loadChannelData();
+    }, [client, id])
+  );
 
   const handleUpdateChannelName = async () => {
     if (!channel || !newChannelName.trim()) return;
@@ -214,35 +220,6 @@ export default function ChatSettingsScreen() {
     );
   };
 
-  const handleBanMember = async (memberId: string) => {
-    if (!channel) return;
-
-    Alert.alert(
-      "Ban Member",
-      "Are you sure you want to ban this member from the chat?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Ban",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await channel.banUser(memberId, {
-                reason: "Banned by admin",
-                timeout: 60 * 60 * 24, // 24 hours
-              });
-              const membersResponse = await channel.queryMembers({});
-              setMembers(membersResponse.members);
-              Alert.alert("Success", "Member banned successfully");
-            } catch (error) {
-              console.error("Error banning member:", error);
-              Alert.alert("Error", "Failed to ban member");
-            }
-          },
-        },
-      ]
-    );
-  };
 
   const getMemberDisplayName = (member: any) => {
     const user = member.user;
@@ -275,8 +252,9 @@ export default function ChatSettingsScreen() {
   const isCurrentUserAdmin = () => {
     if (!channel || !client?.userID) return false;
     const currentMember = members.find((m) => m.user_id === client.userID);
-    return currentMember?.role === "admin" || currentMember?.role === "owner";
+    return currentMember?.role === "admin" || currentMember?.role === "owner" || currentMember?.role === "moderator";
   };
+
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.card }}>
@@ -784,24 +762,16 @@ export default function ChatSettingsScreen() {
                     </Text>
                   </View>
 
-                  {isCurrentUserAdmin() && item.user_id !== client?.userID && (
-                    <View style={{ flexDirection: "row", gap: 8 }}>
-                      <TouchableOpacity
-                        onPress={() => handleBanMember(item.user_id)}
-                        style={{ padding: 8 }}
-                      >
-                        <Ban size={20} color={theme.colors.notification} />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => handleRemoveMember(item.user_id)}
-                        style={{ padding: 8 }}
-                      >
-                        <UserMinus
-                          size={20}
-                          color={theme.colors.notification}
-                        />
-                      </TouchableOpacity>
-                    </View>
+                  {item.user_id !== client?.userID && (
+                    <TouchableOpacity
+                      onPress={() => handleRemoveMember(item.user_id)}
+                      style={{ padding: 8 }}
+                    >
+                      <UserMinus
+                        size={20}
+                        color={theme.colors.notification}
+                      />
+                    </TouchableOpacity>
                   )}
                 </View>
               )}
