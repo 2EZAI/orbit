@@ -79,15 +79,6 @@ export function UnifiedProfilePage({
   const isCurrentUser = !userId || userId === session?.user?.id;
   const targetUserId = userId || session?.user?.id;
 
-  // useEffect(() => {
-  //   if (targetUserId) {
-  //     loadProfile();
-  //   }
-  // }, [targetUserId]);
-  //  useEffect(() => {
-  //   console.log("dfd");
-  // }, []);
-
   useFocusEffect(
     useCallback(() => {
       if (targetUserId) {
@@ -340,7 +331,7 @@ export function UnifiedProfilePage({
         const channel = client.channel("messaging", uniqueChannelId, {
           members: [currentUserId, otherUserId],
           name: getDisplayName(), // Use the other user's display name
-          created_by: currentUserId,
+          // created_by: currentUserId,
         });
 
         // Watch the channel (this creates it)
