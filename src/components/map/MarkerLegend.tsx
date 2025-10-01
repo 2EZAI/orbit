@@ -107,7 +107,7 @@ export function MarkerLegend({ isOpen, onClose }: MarkerLegendProps) {
             paddingBottom: 16,
           }}
         >
-          <View>
+          <View style={{ flex: 1, marginRight: 16 }}>
             <Text
               style={[
                 { fontSize: 20, fontWeight: "700", color: theme.colors.text },
