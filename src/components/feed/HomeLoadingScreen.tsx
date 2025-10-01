@@ -227,8 +227,8 @@ export function HomeLoadingScreen({
             shadowOpacity: isDarkMode ? 0.3 : 0.15,
             shadowRadius: 24,
             elevation: 12,
-            minWidth: 240,
-            maxWidth: SCREEN_WIDTH - 64,
+            width: SCREEN_WIDTH - 64,
+            alignSelf: "center",
           },
           contentStyle,
         ]}
