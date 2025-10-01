@@ -24,8 +24,8 @@ interface HomeLoadingScreenProps {
 
 export function HomeLoadingScreen({
   isVisible,
-  loadingText = "Discovering Amazing Events",
-  subtitle = "Finding the best events and experiences near you...",
+  loadingText = "Discovering Amazing Events And Activities",
+  subtitle = "Finding the best events, activities and experiences near you...",
 }: HomeLoadingScreenProps) {
   const { theme, isDarkMode } = useTheme();
 

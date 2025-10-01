@@ -1137,8 +1137,8 @@ export default function Home() {
         />
         <HomeLoadingScreen
           isVisible={loading}
-          loadingText="Discovering Amazing Events"
-          subtitle="Finding the best events and experiences in your area..."
+          loadingText = "Discovering Amazing Events and Activities"
+          subtitle = "Finding the best events, activities and experiences near you..."
         />
       </View>
     );
