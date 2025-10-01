@@ -464,7 +464,7 @@ const EventSearchItem = ({
 );
 
 // Custom MessageInput wrapper that handles sending messages with attachments
-function CustomMessageInputWrapper() {
+function CustomMessageInputWrapper({ onCommand }: { onCommand?: (command: string, args: string) => void }) {
   const { channel } = useChannelContext();
   const [isSending, setIsSending] = useState(false);
 
@@ -496,6 +496,7 @@ function CustomMessageInputWrapper() {
   return (
     <CustomMessageInput
       onSendMessage={handleSendMessage}
+      onCommand={onCommand}
       placeholder="Type a message..."
       disabled={isSending}
     />
@@ -669,6 +670,7 @@ export default function ChannelScreen() {
   // Handle command selection
   const handleCommand = useCallback(
     async (name: string, value?: string) => {
+      console.log("handleCommand called with:", { name, value });
       if (name === "event" && value) {
         setIsSearching(true);
         try {
@@ -955,7 +957,7 @@ export default function ChannelScreen() {
               ) : (
                 <>
                   <MessageList onThreadSelect={setThread} />
-                  <CustomMessageInputWrapper />
+                  <CustomMessageInputWrapper onCommand={handleCommand} />
                 </>
               )}
             </>

@@ -14,12 +14,14 @@ import { Text } from "../ui/text";
 
 interface CustomMessageInputProps {
   onSendMessage: (text: string, attachments?: any[]) => void;
+  onCommand?: (command: string, args: string) => void;
   placeholder?: string;
   disabled?: boolean;
 }
 
 export function CustomMessageInput({
   onSendMessage,
+  onCommand,
   placeholder = "Type a message...",
   disabled = false,
 }: CustomMessageInputProps) {
@@ -29,7 +31,28 @@ export function CustomMessageInput({
 
   const handleSend = () => {
     if (message.trim() || isUploading) {
-      onSendMessage(message.trim());
+      // Check for commands (e.g., /event search_term)
+      const trimmedMessage = message.trim();
+      console.log("CustomMessageInput: Message to send:", trimmedMessage);
+      
+      if (trimmedMessage.startsWith('/') && onCommand) {
+        const [command, ...args] = trimmedMessage.split(' ');
+        const argsString = args.join(' ');
+        console.log("CustomMessageInput: Command detected:", command.substring(1), "Args:", argsString);
+        console.log("CustomMessageInput: onCommand function exists:", !!onCommand);
+        onCommand(command.substring(1), argsString); // Remove the '/' from command
+        setMessage("");
+        return;
+      }
+      
+      // Debug: Check if it's a command but onCommand is not available
+      if (trimmedMessage.startsWith('/')) {
+        console.log("CustomMessageInput: Command detected but onCommand not available");
+      }
+      
+      // Regular message
+      console.log("CustomMessageInput: Sending regular message");
+      onSendMessage(trimmedMessage);
       setMessage("");
     }
   };
