@@ -25,10 +25,7 @@ export function HomeLoadingScreen({
     if (!isVisible) return;
 
     const interval = setInterval(() => {
-      setRotation((prev) => {
-        const newRotation = (prev + 10) % 360;
-        return isNaN(newRotation) ? 0 : newRotation;
-      });
+      setRotation((prev) => (prev + 10) % 360);
     }, 50);
 
     return () => clearInterval(interval);
@@ -125,7 +122,7 @@ export function HomeLoadingScreen({
         <View
           style={{
             marginBottom: 20,
-            transform: [{ rotate: `${isNaN(rotation) ? 0 : rotation}deg` }],
+            transform: [{ rotate: `${rotation}deg` }],
           }}
         >
           <Loader2 size={24} color={theme.colors.primary} strokeWidth={2.5} />

@@ -161,7 +161,7 @@ export const KeyboardAwareSheet: React.FC<KeyboardAwareSheetProps> = ({
 
   // Calculate dynamic heights based on keyboard presence
   const screenHeight = Dimensions.get("window").height;
-  const availableHeight = Math.max(0, screenHeight - keyboardHeight);
+  const availableHeight = screenHeight - keyboardHeight;
 
   // Auto-expand when keyboard is visible
   const isAutoExpanded = keyboardHeight > 0 || expanded;
@@ -183,7 +183,7 @@ export const KeyboardAwareSheet: React.FC<KeyboardAwareSheetProps> = ({
       minHeight: fullScreen
         ? "100%"
         : keyboardHeight > 0
-        ? Math.min(Math.max(0, availableHeight * 0.7), screenHeight * 0.6)
+        ? Math.min(availableHeight * 0.7, screenHeight * 0.6)
         : isAutoExpanded
         ? "75%"
         : "50%",
