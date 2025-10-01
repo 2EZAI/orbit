@@ -1,6 +1,5 @@
 import {
   Channel,
-  MessageInput,
   MessageList,
   Thread,
   MessageSimple,
@@ -38,6 +37,7 @@ import { ArrowLeft, Phone, Video } from "lucide-react-native";
 import { useVideo } from "~/src/lib/video";
 import ActiveCallBanner from "~/src/components/chat/ActiveCallBanner";
 import { useMessageContext } from "stream-chat-expo";
+import { CustomMessageInput } from "~/src/components/chat/CustomMessageInput";
 
 interface Event {
   id: string;
@@ -462,6 +462,45 @@ const EventSearchItem = ({
     </View>
   </TouchableOpacity>
 );
+
+// Custom MessageInput wrapper that handles sending messages with attachments
+function CustomMessageInputWrapper() {
+  const { channel } = useChannelContext();
+  const [isSending, setIsSending] = useState(false);
+
+  const handleSendMessage = async (text: string, attachments?: any[]) => {
+    if (!channel || isSending) return;
+
+    try {
+      setIsSending(true);
+      
+      const messageData: any = {};
+      
+      if (text.trim()) {
+        messageData.text = text.trim();
+      }
+      
+      if (attachments && attachments.length > 0) {
+        messageData.attachments = attachments;
+      }
+
+      await channel.sendMessage(messageData);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      Alert.alert("Error", "Failed to send message. Please try again.");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  return (
+    <CustomMessageInput
+      onSendMessage={handleSendMessage}
+      placeholder="Type a message..."
+      disabled={isSending}
+    />
+  );
+}
 
 export default function ChannelScreen() {
   const { session } = useAuth();
@@ -916,7 +955,7 @@ export default function ChannelScreen() {
               ) : (
                 <>
                   <MessageList onThreadSelect={setThread} />
-                  <MessageInput />
+                  <CustomMessageInputWrapper />
                 </>
               )}
             </>
