@@ -13,7 +13,7 @@ import {
   MessageCircle,
   PlusCircle,
   Map,
-  Send,
+  Newspaper,
 } from "lucide-react-native";
 import { usePathname, router, useSegments } from "expo-router";
 import { Icon } from "react-native-elements";
@@ -33,8 +33,8 @@ const TAB_ROUTES = [
   },
   {
     path: "/(app)/(social)",
-    icon: Send,
-    iconAndroid: "send",
+    icon: Newspaper,
+    iconAndroid: "newspaper",
     segment: "(social)",
   },
   {
