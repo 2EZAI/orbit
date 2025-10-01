@@ -34,7 +34,7 @@ interface InterestsModalProps {
 export function InterestsModal({ isOpen, onClose }: InterestsModalProps) {
   const { theme } = useTheme();
   const { session } = useAuth();
-  const { user, userTopicsList } = useUser();
+  const { user, userTopicsList, refreshUserTopics } = useUser();
 
   const [topics, setTopics] = useState<Topic[]>([]);
   const [filteredTopics, setFilteredTopics] = useState<Topic[]>([]);
@@ -136,6 +136,9 @@ export function InterestsModal({ isOpen, onClose }: InterestsModalProps) {
 
         if (insertError) throw insertError;
       }
+
+      // Refresh user topics after saving
+      await refreshUserTopics();
 
       Toast.show({
         type: "success",

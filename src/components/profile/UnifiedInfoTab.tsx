@@ -75,19 +75,30 @@ export default function UnifiedInfoTab({
     try {
       if (isCurrentUser && currentUser) {
         // Use current user data
-        setProfileInfo({
+        const currentUserProfileData = {
           bio: currentUser.bio || undefined,
           location: currentUser.location || undefined,
           education: currentUser.education || undefined,
           occupation: undefined, // Will be fetched from database if needed
           gender: currentUser.gender || undefined,
-          topics: Array.isArray(userTopicsList) ? userTopicsList : [],
+          topics: Array.isArray(userTopicsList) 
+            ? userTopicsList.map(topic => ({
+                id: topic,
+                name: topic,
+                icon: undefined,
+              }))
+            : [],
           member_since: currentUser.created_at,
           posts_count: 0, // Will be loaded by other components
           followers_count: 0,
           following_count: 0,
           events_count: 0,
-        });
+        };
+
+        console.log("🔍 [UnifiedInfoTab] Current user topics from UserProvider:", userTopicsList);
+        console.log("🔍 [UnifiedInfoTab] userTopicsList type:", typeof userTopicsList);
+        console.log("🔍 [UnifiedInfoTab] userTopicsList is array:", Array.isArray(userTopicsList));
+        setProfileInfo(currentUserProfileData);
       } else {
         // Fetch other user's profile info
         const { data: userData, error: userError } = await supabase
@@ -135,6 +146,7 @@ export default function UnifiedInfoTab({
           .select("topic")
           .eq("user_id", userId);
 
+
         // Note: locationError and topicsError are expected if user has no data
 
         // Get counts
@@ -162,7 +174,7 @@ export default function UnifiedInfoTab({
             .eq("user_id", userData.id),
         ]);
 
-        setProfileInfo({
+        const profileData = {
           bio: userData.bio || undefined,
           location: userData.location || undefined,
           education: userData.education || undefined,
@@ -170,17 +182,22 @@ export default function UnifiedInfoTab({
           gender: userData.gender || undefined,
           hometown: userLocationData || undefined,
           topics:
-            userTopicsData?.map((ut: any) => ({
-              id: ut.topic, // Use topic text as ID for now
-              name: ut.topic,
-              icon: undefined, // No icon available from current schema
-            })) || [],
+            userTopicsData?.map((ut: any) => {
+              console.log("🔍 [UnifiedInfoTab] Raw topic data:", ut);
+              return {
+                id: ut.topic, // Use topic text as ID for now
+                name: ut.topic,
+                icon: undefined, // No icon available from current schema
+              };
+            }).filter(topic => topic.name && topic.name.trim() !== "") || [],
           member_since: userData.created_at,
           posts_count: postsCount || 0,
           followers_count: followersCount || 0,
           following_count: followingCount || 0,
           events_count: eventsCount || 0,
-        });
+        };
+
+        setProfileInfo(profileData);
       }
     } catch (error) {
       console.error("Error loading profile info:", error);
@@ -426,29 +443,31 @@ export default function UnifiedInfoTab({
                   gap: 8,
                 }}
               >
-                {profileInfo.topics.map((topic) => (
-                  <View
-                    key={topic.id}
-                    style={{
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      backgroundColor: theme.colors.primary + "20",
-                      borderRadius: 16,
-                      borderWidth: 1,
-                      borderColor: theme.colors.primary + "40",
-                    }}
-                  >
-                    <Text
+                {profileInfo.topics
+                  .filter((topic) => topic.name && topic.name.trim() !== "")
+                  .map((topic, index) => (
+                    <View
+                      key={topic.id || `topic-${index}`}
                       style={{
-                        fontSize: 14,
-                        fontWeight: "500",
-                        color: theme.colors.primary,
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        backgroundColor: theme.colors.primary + "20",
+                        borderRadius: 16,
+                        borderWidth: 1,
+                        borderColor: theme.colors.primary + "40",
                       }}
                     >
-                      {topic.name}
-                    </Text>
-                  </View>
-                ))}
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          fontWeight: "500",
+                          color: theme.colors.primary,
+                        }}
+                      >
+                        {topic.name}
+                      </Text>
+                    </View>
+                  ))}
               </View>
             </View>
           )}
@@ -640,29 +659,31 @@ export default function UnifiedInfoTab({
                 gap: 8,
               }}
             >
-              {profileInfo.topics.map((topic) => (
-                <View
-                  key={topic.id}
-                  style={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    backgroundColor: theme.colors.primary + "20",
-                    borderRadius: 16,
-                    borderWidth: 1,
-                    borderColor: theme.colors.primary + "40",
-                  }}
-                >
-                  <Text
+              {profileInfo.topics
+                .filter((topic) => topic.name && topic.name.trim() !== "")
+                .map((topic, index) => (
+                  <View
+                    key={topic.id || `topic-${index}`}
                     style={{
-                      fontSize: 14,
-                      fontWeight: "500",
-                      color: theme.colors.primary,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      backgroundColor: theme.colors.primary + "20",
+                      borderRadius: 16,
+                      borderWidth: 1,
+                      borderColor: theme.colors.primary + "40",
                     }}
                   >
-                    {topic.name}
-                  </Text>
-                </View>
-              ))}
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: "500",
+                        color: theme.colors.primary,
+                      }}
+                    >
+                      {topic.name}
+                    </Text>
+                  </View>
+                ))}
             </View>
           </View>
         )}

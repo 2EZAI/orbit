@@ -55,12 +55,13 @@ export interface UseUserReturn {
   ) => Promise<
     { error: any; data?: undefined } | { data: null; error: any | null }
   >;
-  userTopicsList: string | null;
-  otherUserTopicsList: string | null;
+  userTopicsList: string[] | null;
+  otherUserTopicsList: string[] | null;
   fetchOherUserTopics: (userId: string) => Promise<any[] | undefined>;
   fetchOtherUserHomeTownLocation: (userId: string) => Promise<void>;
   fetchOtherUser: (userId: string) => Promise<void>;
   fetchUserLocation: () => Promise<void>;
+  refreshUserTopics: () => Promise<void>;
 }
 
 export function useUserData(): UseUserReturn {
@@ -214,11 +215,12 @@ export function useUserData(): UseUserReturn {
       if (error) throw error;
 
       const topics = data?.map((item) => item.topic) || [];
-      if (topics.length > 0) {
-        setUserTopicsList(topics);
-      }
-      // Example: setUserTopics(data); if you're storing it in state
-    } catch (error) {}
+      setUserTopicsList(topics); // Always set the list, even if empty
+      console.log("🔍 [useUserData] Fetched user topics:", topics);
+    } catch (error) {
+      console.error("Error fetching user topics:", error);
+      setUserTopicsList([]); // Set empty array on error
+    }
   };
 
   // Fetch OtherUser data
@@ -577,6 +579,7 @@ export function useUserData(): UseUserReturn {
     fetchOtherUserHomeTownLocation,
     fetchOtherUser,
     fetchUserLocation, // Export fetchUserLocation for immediate refreshes
+    refreshUserTopics: fetchUserTopics, // Export fetchUserTopics as refreshUserTopics
     getUserData,
   };
 }
