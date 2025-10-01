@@ -485,19 +485,53 @@ export function MapStateManager({ children }: MapStateManagerProps) {
 
   // Handle route params for showing event/location cards
   useEffect(() => {
+    console.log("🗺️ [MapStateManager] Checking params:", params);
+    
     if (params.eventId) {
-      const event =
+      console.log("🗺️ [MapStateManager] Looking for event with ID:", params.eventId);
+      let event =
         eventsNow.find((e: MapEvent) => e.id === params.eventId) ||
         eventsToday.find((e: MapEvent) => e.id === params.eventId) ||
         eventsTomorrow.find((e: MapEvent) => e.id === params.eventId);
 
+      console.log("🗺️ [MapStateManager] Event found:", event ? event.name : "NOT FOUND");
+      
+      // If not found, create event object from params (for external events or events not in current timeframe)
+      if (!event && params.name && params.latitude && params.longitude) {
+        console.log("🗺️ [MapStateManager] Creating event from params (external or out of timeframe)");
+        const lat = parseFloat(Array.isArray(params.latitude) ? params.latitude[0] : params.latitude);
+        const lng = parseFloat(Array.isArray(params.longitude) ? params.longitude[0] : params.longitude);
+        
+        event = {
+          id: Array.isArray(params.eventId) ? params.eventId[0] : params.eventId,
+          name: Array.isArray(params.name) ? params.name[0] : params.name,
+          description: params.description ? (Array.isArray(params.description) ? params.description[0] : params.description) : "",
+          venue_name: params.venue_name ? (Array.isArray(params.venue_name) ? params.venue_name[0] : params.venue_name) : "",
+          type: params.type ? (Array.isArray(params.type) ? params.type[0] : params.type) : "event",
+          is_ticketmaster: params.source === "ticketmaster",
+          start_datetime: new Date().toISOString(), // Default to now to avoid invalid date errors
+          end_datetime: new Date(Date.now() + 3600000).toISOString(), // Default to 1 hour from now
+          location: {
+            type: "Point",
+            coordinates: [lng, lat]
+          },
+          coordinates: {
+            latitude: lat,
+            longitude: lng
+          }
+        } as MapEvent;
+      }
+      
       if (event) {
+        console.log("🗺️ [MapStateManager] Setting event and showing details");
         setIsEvent(true);
         setSelectedEvent(event);
+        setShowDetails(true);
       }
     }
 
     if (params.locationId) {
+      console.log("🗺️ [MapStateManager] Looking for location with ID:", params.locationId);
       let location = locations.find(
         (l: MapLocation) => l.id === params.locationId
       );
@@ -506,14 +540,40 @@ export function MapStateManager({ children }: MapStateManagerProps) {
         const searchName = Array.isArray(params.name)
           ? params.name[0]
           : params.name;
+        console.log("🗺️ [MapStateManager] Searching by name:", searchName);
         location = locations.find(
           (l: MapLocation) =>
             l.name?.toLowerCase().includes(searchName.toLowerCase()) ||
             searchName.toLowerCase().includes(l.name?.toLowerCase())
         );
       }
-      console.log("Location search result:", location, params);
+      
+      // If still not found, create a location object from params (for external locations like Google Places)
+      if (!location && params.latitude && params.longitude && params.name) {
+        console.log("🗺️ [MapStateManager] Creating location from params (external source)");
+        const lat = parseFloat(Array.isArray(params.latitude) ? params.latitude[0] : params.latitude);
+        const lng = parseFloat(Array.isArray(params.longitude) ? params.longitude[0] : params.longitude);
+        
+        location = {
+          id: Array.isArray(params.locationId) ? params.locationId[0] : params.locationId,
+          name: Array.isArray(params.name) ? params.name[0] : params.name,
+          description: params.description ? (Array.isArray(params.description) ? params.description[0] : params.description) : "",
+          type: params.type ? (Array.isArray(params.type) ? params.type[0] : params.type) : "location",
+          address: params.address ? (Array.isArray(params.address) ? params.address[0] : params.address) : "",
+          location: {
+            type: "Point",
+            coordinates: [lng, lat]
+          },
+          coordinates: {
+            latitude: lat,
+            longitude: lng
+          }
+        } as MapLocation;
+      }
+      
+      console.log("🗺️ [MapStateManager] Location found:", location ? location.name : "NOT FOUND", params);
       if (location) {
+        console.log("🗺️ [MapStateManager] Calling handleLocationClick");
         setIsEvent(false);
         handleLocationClick(location);
       }

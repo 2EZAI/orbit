@@ -131,6 +131,8 @@ export function SearchSheet({
     result: UserResult | EventResult | LocationResult,
     type: "user" | "event" | "location"
   ) => {
+    console.log("🔍 [SearchSheet] handleSelectResult called:", { type, result });
+
     // Call controller first if it exists
     if (onShowControler && typeof onShowControler === "function") {
       try {
@@ -144,13 +146,19 @@ export function SearchSheet({
 
     switch (type) {
       case "user":
+        console.log("🔍 [SearchSheet] Navigating to user profile:", result.id);
         router.push(`/(app)/profile/${result.id}`);
         break;
       case "event":
         const event = result as EventResult;
-          router.push({
-            pathname: "/(app)/(map)",
-            params: {
+        console.log("🔍 [SearchSheet] Navigating to event:", {
+          eventId: event.id,
+          name: event.name,
+          coordinates: event.location?.coordinates,
+        });
+        router.push({
+          pathname: "/(app)/(map)",
+          params: {
             eventId: event.id,
             source: event.is_ticketmaster ? "ticketmaster" : "supabase",
             latitude: event.location?.coordinates?.[1],
@@ -159,8 +167,8 @@ export function SearchSheet({
             venue_name: event.venue_name || "",
             description: event.description || "",
             type: event.type || "event",
-            },
-          });
+          },
+        });
         break;
       case "location":
         const location = result as LocationResult;
