@@ -4,7 +4,7 @@ import {
   ArrowLeft,
   MessageCircle,
   Settings,
-  Share2,
+  Send,
   UserMinus,
   UserPlus,
 } from "lucide-react-native";
@@ -789,7 +789,7 @@ export function UnifiedProfilePage({
                   borderColor: theme.colors.border,
                 }}
               >
-                <Share2 size={18} color={theme.colors.text} strokeWidth={2.5} />
+                <Send size={18} color={theme.colors.text} strokeWidth={2.5} />
               </TouchableOpacity>
             </View>
           )}

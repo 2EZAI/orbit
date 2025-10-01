@@ -24,7 +24,7 @@ import {
   MoreHorizontal,
   ArrowLeft,
   MapPin,
-  Share2,
+  Send,
   Users,
 } from "lucide-react-native";
 import { format } from "date-fns";

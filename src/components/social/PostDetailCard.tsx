@@ -16,11 +16,10 @@ import { Icon } from "react-native-elements";
 import {
   Heart,
   MessageCircle,
-  Share2,
+  Send,
   MapPin,
   Users,
   ArrowLeft,
-  Send,
 } from "lucide-react-native";
 import { router } from "expo-router";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
@@ -276,7 +275,7 @@ export function PostDetailCard({
                 </View>
 
                 <TouchableOpacity className="flex-row items-center">
-                  <Share2 size={24} color="#666" />
+                  <Send size={24} color="#666" />
                 </TouchableOpacity>
               </View>
             </View>

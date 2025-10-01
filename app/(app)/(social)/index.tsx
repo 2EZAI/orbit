@@ -20,7 +20,7 @@ import { Icon } from "react-native-elements";
 import {
   Heart,
   MessageCircle,
-  Share2,
+  Send,
   MapPin,
   MoreHorizontal,
   Bell,
@@ -477,7 +477,7 @@ export default function SocialFeed() {
               </TouchableOpacity>
 
               <TouchableOpacity className="flex-row items-center">
-                <Share2 size={20} color={isDarkMode ? "#9CA3AF" : "#6B7280"} />
+                <Send size={20} color={isDarkMode ? "#9CA3AF" : "#6B7280"} />
               </TouchableOpacity>
             </View>
           </View>
