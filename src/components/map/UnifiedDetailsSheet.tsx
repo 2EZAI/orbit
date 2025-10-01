@@ -1,20 +1,46 @@
-import React, { useCallback, useEffect, useState, useMemo } from "react";
+import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import { format } from "date-fns";
+import { router } from "expo-router";
 import {
-  View,
-  ScrollView,
-  Image,
-  TouchableOpacity,
-  Dimensions,
-  Share,
+  ArrowLeft,
+  Calendar,
+  ChevronRight,
+  Clock,
+  DollarSign,
+  MapPin,
+  Navigation,
+  Phone,
+  Shuffle,
+  Sparkles,
+  Star,
+  Tag,
+  TrendingUp,
+  UserCheck,
+  Users,
+  X,
+} from "lucide-react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import {
   ActivityIndicator,
   DeviceEventEmitter,
-  Modal,
+  Dimensions,
+  Image,
   Linking,
+  Modal,
   PanResponder,
+  ScrollView,
+  Share,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Text } from "~/src/components/ui/text";
-import { OptimizedImage } from "~/src/components/ui/optimized-image";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useLocationEvents } from "~/hooks/useLocationEvents";
 import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
+import { useUpdateEvents } from "~/hooks/useUpdateEvents";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { OptimizedImage } from "~/src/components/ui/optimized-image";
+import { Text } from "~/src/components/ui/text";
+import { UserAvatar } from "~/src/components/ui/user-avatar";
 
 // Additional types that were in the old hook
 export interface Category {
@@ -28,34 +54,6 @@ export interface Prompt {
   name: string;
   created_at: string;
 }
-import { router } from "expo-router";
-import {
-  Share2,
-  MapPin,
-  Calendar,
-  ArrowLeft,
-  Heart,
-  Users,
-  Navigation,
-  X,
-  ChevronRight,
-  Tag,
-  Sparkles,
-  TrendingUp,
-  UserCheck,
-  Shuffle,
-  Clock,
-  Star,
-  DollarSign,
-  Phone,
-} from "lucide-react-native";
-import { format } from "date-fns";
-import { UserAvatar } from "~/src/components/ui/user-avatar";
-import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import { useUpdateEvents } from "~/hooks/useUpdateEvents";
-import { useLocationEvents } from "~/hooks/useLocationEvents";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTheme } from "~/src/components/ThemeProvider";
 
 type UnifiedData = (MapEvent | MapLocation) & {
   created_by?: {
