@@ -627,6 +627,7 @@ export const UnifiedDetailsSheet = React.memo(
             <BottomSheetScrollView
               contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
             >
               {/* Hero Image Section */}
               <View className="relative">
@@ -634,6 +635,7 @@ export const UnifiedDetailsSheet = React.memo(
                   horizontal
                   pagingEnabled
                   showsHorizontalScrollIndicator={false}
+                  nestedScrollEnabled={true}
                   style={{ height: SCREEN_HEIGHT * 0.35 }}
                 >
                   {(currentData?.image_urls || []).map((imageUrl, index) => (
@@ -1385,6 +1387,7 @@ export const UnifiedDetailsSheet = React.memo(
                     <ScrollView
                       horizontal
                       showsHorizontalScrollIndicator={false}
+                      nestedScrollEnabled={true}
                     >
                       <View className="flex-row gap-3">
                         {locationEvents.map((event: any, index: number) => (
@@ -1527,6 +1530,7 @@ export const UnifiedDetailsSheet = React.memo(
                       <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
+                        nestedScrollEnabled={true}
                       >
                         <View className="flex-row gap-3">
                           {currentData.image_urls
@@ -1577,6 +1581,7 @@ export const UnifiedDetailsSheet = React.memo(
                     <ScrollView
                       horizontal
                       showsHorizontalScrollIndicator={false}
+                      nestedScrollEnabled={true}
                     >
                       <View className="flex-row gap-4">
                         {similarItems.map((item: any, index: number) => (
