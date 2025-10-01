@@ -6,14 +6,28 @@ import Toast from "react-native-toast-message";
 interface UseFollowReturn {
   isFollowing: (userId: string) => Promise<boolean>;
   followUser: (userId: string) => Promise<void>;
+
   unfollowUser: (userId: string) => Promise<void>;
   getFollowers: (userId: string) => Promise<string[]>;
+  getFollowerUsers: (userId: string) => Promise<ChatUser[]>;
+  getFollowingUsers: (userId: string) => Promise<ChatUser[]>;
   getFollowing: (userId: string) => Promise<string[]>;
   getFollowCounts: (userId: string) => Promise<{
     followerCount: number;
     followingCount: number;
   }>;
   loading: boolean;
+}
+export interface ChatUser {
+  id: string;
+  username: string;
+  first_name?: string;
+  last_name?: string;
+  avatar_url?: string;
+  bio?: string;
+  is_following: boolean;
+  is_follower: boolean;
+  relationship_type: "following" | "follower" | "mutual" | "none";
 }
 
 export function useFollow(): UseFollowReturn {
@@ -146,7 +160,74 @@ export function useFollow(): UseFollowReturn {
     },
     []
   );
-
+  const getFollowerUsers = useCallback(
+    async (userId: string): Promise<ChatUser[]> => {
+      const { data, error } = await supabase
+        .from("follows")
+        .select(
+          `
+        follower_id,
+        users!follows_follower_id_fkey (
+          id,
+          username,
+          first_name,
+          last_name,
+          avatar_url,
+          bio
+        )
+      `
+        )
+        .eq("following_id", userId);
+      return (
+        data?.map((follower: any) => ({
+          id: follower.users.id,
+          username: follower.users.username,
+          first_name: follower.users.first_name,
+          last_name: follower.users.last_name,
+          avatar_url: follower.users.avatar_url,
+          bio: follower.users.bio,
+          is_following: false,
+          is_follower: true,
+          relationship_type: "follower" as const,
+        })) || []
+      );
+    },
+    []
+  );
+  const getFollowingUsers = useCallback(
+    async (userId: string): Promise<ChatUser[]> => {
+      const { data, error } = await supabase
+        .from("follows")
+        .select(
+          `
+        following_id,
+        users!follows_following_id_fkey (
+          id,
+          username,
+          first_name,
+          last_name,
+          avatar_url,
+          bio
+        )
+      `
+        )
+        .eq("follower_id", userId);
+      return (
+        data?.map((follow: any) => ({
+          id: follow.users.id,
+          username: follow.users.username,
+          first_name: follow.users.first_name,
+          last_name: follow.users.last_name,
+          avatar_url: follow.users.avatar_url,
+          bio: follow.users.bio,
+          is_following: true,
+          is_follower: false,
+          relationship_type: "following" as const,
+        })) || []
+      );
+    },
+    []
+  );
   // Get users that a user is following
   const getFollowing = useCallback(
     async (userId: string): Promise<string[]> => {
@@ -194,6 +275,8 @@ export function useFollow(): UseFollowReturn {
     getFollowers,
     getFollowing,
     getFollowCounts,
+    getFollowerUsers,
+    getFollowingUsers,
     loading,
   };
 }

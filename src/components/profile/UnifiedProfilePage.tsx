@@ -36,6 +36,8 @@ import { useUser } from "~/src/lib/UserProvider";
 import UnifiedEventsTab from "./UnifiedEventsTab";
 import UnifiedInfoTab from "./UnifiedInfoTab";
 import UnifiedPostsTab from "./UnifiedPostsTab";
+import FollowerSheet from "./FollowerSheet";
+import FollowingSheet from "./FollowingSheet";
 
 type Tab = "Posts" | "Events" | "Info";
 
@@ -75,7 +77,8 @@ export function UnifiedProfilePage({
   const [isFollowing, setIsFollowing] = useState(false);
   const [isFollowBack, setIsFollowBack] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-
+  const [isFollowerSheetOpen, setIsFollowerSheetOpen] = useState(false);
+  const [isFollowingSheetOpen, setIsFollowingSheetOpen] = useState(false);
   const isCurrentUser = !userId || userId === session?.user?.id;
   const targetUserId = userId || session?.user?.id;
 
@@ -376,6 +379,12 @@ export function UnifiedProfilePage({
       });
     }
   };
+  const handleCloseFollowerSheet = () => {
+    setIsFollowerSheetOpen(false);
+  };
+  const handleCloseFollowingSheet = () => {
+    setIsFollowingSheetOpen(false);
+  };
 
   if (isLoading || !profile) {
     return (
@@ -630,7 +639,14 @@ export function UnifiedProfilePage({
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={{ alignItems: "center" }}>
+            <TouchableOpacity
+              style={{ alignItems: "center" }}
+              onPress={() => {
+                if (profile.followers_count > 0) {
+                  setIsFollowerSheetOpen(true);
+                }
+              }}
+            >
               <Text
                 style={{
                   fontSize: 20,
@@ -652,7 +668,14 @@ export function UnifiedProfilePage({
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={{ alignItems: "center" }}>
+            <TouchableOpacity
+              style={{ alignItems: "center" }}
+              onPress={() => {
+                if (profile.following_count > 0) {
+                  setIsFollowingSheetOpen(true);
+                }
+              }}
+            >
               <Text
                 style={{
                   fontSize: 20,
@@ -848,6 +871,16 @@ export function UnifiedProfilePage({
           )}
         </View>
       </ScrollView>
+      <FollowerSheet
+        isOpen={isFollowerSheetOpen}
+        onClose={handleCloseFollowerSheet}
+        userId={profile.id}
+      />
+      <FollowingSheet
+        isOpen={isFollowingSheetOpen}
+        onClose={handleCloseFollowingSheet}
+        userId={profile.id}
+      />
     </SafeAreaView>
   );
 }

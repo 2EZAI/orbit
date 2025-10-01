@@ -1,21 +1,9 @@
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import {
-  ActivityIndicator,
-  DeviceEventEmitter,
-  Dimensions,
-  Image,
-  Linking,
-  Modal,
-  PanResponder,
-  ScrollView,
-  Share,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { Text } from "~/src/components/ui/text";
+import { Users } from "lucide-react-native";
+import { Modal, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "~/src/components/ThemeProvider";
-import { Users } from "lucide-react-native";
+import { Text } from "~/src/components/ui/text";
 interface IProps {
   isOpen: boolean;
   onClose: () => void;
@@ -27,8 +15,7 @@ interface IProps {
 }
 const InterestsSheet: React.FC<IProps> = ({ isOpen, onClose, interests }) => {
   const { theme, isDarkMode } = useTheme();
-  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } =
-    Dimensions.get("window");
+
   const insets = useSafeAreaInsets();
   return (
     <Modal
