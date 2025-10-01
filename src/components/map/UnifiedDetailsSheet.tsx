@@ -321,7 +321,7 @@ export const UnifiedDetailsSheet = React.memo(
       if (isEventType) return;
 
       const locationData = data;
-      
+
       // Close the sheet first
       onClose();
 
@@ -667,26 +667,6 @@ export const UnifiedDetailsSheet = React.memo(
                   >
                     <ArrowLeft size={20} color="#000" />
                   </TouchableOpacity>
-
-                  <View className="flex-row gap-2">
-                    <TouchableOpacity
-                      onPress={handleShare}
-                      className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
-                    >
-                      <Share2 size={18} color="#000" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      onPress={() => setBookmarked(!bookmarked)}
-                      className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
-                    >
-                      <Heart
-                        size={18}
-                        color={bookmarked ? "#EF4444" : "#000"}
-                        fill={bookmarked ? "#EF4444" : "none"}
-                      />
-                    </TouchableOpacity>
-                  </View>
                 </View>
 
                 {/* Floating Stats - Show attendee count prominently for events */}
@@ -1746,7 +1726,7 @@ export const UnifiedDetailsSheet = React.memo(
                           className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
                         >
                           <Text className="text-lg font-semibold text-purple-600">
-                            Buy Tickets
+                            View More
                           </Text>
                         </TouchableOpacity>
                       )}
@@ -1814,6 +1794,14 @@ export const UnifiedDetailsSheet = React.memo(
                             </Text>
                           </TouchableOpacity>
                         )}
+                      <TouchableOpacity
+                        onPress={handleShare}
+                        className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
+                      >
+                        <Text className="text-lg font-semibold text-purple-600">
+                          Share
+                        </Text>
+                      </TouchableOpacity>
                     </>
                   )}
                 </View>
