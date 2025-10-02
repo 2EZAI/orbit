@@ -660,7 +660,7 @@ export const UnifiedDetailsSheet = React.memo(
             containerStyle={{ zIndex: 99999, elevation: 99999 }}
           >
             <BottomSheetScrollView
-              contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
+              contentContainerStyle={{ paddingBottom: 160 + insets.bottom }}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
