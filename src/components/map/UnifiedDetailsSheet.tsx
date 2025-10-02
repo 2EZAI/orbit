@@ -122,7 +122,6 @@ export const UnifiedDetailsSheet = React.memo(
     );
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
-    const [bookmarked, setBookmarked] = useState(false);
     const [manuallyUpdated, setManuallyUpdated] = useState(false);
 
     // Memoize the event type check to prevent repeated calculations
@@ -316,9 +315,9 @@ export const UnifiedDetailsSheet = React.memo(
     };
 
     const handleCreateEvent = () => {
-      if (isEventType) return;
-
-      const locationData = data;
+      // For events, we want to create a new event at the same location
+      // For locations, we want to create an event at that location
+      const locationData = isEventType ? (data as any).location : data;
       
       // Close the sheet first
       onClose();
@@ -329,15 +328,29 @@ export const UnifiedDetailsSheet = React.memo(
         name: (locationData as any).category?.name || "",
       };
 
+      // Handle coordinates - could be in different formats
+      let latitude = "";
+      let longitude = "";
+      
+      if (locationData.coordinates) {
+        if (Array.isArray(locationData.coordinates)) {
+          // GeoJSON format: [longitude, latitude]
+          longitude = locationData.coordinates[0]?.toString() || "";
+          latitude = locationData.coordinates[1]?.toString() || "";
+        } else {
+          // Object format: {latitude, longitude}
+          latitude = locationData.coordinates.latitude?.toString() || "";
+          longitude = locationData.coordinates.longitude?.toString() || "";
+        }
+      }
+
       router.push({
         pathname: "/(app)/(create)",
         params: {
-          locationId: locationData.id,
+          locationId: locationData.id || "",
           locationType: (locationData as any).type || "",
-          latitude:
-            (locationData as any).coordinates?.latitude?.toString() || "",
-          longitude:
-            (locationData as any).coordinates?.longitude?.toString() || "",
+          latitude,
+          longitude,
           address: (locationData as any).address || "",
           categoryId: simplifiedCategory.id,
           categoryName: simplifiedCategory.name,
@@ -666,25 +679,6 @@ export const UnifiedDetailsSheet = React.memo(
                     <ArrowLeft size={20} color="#000" />
                   </TouchableOpacity>
 
-                  <View className="flex-row gap-2">
-                    <TouchableOpacity
-                      onPress={handleShare}
-                      className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
-                    >
-                      <Share2 size={18} color="#000" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      onPress={() => setBookmarked(!bookmarked)}
-                      className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
-                    >
-                      <Heart
-                        size={18}
-                        color={bookmarked ? "#EF4444" : "#000"}
-                        fill={bookmarked ? "#EF4444" : "none"}
-                      />
-                    </TouchableOpacity>
-                  </View>
                 </View>
 
                 {/* Floating Stats - Show attendee count prominently for events */}
@@ -1737,19 +1731,29 @@ export const UnifiedDetailsSheet = React.memo(
                     </View>
                   ) : (
                     <>
-                      {/* Ticketmaster Events - Show Buy Tickets */}
+                      {/* Ticketmaster Events - Show View More + Share */}
                       {isTicketmasterEvent && hasTickets && !isJoined && (
-                        <TouchableOpacity
-                          onPress={handleTicketPurchase}
-                          className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
-                        >
-                          <Text className="text-lg font-semibold text-purple-600">
-                            Buy Tickets
-                          </Text>
-                        </TouchableOpacity>
+                        <>
+                          <TouchableOpacity
+                            onPress={handleTicketPurchase}
+                            className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
+                          >
+                            <Text className="text-lg font-semibold text-purple-600">
+                              View More
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={handleShare}
+                            className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
+                          >
+                            <Text className="text-lg font-semibold text-purple-600">
+                              Share
+                            </Text>
+                          </TouchableOpacity>
+                        </>
                       )}
 
-                      {/* User Events - Show Join/Create Orbit/Leave */}
+                      {/* User Events - Show Join/Create Orbit/Leave + Share */}
                       {isUserEvent && (
                         <>
                           {isJoined ? (
@@ -1784,6 +1788,16 @@ export const UnifiedDetailsSheet = React.memo(
                               </Text>
                             </TouchableOpacity>
                           )}
+                          
+                          {/* Share button for user events */}
+                          <TouchableOpacity
+                            onPress={handleShare}
+                            className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
+                          >
+                            <Text className="text-lg font-semibold text-purple-600">
+                              Share
+                            </Text>
+                          </TouchableOpacity>
                         </>
                       )}
 
@@ -1836,6 +1850,16 @@ export const UnifiedDetailsSheet = React.memo(
                   >
                     <Text className="text-lg font-semibold text-white">
                       Create Event Here
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  {/* Share button for locations */}
+                  <TouchableOpacity
+                    onPress={handleShare}
+                    className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
+                  >
+                    <Text className="text-lg font-semibold text-purple-600">
+                      Share
                     </Text>
                   </TouchableOpacity>
                 </View>
