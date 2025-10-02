@@ -106,7 +106,7 @@ export function useRealtimeSearch(
             }),
             radius,
             limit,
-          })
+          });
         }
       }, debounceMs),
     [search, userLocation, radius, limit, debounceMs],

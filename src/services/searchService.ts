@@ -225,7 +225,7 @@ export class SearchService {
       pricing: event?.pricing || undefined,
       is_ticketmaster: event?.is_ticketmaster || false,
       ticketmaster_details: event?.ticketmaster_details || undefined,
-    }
+    };
   }
 
   /**

@@ -45,13 +45,13 @@ export function SearchSheet({
   const [isFocused, setIsFocused] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
 
-  // Get user location coordinates
+  // Get user location coordinates for search
   const userLocation = useMemo(() => {
     if (!user) return undefined;
     
     let coordinates = undefined;
     
-    // If user prefers orbit mode and has saved coordinates
+    // First try: If user prefers orbit mode and has saved coordinates
     if (user.event_location_preference === 1 && userlocation) {
       coordinates = {
         latitude: userlocation.latitude != null ? parseFloat(userlocation.latitude) : NaN,
@@ -151,18 +151,21 @@ export function SearchSheet({
         break;
       case "event":
         const event = result as EventResult;
-        console.log("🔍 [SearchSheet] Navigating to event:", {
-          eventId: event.id,
-          name: event.name,
-          coordinates: event.location?.coordinates,
-        });
+        // Check if we have valid coordinates
+        const eventLat = event.location?.coordinates?.[1];
+        const eventLng = event.location?.coordinates?.[0];
+        
+        if (!eventLat || !eventLng || isNaN(eventLat) || isNaN(eventLng)) {
+          return;
+        }
+
         router.push({
           pathname: "/(app)/(map)",
           params: {
             eventId: event.id,
             source: event.is_ticketmaster ? "ticketmaster" : "supabase",
-            latitude: event.location?.coordinates?.[1],
-            longitude: event.location?.coordinates?.[0],
+            latitude: eventLat.toString(),
+            longitude: eventLng.toString(),
             name: event.name,
             venue_name: event.venue_name || "",
             description: event.description || "",
@@ -179,10 +182,10 @@ export function SearchSheet({
         });
 
         // Check if we have valid coordinates
-        const lat = location.location?.coordinates?.[1];
-        const lng = location.location?.coordinates?.[0];
+        const locationLat = location.location?.coordinates?.[1];
+        const locationLng = location.location?.coordinates?.[0];
 
-        if (!lat || !lng) {
+        if (!locationLat || !locationLng) {
           console.error(
             "🔍 [SearchSheet] Location has no coordinates, cannot navigate:",
             location.name
@@ -194,8 +197,8 @@ export function SearchSheet({
           pathname: "/(app)/(map)",
           params: {
             locationId: location.id,
-            latitude: lat,
-            longitude: lng,
+            latitude: locationLat,
+            longitude: locationLng,
             name: location.name,
             description: location.description || "",
             type: location.type || "location",
