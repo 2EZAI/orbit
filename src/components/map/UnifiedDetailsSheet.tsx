@@ -41,6 +41,8 @@ import { useTheme } from "~/src/components/ThemeProvider";
 import { OptimizedImage } from "~/src/components/ui/optimized-image";
 import { Text } from "~/src/components/ui/text";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
+import { UnifiedSheetButtons } from "./UnifiedSheetButtons";
+import { UnifiedDetailsSheetContent } from "./UnifiedDetailsSheetContent";
 
 // Additional types that were in the old hook
 export interface Category {
@@ -299,6 +301,7 @@ export const UnifiedDetailsSheet = React.memo(
       });
     };
 
+
     const handleCreateOrbit = () => {
       if (isEventType) {
         // Close the sheet first
@@ -354,6 +357,20 @@ export const UnifiedDetailsSheet = React.memo(
           address: (locationData as any).address || "",
           categoryId: simplifiedCategory.id,
           categoryName: simplifiedCategory.name,
+        },
+      });
+    };
+
+    const handleEdit = () => {
+      // Close the sheet first
+      onClose();
+      
+      // Navigate to edit event screen
+      router.push({
+        pathname: "/(app)/(create)",
+        params: {
+          eventId: data.id,
+          editMode: "true",
         },
       });
     };
@@ -576,7 +593,7 @@ export const UnifiedDetailsSheet = React.memo(
     };
 
     const categoryName = getPrimaryCategory();
-    const hasTickets = currentData.external_url;
+    const hasTickets = !!currentData.external_url;
     const isJoined = (currentData as any).join_status;
     const attendeeCount = (currentData as any).attendees?.count || 0;
     const attendeeProfiles = (currentData as any).attendees?.profiles || [];
@@ -585,7 +602,8 @@ export const UnifiedDetailsSheet = React.memo(
     const eventSource = (currentData as any).source;
     const isTicketmasterEvent =
       (currentData as any).is_ticketmaster === true ||
-      eventSource === "ticketmaster";
+      eventSource === "ticketmaster" ||
+      Boolean((currentData as any).ticketmaster_details);
     const isUserEvent = eventSource === "user";
     const isGoogleApiEvent =
       eventSource &&
@@ -594,6 +612,12 @@ export const UnifiedDetailsSheet = React.memo(
         eventSource === "api" ||
         eventSource.includes("google") ||
         eventSource.includes("api"));
+
+    // Check if current user is the creator of the event
+    const isCreator = isEventType && 
+      (currentData as any).created_by && 
+      (currentData as any).created_by.id === (currentData as any).user_id;
+
 
     return (
       <Modal
@@ -753,8 +777,27 @@ export const UnifiedDetailsSheet = React.memo(
                   {currentData?.name}
                 </Text>
 
-                {/* Event/Location Specific Info */}
-                {isEventType ? (
+                {/* Conditional Content Based on Type */}
+                <UnifiedDetailsSheetContent
+                  data={currentData}
+                  isEventType={isEventType}
+                  isTicketmasterEvent={isTicketmasterEvent}
+                  isUserEvent={isUserEvent}
+                  isGoogleApiEvent={isGoogleApiEvent}
+                  isCreator={isCreator}
+                  isJoined={isJoined}
+                  hasTickets={hasTickets}
+                  attendeeCount={attendeeCount}
+                  attendeeProfiles={attendeeProfiles}
+                  locationEvents={locationEvents}
+                  loadingLocationEvents={loadingLocationEvents}
+                  nearbyData={nearbyData}
+                  onDataSelect={onDataSelect}
+                  onShowControler={onShowControler}
+                />
+
+                {/* Legacy Event/Location Specific Info - TO BE REMOVED */}
+                {false && isEventType ? (
                   <>
                     {/* Event Date & Time - Compact - ONLY FOR EVENTS */}
                     {(currentData as any).start_datetime && (
@@ -1309,205 +1352,7 @@ export const UnifiedDetailsSheet = React.memo(
                   </TouchableOpacity>
                 )}
 
-                {/* Who's Going - Simple Avatar Display */}
-                {isEventType && attendeeProfiles.length > 0 && (
-                  <View className="mb-6">
-                    <Text
-                      className="mb-3 text-lg font-bold"
-                      style={{ color: theme.colors.text }}
-                    >
-                      Who's Going
-                    </Text>
-                    <View className="flex-row items-center">
-                      <View className="flex-row mr-4">
-                        {attendeeProfiles
-                          .slice(0, 5)
-                          .map((attendee: any, index: number) => (
-                            <View
-                              key={`${attendee.id}-${index}`}
-                              className="bg-white rounded-full border-white border-3"
-                              style={{
-                                marginLeft: index > 0 ? -12 : 0,
-                                backgroundColor: theme.colors.card,
-                                borderColor: theme.colors.card,
-                              }}
-                            >
-                              <UserAvatar
-                                size={44}
-                                user={{
-                                  id: attendee.id,
-                                  name: attendee.name,
-                                  image: attendee.avatar_url,
-                                }}
-                              />
-                            </View>
-                          ))}
-                      </View>
-                      <View className="flex-1">
-                        <Text
-                          className="text-lg font-bold"
-                          style={{ color: theme.colors.text }}
-                        >
-                          {attendeeCount}{" "}
-                          {attendeeCount === 1 ? "person" : "people"}
-                        </Text>
-                        <Text
-                          className="text-sm"
-                          style={{
-                            color: isDarkMode ? theme.colors.text : "#6B7280",
-                          }}
-                        >
-                          {attendeeCount === 1 ? "is going" : "are going"}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                )}
 
-                {/* Recent Events at This Location */}
-                {!isEventType && locationEvents.length > 0 && (
-                  <View className="mb-6">
-                    <View className="flex-row items-center mb-4">
-                      <Calendar size={20} color="#8B5CF6" />
-                      <Text
-                        className="ml-2 text-lg font-bold"
-                        style={{ color: theme.colors.text }}
-                      >
-                        Recent Events at This Location
-                      </Text>
-                    </View>
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      nestedScrollEnabled={true}
-                    >
-                      <View className="flex-row gap-3">
-                        {locationEvents.map((event: any, index: number) => (
-                          <TouchableOpacity
-                            key={`location-event-${event.id}-${index}`}
-                            onPress={() => {
-                              console.log(
-                                "🎯 [UnifiedDetailsSheet] Opening location event as event sheet:",
-                                event.name
-                              );
-                              // Set the selected location event to show event details
-                              setSelectedLocationEvent(event);
-                            }}
-                            className="overflow-hidden rounded-xl border"
-                            style={{
-                              width: 200,
-                              backgroundColor: theme.colors.card,
-                              borderColor: theme.colors.border,
-                            }}
-                          >
-                            <OptimizedImage
-                              uri={event.image_urls?.[0]}
-                              width={300}
-                              height={96}
-                              quality={80}
-                              className="w-full h-24"
-                              resizeMode="cover"
-                            />
-                            <View className="p-3">
-                              <Text
-                                className="text-sm font-bold"
-                                style={{ color: theme.colors.text }}
-                                numberOfLines={2}
-                              >
-                                {event.name}
-                              </Text>
-                              <Text
-                                className="mt-1 text-xs"
-                                style={{
-                                  color: isDarkMode
-                                    ? theme.colors.text
-                                    : "#6B7280",
-                                }}
-                                numberOfLines={1}
-                              >
-                                {formatDate(event.start_datetime)}
-                              </Text>
-                              {event.attendees?.count > 0 && (
-                                <View className="flex-row items-center mt-2">
-                                  <Users size={12} color="#6B7280" />
-                                  <Text
-                                    className="ml-1 text-xs"
-                                    style={{
-                                      color: isDarkMode
-                                        ? theme.colors.text
-                                        : "#6B7280",
-                                    }}
-                                  >
-                                    {event.attendees.count} going
-                                  </Text>
-                                </View>
-                              )}
-                            </View>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </ScrollView>
-                  </View>
-                )}
-
-                {/* No Events Message */}
-                {!isEventType &&
-                  !loadingLocationEvents &&
-                  locationEvents.length === 0 && (
-                    <View className="mb-6">
-                      <View className="flex-row items-center mb-3">
-                        <Calendar size={20} color="#8B5CF6" />
-                        <Text
-                          className="ml-2 text-lg font-bold"
-                          style={{ color: theme.colors.text }}
-                        >
-                          Events at This Location
-                        </Text>
-                      </View>
-                      <View
-                        className="p-4 rounded-xl"
-                        style={{
-                          backgroundColor: isDarkMode
-                            ? theme.colors.border
-                            : "#F9FAFB",
-                        }}
-                      >
-                        <Text
-                          className="text-center"
-                          style={{
-                            color: isDarkMode ? theme.colors.text : "#6B7280",
-                          }}
-                        >
-                          No events have been created at this location yet.
-                        </Text>
-                        <Text
-                          className="mt-1 text-sm text-center"
-                          style={{
-                            color: isDarkMode
-                              ? "rgba(255,255,255,0.6)"
-                              : "#9CA3AF",
-                          }}
-                        >
-                          Be the first to create an event here!
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-
-                {/* Loading State for Location Events */}
-                {!isEventType && loadingLocationEvents && (
-                  <View className="flex-row justify-center items-center py-4 mb-6">
-                    <ActivityIndicator size="small" color="#8B5CF6" />
-                    <Text
-                      className="ml-2"
-                      style={{
-                        color: isDarkMode ? theme.colors.text : "#6B7280",
-                      }}
-                    >
-                      Loading events...
-                    </Text>
-                  </View>
-                )}
 
                 {/* Photo Gallery */}
                 {currentData?.image_urls &&
@@ -1556,120 +1401,6 @@ export const UnifiedDetailsSheet = React.memo(
                   />
                 )}
 
-                {/* Similar Events/Locations */}
-                {similarItems.length > 0 && (
-                  <View className="mb-6">
-                    <View className="flex-row items-center mb-4">
-                      <TrendingUp size={20} color="#8B5CF6" />
-                      <Text
-                        className="ml-2 text-lg font-bold"
-                        style={{ color: theme.colors.text }}
-                      >
-                        {isEventType
-                          ? "Similar Events Nearby"
-                          : "Similar Places Nearby"}
-                      </Text>
-                    </View>
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      nestedScrollEnabled={true}
-                    >
-                      <View className="flex-row gap-4">
-                        {similarItems.map((item: any, index: number) => (
-                          <TouchableOpacity
-                            key={`${item.id}-${index}`}
-                            onPress={() => onDataSelect(item)}
-                            className="overflow-hidden w-48 rounded-2xl border shadow-sm"
-                            style={{
-                              backgroundColor: theme.colors.card,
-                              borderColor: theme.colors.border,
-                            }}
-                          >
-                            <OptimizedImage
-                              uri={item.image_urls?.[0]}
-                              width={192}
-                              height={112}
-                              quality={80}
-                              className="w-full h-28"
-                              resizeMode="cover"
-                            />
-                            <View className="p-3">
-                              <Text
-                                className="mb-1 text-sm font-bold"
-                                style={{ color: theme.colors.text }}
-                                numberOfLines={2}
-                              >
-                                {item.name}
-                              </Text>
-                              {isEventData(item) && item.start_datetime && (
-                                <Text
-                                  className="text-xs"
-                                  style={{
-                                    color: isDarkMode
-                                      ? "rgba(255,255,255,0.7)"
-                                      : "#6B7280",
-                                  }}
-                                >
-                                  {formatDate(item.start_datetime)}
-                                </Text>
-                              )}
-                              {isEventData(item) &&
-                                item.attendees?.count > 0 && (
-                                  <View className="flex-row items-center mt-1">
-                                    <Users size={12} color="#8B5CF6" />
-                                    <Text className="ml-1 text-xs font-medium text-purple-600">
-                                      {item.attendees.count} going
-                                    </Text>
-                                  </View>
-                                )}
-                              {/* Show category and rating for locations */}
-                              {!isEventData(item) && (
-                                <View className="mt-1">
-                                  <Text
-                                    className="text-xs"
-                                    style={{
-                                      color: isDarkMode
-                                        ? "rgba(255,255,255,0.7)"
-                                        : "#6B7280",
-                                    }}
-                                  >
-                                    {getCategoryName(
-                                      item.category?.name || item.type
-                                    ) || "Place"}
-                                  </Text>
-                                  {(item as any).rating && (
-                                    <View className="flex-row items-center mt-1">
-                                      <Star size={12} color="#F59E0B" />
-                                      <Text
-                                        className="ml-1 text-xs font-medium"
-                                        style={{ color: "#F59E0B" }}
-                                      >
-                                        {(item as any).rating.toFixed(1)}
-                                      </Text>
-                                      {(item as any).rating_count && (
-                                        <Text
-                                          className="ml-1 text-xs"
-                                          style={{
-                                            color: isDarkMode
-                                              ? "rgba(255,255,255,0.5)"
-                                              : "#9CA3AF",
-                                          }}
-                                        >
-                                          ({(item as any).rating_count})
-                                        </Text>
-                                      )}
-                                    </View>
-                                  )}
-                                </View>
-                              )}
-                            </View>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </ScrollView>
-                  </View>
-                )}
 
                 {/* Categories (for events) */}
                 {isEventType &&
@@ -1714,157 +1445,21 @@ export const UnifiedDetailsSheet = React.memo(
             </BottomSheetScrollView>
 
             {/* Fixed Bottom Actions */}
-            <View
-              className="absolute right-0 bottom-0 left-0 px-6 py-4 border-t"
-              style={{
-                paddingBottom: insets.bottom + 16,
-                backgroundColor: theme.colors.card,
-                borderTopColor: theme.colors.border,
-              }}
-            >
-              {isEventType ? (
-                <View className="flex-row gap-3">
-                  {/* Loading State */}
-                  {loading ? (
-                    <View className="flex-1 items-center py-4 bg-purple-600 rounded-2xl">
-                      <ActivityIndicator size="small" color="white" />
-                    </View>
-                  ) : (
-                    <>
-                      {/* Ticketmaster Events - Show View More + Share */}
-                      {isTicketmasterEvent && hasTickets && !isJoined && (
-                        <>
-                          <TouchableOpacity
-                            onPress={handleTicketPurchase}
-                            className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
-                          >
-                            <Text className="text-lg font-semibold text-purple-600">
-                              View More
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={handleShare}
-                            className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
-                          >
-                            <Text className="text-lg font-semibold text-purple-600">
-                              Share
-                            </Text>
-                          </TouchableOpacity>
-                        </>
-                      )}
-
-                      {/* User Events - Show Join/Create Orbit/Leave + Share */}
-                      {isUserEvent && (
-                        <>
-                          {isJoined ? (
-                            <>
-                              {/* Create Orbit Button */}
-                              <TouchableOpacity
-                                onPress={handleCreateOrbit}
-                                className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
-                              >
-                                <Text className="text-lg font-semibold text-white">
-                                  Create Orbit
-                                </Text>
-                              </TouchableOpacity>
-
-                              {/* Leave Event Button */}
-                              <TouchableOpacity
-                                onPress={handleLeaveEvent}
-                                className="flex-1 items-center py-4 bg-red-600 rounded-2xl"
-                              >
-                                <Text className="text-lg font-semibold text-white">
-                                  Leave Event
-                                </Text>
-                              </TouchableOpacity>
-                            </>
-                          ) : (
-                            <TouchableOpacity
-                              onPress={handleJoinEvent}
-                              className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
-                            >
-                              <Text className="text-lg font-semibold text-white">
-                                Join Event
-                              </Text>
-                            </TouchableOpacity>
-                          )}
-                          
-                          {/* Share button for user events */}
-                          <TouchableOpacity
-                            onPress={handleShare}
-                            className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
-                          >
-                            <Text className="text-lg font-semibold text-purple-600">
-                              Share
-                            </Text>
-                          </TouchableOpacity>
-                        </>
-                      )}
-
-                      {/* Google API Events - Show Create Event Here */}
-                      {isGoogleApiEvent && (
-                        <TouchableOpacity
-                          onPress={handleCreateEvent}
-                          className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
-                        >
-                          <Text className="text-lg font-semibold text-white">
-                            Create Event Here
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-
-                      {/* Fallback for other event types */}
-                      {!isTicketmasterEvent &&
-                        !isUserEvent &&
-                        !isGoogleApiEvent && (
-                          <TouchableOpacity
-                            onPress={handleCreateEvent}
-                            className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
-                          >
-                            <Text className="text-lg font-semibold text-white">
-                              Create Event Here
-                            </Text>
-                          </TouchableOpacity>
-                        )}
-                    </>
-                  )}
-                </View>
-              ) : (
-                <View className="flex-row gap-3">
-                  {/* Tickets Button for Location - Only show for Ticketmaster events */}
-                  {hasTickets && isTicketmasterEvent && (
-                    <TouchableOpacity
-                      onPress={handleTicketPurchase}
-                      className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
-                    >
-                      <Text className="text-lg font-semibold text-purple-600">
-                        Buy Tickets
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {/* Create Event Button for Locations */}
-                  <TouchableOpacity
-                    onPress={handleCreateEvent}
-                    className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
-                  >
-                    <Text className="text-lg font-semibold text-white">
-                      Create Event Here
-                    </Text>
-                  </TouchableOpacity>
-                  
-                  {/* Share button for locations */}
-                  <TouchableOpacity
-                    onPress={handleShare}
-                    className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
-                  >
-                    <Text className="text-lg font-semibold text-purple-600">
-                      Share
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
+            <UnifiedSheetButtons
+              data={currentData}
+              isEventType={isEventType}
+              loading={loading}
+              isJoined={isJoined}
+              hasTickets={hasTickets}
+              isCreator={isCreator}
+              onTicketPurchase={handleTicketPurchase}
+              onJoinEvent={handleJoinEvent}
+              onLeaveEvent={handleLeaveEvent}
+              onCreateOrbit={handleCreateOrbit}
+              onCreateEvent={handleCreateEvent}
+              onEdit={handleEdit}
+              onShare={handleShare}
+            />
           </BottomSheet>
 
           {/* Enhanced Image Viewer Modal with Swiping */}
