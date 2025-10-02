@@ -551,10 +551,10 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
       }
       
       if (event) {
-        console.log("🗺️ [MapStateManager] Setting event and showing details");
+        console.log("🗺️ [MapStateManager] Setting event and showing card first");
         setIsEvent(true);
         setSelectedEvent(event);
-        setShowDetails(true);
+        setShowDetails(false); // Show card first, not details sheet
       }
     }
 

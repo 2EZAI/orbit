@@ -88,8 +88,8 @@ export default function Map() {
         <MapEventHandlers>
           {(eventHandlers) => (
             <>
-              {/* Event/Location Card - Render immediately outside of heavy data processing */}
-              {state.selectedEvent && (
+              {/* Event/Location Card - Show only when details sheet is not open */}
+              {state.selectedEvent && !state.showDetails && (
                 <>
                   {/* REMOVED: Debug logging for performance */}
                   <UnifiedCard
