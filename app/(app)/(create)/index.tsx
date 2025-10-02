@@ -889,6 +889,13 @@ export default function CreateEvent() {
               setDescription={setDescription}
               isPrivate={isPrivate}
               setIsPrivate={setIsPrivate}
+              startDateTime={startDate.toISOString()}
+              endDateTime={endDate.toISOString()}
+              venueName={locationDetails.address1}
+              address={locationDetails.address1}
+              city={locationDetails.city}
+              state={locationDetails.state}
+              locationId={locationId}
             />
 
             <CategorySection

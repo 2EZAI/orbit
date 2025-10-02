@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, TouchableOpacity,ScrollView, Platform } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
-import { Globe, Lock } from "lucide-react-native";
+import { Globe, Lock, Sparkles } from "lucide-react-native";
 import { Icon } from "react-native-elements";
 import { useTheme } from "~/src/components/ThemeProvider";
+import { AIDescriptionModal } from "./AIDescriptionModal";
 
 interface BasicInfoSectionProps {
   name: string;
@@ -13,6 +14,13 @@ interface BasicInfoSectionProps {
   setDescription: (description: string) => void;
   isPrivate: boolean;
   setIsPrivate: (isPrivate: boolean) => void;
+  startDateTime?: string;
+  endDateTime?: string;
+  venueName?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  locationId?: string;
 }
 
 export default function BasicInfoSection({
@@ -22,8 +30,16 @@ export default function BasicInfoSection({
   setDescription,
   isPrivate,
   setIsPrivate,
+  startDateTime,
+  endDateTime,
+  venueName,
+  address,
+  city,
+  state,
+  locationId,
 }: BasicInfoSectionProps) {
   const { theme } = useTheme();
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
 
   return (
     <View
@@ -247,16 +263,46 @@ export default function BasicInfoSection({
       </View>
 
       <View>
-        <Text
-          style={{
-            fontSize: 16,
-            fontWeight: "600",
-            color: theme.colors.text,
-            marginBottom: 12,
-          }}
-        >
-          Description *
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: "600",
+              color: theme.colors.text,
+            }}
+          >
+            Description *
+          </Text>
+          <TouchableOpacity
+            onPress={() => setIsAIModalOpen(true)}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: theme.dark
+                ? "rgba(168, 85, 247, 0.2)"
+                : "rgba(168, 85, 247, 0.1)",
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: theme.dark
+                ? "rgba(168, 85, 247, 0.3)"
+                : "rgba(168, 85, 247, 0.2)",
+            }}
+          >
+            <Sparkles size={16} color="#A855F7" />
+            <Text
+              style={{
+                color: "#A855F7",
+                fontSize: 12,
+                fontWeight: "600",
+                marginLeft: 6,
+              }}
+            >
+              AI Generate
+            </Text>
+          </TouchableOpacity>
+        </View>
         <View
           style={{
             backgroundColor: theme.dark
@@ -292,6 +338,21 @@ export default function BasicInfoSection({
           />
         </View>
       </View>
+
+      {/* AI Description Modal */}
+      <AIDescriptionModal
+        isOpen={isAIModalOpen}
+        onClose={() => setIsAIModalOpen(false)}
+        onDescriptionGenerated={setDescription}
+        eventName={name}
+        startDateTime={startDateTime || new Date().toISOString()}
+        endDateTime={endDateTime}
+        venueName={venueName}
+        address={address}
+        city={city}
+        state={state}
+        locationId={locationId}
+      />
     </View>
   );
 }
