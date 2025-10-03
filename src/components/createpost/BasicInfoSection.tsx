@@ -275,25 +275,35 @@ export default function BasicInfoSection({
           </Text>
           <TouchableOpacity
             onPress={() => setIsAIModalOpen(true)}
+            disabled={!name.trim()}
             style={{
               flexDirection: "row",
               alignItems: "center",
-              backgroundColor: theme.dark
+              backgroundColor: !name.trim()
+                ? theme.dark
+                  ? "rgba(255, 255, 255, 0.05)"
+                  : "rgba(0, 0, 0, 0.05)"
+                : theme.dark
                 ? "rgba(168, 85, 247, 0.2)"
                 : "rgba(168, 85, 247, 0.1)",
               paddingHorizontal: 12,
               paddingVertical: 8,
               borderRadius: 8,
               borderWidth: 1,
-              borderColor: theme.dark
+              borderColor: !name.trim()
+                ? theme.dark
+                  ? "rgba(255, 255, 255, 0.1)"
+                  : "rgba(0, 0, 0, 0.1)"
+                : theme.dark
                 ? "rgba(168, 85, 247, 0.3)"
                 : "rgba(168, 85, 247, 0.2)",
+              opacity: !name.trim() ? 0.5 : 1,
             }}
           >
-            <Sparkles size={16} color="#A855F7" />
+            <Sparkles size={16} color={!name.trim() ? theme.colors.text + "66" : "#A855F7"} />
             <Text
               style={{
-                color: "#A855F7",
+                color: !name.trim() ? theme.colors.text + "66" : "#A855F7",
                 fontSize: 12,
                 fontWeight: "600",
                 marginLeft: 6,
@@ -303,6 +313,18 @@ export default function BasicInfoSection({
             </Text>
           </TouchableOpacity>
         </View>
+        {!name.trim() && (
+          <Text
+            style={{
+              fontSize: 12,
+              color: "#F59E0B",
+              marginBottom: 12,
+              fontStyle: "italic",
+            }}
+          >
+            💡 Enter an event name first to enable AI description generation
+          </Text>
+        )}
         <View
           style={{
             backgroundColor: theme.dark
