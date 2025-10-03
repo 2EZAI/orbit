@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '~/src/components/ThemeProvider';
@@ -53,6 +54,9 @@ export function AIDescriptionModal({
   const [userDescription, setUserDescription] = useState('');
   const [refinementFeedback, setRefinementFeedback] = useState('');
   const [showRefinement, setShowRefinement] = useState(false);
+  
+  // Animation refs
+  const rotateAnim = useRef(new Animated.Value(0)).current;
 
   const {
     isGenerating,
@@ -77,6 +81,23 @@ export function AIDescriptionModal({
       clearDescription();
     }
   }, [isOpen, clearDescription]);
+
+  // Start/stop rotation animation based on generating state
+  useEffect(() => {
+    if (isGenerating) {
+      Animated.loop(
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        { iterations: -1 }
+      ).start();
+    } else {
+      rotateAnim.stopAnimation();
+      rotateAnim.setValue(0);
+    }
+  }, [isGenerating, rotateAnim]);
 
   const handleGenerate = async () => {
     if (!userDescription.trim()) {
@@ -143,12 +164,15 @@ export function AIDescriptionModal({
     if (generatedDescription) {
       onDescriptionGenerated(generatedDescription);
       onClose();
-      Alert.alert('Success', 'AI description applied to your event!');
     }
   };
 
   const handleStopTyping = () => {
     stopTyping();
+    // Also stop the generation process if it's still running
+    if (isGenerating) {
+      clearDescription();
+    }
   };
 
   const handleNewDescription = () => {
@@ -327,9 +351,10 @@ export function AIDescriptionModal({
                 alignItems: 'center',
                 borderWidth: 1,
                 borderColor: theme.colors.border,
+                marginBottom: 24,
               }}
             >
-              <View
+              <Animated.View
                 style={{
                   width: 60,
                   height: 60,
@@ -338,10 +363,31 @@ export function AIDescriptionModal({
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: 16,
+                  transform: [
+                    {
+                      rotate: rotateAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0deg', '360deg'],
+                      }),
+                    },
+                  ],
                 }}
               >
-                <Sparkles size={24} color="white" />
-              </View>
+                <Animated.View
+                  style={{
+                    transform: [
+                      {
+                        rotate: rotateAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ['0deg', '360deg'],
+                        }),
+                      },
+                    ],
+                  }}
+                >
+                  <Sparkles size={24} color="white" />
+                </Animated.View>
+              </Animated.View>
               <Text
                 style={{
                   fontSize: 18,

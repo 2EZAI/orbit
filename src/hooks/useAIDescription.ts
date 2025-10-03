@@ -101,7 +101,6 @@ export const useAIDescription = () => {
           // Start typewriter effect
           typeText(data.description, () => {
             setState((prev) => ({ ...prev, isGenerating: false }));
-            Alert.alert('Success', 'AI description generated successfully!');
           });
         } else {
           throw new Error('Failed to generate description');
@@ -176,7 +175,6 @@ export const useAIDescription = () => {
           // Start typewriter effect
           typeText(data.description, () => {
             setState((prev) => ({ ...prev, isRefining: false }));
-            Alert.alert('Success', 'AI description refined successfully!');
           });
         } else {
           throw new Error('Failed to refine description');
@@ -210,8 +208,11 @@ export const useAIDescription = () => {
   const stopTyping = useCallback(() => {
     setState((prev) => ({
       ...prev,
+      isGenerating: false,
+      isRefining: false,
       isTyping: false,
       currentText: prev.generatedDescription,
+      error: null,
     }));
   }, []);
 
