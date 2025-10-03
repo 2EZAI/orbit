@@ -35,16 +35,28 @@ export default function WebviewLayout() {
     if (title !== "Privacy Policy" && title !== "Terms & Conditions") {
       setShowOverlay(true); // show full screen view
     } else {
-      router.back();
+      // router.back();
     }
   };
   const hitUpdaeEventApi = async () => {
     setShowOverlay(false);
-    router.back();
+
+    router.replace({
+      pathname: "/(app)/(home)",
+      // params: {
+      //   eventId: eventSelected,
+      // },
+    });
     let result = await UpdateEventStatus(event);
 
     setTimeout(() => {
-      // router.back(); // user confirms navigation
+      //  router.back(); // user confirms navigation
+      router.replace({
+        pathname: "/(app)/(home)",
+        // params: {
+        //   eventId: eventSelected,
+        // },
+      });
       DeviceEventEmitter.emit("refreshEventDetail", true);
     }, 2000); // 2000ms = 2 seconds
   };
@@ -55,7 +67,9 @@ export default function WebviewLayout() {
 
   const handleCancel = () => {
     setShowOverlay(false); // user cancels
-    router.back();
+    router.replace({
+      pathname: "/(app)/(home)",
+    });
   };
 
   return (

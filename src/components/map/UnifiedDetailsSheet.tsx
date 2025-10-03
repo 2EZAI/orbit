@@ -39,7 +39,6 @@ export interface Category {
   icon?: string;
 }
 
-
 type UnifiedData = (MapEvent | MapLocation) & {
   created_by?: {
     id: string;
@@ -87,11 +86,11 @@ const isEventData = (data: UnifiedData, isEvent?: boolean): boolean => {
 
   // Use explicit type field first, then fall back to field detection
   if (data.type) {
-    return data.type === 'user_created' || data.type === 'event';
+    return data.type === "user_created" || data.type === "event";
   }
-  
+
   // Fallback: check for event fields but exclude Google API locations
-  if (data.type === 'googleApi') {
+  if (data.type === "googleApi") {
     return false; // Google API items with event fields are still locations
   }
 
@@ -120,15 +119,11 @@ export const UnifiedDetailsSheet = React.memo(
     const [manuallyUpdated, setManuallyUpdated] = useState(false);
 
     // Memoize the event type check to prevent repeated calculations
-    const isEventType = useMemo(
-      () => {
-        const result = isEventData(data, isEvent);
-        
-        
-        return result;
-      },
-      [data?.id, isEvent]
-    );
+    const isEventType = useMemo(() => {
+      const result = isEventData(data, isEvent);
+
+      return result;
+    }, [data?.id, isEvent]);
 
     // Use our new hook for location events
     const locationIdForEvents = !isEventType ? data.id : null;
@@ -153,7 +148,6 @@ export const UnifiedDetailsSheet = React.memo(
 
     // Location events are now handled by the useLocationEvents hook above
 
-
     // PanResponder for swipe to close modal
     const panResponder = PanResponder.create({
       onMoveShouldSetPanResponder: (evt, gestureState) => {
@@ -176,7 +170,6 @@ export const UnifiedDetailsSheet = React.memo(
         }
       },
     });
-
 
     const handleShare = async () => {
       const currentData = detailData || data;
@@ -203,7 +196,6 @@ export const UnifiedDetailsSheet = React.memo(
       }
     };
 
-
     const handleTicketPurchase = () => {
       const currentData = detailData || data;
       if (!currentData.external_url) return;
@@ -219,7 +211,6 @@ export const UnifiedDetailsSheet = React.memo(
         },
       });
     };
-
 
     const handleCreateOrbit = () => {
       if (isEventType) {
@@ -240,13 +231,13 @@ export const UnifiedDetailsSheet = React.memo(
       // For events, we want to create a new event at the same location
       // For locations, we want to create an event at that location
       const locationData = isEventType ? (data as any).location : data;
-      
-      console.log('🔧 [UnifiedDetailsSheet] handleCreateEvent:', {
+
+      console.log("🔧 [UnifiedDetailsSheet] handleCreateEvent:", {
         isEventType,
         data: data,
         locationData: locationData,
       });
-      
+
       // Close the sheet first
       onClose();
 
@@ -259,10 +250,11 @@ export const UnifiedDetailsSheet = React.memo(
       // Handle coordinates - could be in different formats
       let latitude = "";
       let longitude = "";
-      
+
       // Check for coordinates in location.coordinates (GeoJSON format) or direct coordinates property
-      const coords = locationData.location?.coordinates || locationData.coordinates;
-      
+      const coords =
+        locationData.location?.coordinates || locationData.coordinates;
+
       if (coords) {
         if (Array.isArray(coords)) {
           // GeoJSON format: [longitude, latitude]
@@ -284,9 +276,9 @@ export const UnifiedDetailsSheet = React.memo(
         categoryId: simplifiedCategory.id,
         categoryName: simplifiedCategory.name,
       };
-      
-      console.log('🔧 [UnifiedDetailsSheet] Create event params:', params);
-      
+
+      console.log("🔧 [UnifiedDetailsSheet] Create event params:", params);
+
       router.push({
         pathname: "/(app)/(create)",
         params,
@@ -296,7 +288,7 @@ export const UnifiedDetailsSheet = React.memo(
     const handleEdit = () => {
       // Close the sheet first
       onClose();
-      
+
       // Navigate to edit event screen
       router.push({
         pathname: "/(app)/(create)",
@@ -306,7 +298,6 @@ export const UnifiedDetailsSheet = React.memo(
         },
       });
     };
-
 
     // COMMENTED OUT: Old detail API calls - now using unified API data directly
     /*
@@ -478,7 +469,6 @@ export const UnifiedDetailsSheet = React.memo(
 
       // Events for this location are automatically loaded by the useLocationEvents hook
 
-
       return () => {
         onShowControler();
       };
@@ -534,8 +524,9 @@ export const UnifiedDetailsSheet = React.memo(
         eventSource.includes("api"));
 
     // Check if current user is the creator of the event
-    const isCreator = isEventType && 
-      (currentData as any).created_by && 
+    const isCreator =
+      isEventType &&
+      (currentData as any).created_by &&
       (currentData as any).created_by.id === (currentData as any).user_id;
 
     return (
@@ -621,7 +612,6 @@ export const UnifiedDetailsSheet = React.memo(
                   >
                     <ArrowLeft size={20} color="#000" />
                   </TouchableOpacity>
-
                 </View>
 
                 {/* Floating Stats - Show attendee count prominently for events */}
@@ -716,46 +706,46 @@ export const UnifiedDetailsSheet = React.memo(
                 />
 
                 {/* Creator Badge for User-Created Events */}
-                {isEventType && (currentData as any).created_by && (currentData as any).created_by.name && (
-                  <TouchableOpacity
-                    onPress={handleCreatorClick}
-                    className="flex-row items-center px-4 py-3 mb-6 rounded-2xl"
-                    style={{
-                      backgroundColor: isDarkMode
-                        ? "rgba(59, 130, 246, 0.1)"
-                        : "rgb(239, 246, 255)",
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <UserAvatar
-                      size={36}
-                      user={{
-                        id: (currentData as any).created_by.id,
-                        name: (currentData as any).created_by.name || "Host",
-                        image: (currentData as any).created_by.avatar_url,
+                {isEventType &&
+                  (currentData as any).created_by &&
+                  (currentData as any).created_by.name && (
+                    <TouchableOpacity
+                      onPress={handleCreatorClick}
+                      className="flex-row items-center px-4 py-3 mb-6 rounded-2xl"
+                      style={{
+                        backgroundColor: isDarkMode
+                          ? "rgba(59, 130, 246, 0.1)"
+                          : "rgb(239, 246, 255)",
                       }}
-                    />
-                    <View className="flex-1 ml-3">
-                      <Text className="text-sm font-medium text-blue-600">
-                        Created by
-                      </Text>
-                      <Text
-                        className="text-base font-semibold"
-                        style={{ color: theme.colors.text }}
-                      >
-                        {(currentData as any).created_by.name ||
-                          `@${(currentData as any).created_by.username}` ||
-                          "Community Member"}
-                      </Text>
-                    </View>
-                    <View className="flex-row items-center">
-                      <Sparkles size={20} color="#3B82F6" />
-                      <ChevronRight size={16} color="#3B82F6" />
-                    </View>
-                  </TouchableOpacity>
-                )}
-
-
+                      activeOpacity={0.7}
+                    >
+                      <UserAvatar
+                        size={36}
+                        user={{
+                          id: (currentData as any).created_by.id,
+                          name: (currentData as any).created_by.name || "Host",
+                          image: (currentData as any).created_by.avatar_url,
+                        }}
+                      />
+                      <View className="flex-1 ml-3">
+                        <Text className="text-sm font-medium text-blue-600">
+                          Created by
+                        </Text>
+                        <Text
+                          className="text-base font-semibold"
+                          style={{ color: theme.colors.text }}
+                        >
+                          {(currentData as any).created_by.name ||
+                            `@${(currentData as any).created_by.username}` ||
+                            "Community Member"}
+                        </Text>
+                      </View>
+                      <View className="flex-row items-center">
+                        <Sparkles size={20} color="#3B82F6" />
+                        <ChevronRight size={16} color="#3B82F6" />
+                      </View>
+                    </TouchableOpacity>
+                  )}
 
                 {/* Photo Gallery */}
                 {currentData?.image_urls &&
@@ -803,7 +793,6 @@ export const UnifiedDetailsSheet = React.memo(
                     style={{ backgroundColor: theme.colors.border }}
                   />
                 )}
-
 
                 {/* Categories (for events) */}
                 {isEventType &&
@@ -971,7 +960,6 @@ export const UnifiedDetailsSheet = React.memo(
               </View>
             </View>
           </Modal>
-
 
           {/* Location Event Details Sheet */}
           {selectedLocationEvent && (
