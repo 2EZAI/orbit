@@ -1,31 +1,20 @@
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import { format } from "date-fns";
 import { router } from "expo-router";
 import {
   ArrowLeft,
-  Calendar,
   ChevronRight,
-  Clock,
-  DollarSign,
-  MapPin,
-  Navigation,
-  Phone,
   Shuffle,
   Sparkles,
-  Star,
   Tag,
-  TrendingUp,
   UserCheck,
   Users,
   X,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   DeviceEventEmitter,
   Dimensions,
   Image,
-  Linking,
   Modal,
   PanResponder,
   ScrollView,
@@ -38,7 +27,6 @@ import { useLocationEvents } from "~/hooks/useLocationEvents";
 import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
 import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 import { useTheme } from "~/src/components/ThemeProvider";
-import { OptimizedImage } from "~/src/components/ui/optimized-image";
 import { Text } from "~/src/components/ui/text";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
 import { UnifiedSheetButtons } from "./UnifiedSheetButtons";
@@ -51,11 +39,6 @@ export interface Category {
   icon?: string;
 }
 
-export interface Prompt {
-  id: string;
-  name: string;
-  created_at: string;
-}
 
 type UnifiedData = (MapEvent | MapLocation) & {
   created_by?: {
@@ -141,8 +124,6 @@ export const UnifiedDetailsSheet = React.memo(
       error: locationEventsError,
     } = useLocationEvents(locationIdForEvents);
 
-    const [displayedPrompts, setDisplayedPrompts] = useState<Prompt[]>([]);
-    const [showAllPromptsModal, setShowAllPromptsModal] = useState(false);
     const [selectedLocationEvent, setSelectedLocationEvent] =
       useState<any>(null);
     const insets = useSafeAreaInsets();
@@ -157,35 +138,6 @@ export const UnifiedDetailsSheet = React.memo(
 
     // Location events are now handled by the useLocationEvents hook above
 
-    // Shuffle and select 2-3 random prompts
-    const shufflePrompts = () => {
-      const currentData = detailData || data;
-      const allPrompts = (currentData as any).category?.prompts || [];
-
-      if (allPrompts.length === 0) return;
-
-      // Shuffle array and take 2-3 items
-      const shuffled = [...allPrompts].sort(() => Math.random() - 0.5);
-      const count = Math.min(3, Math.max(2, allPrompts.length));
-      setDisplayedPrompts(shuffled.slice(0, count));
-    };
-
-    // Initialize displayed prompts
-    const initializePrompts = () => {
-      const currentData = detailData || data;
-      const allPrompts = (currentData as any).category?.prompts || [];
-
-      if (allPrompts.length === 0) return;
-
-      // Show first 2-3 prompts initially
-      const count = Math.min(3, Math.max(2, allPrompts.length));
-      setDisplayedPrompts(allPrompts.slice(0, count));
-    };
-
-    // Handle show all prompts modal
-    const handleShowAllPrompts = () => {
-      setShowAllPromptsModal(true);
-    };
 
     // PanResponder for swipe to close modal
     const panResponder = PanResponder.create({
@@ -210,47 +162,6 @@ export const UnifiedDetailsSheet = React.memo(
       },
     });
 
-    const formatDate = (date: string) => {
-      try {
-        return format(new Date(date), "MMM d, yyyy");
-      } catch (error) {
-        return "";
-      }
-    };
-
-    const formatTime = (date: string) => {
-      try {
-        return format(new Date(date), "h:mm a");
-      } catch (error) {
-        return "";
-      }
-    };
-
-    const formatDateRange = (start: string, end?: string) => {
-      try {
-        const startDate = new Date(start);
-        const endDate = end ? new Date(end) : null;
-
-        if (endDate && startDate.toDateString() === endDate.toDateString()) {
-          return `${format(startDate, "EEEE, MMM d")} • ${format(
-            startDate,
-            "h:mm a"
-          )} - ${format(endDate, "h:mm a")}`;
-        } else if (endDate) {
-          return `${format(startDate, "MMM d")} - ${format(
-            endDate,
-            "MMM d"
-          )} • ${format(startDate, "h:mm a")}`;
-        } else {
-          return `${format(startDate, "EEEE, MMM d")} • ${format(
-            startDate,
-            "h:mm a"
-          )}`;
-        }
-      } catch (error) {
-        return "";
-      }
-    };
 
     const handleShare = async () => {
       const currentData = detailData || data;
@@ -277,13 +188,6 @@ export const UnifiedDetailsSheet = React.memo(
       }
     };
 
-    const handleAttendeeClick = (attendee: any) => {
-      if (attendee.username) {
-        router.push(`/(app)/profile/${attendee.id}`);
-      } else if (attendee.id) {
-        router.push(`/(app)/profile/${attendee.id}`);
-      }
-    };
 
     const handleTicketPurchase = () => {
       const currentData = detailData || data;
@@ -375,16 +279,6 @@ export const UnifiedDetailsSheet = React.memo(
       });
     };
 
-    const handleDirections = () => {
-      const currentData = detailData || data;
-      const lat = currentData.location?.coordinates[1];
-      const lng = currentData.location?.coordinates[0];
-
-      if (lat && lng) {
-        const url = `https://maps.apple.com/?daddr=${lat},${lng}`;
-        Linking.openURL(url);
-      }
-    };
 
     // COMMENTED OUT: Old detail API calls - now using unified API data directly
     /*
@@ -556,8 +450,6 @@ export const UnifiedDetailsSheet = React.memo(
 
       // Events for this location are automatically loaded by the useLocationEvents hook
 
-      // Initialize prompts display
-      initializePrompts();
 
       return () => {
         onShowControler();
@@ -1053,118 +945,6 @@ export const UnifiedDetailsSheet = React.memo(
             </View>
           </Modal>
 
-          {/* All Prompts Modal */}
-          <Modal
-            visible={showAllPromptsModal}
-            transparent={true}
-            animationType="slide"
-            onRequestClose={() => setShowAllPromptsModal(false)}
-            statusBarTranslucent={true}
-            presentationStyle="overFullScreen"
-          >
-            <View
-              className="flex-1"
-              style={{
-                backgroundColor: isDarkMode
-                  ? "rgba(0,0,0,0.8)"
-                  : "rgba(0,0,0,0.6)",
-              }}
-            >
-              {/* Modal Content */}
-              <View
-                className="flex-1 mx-4 mt-20 mb-8 rounded-t-3xl"
-                style={{ backgroundColor: theme.colors.card }}
-              >
-                {/* Header */}
-                <View
-                  className="flex-row justify-between items-center p-6 border-b"
-                  style={{ borderBottomColor: theme.colors.border }}
-                >
-                  <View className="flex-row items-center">
-                    <View className="justify-center items-center mr-3 w-10 h-10 bg-amber-500 rounded-full">
-                      <Sparkles size={20} color="white" />
-                    </View>
-                    <Text
-                      className="text-xl font-bold"
-                      style={{ color: theme.colors.text }}
-                    >
-                      What you can do here
-                    </Text>
-                  </View>
-
-                  <TouchableOpacity
-                    onPress={() => setShowAllPromptsModal(false)}
-                    className="justify-center items-center w-10 h-10 rounded-full"
-                    style={{
-                      backgroundColor: isDarkMode
-                        ? "rgba(255,255,255,0.1)"
-                        : "rgba(0,0,0,0.1)",
-                    }}
-                  >
-                    <X size={20} color={theme.colors.text} />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Scrollable Prompts */}
-                <ScrollView
-                  className="flex-1 p-6"
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{ paddingBottom: 20 }}
-                >
-                  <View className="flex-row flex-wrap gap-3">
-                    {((detailData || data) as any).category?.prompts?.map(
-                      (prompt: Prompt, index: number) => (
-                        <View
-                          key={`all-prompt-${prompt.id}-${index}`}
-                          className="px-4 py-3 rounded-xl"
-                          style={{
-                            backgroundColor: isDarkMode
-                              ? "rgba(245, 158, 11, 0.15)"
-                              : "rgb(255, 251, 235)",
-                          }}
-                        >
-                          <Text
-                            className="text-base font-medium"
-                            style={{
-                              color: isDarkMode ? "#FCD34D" : "#92400E",
-                            }}
-                          >
-                            {prompt.name}
-                          </Text>
-                        </View>
-                      )
-                    )}
-                  </View>
-
-                  {/* Random suggestion hint */}
-                  <View
-                    className="p-4 mt-6 rounded-xl"
-                    style={{
-                      backgroundColor: isDarkMode
-                        ? "rgba(139, 92, 246, 0.1)"
-                        : "rgb(245, 243, 255)",
-                    }}
-                  >
-                    <View className="flex-row items-center mb-2">
-                      <Shuffle size={16} color="#8B5CF6" />
-                      <Text className="ml-2 text-sm font-semibold text-purple-600">
-                        Pro tip
-                      </Text>
-                    </View>
-                    <Text
-                      className="text-sm leading-relaxed"
-                      style={{
-                        color: isDarkMode ? theme.colors.text : "#6B7280",
-                      }}
-                    >
-                      Use the shuffle button to discover new activities each
-                      time you visit this location!
-                    </Text>
-                  </View>
-                </ScrollView>
-              </View>
-            </View>
-          </Modal>
 
           {/* Location Event Details Sheet */}
           {selectedLocationEvent && (
