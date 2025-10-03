@@ -14,7 +14,7 @@ import {
   ScrollView,
   Dimensions,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "~/src/components/ui/text";
 import { OptimizedImage } from "~/src/components/ui/optimized-image";
@@ -362,11 +362,11 @@ export default function Home() {
   const { theme, isDarkMode } = useTheme();
   const { user } = useUser();
   const router = useRouter();
+  const { eventId = null } = useLocalSearchParams<{ eventId: string }>();
   const { fetchAllNoifications, unReadCount } = useNotificationsApi();
 
   // Home feed data
   const { data, loading, error, refetch } = useHomeFeed();
-  
 
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const [isSelectedItemLocation, setIsSelectedItemLocation] = useState(false);
@@ -412,6 +412,13 @@ export default function Home() {
   // Initialize filters when data changes
   useEffect(() => {
     if (data.allContent.length > 0 && Object.keys(filters).length === 0) {
+      console.log(data.allContent[0]);
+      if (eventId) {
+        const found = data.allContent.find((val) => val.id === eventId);
+        if (found) {
+          handleEventSelect(found);
+        }
+      }
       const defaultFilters = generateDefaultFilters(
         data.allContent.filter((item: any) => !item.isLocation),
         data.allContent.filter((item: any) => item.isLocation)
@@ -423,21 +430,27 @@ export default function Home() {
   // Helper function to filter content based on section criteria
   const filterContentBySection = (allContent: any[], section: any) => {
     if (!section || !allContent) return [];
-    
+
     const now = new Date();
     let filtered = [...allContent];
-    
+
     // Filter based on section type
-    if (section.sectionType === "events" || section.title.toLowerCase().includes("events")) {
-      filtered = filtered.filter(item => !item.isLocation);
-    } else if (section.sectionType === "locations" || section.title.toLowerCase().includes("places")) {
-      filtered = filtered.filter(item => item.isLocation);
+    if (
+      section.sectionType === "events" ||
+      section.title.toLowerCase().includes("events")
+    ) {
+      filtered = filtered.filter((item) => !item.isLocation);
+    } else if (
+      section.sectionType === "locations" ||
+      section.title.toLowerCase().includes("places")
+    ) {
+      filtered = filtered.filter((item) => item.isLocation);
     }
-    
+
     // Filter based on time criteria
     if (section.title.toLowerCase().includes("this week")) {
       const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-      filtered = filtered.filter(item => {
+      filtered = filtered.filter((item) => {
         if (item.isLocation) return true; // Locations don't have dates
         if (!item.start_datetime) return false;
         const itemDate = new Date(item.start_datetime);
@@ -445,27 +458,38 @@ export default function Home() {
       });
     } else if (section.title.toLowerCase().includes("this month")) {
       const monthFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-      filtered = filtered.filter(item => {
+      filtered = filtered.filter((item) => {
         if (item.isLocation) return true;
         if (!item.start_datetime) return false;
         const itemDate = new Date(item.start_datetime);
         return itemDate >= now && itemDate <= monthFromNow;
       });
     }
-    
+
     // Filter based on algorithm
-    if (section.algorithm === "popularity" || section.title.toLowerCase().includes("popular")) {
-      filtered = filtered.sort((a, b) => (b.attendees || 0) - (a.attendees || 0));
-    } else if (section.algorithm === "trending" || section.title.toLowerCase().includes("trending")) {
+    if (
+      section.algorithm === "popularity" ||
+      section.title.toLowerCase().includes("popular")
+    ) {
+      filtered = filtered.sort(
+        (a, b) => (b.attendees || 0) - (a.attendees || 0)
+      );
+    } else if (
+      section.algorithm === "trending" ||
+      section.title.toLowerCase().includes("trending")
+    ) {
       // Sort by recent events or popular items
       filtered = filtered.sort((a, b) => {
         if (a.start_datetime && b.start_datetime) {
-          return new Date(b.start_datetime).getTime() - new Date(a.start_datetime).getTime();
+          return (
+            new Date(b.start_datetime).getTime() -
+            new Date(a.start_datetime).getTime()
+          );
         }
         return (b.attendees || 0) - (a.attendees || 0);
       });
     }
-    
+
     return filtered.slice(0, 100); // Limit to 100 items for performance
   };
 
@@ -474,7 +498,7 @@ export default function Home() {
       console.error("❌ Section is undefined or null");
       return;
     }
-    
+
     // Show loading state immediately
     setSectionViewSheet({
       isOpen: true,
@@ -482,11 +506,11 @@ export default function Home() {
       allSectionData: [],
       isLoading: true,
     });
-    
+
     try {
       // Use the existing data from the section instead of making new API calls
       let allSectionData = [];
-      
+
       if (section.data && section.data.length > 0) {
         // Use the data that's already in the section
         allSectionData = section.data;
@@ -496,13 +520,13 @@ export default function Home() {
         allSectionData = await handleSectionViewMore(section);
         console.log("✅ Section data fetched from API");
       }
-      
+
       // If we have data but want to show more, we can filter the existing allContent
       if (allSectionData.length === 0 && data.allContent.length > 0) {
         allSectionData = filterContentBySection(data.allContent, section);
         console.log("✅ Section data filtered from content");
       }
-      
+
       setSectionViewSheet({
         isOpen: true,
         section: section,
@@ -1137,8 +1161,8 @@ export default function Home() {
         />
         <HomeLoadingScreen
           isVisible={loading}
-          loadingText = "Discovering Amazing Events and Activities"
-          subtitle = "Finding the best events, activities and experiences near you..."
+          loadingText="Discovering Amazing Events and Activities"
+          subtitle="Finding the best events, activities and experiences near you..."
         />
       </View>
     );
