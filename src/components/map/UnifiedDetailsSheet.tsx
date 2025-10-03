@@ -510,7 +510,6 @@ export const UnifiedDetailsSheet = React.memo(
       (currentData as any).created_by && 
       (currentData as any).created_by.id === (currentData as any).user_id;
 
-
     return (
       <Modal
         visible={isOpen}
@@ -689,7 +688,7 @@ export const UnifiedDetailsSheet = React.memo(
                 />
 
                 {/* Creator Badge for User-Created Events */}
-                {isEventType && (currentData as any).created_by && (
+                {isEventType && (currentData as any).created_by && (currentData as any).created_by.name && (
                   <TouchableOpacity
                     onPress={handleCreatorClick}
                     className="flex-row items-center px-4 py-3 mb-6 rounded-2xl"
