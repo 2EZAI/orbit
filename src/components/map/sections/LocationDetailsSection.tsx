@@ -61,3 +61,5 @@ export function LocationDetailsSection({ data }: LocationDetailsSectionProps) {
     </View>
   );
 }
+
+

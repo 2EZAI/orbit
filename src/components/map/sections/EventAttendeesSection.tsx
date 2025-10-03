@@ -76,3 +76,5 @@ export function EventAttendeesSection({
     </View>
   );
 }
+
+

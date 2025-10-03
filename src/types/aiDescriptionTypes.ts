@@ -46,3 +46,5 @@ export interface AIDescriptionState {
   error: string | null;
   suggestions: string[];
 }
+
+

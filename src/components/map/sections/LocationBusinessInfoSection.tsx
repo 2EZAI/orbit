@@ -284,3 +284,5 @@ export function LocationBusinessInfoSection({ data }: LocationBusinessInfoSectio
     </View>
   );
 }
+
+

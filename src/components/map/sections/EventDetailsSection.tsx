@@ -177,3 +177,5 @@ export function EventDetailsSection({
     </View>
   );
 }
+
+

@@ -202,3 +202,5 @@ export function LocationEventsSection({
     </View>
   );
 }
+
+
