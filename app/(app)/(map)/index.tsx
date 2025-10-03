@@ -83,8 +83,8 @@ export default function Map() {
   }
 
   return (
-      <MapStateManager cameraRef={cameraRef}>
-        {(state) => (
+    <MapStateManager cameraRef={cameraRef}>
+      {(state) => (
         <MapEventHandlers>
           {(eventHandlers) => (
             <>
@@ -104,6 +104,9 @@ export default function Map() {
                 <>
                   {/* REMOVED: Debug logging for performance */}
                   <UnifiedCard
+                    key={`${(state as any).isEvent ? "event" : "location"}-${
+                      (state.selectedEvent as any)?.id || "unknown"
+                    }`}
                     data={state.selectedEvent as any}
                     nearbyData={
                       (state.isEvent ? state.events : state.locations) as any

@@ -36,14 +36,14 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const isEvent = (data: UnifiedData): data is MapEvent => {
   // Use explicit type field first, then fall back to field detection
   if (data.type) {
-    return data.type === 'user_created' || data.type === 'event';
+    return data.type === "user_created" || data.type === "event";
   }
-  
+
   // Fallback: check for event fields but exclude Google API locations
-  if (data.type === 'googleApi') {
+  if (data.type === "googleApi") {
     return false; // Google API items with event fields are still locations
   }
-  
+
   return (
     "start_datetime" in data || "venue_name" in data || "attendees" in data
   );
@@ -560,8 +560,7 @@ export const UnifiedCard = React.memo(
     // Get display values based on data type - INSTANT RENDERING
     const displayValues = useMemo(() => {
       const detail = detailData || data;
-      
-
+      console.log(detail);
       if (treatAsEvent) {
         return {
           title: detail.name,
@@ -581,6 +580,7 @@ export const UnifiedCard = React.memo(
               icon: <Users size={12} color="white" />,
               label: `${detail.attendees?.count || 0} going`,
             },
+
             // Only show venue if it exists and is different from title
             ...(detail.venue_name && detail.venue_name !== detail.name
               ? [
@@ -611,24 +611,32 @@ export const UnifiedCard = React.memo(
           dateTime: null,
           stats: [
             // Only show distance if it's meaningful (> 0.1 km or 100 meters)
-            ...(
-              (locationDetail as any).distance_meters && (locationDetail as any).distance_meters > 100
-                ? [{
+            ...((locationDetail as any).distance_meters &&
+            (locationDetail as any).distance_meters > 100
+              ? [
+                  {
                     icon: <MapPin size={12} color="white" />,
-                    label: `${((locationDetail as any).distance_meters / 1000).toFixed(1)} km`,
-                  }]
-                : (locationDetail as any).distance_km && (locationDetail as any).distance_km > 0.1
-                ? [{
+                    label: `${(
+                      (locationDetail as any).distance_meters / 1000
+                    ).toFixed(1)} km`,
+                  },
+                ]
+              : (locationDetail as any).distance_km &&
+                (locationDetail as any).distance_km > 0.1
+              ? [
+                  {
                     icon: <MapPin size={12} color="white" />,
-                    label: `${(locationDetail as any).distance_km.toFixed(1)} km`,
-                  }]
-                : []
-            ),
+                    label: `${(locationDetail as any).distance_km.toFixed(
+                      1
+                    )} km`,
+                  },
+                ]
+              : []),
           ],
         };
       }
-    }, [detailData?.id, data.id, treatAsEvent]); // Removed userLocation dependencies
-
+    }, [detailData, data, treatAsEvent]); // Removed userLocation dependencies
+    console.log("displayValues=====>", displayValues);
     return (
       <>
         <View
