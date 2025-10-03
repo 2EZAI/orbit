@@ -32,8 +32,6 @@ export function UnifiedDetailsSheetContent({
   data,
   isEventType,
   isTicketmasterEvent,
-  isUserEvent,
-  isGoogleApiEvent,
   isCreator,
   isJoined,
   hasTickets,
@@ -43,7 +41,6 @@ export function UnifiedDetailsSheetContent({
   loadingLocationEvents,
   nearbyData,
   onDataSelect,
-  onShowControler,
 }: UnifiedDetailsSheetContentProps) {
   const { theme } = useTheme();
 
