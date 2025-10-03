@@ -1,9 +1,11 @@
 import React from "react";
-import { ScrollView, TouchableOpacity, View } from "react-native";
-import { TrendingUp, Star } from "lucide-react-native";
+import { ScrollView, TouchableOpacity, View, ActivityIndicator } from "react-native";
+import { MapPin, Star } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { OptimizedImage } from "~/src/components/ui/optimized-image";
+import { useSimilarItems } from "~/src/hooks/useSimilarItems";
+import { useUser } from "~/src/lib/UserProvider";
 
 interface LocationSimilarSectionProps {
   data: any;
@@ -17,28 +19,58 @@ export function LocationSimilarSection({
   onDataSelect 
 }: LocationSimilarSectionProps) {
   const { theme, isDarkMode } = useTheme();
+  const { userlocation } = useUser();
 
-  // Get similar locations from nearbyData
-  const getSimilarLocations = () => {
-    const currentCategory = data.category?.name?.toLowerCase();
-    const currentType = data.type?.toLowerCase();
+  // Use the similar items API like web app
+  const { locations: similarLocations, isLoading, error, hasResults } = useSimilarItems({
+    itemType: 'location',
+    itemId: data.id,
+    category: data.category?.name || data.type,
+    name: data.name,
+    latitude: userlocation?.latitude ? parseFloat(userlocation.latitude) : 0,
+    longitude: userlocation?.longitude ? parseFloat(userlocation.longitude) : 0,
+    limit: 6,
+    enabled: !!data.id && !!userlocation?.latitude && !!userlocation?.longitude,
+  });
 
-    return nearbyData
-      .filter((item) => {
-        if (item.id === data.id) return false;
-        if (item.start_datetime) return false; // Skip events
+  // Debug logging for similar locations
+  console.log('📍 [LocationSimilarSection] Debug:', {
+    dataId: data.id,
+    dataName: data.name,
+    dataCategory: data.category,
+    dataType: data.type,
+    userlocation,
+    latitude: userlocation?.latitude ? parseFloat(userlocation.latitude) : 0,
+    longitude: userlocation?.longitude ? parseFloat(userlocation.longitude) : 0,
+    enabled: !!data.id && !!userlocation?.latitude && !!userlocation?.longitude,
+    isLoading,
+    error,
+    hasResults,
+    similarLocationsCount: similarLocations.length,
+    similarLocationsIds: similarLocations.map((item: any) => item.id),
+  });
 
-        const itemCategory = item.category?.name?.toLowerCase();
-        const itemType = item.type?.toLowerCase();
+  if (isLoading) {
+    return (
+      <View className="mb-6">
+        <View className="flex-row items-center mb-4">
+          <MapPin size={20} color="#8B5CF6" />
+          <Text
+            className="ml-2 text-lg font-bold"
+            style={{ color: theme.colors.text }}
+          >
+            Similar Places
+          </Text>
+        </View>
+        <View className="flex-row justify-center py-4">
+          <ActivityIndicator size="small" color="#8B5CF6" />
+        </View>
+      </View>
+    );
+  }
 
-        return itemCategory === currentCategory || itemType === currentType;
-      })
-      .slice(0, 5);
-  };
-
-  const similarLocations = getSimilarLocations();
-
-  if (similarLocations.length === 0) {
+  if (error || !hasResults) {
+    console.log('❌ [LocationSimilarSection] No similar locations found, returning null');
     return null;
   }
 
@@ -55,14 +87,14 @@ export function LocationSimilarSection({
   };
 
   return (
-    <View className="mb-6">
+    <View className="mb-6 mt-6">
       <View className="flex-row items-center mb-4">
-        <TrendingUp size={20} color="#8B5CF6" />
+        <MapPin size={20} color="#8B5CF6" />
         <Text
           className="ml-2 text-lg font-bold"
           style={{ color: theme.colors.text }}
         >
-          Similar Places Nearby
+          Similar Places
         </Text>
       </View>
       
@@ -75,7 +107,17 @@ export function LocationSimilarSection({
           {similarLocations.map((item: any, index: number) => (
             <TouchableOpacity
               key={`${item.id}-${index}`}
-              onPress={() => onDataSelect(item)}
+              onPress={() => {
+                console.log('📍 [LocationSimilarSection] Similar location clicked:', {
+                  locationId: item.id,
+                  locationName: item.name,
+                  locationType: item.type,
+                  hasOnDataSelect: !!onDataSelect,
+                });
+                if (onDataSelect) {
+                  onDataSelect(item);
+                }
+              }}
               className="overflow-hidden w-48 rounded-2xl border shadow-sm"
               style={{
                 backgroundColor: theme.colors.card,
@@ -92,7 +134,7 @@ export function LocationSimilarSection({
               />
               <View className="p-3">
                 <Text
-                  className="mb-1 text-sm font-bold"
+                  className="mb-1 text-sm font-bold mt-2"
                   style={{ color: theme.colors.text }}
                   numberOfLines={2}
                 >

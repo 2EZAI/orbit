@@ -1,9 +1,11 @@
 import React from "react";
-import { ScrollView, TouchableOpacity, View } from "react-native";
-import { TrendingUp, Users } from "lucide-react-native";
+import { ScrollView, TouchableOpacity, View, ActivityIndicator } from "react-native";
+import { Calendar, Users } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { OptimizedImage } from "~/src/components/ui/optimized-image";
+import { useSimilarItems } from "~/src/hooks/useSimilarItems";
+import { useUser } from "~/src/lib/UserProvider";
 
 interface EventSimilarSectionProps {
   data: any;
@@ -17,40 +19,57 @@ export function EventSimilarSection({
   onDataSelect 
 }: EventSimilarSectionProps) {
   const { theme, isDarkMode } = useTheme();
+  const { userlocation } = useUser();
 
-  // Get similar events from nearbyData
-  const getSimilarEvents = () => {
-    const currentCategories = data.categories || [];
-    const categoryNames = currentCategories.map((cat: any) =>
-      cat.name?.toLowerCase()
+  // Use the similar items API like web app
+  const { events: similarEvents, isLoading, error, hasResults } = useSimilarItems({
+    itemType: 'event',
+    itemId: data.id,
+    category: data.categories?.[0]?.name || data.type,
+    name: data.name,
+    latitude: userlocation?.latitude ? parseFloat(userlocation.latitude) : 0,
+    longitude: userlocation?.longitude ? parseFloat(userlocation.longitude) : 0,
+    limit: 6,
+    enabled: !!data.id && !!userlocation?.latitude && !!userlocation?.longitude,
+  });
+
+  // Debug logging for similar events
+  console.log('🎯 [EventSimilarSection] Debug:', {
+    dataId: data.id,
+    dataName: data.name,
+    dataCategories: data.categories,
+    userlocation,
+    latitude: userlocation?.latitude ? parseFloat(userlocation.latitude) : 0,
+    longitude: userlocation?.longitude ? parseFloat(userlocation.longitude) : 0,
+    enabled: !!data.id && !!userlocation?.latitude && !!userlocation?.longitude,
+    isLoading,
+    error,
+    hasResults,
+    similarEventsCount: similarEvents.length,
+    similarEventsIds: similarEvents.map((item: any) => item.id),
+  });
+
+  if (isLoading) {
+    return (
+      <View className="mb-6">
+        <View className="flex-row items-center mb-4">
+          <Calendar size={20} color="#8B5CF6" />
+          <Text
+            className="ml-2 text-lg font-bold"
+            style={{ color: theme.colors.text }}
+          >
+            Similar Events
+          </Text>
+        </View>
+        <View className="flex-row justify-center py-4">
+          <ActivityIndicator size="small" color="#8B5CF6" />
+        </View>
+      </View>
     );
+  }
 
-    // First try to find events with matching categories
-    const categoryMatches = nearbyData.filter((item) => {
-      if (item.id === data.id) return false;
-      const itemCategories = item.categories || [];
-      return itemCategories.some((cat: any) =>
-        categoryNames.includes(cat.name?.toLowerCase())
-      );
-    });
-
-    // If we have category matches, return those
-    if (categoryMatches.length > 0) {
-      return categoryMatches.slice(0, 5);
-    }
-
-    // Otherwise, return any other events
-    return nearbyData
-      .filter((item) => {
-        if (item.id === data.id) return false;
-        return item.start_datetime; // Has event fields
-      })
-      .slice(0, 5);
-  };
-
-  const similarEvents = getSimilarEvents();
-
-  if (similarEvents.length === 0) {
+  if (error || !hasResults) {
+    console.log('❌ [EventSimilarSection] No similar events found, returning null');
     return null;
   }
 
@@ -67,14 +86,14 @@ export function EventSimilarSection({
   };
 
   return (
-    <View className="mb-6">
+    <View className="mb-6 mt-6">
       <View className="flex-row items-center mb-4">
-        <TrendingUp size={20} color="#8B5CF6" />
+        <Calendar size={20} color="#8B5CF6" />
         <Text
           className="ml-2 text-lg font-bold"
           style={{ color: theme.colors.text }}
         >
-          Similar Events Nearby
+          Similar Events
         </Text>
       </View>
       
@@ -87,7 +106,11 @@ export function EventSimilarSection({
           {similarEvents.map((item: any, index: number) => (
             <TouchableOpacity
               key={`${item.id}-${index}`}
-              onPress={() => onDataSelect(item)}
+              onPress={() => {
+                if (onDataSelect) {
+                  onDataSelect(item);
+                }
+              }}
               className="overflow-hidden w-48 rounded-2xl border shadow-sm"
               style={{
                 backgroundColor: theme.colors.card,
@@ -104,7 +127,7 @@ export function EventSimilarSection({
               />
               <View className="p-3">
                 <Text
-                  className="mb-1 text-sm font-bold"
+                  className="mb-1 text-sm font-bold mt-2"
                   style={{ color: theme.colors.text }}
                   numberOfLines={2}
                 >

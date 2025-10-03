@@ -139,25 +139,43 @@ export class MapDataService {
       throw new Error("Invalid longitude: must be between -180 and 180");
     }
 
+    const requestBody = {
+      latitude,
+      longitude,
+      radius: 160934, // 100 miles in meters
+      includeTicketmaster,
+    };
+
+    console.log('🔍 [MapDataService] Nearby API Request:', {
+      url: `${this.baseUrl}/api/events/nearby`,
+      body: requestBody,
+    });
+
     const response = await fetch(`${this.baseUrl}/api/events/nearby`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        latitude,
-        longitude,
-        radius: 160934, // 100 miles in meters
-        includeTicketmaster,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('❌ [MapDataService] Nearby API Error:', {
+        status: response.status,
+        error: errorText,
+      });
       throw new Error(`Nearby API Error ${response.status}: ${errorText}`);
     }
 
     const data: MapDataResponse = await response.json();
+
+    console.log('📥 [MapDataService] Nearby API Response:', {
+      eventsCount: data.events?.length || 0,
+      locationsCount: data.locations?.length || 0,
+      totalEvents: data.events?.length || 0,
+      totalLocations: data.locations?.length || 0,
+    });
 
     // CLIENT-SIDE DISTANCE FILTERING (100 miles = 160km) - Same as web app
     const maxDistanceKm = 160; // 100 miles in km for metro area coverage
@@ -207,6 +225,16 @@ export class MapDataService {
     console.log(`📊 Event Breakdown:`);
     console.log(`   • Ticketmaster Events: ${ticketmasterEvents.length}`);
     console.log(`   • Regular Events: ${regularEvents.length}`);
+
+    // Debug: Log sample events if any
+    if (events.length > 0) {
+      console.log('🔍 Sample Events from API:', events.slice(0, 3).map(e => ({
+        id: e.id,
+        name: e.name,
+        is_ticketmaster: e.is_ticketmaster,
+        source: e.source,
+      })));
+    }
     console.log(`   • Total Events: ${events.length}`);
     console.log(`   • Total Locations: ${locations.length}`);
 
