@@ -85,6 +85,16 @@ const isEventData = (data: UnifiedData, isEvent?: boolean): boolean => {
     return isEvent;
   }
 
+  // Use explicit type field first, then fall back to field detection
+  if (data.type) {
+    return data.type === 'user_created' || data.type === 'event';
+  }
+  
+  // Fallback: check for event fields but exclude Google API locations
+  if (data.type === 'googleApi') {
+    return false; // Google API items with event fields are still locations
+  }
+
   const hasEventFields =
     "start_datetime" in data || "venue_name" in data || "attendees" in data;
 
@@ -111,7 +121,12 @@ export const UnifiedDetailsSheet = React.memo(
 
     // Memoize the event type check to prevent repeated calculations
     const isEventType = useMemo(
-      () => isEventData(data, isEvent),
+      () => {
+        const result = isEventData(data, isEvent);
+        
+        
+        return result;
+      },
       [data?.id, isEvent]
     );
 
@@ -226,6 +241,12 @@ export const UnifiedDetailsSheet = React.memo(
       // For locations, we want to create an event at that location
       const locationData = isEventType ? (data as any).location : data;
       
+      console.log('🔧 [UnifiedDetailsSheet] handleCreateEvent:', {
+        isEventType,
+        data: data,
+        locationData: locationData,
+      });
+      
       // Close the sheet first
       onClose();
 
@@ -239,29 +260,36 @@ export const UnifiedDetailsSheet = React.memo(
       let latitude = "";
       let longitude = "";
       
-      if (locationData.coordinates) {
-        if (Array.isArray(locationData.coordinates)) {
+      // Check for coordinates in location.coordinates (GeoJSON format) or direct coordinates property
+      const coords = locationData.location?.coordinates || locationData.coordinates;
+      
+      if (coords) {
+        if (Array.isArray(coords)) {
           // GeoJSON format: [longitude, latitude]
-          longitude = locationData.coordinates[0]?.toString() || "";
-          latitude = locationData.coordinates[1]?.toString() || "";
+          longitude = coords[0]?.toString() || "";
+          latitude = coords[1]?.toString() || "";
         } else {
           // Object format: {latitude, longitude}
-          latitude = locationData.coordinates.latitude?.toString() || "";
-          longitude = locationData.coordinates.longitude?.toString() || "";
+          latitude = coords.latitude?.toString() || "";
+          longitude = coords.longitude?.toString() || "";
         }
       }
 
+      const params = {
+        locationId: locationData.id || "",
+        locationType: (locationData as any).type || "",
+        latitude,
+        longitude,
+        address: (locationData as any).address || "",
+        categoryId: simplifiedCategory.id,
+        categoryName: simplifiedCategory.name,
+      };
+      
+      console.log('🔧 [UnifiedDetailsSheet] Create event params:', params);
+      
       router.push({
         pathname: "/(app)/(create)",
-        params: {
-          locationId: locationData.id || "",
-          locationType: (locationData as any).type || "",
-          latitude,
-          longitude,
-          address: (locationData as any).address || "",
-          categoryId: simplifiedCategory.id,
-          categoryName: simplifiedCategory.name,
-        },
+        params,
       });
     };
 

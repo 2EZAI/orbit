@@ -22,15 +22,23 @@ export function EventSimilarSection({
   const { userlocation } = useUser();
 
   // Use the similar items API like web app
+  // Get coordinates from userlocation or fallback to event location coordinates
+  const userLat = userlocation?.latitude ? parseFloat(userlocation.latitude) : null;
+  const userLng = userlocation?.longitude ? parseFloat(userlocation.longitude) : null;
+  
+  // Use event's location coordinates as fallback if user location is not available
+  const latitude = userLat || (data.location?.coordinates?.[1] ? parseFloat(data.location.coordinates[1]) : null);
+  const longitude = userLng || (data.location?.coordinates?.[0] ? parseFloat(data.location.coordinates[0]) : null);
+
   const { events: similarEvents, isLoading, error, hasResults } = useSimilarItems({
     itemType: 'event',
     itemId: data.id,
     category: data.categories?.[0]?.name || data.type,
     name: data.name,
-    latitude: userlocation?.latitude ? parseFloat(userlocation.latitude) : 0,
-    longitude: userlocation?.longitude ? parseFloat(userlocation.longitude) : 0,
+    latitude: latitude || 0,
+    longitude: longitude || 0,
     limit: 6,
-    enabled: !!data.id && !!userlocation?.latitude && !!userlocation?.longitude,
+    enabled: !!data.id && !!latitude && !!longitude && latitude !== 0 && longitude !== 0,
   });
 
   // Debug logging for similar events
@@ -39,9 +47,11 @@ export function EventSimilarSection({
     dataName: data.name,
     dataCategories: data.categories,
     userlocation,
-    latitude: userlocation?.latitude ? parseFloat(userlocation.latitude) : 0,
-    longitude: userlocation?.longitude ? parseFloat(userlocation.longitude) : 0,
-    enabled: !!data.id && !!userlocation?.latitude && !!userlocation?.longitude,
+    userLat,
+    userLng,
+    latitude,
+    longitude,
+    enabled: !!data.id && !!latitude && !!longitude && latitude !== 0 && longitude !== 0,
     isLoading,
     error,
     hasResults,

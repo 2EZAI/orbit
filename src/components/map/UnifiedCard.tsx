@@ -34,6 +34,16 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 // Type guards
 const isEvent = (data: UnifiedData): data is MapEvent => {
+  // Use explicit type field first, then fall back to field detection
+  if (data.type) {
+    return data.type === 'user_created' || data.type === 'event';
+  }
+  
+  // Fallback: check for event fields but exclude Google API locations
+  if (data.type === 'googleApi') {
+    return false; // Google API items with event fields are still locations
+  }
+  
   return (
     "start_datetime" in data || "venue_name" in data || "attendees" in data
   );
@@ -272,7 +282,14 @@ export const UnifiedCard = React.memo(
     onShowDetails,
     treatAsEvent = true, // Default to true to maintain existing behavior
   }: UnifiedCardProps) => {
-    // REMOVED: Debug logging for performance
+    // Debug logging for UnifiedCard data
+    console.log("🎴 [UnifiedCard] Component rendered with data:", {
+      dataId: data?.id,
+      dataName: data?.name,
+      dataType: data?.type,
+      treatAsEvent,
+      timestamp: Date.now(),
+    });
     const { UpdateEventStatus, fetchEventDetail, fetchLocationDetail } =
       useUpdateEvents();
     const router = useRouter();
@@ -543,6 +560,7 @@ export const UnifiedCard = React.memo(
     // Get display values based on data type - INSTANT RENDERING
     const displayValues = useMemo(() => {
       const detail = detailData || data;
+      
 
       if (treatAsEvent) {
         return {
@@ -592,10 +610,20 @@ export const UnifiedCard = React.memo(
           categoryTags: locationDetail.category?.prompts?.slice(0, 3) || [],
           dateTime: null,
           stats: [
-            {
-              icon: <MapPin size={12} color="white" />,
-              label: "Calculating...", // Show default for instant rendering
-            },
+            // Only show distance if it's meaningful (> 0.1 km or 100 meters)
+            ...(
+              (locationDetail as any).distance_meters && (locationDetail as any).distance_meters > 100
+                ? [{
+                    icon: <MapPin size={12} color="white" />,
+                    label: `${((locationDetail as any).distance_meters / 1000).toFixed(1)} km`,
+                  }]
+                : (locationDetail as any).distance_km && (locationDetail as any).distance_km > 0.1
+                ? [{
+                    icon: <MapPin size={12} color="white" />,
+                    label: `${(locationDetail as any).distance_km.toFixed(1)} km`,
+                  }]
+                : []
+            ),
           ],
         };
       }
@@ -775,6 +803,14 @@ export const UnifiedCard = React.memo(
           />
         )}
       </>
+    );
+  },
+  (prevProps, nextProps) => {
+    // Custom comparison to ensure re-render when data changes
+    return (
+      prevProps.data?.id === nextProps.data?.id &&
+      prevProps.treatAsEvent === nextProps.treatAsEvent &&
+      prevProps.nearbyData?.length === nextProps.nearbyData?.length
     );
   }
 );

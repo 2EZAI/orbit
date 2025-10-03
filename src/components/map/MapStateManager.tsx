@@ -601,7 +601,11 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
       
       console.log("🗺️ [MapStateManager] Location found:", location ? location.name : "NOT FOUND", params);
       if (location) {
-        console.log("🗺️ [MapStateManager] Calling handleLocationClick");
+        console.log("🗺️ [MapStateManager] Calling handleLocationClick for:", {
+          locationId: location.id,
+          locationName: location.name,
+          isEvent: false,
+        });
         setIsEvent(false);
         handleLocationClick(location);
       }
@@ -692,18 +696,16 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
         console.log("🎯 [MapStateManager] Location camera focus skipped - missing camera ref or coordinates");
       }
       
-      const locationAsEvent = {
-        ...location,
-        start_datetime: new Date().toISOString(),
-        end_datetime: new Date().toISOString(),
-        venue_name: location.name,
-        attendees: { count: 0, profiles: [] },
-        categories: location.category ? [location.category] : [],
-      } as MapEvent;
-
-      handleEventClick(locationAsEvent);
+      // Set the location directly without converting to event
+      console.log("🎯 [MapStateManager] Setting selectedEvent to location:", {
+        locationId: location.id,
+        locationName: location.name,
+        locationType: location.type,
+      });
+      setSelectedEvent(location);
+      setShowDetails(false);
     },
-    [handleEventClick, cameraRef]
+    [cameraRef]
   );
 
   const handleClusterPress = useCallback(
@@ -730,20 +732,10 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
       } else if (cluster.type === "location") {
         if (cluster.locations?.length === 1) {
           console.log(
-            "🎯 [MapStateManager] Single location cluster, converting to event and calling handleEventClick"
+            "🎯 [MapStateManager] Single location cluster, calling handleLocationClick"
           );
-          const locationAsEvent = {
-            ...cluster.locations[0],
-            start_datetime: new Date().toISOString(),
-            end_datetime: new Date().toISOString(),
-            venue_name: cluster.locations[0].name,
-            attendees: { count: 0, profiles: [] },
-            categories: cluster.locations[0].category
-              ? [cluster.locations[0].category]
-              : [],
-          } as MapEvent;
-
-          handleEventClick(locationAsEvent);
+          // Don't convert location to event - call location handler directly
+          handleLocationClick(cluster.locations[0]);
         } else {
           console.log(
             "🎯 [MapStateManager] Multiple location cluster, showing cluster sheet"
@@ -752,7 +744,7 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
         }
       }
     },
-    [handleEventClick]
+    [handleEventClick, handleLocationClick]
   );
 
   const handleCloseModal = useCallback(() => {

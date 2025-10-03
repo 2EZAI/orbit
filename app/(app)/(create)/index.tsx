@@ -154,8 +154,16 @@ export default function CreateEvent() {
     console.log("params.latitude>", params.latitude);
     if (params.locationId) setlocationId(params.locationId as string);
     if (params.locationType) setlocationType(params.locationType as string);
-    if (params.latitude) setlatitude(parseFloat(params.latitude as string));
-    if (params.longitude) setlongitude(parseFloat(params.longitude as string));
+    if (params.latitude) {
+      const parsedLat = parseFloat(params.latitude as string);
+      console.log("Setting latitude:", parsedLat, "from params:", params.latitude);
+      setlatitude(parsedLat);
+    }
+    if (params.longitude) {
+      const parsedLng = parseFloat(params.longitude as string);
+      console.log("Setting longitude:", parsedLng, "from params:", params.longitude);
+      setlongitude(parsedLng);
+    }
     if (params.address) setAddress1(params.address as string);
 
     //removed as this functionality creates all states undefined
@@ -710,6 +718,10 @@ export default function CreateEvent() {
         if (selectedPrompts?.id != undefined) {
           promtIds.push(selectedPrompts?.id);
         }
+        // Get coordinates from params if state is not set (fallback for timing issues)
+        const finalLatitude = latitude || (params.latitude ? parseFloat(params.latitude as string) : undefined);
+        const finalLongitude = longitude || (params.longitude ? parseFloat(params.longitude as string) : undefined);
+        
         eventData = {
           name,
           description,
@@ -717,8 +729,8 @@ export default function CreateEvent() {
           prompt_ids: promtIds.length > 0 ? promtIds : null,
           category_id: categoryList?.id != undefined ? categoryList?.id : null,
           type: locationType,
-          latitude: latitude,
-          longitude: longitude,
+          latitude: finalLatitude,
+          longitude: finalLongitude,
           start_datetime: startDate.toISOString(),
           end_datetime: endDate.toISOString(),
           external_url: externalUrl || null,
@@ -728,6 +740,18 @@ export default function CreateEvent() {
           topic_id: selectedTopics,
           ...(eventID?.eventId && { event_id: eventID.eventId }),
         };
+        
+        console.log("🔧 [CreateEvent] State values when building eventData:", {
+          locationId,
+          locationType,
+          latitude,
+          longitude,
+          finalLatitude,
+          finalLongitude,
+          paramsLatitude: params.latitude,
+          paramsLongitude: params.longitude,
+          address: address1,
+        });
         //         if (eventID !== undefined) {
         //   eventData.event_id = eventID;
         // }
