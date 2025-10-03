@@ -153,7 +153,6 @@ export function UnifiedSheetButtons({
 
             {/* Secondary Action Row */}
             <View className="flex-row gap-3">
-              
               <TouchableOpacity
                 onPress={onShare}
                 className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
@@ -167,15 +166,6 @@ export function UnifiedSheetButtons({
             {/* Creator Actions Row - Only show if user is creator */}
             {isCreator && (
               <View className="flex-row gap-3">
-                <TouchableOpacity
-                  onPress={onShare}
-                  className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
-                >
-                  <Text className="text-lg font-semibold text-purple-600">
-                    Share
-                  </Text>
-                </TouchableOpacity>
-                
                 <TouchableOpacity
                   onPress={onEdit}
                   className="flex-1 items-center py-4 bg-gray-600 rounded-2xl"
