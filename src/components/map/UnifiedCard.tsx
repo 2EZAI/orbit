@@ -14,11 +14,10 @@ import {
 } from "react-native";
 import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
 import { useUpdateEvents } from "~/hooks/useUpdateEvents";
+import { useAuth } from "~/src/lib/auth";
 import { formatDate, formatTime } from "~/src/lib/date";
-import { useUser } from "~/src/lib/UserProvider";
 import { Text } from "../ui/text";
 import { UnifiedDetailsSheet } from "./UnifiedDetailsSheet";
-import { useAuth } from "~/src/lib/auth";
 
 type UnifiedData = MapEvent | MapLocation;
 
