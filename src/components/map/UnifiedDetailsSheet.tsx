@@ -178,8 +178,7 @@ export const UnifiedDetailsSheet = React.memo(
           message: `Check out ${currentData?.name} on Orbit!
           ${currentData?.description}
 
-          http://deeplinkingr.netlify.app/?url=orbit://event/${currentData.id}
-          
+          https://stellular-biscotti-e0fbd6.netlify.app/?url=orbit://event/${currentData.id}
           `,
           title: isEventType ? "Event on Orbit" : "Location on Orbit",
         });
