@@ -187,17 +187,6 @@ export const UnifiedDetailsSheet = React.memo(
       }
     };
 
-    const handleCreatorClick = () => {
-      const currentData = detailData || data;
-      const creator = (currentData as any).created_by;
-
-      if (creator?.username) {
-        router.push(`/(app)/profile/${creator.id}`);
-      } else if (creator?.id) {
-        // Fallback to ID-based route if username not available
-        router.push(`/(app)/profile/${creator.id}`);
-      }
-    };
 
     const handleTicketPurchase = () => {
       const currentData = detailData || data;
@@ -708,47 +697,6 @@ export const UnifiedDetailsSheet = React.memo(
                   onShowControler={onShowControler}
                 />
 
-                {/* Creator Badge for User-Created Events */}
-                {isEventType &&
-                  (currentData as any).created_by &&
-                  (currentData as any).created_by.name && (
-                    <TouchableOpacity
-                      onPress={handleCreatorClick}
-                      className="flex-row items-center px-4 py-3 mb-6 rounded-2xl"
-                      style={{
-                        backgroundColor: isDarkMode
-                          ? "rgba(59, 130, 246, 0.1)"
-                          : "rgb(239, 246, 255)",
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <UserAvatar
-                        size={36}
-                        user={{
-                          id: (currentData as any).created_by.id,
-                          name: (currentData as any).created_by.name || "Host",
-                          image: (currentData as any).created_by.avatar_url,
-                        }}
-                      />
-                      <View className="flex-1 ml-3">
-                        <Text className="text-sm font-medium text-blue-600">
-                          Created by
-                        </Text>
-                        <Text
-                          className="text-base font-semibold"
-                          style={{ color: theme.colors.text }}
-                        >
-                          {(currentData as any).created_by.name ||
-                            `@${(currentData as any).created_by.username}` ||
-                            "Community Member"}
-                        </Text>
-                      </View>
-                      <View className="flex-row items-center">
-                        <Sparkles size={20} color="#3B82F6" />
-                        <ChevronRight size={16} color="#3B82F6" />
-                      </View>
-                    </TouchableOpacity>
-                  )}
 
                 {/* Photo Gallery */}
                 {currentData?.image_urls &&
