@@ -33,11 +33,12 @@ export function EventSimilarSection({
   const { events: similarEvents, isLoading, error, hasResults } = useSimilarItems({
     itemType: 'event',
     itemId: data.id,
-    category: data.categories?.[0]?.name || data.type,
+    category: data.categories?.[0]?.name || data.type, // Match web app exactly
     name: data.name,
     latitude: latitude || 0,
     longitude: longitude || 0,
-    limit: 6,
+    limit: 5, // Match web app exactly
+    proximityKm: 50, // Match web app exactly
     enabled: !!data.id && !!latitude && !!longitude && latitude !== 0 && longitude !== 0,
   });
 

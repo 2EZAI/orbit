@@ -27,18 +27,29 @@ export function LocationSimilarSection({
   const userLng = userlocation?.longitude ? parseFloat(userlocation.longitude) : null;
   
   // Use location's own coordinates as fallback if user location is not available
-  const latitude = userLat || (data.location?.coordinates?.[1] ? parseFloat(data.location.coordinates[1]) : null);
-  const longitude = userLng || (data.location?.coordinates?.[0] ? parseFloat(data.location.coordinates[0]) : null);
+  let locationLat = null;
+  let locationLng = null;
+  
+  if (data.coordinates) {
+    // Direct coordinates object: {latitude, longitude}
+    locationLat = data.coordinates.latitude;
+    locationLng = data.coordinates.longitude;
+  }
+  
+  // Use userLocation if available, otherwise use location coordinates
+  const latitude = userLat || locationLat;
+  const longitude = userLng || locationLng;
 
   const { locations: similarLocations, isLoading, error, hasResults } = useSimilarItems({
     itemType: 'location',
     itemId: data.id,
-    category: data.category?.name || data.type,
+    category: data.category?.name || data.type, // Match web app exactly
     name: data.name,
     latitude: latitude || 0,
     longitude: longitude || 0,
-    limit: 6,
-    enabled: !!data.id && !!latitude && !!longitude && latitude !== 0 && longitude !== 0,
+    limit: 6, // Match web app exactly
+    proximityKm: 50, // Match web app exactly
+    enabled: !!data.id && !!latitude && !!longitude, // Use coordinates when available
   });
 
   // Debug logging for similar locations
@@ -50,9 +61,11 @@ export function LocationSimilarSection({
     userlocation,
     userLat,
     userLng,
-    latitude,
-    longitude,
-    enabled: !!data.id && !!latitude && !!longitude && latitude !== 0 && longitude !== 0,
+    locationLat,
+    locationLng,
+    finalLatitude: latitude,
+    finalLongitude: longitude,
+    enabled: !!data.id && !!latitude && !!longitude,
     isLoading,
     error,
     hasResults,
