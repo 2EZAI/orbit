@@ -14,8 +14,8 @@ import {
 } from "react-native";
 import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
 import { useUpdateEvents } from "~/hooks/useUpdateEvents";
+import { useAuth } from "~/src/lib/auth";
 import { formatDate, formatTime } from "~/src/lib/date";
-import { useUser } from "~/src/lib/UserProvider";
 import { Text } from "../ui/text";
 import { UnifiedDetailsSheet } from "./UnifiedDetailsSheet";
 
@@ -206,7 +206,7 @@ const getContextActions = (
       (detailData as MapEvent)?.name || (data as MapEvent).name || "";
     const joinStatus = (detailData as any)?.join_status || false;
     const isTicketmaster =
-      (detailData as any)?.is_ticketmaster || (data as any)?.is_ticketmaster;
+      (data as any)?.is_ticketmaster || (detailData as any)?.is_ticketmaster;
 
     // Determine event source for proper button logic
     const eventSource = (detailData as any)?.source || (data as any)?.source;
@@ -259,9 +259,9 @@ const getContextActions = (
     return [
       { label: "View Details", action: "details", icon: "ℹ️" },
       {
-        label: "Create Event Here",
-        action: "create",
-        icon: "✨",
+        label: "Join Event",
+        action: "join",
+        icon: "🎫",
       },
     ];
   } else {
@@ -293,7 +293,8 @@ export const UnifiedCard = React.memo(
     const { UpdateEventStatus, fetchEventDetail, fetchLocationDetail } =
       useUpdateEvents();
     const router = useRouter();
-    const { user } = useUser();
+
+    const { session } = useAuth();
     const [showDetails, setShowDetails] = useState(false);
     const currentIndex = nearbyData.findIndex((item) => item.id === data.id);
     const [loading, setLoading] = useState(false); // Start with false since we have data
@@ -636,7 +637,6 @@ export const UnifiedCard = React.memo(
         };
       }
     }, [detailData, data, treatAsEvent]); // Removed userLocation dependencies
-    console.log("displayValues=====>", displayValues);
     return (
       <>
         <View
@@ -767,27 +767,30 @@ export const UnifiedCard = React.memo(
 
               {/* Context-Aware Action Buttons */}
               <View className="flex-row gap-2">
-                {contextActions.map((action, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    className="flex-1 py-2 rounded-full"
-                    style={{
-                      backgroundColor:
-                        index === 0 ? "rgba(255,255,255,0.9)" : "#3B82F6", // Solid blue for action buttons
-                    }}
-                    onPress={() => handleContextAction(action.action)}
-                  >
-                    <View className="flex-row justify-center items-center">
-                      <Text
-                        className={`font-bold text-base ${
-                          index === 0 ? "text-black" : "text-white"
-                        }`}
-                      >
-                        {action.label}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                {contextActions.map((action, index) =>
+                  (action.action === "join" || action.action === "create") &&
+                  !session ? null : (
+                    <TouchableOpacity
+                      key={index}
+                      className="flex-1 py-2 rounded-full"
+                      style={{
+                        backgroundColor:
+                          index === 0 ? "rgba(255,255,255,0.9)" : "#3B82F6", // Solid blue for action buttons
+                      }}
+                      onPress={() => handleContextAction(action.action)}
+                    >
+                      <View className="flex-row justify-center items-center">
+                        <Text
+                          className={`font-bold text-base ${
+                            index === 0 ? "text-black" : "text-white"
+                          }`}
+                        >
+                          {action.label}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  )
+                )}
               </View>
             </View>
           </View>

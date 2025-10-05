@@ -3,7 +3,6 @@ import { router } from "expo-router";
 import {
   ArrowLeft,
   ChevronRight,
-  Shuffle,
   Sparkles,
   Tag,
   UserCheck,
@@ -29,8 +28,8 @@ import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
-import { UnifiedSheetButtons } from "./UnifiedSheetButtons";
 import { UnifiedDetailsSheetContent } from "./UnifiedDetailsSheetContent";
+import { UnifiedSheetButtons } from "./UnifiedSheetButtons";
 
 // Additional types that were in the old hook
 export interface Category {
@@ -176,7 +175,12 @@ export const UnifiedDetailsSheet = React.memo(
 
       try {
         await Share.share({
-          message: `Check out ${currentData?.name} on Orbit!\n${currentData?.description}`,
+          message: `Check out ${currentData?.name} on Orbit!
+          ${currentData?.description}
+
+          http://deeplinkingr.netlify.app/?url=orbit://event/${currentData.id}
+          
+          `,
           title: isEventType ? "Event on Orbit" : "Location on Orbit",
         });
       } catch (error) {
