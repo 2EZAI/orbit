@@ -41,24 +41,6 @@ export function EventSimilarSection({
     enabled: !!data.id && !!latitude && !!longitude && latitude !== 0 && longitude !== 0,
   });
 
-  // Debug logging for similar events
-  console.log('🎯 [EventSimilarSection] Debug:', {
-    dataId: data.id,
-    dataName: data.name,
-    dataCategories: data.categories,
-    userlocation,
-    userLat,
-    userLng,
-    latitude,
-    longitude,
-    enabled: !!data.id && !!latitude && !!longitude && latitude !== 0 && longitude !== 0,
-    isLoading,
-    error,
-    hasResults,
-    similarEventsCount: similarEvents.length,
-    similarEventsIds: similarEvents.map((item: any) => item.id),
-  });
-
   if (isLoading) {
     return (
       <View className="mb-6">

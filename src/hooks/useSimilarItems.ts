@@ -137,16 +137,6 @@ export function useSimilarItems({
       return;
     }
 
-    console.log('🔄 [useSimilarItems] Starting API call:', {
-      itemType,
-      itemId,
-      category,
-      name,
-      latitude,
-      longitude,
-      proximityKm,
-      limit,
-    });
 
     setIsLoading(true);
     setError(null);
@@ -164,8 +154,6 @@ export function useSimilarItems({
         ...(tags && tags.length > 0 && { tags }),
       };
 
-      console.log('📤 [useSimilarItems] Request body:', requestBody);
-
       const response = await fetch('https://orbit-web-backend.onrender.com/api/similar', {
         method: 'POST',
         headers: {
@@ -174,8 +162,6 @@ export function useSimilarItems({
         body: JSON.stringify(requestBody),
       });
 
-      console.log('📥 [useSimilarItems] Response status:', response.status);
-
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ [useSimilarItems] API error response:', errorText);
@@ -183,7 +169,6 @@ export function useSimilarItems({
       }
 
       const data = await response.json();
-      console.log('✅ [useSimilarItems] API response:', data);
 
 
       // Sanitize the response to ensure required fields exist
