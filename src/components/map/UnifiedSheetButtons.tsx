@@ -3,6 +3,7 @@ import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
+import { useAuth } from "~/src/lib/auth";
 
 export interface UnifiedSheetButtonsProps {
   data: any;
@@ -37,14 +38,14 @@ export function UnifiedSheetButtons({
 }: UnifiedSheetButtonsProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-
+  const { session } = useAuth();
   // Determine event source and type for proper button logic
   const eventSource = data?.source;
   const isTicketmasterEvent =
     data?.is_ticketmaster === true ||
     eventSource === "ticketmaster" ||
     Boolean(data?.ticketmaster_details);
-  
+
   const isUserEvent = eventSource === "user";
 
   if (loading) {
@@ -79,31 +80,32 @@ export function UnifiedSheetButtons({
         >
           <View className="flex-col gap-3">
             {/* Primary Action Row */}
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                onPress={onTicketPurchase}
-                className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
-              >
-                <Text className="text-lg font-semibold text-white">
-                  Buy Tickets
-                </Text>
-              </TouchableOpacity>
-              
-              {isJoined && (
+            {session ? (
+              <View className="flex-row gap-3">
                 <TouchableOpacity
-                  onPress={onCreateOrbit}
-                  className="flex-1 items-center py-4 bg-blue-600 rounded-2xl"
+                  onPress={onTicketPurchase}
+                  className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
                 >
                   <Text className="text-lg font-semibold text-white">
-                    Create Orbit
+                    Buy Tickets
                   </Text>
                 </TouchableOpacity>
-              )}
-            </View>
+
+                {isJoined && (
+                  <TouchableOpacity
+                    onPress={onCreateOrbit}
+                    className="flex-1 items-center py-4 bg-blue-600 rounded-2xl"
+                  >
+                    <Text className="text-lg font-semibold text-white">
+                      Create Orbit
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : null}
 
             {/* Secondary Action Row */}
             <View className="flex-row gap-3">
-              
               <TouchableOpacity
                 onPress={onShare}
                 className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
@@ -129,27 +131,29 @@ export function UnifiedSheetButtons({
         >
           <View className="flex-col gap-3">
             {/* Primary Action Row */}
-            <View className="flex-row gap-3">
-              {isJoined ? (
-                <TouchableOpacity
-                  onPress={onCreateOrbit}
-                  className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
-                >
-                  <Text className="text-lg font-semibold text-white">
-                    Create Orbit
-                  </Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  onPress={onJoinEvent}
-                  className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
-                >
-                  <Text className="text-lg font-semibold text-white">
-                    Join Event
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
+            {session ? (
+              <View className="flex-row gap-3">
+                {isJoined ? (
+                  <TouchableOpacity
+                    onPress={onCreateOrbit}
+                    className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
+                  >
+                    <Text className="text-lg font-semibold text-white">
+                      Create Orbit
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    onPress={onJoinEvent}
+                    className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
+                  >
+                    <Text className="text-lg font-semibold text-white">
+                      Join Event
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : null}
 
             {/* Secondary Action Row */}
             <View className="flex-row gap-3">
@@ -170,9 +174,7 @@ export function UnifiedSheetButtons({
                   onPress={onEdit}
                   className="flex-1 items-center py-4 bg-gray-600 rounded-2xl"
                 >
-                  <Text className="text-lg font-semibold text-white">
-                    Edit
-                  </Text>
+                  <Text className="text-lg font-semibold text-white">Edit</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -193,14 +195,16 @@ export function UnifiedSheetButtons({
       >
         <View className="flex-col gap-3">
           {/* Primary Action Row */}
-          <TouchableOpacity
-            onPress={onCreateEvent}
-            className="items-center py-4 bg-purple-600 rounded-2xl"
-          >
-            <Text className="text-lg font-semibold text-white">
-              Create Event
-            </Text>
-          </TouchableOpacity>
+          {session ? (
+            <TouchableOpacity
+              onPress={onCreateEvent}
+              className="items-center py-4 bg-purple-600 rounded-2xl"
+            >
+              <Text className="text-lg font-semibold text-white">
+                Create Event
+              </Text>
+            </TouchableOpacity>
+          ) : null}
 
           {/* Secondary Action Row */}
           <View className="flex-row gap-3">
