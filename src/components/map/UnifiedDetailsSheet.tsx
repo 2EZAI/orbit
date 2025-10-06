@@ -187,7 +187,6 @@ export const UnifiedDetailsSheet = React.memo(
       }
     };
 
-
     const handleTicketPurchase = () => {
       const currentData = detailData || data;
       if (!currentData.external_url) return;
@@ -696,7 +695,6 @@ export const UnifiedDetailsSheet = React.memo(
                   onDataSelect={onDataSelect}
                   onShowControler={onShowControler}
                 />
-
 
                 {/* Photo Gallery */}
                 {currentData?.image_urls &&

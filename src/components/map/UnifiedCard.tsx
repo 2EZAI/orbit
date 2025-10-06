@@ -205,6 +205,7 @@ const getContextActions = (
     const name =
       (detailData as MapEvent)?.name || (data as MapEvent).name || "";
     const joinStatus = (detailData as any)?.join_status || false;
+
     const isTicketmaster =
       (data as any)?.is_ticketmaster || (detailData as any)?.is_ticketmaster;
 
@@ -248,9 +249,9 @@ const getContextActions = (
       return [
         { label: "View Details", action: "details", icon: "ℹ️" },
         {
-          label: "Create Event Here",
-          action: "create",
-          icon: "✨",
+          label: joinStatus ? "Create Orbit" : "Join Event",
+          action: joinStatus ? "create" : "join",
+          icon: joinStatus ? "💬" : "✨",
         },
       ];
     }
@@ -259,9 +260,9 @@ const getContextActions = (
     return [
       { label: "View Details", action: "details", icon: "ℹ️" },
       {
-        label: "Join Event",
-        action: "join",
-        icon: "🎫",
+        label: joinStatus ? "Create Orbit" : "Join Event",
+        action: joinStatus ? "create" : "join",
+        icon: joinStatus ? "💬" : "✨",
       },
     ];
   } else {
@@ -315,7 +316,7 @@ export const UnifiedCard = React.memo(
     );
     const contextActions = useMemo(
       () => getContextActions(data, detailData, treatAsEvent),
-      [data.id, detailData?.id, treatAsEvent] // Only depend on IDs, not full objects
+      [data.id, treatAsEvent, detailData] // Only depend on IDs, not full objects
     );
 
     useEffect(() => {
@@ -407,12 +408,17 @@ export const UnifiedCard = React.memo(
     };
 
     const hitUpdateEventApi = async () => {
+      console.log(treatAsEvent);
       if (!treatAsEvent) return;
 
       setLoading(true);
       try {
+        console.log("detailData", detailData);
+        console.log("data", data);
         // COMMENTED OUT: UpdateEventStatus - needs update for unified API
-        // await UpdateEventStatus(data);
+        await UpdateEventStatus(data as any);
+        const updatedData = { ...(detailData || data), join_status: true };
+        setDetailData(updatedData as UnifiedData);
         setTimeout(() => {
           setLoading(false);
           // No longer needed - data is already complete
@@ -820,6 +826,7 @@ export const UnifiedCard = React.memo(
     // Custom comparison to ensure re-render when data changes
     return (
       prevProps.data?.id === nextProps.data?.id &&
+      prevProps.data?.join_status === nextProps.data?.join_status &&
       prevProps.treatAsEvent === nextProps.treatAsEvent &&
       prevProps.nearbyData?.length === nextProps.nearbyData?.length
     );
