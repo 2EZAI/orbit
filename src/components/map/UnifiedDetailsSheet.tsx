@@ -2,12 +2,10 @@ import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { router } from "expo-router";
 import {
   ArrowLeft,
-  ChevronRight,
-  Sparkles,
   Tag,
   UserCheck,
   Users,
-  X,
+  X
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -27,7 +25,6 @@ import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
 import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
-import { UserAvatar } from "~/src/components/ui/user-avatar";
 import { UnifiedDetailsSheetContent } from "./UnifiedDetailsSheetContent";
 import { UnifiedSheetButtons } from "./UnifiedSheetButtons";
 
@@ -178,7 +175,7 @@ export const UnifiedDetailsSheet = React.memo(
           message: `Check out ${currentData?.name} on Orbit!
           ${currentData?.description}
 
-          https://stellular-biscotti-e0fbd6.netlify.app/?url=orbit://event/${currentData.id}
+          https://orbit-redirects.vercel.app/?action=share&eventId=${currentData.id}
           `,
           title: isEventType ? "Event on Orbit" : "Location on Orbit",
         });
