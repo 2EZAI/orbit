@@ -31,6 +31,19 @@ export default function AuthLayout() {
         }}
       />
       <Stack.Screen
+        name="new-password"
+        options={{
+          title: "New Password",
+        }}
+      />
+      <Stack.Screen
+        name="reset-password-handler"
+        options={{
+          title: "Reset Password",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="(onboarding)"
         options={{
           title: "Onboarding",
