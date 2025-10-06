@@ -11,6 +11,7 @@ import {
   ScrollView,
   TouchableOpacity,
   View,
+  PanResponder,
 } from "react-native";
 import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
 import { useUpdateEvents } from "~/hooks/useUpdateEvents";
@@ -305,6 +306,48 @@ export const UnifiedCard = React.memo(
       longitude: number;
     } | null>(null);
 
+    // Helper: Find nearest item in nearbyData (excluding current)
+    const findNearestItem = () => {
+      const current = detailData || data;
+      if (!current?.location?.coordinates) return null;
+      const [currLng, currLat] = current.location.coordinates;
+      let minDist = Infinity;
+      let nearest = null;
+      for (const item of nearbyData) {
+        if (item.id === current.id || !item?.location?.coordinates) continue;
+        const [lng, lat] = item.location.coordinates;
+        // Use Haversine formula for geographic distance
+        const dist = calculateDistance(currLat, currLng, lat, lng);
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = item;
+        }
+      }
+      return nearest;
+    };
+
+    // PanResponder for swipe gesture
+    const panResponder = React.useMemo(
+      () =>
+        PanResponder.create({
+          onMoveShouldSetPanResponder: (_evt, gestureState) => {
+            // Only respond to horizontal swipes
+            return (
+              Math.abs(gestureState.dx) > 30 && Math.abs(gestureState.dy) < 20
+            );
+          },
+          onPanResponderRelease: (_evt, gestureState) => {
+            if (Math.abs(gestureState.dx) > 40) {
+              // On swipe left or right, open nearest pin
+              const nearest = findNearestItem();
+              if (nearest) {
+                onDataSelect(nearest);
+              }
+            }
+          },
+        }),
+      [nearbyData, detailData, data]
+    );
     // Get theme colors and context based on data - ULTRA OPTIMIZED
     const theme = useMemo(
       () => getThemeColors(detailData || data),
@@ -429,71 +472,8 @@ export const UnifiedCard = React.memo(
       }
     };
 
-    // COMMENTED OUT: Old detail API calls - now using unified API data directly
-    /*
-  const hitDetailApi = async () => {
-    try {
-      if (treatAsEvent) {
-        await fetchEventDetail(data);
-
-        // Manually fetch the event details to get the updated data with join_status
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          const response = await fetch(
-            `${process.env.BACKEND_MAP_URL}/api/events/${data.id}`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              body: JSON.stringify({
-                source: (() => {
-                  // Better source detection logic
-                  let source = "supabase"; // default to supabase
-                  
-                  // Check multiple possible indicators for Ticketmaster events
-                  if ((data as any).is_ticketmaster === true || 
-                      (data as any).is_ticketmaster === "true" ||
-                      (typeof (data as any).source === "string" && (data as any).source.includes("ticket")) ||
-                      (data as any).source === "ticketmaster" ||
-                      (data.id && typeof data.id === "string" && data.id.length > 20) || // Ticketmaster IDs are typically longer
-                      (data as any).external_url?.includes("ticketmaster")) {
-                    source = "ticketmaster";
-                  }
-                  
-                  console.log(`[UnifiedCard] Event ID: ${data.id}, is_ticketmaster: ${(data as any).is_ticketmaster}, source: ${(data as any).source}, detected source: ${source}`);
-                  return source;
-                })(),
-              }),
-            }
-          );
-
-          if (response.ok) {
-            const eventDetails = await response.json();
-            setDetailData(eventDetails);
-          }
-        }
-      } else {
-        await fetchLocationDetail(data as MapLocation);
-        // Location detail is updated internally by the hook
-      }
-    } catch (error) {
-      console.error("Error fetching details:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-  */
-
-    // REMOVED: hitDetailApi - no longer needed since we have complete data
-
     const handleCreateOrbit = () => {
       if (!treatAsEvent) return;
-
-      // For EVENTS: Navigate to chat creation with event details
       router.push({
         pathname: "/new",
         params: {
@@ -506,8 +486,6 @@ export const UnifiedCard = React.memo(
     const handleTicketPurchase = () => {
       const currentData = detailData || data;
       if (!currentData.external_url) return;
-
-      // Close the card first so webview appears properly
       onClose();
 
       router.push({
@@ -520,17 +498,8 @@ export const UnifiedCard = React.memo(
     };
 
     const handleCreateEvent = () => {
-      // console.log(
-      //   "Create Event clicked for location:",
-      //   detailData || data,
-      //   treatAsEvent
-      // );
-      // if (treatAsEvent) return;
-
-      // For LOCATIONS: Navigate to create event page with location details prefilled
       const locationData = detailData || data;
       console.log(locationData);
-      // Simplify category to just essential info for URL params
       const simplifiedCategory = {
         id: (locationData as any).category?.id || "",
         name: (locationData as any).category?.name || "",
@@ -646,6 +615,7 @@ export const UnifiedCard = React.memo(
     return (
       <>
         <View
+          {...panResponder.panHandlers}
           style={{
             position: "absolute",
             left: 16,
