@@ -557,69 +557,6 @@ export function LocationPreferencesModal({
               Choose Your Orbit Location
             </Text>
 
-            {/* Map Preview */}
-            {orbitLocation && (
-              <View style={{ marginBottom: 16 }}>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "500",
-                    color: theme.colors.text + "80",
-                    marginBottom: 8,
-                  }}
-                >
-                  Map Preview
-                </Text>
-                <View
-                  style={{
-                    height: 200,
-                    borderRadius: 12,
-                    overflow: "hidden",
-                    borderWidth: 1,
-                    borderColor: theme.colors.border,
-                  }}
-                >
-                  <MapboxGL.MapView
-                    style={{ flex: 1 }}
-                    styleURL={
-                      isDarkMode
-                        ? "mapbox://styles/mapbox/dark-v11"
-                        : "mapbox://styles/mapbox/light-v11"
-                    }
-                    centerCoordinate={orbitLocation.coordinates}
-                    zoomLevel={10}
-                    scrollEnabled={false}
-                    zoomEnabled={false}
-                    rotateEnabled={false}
-                    pitchEnabled={false}
-                    logoEnabled={false}
-                    attributionEnabled={false}
-                  >
-                    <MapboxGL.PointAnnotation
-                      id="orbit-location"
-                      coordinate={orbitLocation.coordinates}
-                    >
-                      <View
-                        style={{
-                          width: 20,
-                          height: 20,
-                          borderRadius: 10,
-                          backgroundColor: theme.colors.primary,
-                          borderWidth: 3,
-                          borderColor: "white",
-                          shadowColor: "#000",
-                          shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: 0.25,
-                          shadowRadius: 4,
-                          elevation: 5,
-                        }}
-                      />
-                    </MapboxGL.PointAnnotation>
-                  </MapboxGL.MapView>
-                </View>
-              </View>
-            )}
-
             {/* Current Orbit Location */}
             {orbitLocation && (
               <View style={{ marginBottom: 16 }}>
