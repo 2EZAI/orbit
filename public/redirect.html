@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orbit - Redirecting...</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #222831 50%, #1a1a1a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Animated background particles */
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #8B5CF6;
+            border-radius: 50%;
+            animation: float 6s infinite linear;
+            opacity: 0.6;
+        }
+
+        .particle:nth-child(odd) {
+            background: #3B82F6;
+            animation-duration: 8s;
+        }
+
+        .particle:nth-child(3n) {
+            background: #10B981;
+            animation-duration: 10s;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) translateX(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.6;
+            }
+            90% {
+                opacity: 0.6;
+            }
+            100% {
+                transform: translateY(-100px) translateX(100px);
+                opacity: 0;
+            }
+        }
+
+        .container {
+            text-align: center;
+            max-width: 420px;
+            padding: 3rem 2rem;
+            background: rgba(42, 42, 42, 0.8);
+            border-radius: 24px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.3),
+                0 0 0 1px rgba(139, 92, 246, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            position: relative;
+            z-index: 10;
+        }
+
+        .logo-container {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .orbit-logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #8B5CF6, #3B82F6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: white;
+            position: relative;
+            z-index: 2;
+            box-shadow: 
+                0 0 30px rgba(139, 92, 246, 0.5),
+                0 0 60px rgba(139, 92, 246, 0.3),
+                inset 0 2px 4px rgba(255, 255, 255, 0.2);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .orbit-ring {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            border-radius: 50%;
+            animation: rotate 8s linear infinite;
+        }
+
+        .orbit-ring:nth-child(2) {
+            width: 120px;
+            height: 120px;
+            border-color: rgba(59, 130, 246, 0.2);
+            animation-duration: 12s;
+            animation-direction: reverse;
+        }
+
+        .orbit-ring:nth-child(3) {
+            width: 140px;
+            height: 140px;
+            border-color: rgba(16, 185, 129, 0.15);
+            animation-duration: 16s;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 
+                    0 0 30px rgba(139, 92, 246, 0.5),
+                    0 0 60px rgba(139, 92, 246, 0.3),
+                    inset 0 2px 4px rgba(255, 255, 255, 0.2);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 
+                    0 0 40px rgba(139, 92, 246, 0.7),
+                    0 0 80px rgba(139, 92, 246, 0.4),
+                    inset 0 2px 4px rgba(255, 255, 255, 0.3);
+            }
+        }
+
+        @keyframes rotate {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #8B5CF6, #3B82F6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+            opacity: 0.9;
+            color: #E5E7EB;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #8B5CF6, #3B82F6);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 16px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            box-shadow: 
+                0 4px 15px rgba(139, 92, 246, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 
+                0 8px 25px rgba(139, 92, 246, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+
+        .button:hover::before {
+            left: 100%;
+        }
+
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(139, 92, 246, 0.2);
+            border-top: 3px solid #8B5CF6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            color: #F59E0B;
+        }
+
+        .share-info {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            backdrop-filter: blur(10px);
+        }
+
+        .share-info h3 {
+            color: #8B5CF6;
+            margin-bottom: 0.5rem;
+            font-size: 1.2rem;
+        }
+
+        .share-info p {
+            margin-bottom: 0;
+            font-size: 1rem;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Responsive design */
+        @media (max-width: 480px) {
+            .container {
+                margin: 1rem;
+                padding: 2rem 1.5rem;
+            }
+            
+            .logo-container {
+                width: 100px;
+                height: 100px;
+            }
+            
+            .orbit-logo {
+                width: 60px;
+                height: 60px;
+                font-size: 2rem;
+            }
+            
+            h1 {
+                font-size: 1.6rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated background particles -->
+    <div class="particles" id="particles"></div>
+    
+    <div class="container">
+        <div class="logo-container">
+            <div class="orbit-ring"></div>
+            <div class="orbit-ring"></div>
+            <div class="orbit-ring"></div>
+            <div class="orbit-logo">O</div>
+        </div>
+        
+        <h1 id="title">Loading...</h1>
+        <p id="description">Please wait...</p>
+        
+        <div class="share-info" id="shareInfo" style="display: none;">
+            <h3>🎉 Event Shared!</h3>
+            <p>Opening this event in the Orbit app...</p>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Opening Orbit app...</p>
+        </div>
+        
+        <div class="error" id="error" style="display: none;">
+            <p>Redirecting you to the web version of Orbit...</p>
+        </div>
+    </div>
+
+    <script>
+        // Parse URL parameters to determine the action
+        const urlParams = new URLSearchParams(window.location.search);
+        const action = urlParams.get('action');
+        const eventId = urlParams.get('eventId');
+        const auto = urlParams.get('auto');
+
+        // Update UI based on action
+        function updateUI() {
+            const title = document.getElementById('title');
+            const description = document.getElementById('description');
+            const shareInfo = document.getElementById('shareInfo');
+            const openButton = document.getElementById('openButton');
+            
+            if (action === 'share' && eventId) {
+                title.textContent = 'Opening Event';
+                description.textContent = 'Redirecting you to this event in the Orbit app...';
+                shareInfo.style.display = 'block';
+                if (openButton) openButton.textContent = 'View Event in App';
+            } else if (action === 'reset') {
+                title.textContent = 'Reset Your Password';
+                description.textContent = 'Click the button below to open the Orbit app and reset your password.';
+                if (openButton) openButton.textContent = 'Open Orbit App';
+            } else {
+                // Default fallback
+                title.textContent = 'Opening Orbit';
+                description.textContent = 'Redirecting you to the Orbit app...';
+                if (openButton) openButton.textContent = 'Open Orbit App';
+            }
+        }
+
+        // Function to open mobile app
+        function openMobileApp() {
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            
+            loading.style.display = 'flex';
+            error.style.display = 'none';
+            
+            // Determine the mobile URL based on action
+            let mobileUrl;
+            if (action === 'reset') {
+                mobileUrl = 'orbit-social-app://reset-password';
+            } else if (action === 'share' && eventId) {
+                mobileUrl = 'orbit-social-app://event/' + eventId;
+            } else {
+                mobileUrl = 'orbit-social-app://'; // Default to app home
+            }
+            
+            const fallbackUrl = 'https://app.orbitsocialapp.com'; // Redirect to your web app
+            
+            // Create a hidden iframe to attempt the deep link
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = mobileUrl;
+            document.body.appendChild(iframe);
+            
+            // Set a timeout to show error if app doesn't open
+            setTimeout(() => {
+                loading.style.display = 'none';
+                error.style.display = 'block';
+                
+                // Redirect to web app with appropriate path
+                setTimeout(() => {
+                    let webUrl = fallbackUrl;
+                    
+                    // Add specific paths based on action
+                    if (action === 'reset') {
+                        webUrl = fallbackUrl + '/reset-password';
+                    } else if (action === 'share' && eventId) {
+                        webUrl = fallbackUrl + '/event/' + eventId;
+                    }
+                    
+                    window.location.href = webUrl;
+                }, 2000);
+            }, 3000);
+            
+            // Clean up iframe
+            setTimeout(() => {
+                document.body.removeChild(iframe);
+            }, 1000);
+        }
+
+        // Initialize the page
+        function init() {
+            updateUI();
+            
+            // Auto-open if auto parameter is present
+            if (auto === 'true') {
+                openMobileApp();
+            } else {
+                // Show button for manual opening
+                const container = document.querySelector('.container');
+                const button = document.createElement('button');
+                button.id = 'openButton';
+                button.className = 'button';
+                button.onclick = openMobileApp;
+                container.appendChild(button);
+            }
+        }
+
+        // Create animated particles
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            const particleCount = 20;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 6 + 's';
+                particle.style.animationDuration = (6 + Math.random() * 4) + 's';
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Start when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            createParticles();
+            init();
+        });
+    </script>
+</body>
+</html>
