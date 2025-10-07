@@ -414,9 +414,15 @@ export default function Home() {
     if (data.allContent.length > 0 && Object.keys(filters).length === 0) {
       console.log(data.allContent[0]);
       if (eventId) {
+        console.log("🔗 [Home] Deep link eventId:", eventId);
+        console.log("🔗 [Home] Searching in allContent:", data.allContent.length, "items");
         const found = data.allContent.find((val) => val.id === eventId);
+        console.log("🔗 [Home] Found event:", found ? "YES" : "NO", found?.name);
         if (found) {
+          console.log("🔗 [Home] Opening UnifiedDetailsSheet for:", found.name);
           handleEventSelect(found);
+        } else {
+          console.log("🔗 [Home] Event not found in feed data");
         }
       }
       const defaultFilters = generateDefaultFilters(
@@ -1031,8 +1037,10 @@ export default function Home() {
 
   // Add handlers like the map component
   const handleEventSelect = (event: any) => {
+    console.log("🔗 [Home] handleEventSelect called with:", event?.name, event?.id);
     setSelectedEvent(event);
     setIsSelectedItemLocation(false);
+    console.log("🔗 [Home] selectedEvent set, UnifiedDetailsSheet should show");
   };
 
   const handleLocationSelect = (location: any) => {
