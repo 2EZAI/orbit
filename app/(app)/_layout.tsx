@@ -87,7 +87,12 @@ export default function AppLayout() {
             },
           }}
         />
-        <Tabs.Screen name="(create)" />
+        <Tabs.Screen
+          name="(create)"
+          options={{
+            lazy: true,
+          }}
+        />
         <Tabs.Screen name="(home)" />
         <Tabs.Screen
           name="(social)"
