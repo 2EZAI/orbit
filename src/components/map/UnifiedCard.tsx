@@ -221,12 +221,12 @@ const getContextActions = (
         eventSource.includes("google") ||
         eventSource.includes("api"));
 
-    // For user events: Join Event -> Create Orbit
+    // For user events: Join Activity -> Create Orbit
     if (isUserEvent) {
       return [
         { label: "View Details", action: "details", icon: "ℹ️" },
         {
-          label: joinStatus ? "Create Orbit" : "Join Event",
+          label: joinStatus ? "Create Orbit" : "Join Activity",
           action: joinStatus ? "create" : "join",
           icon: joinStatus ? "💬" : "✨",
         },
@@ -245,12 +245,12 @@ const getContextActions = (
       ];
     }
 
-    // For Google API events: Create Event Here
+    // For Google API events: Create Activity Here
     if (isGoogleApiEvent) {
       return [
         { label: "View Details", action: "details", icon: "ℹ️" },
         {
-          label: joinStatus ? "Create Orbit" : "Join Event",
+          label: joinStatus ? "Create Orbit" : "Join Activity",
           action: joinStatus ? "create" : "join",
           icon: joinStatus ? "💬" : "✨",
         },
@@ -261,7 +261,7 @@ const getContextActions = (
     return [
       { label: "View Details", action: "details", icon: "ℹ️" },
       {
-        label: joinStatus ? "Create Orbit" : "Join Event",
+        label: joinStatus ? "Create Orbit" : "Join Activity",
         action: joinStatus ? "create" : "join",
         icon: joinStatus ? "💬" : "✨",
       },
@@ -270,7 +270,7 @@ const getContextActions = (
     // For ALL locations, show simple consistent actions like LocationDetailsSheet
     return [
       { label: "Learn More", action: "details", icon: "ℹ️" },
-      { label: "Create Event", action: "create", icon: "✨" },
+      { label: "Create Activity", action: "create", icon: "✨" },
     ];
   }
 };
@@ -436,7 +436,7 @@ export const UnifiedCard = React.memo(
             // For EVENTS: "Create Orbit" -> creates group chat
             handleCreateOrbit();
           } else {
-            // For LOCATIONS: "Create Event" -> goes to create event page
+            // For LOCATIONS: "Create Activity" -> goes to create activity page
             handleCreateEvent();
           }
           break;
@@ -545,7 +545,7 @@ export const UnifiedCard = React.memo(
             ? `${detail.description.slice(0, 80)}...`
             : null,
           imageUrl: detail.image_urls?.[0],
-          categoryName: detail.categories?.[0]?.name || "Event",
+          categoryName: detail.categories?.[0]?.name || "Activity",
           categoryTags: detail.categories?.slice(1, 4) || [],
           dateTime: {
             date: formatDate(detail.start_datetime),
@@ -689,7 +689,7 @@ export const UnifiedCard = React.memo(
                 {displayValues.title}
               </Text>
 
-              {/* Date/Time for Events */}
+              {/* Date/Time for Activities */}
               {displayValues.dateTime && (
                 <View className="flex-row items-center mb-2">
                   <Calendar size={12} color="white" />
