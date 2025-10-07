@@ -137,12 +137,15 @@ export default function CreateEvent() {
 
     try {
       setIsDraftSaving(true);
-      
+
       // Get the item ID (either event ID or location ID)
       const itemId = params.eventId || params.locationId;
-      console.log('💾 [CreateEvent] Saving draft with itemId:', itemId);
-      console.log('💾 [CreateEvent] Params received:', { eventId: params.eventId, locationId: params.locationId });
-      
+      console.log("💾 [CreateEvent] Saving draft with itemId:", itemId);
+      console.log("💾 [CreateEvent] Params received:", {
+        eventId: params.eventId,
+        locationId: params.locationId,
+      });
+
       const draftData = {
         name,
         description,
@@ -157,8 +160,8 @@ export default function CreateEvent() {
         category_id: selectedTopics,
         is_private: isPrivate,
         external_url: externalUrl,
-        image_urls: images.map(img => img.uri),
-        type: 'user_created',
+        image_urls: images.map((img) => img.uri),
+        type: "user_created",
       };
 
       const savedDraft = await draftService.saveDraft(draftData);
@@ -167,18 +170,18 @@ export default function CreateEvent() {
 
       if (isManual) {
         Toast.show({
-          type: 'success',
-          text1: 'Draft Saved',
-          text2: 'Your activity draft has been saved successfully',
+          type: "success",
+          text1: "Draft Saved",
+          text2: "Your activity draft has been saved successfully",
         });
       }
     } catch (error) {
-      console.error('Error saving draft:', error);
+      console.error("Error saving draft:", error);
       if (isManual) {
         Toast.show({
-          type: 'error',
-          text1: 'Save Failed',
-          text2: 'Failed to save draft. Please try again.',
+          type: "error",
+          text1: "Save Failed",
+          text2: "Failed to save draft. Please try again.",
         });
       }
     } finally {
@@ -204,106 +207,126 @@ export default function CreateEvent() {
   const loadDraft = async () => {
     try {
       setDraftLoaded(true);
-      
+
       // Debug: Log what parameters we received
-      console.log('🔍 [CreateEvent] Received params:', params);
-      
+      console.log("🔍 [CreateEvent] Received params:", params);
+
       // Check if we're resuming a specific draft from settings
-      if (params.draftId && params.resumeDraft === 'true') {
-        console.log('🔍 [CreateEvent] Resuming draft from settings:', params.draftId);
-        const specificDraft = await draftService.getDraft(params.draftId as string);
+      if (params.draftId && params.resumeDraft === "true") {
+        console.log(
+          "🔍 [CreateEvent] Resuming draft from settings:",
+          params.draftId
+        );
+        const specificDraft = await draftService.getDraft(
+          params.draftId as string
+        );
         if (specificDraft) {
-          console.log('✅ [CreateEvent] Draft found, restoring data');
+          console.log("✅ [CreateEvent] Draft found, restoring data");
           setCurrentDraft(specificDraft);
           restoreDraftData(specificDraft);
           return;
         } else {
-          console.log('❌ [CreateEvent] Draft not found');
+          console.log("❌ [CreateEvent] Draft not found");
         }
       }
 
       // Only load draft if it matches the current item (event/location) being created for
       const itemId = params.eventId || params.locationId;
-      console.log('🔍 [CreateEvent] Looking for draft with itemId:', itemId);
-      
+      console.log("🔍 [CreateEvent] Looking for draft with itemId:", itemId);
+
       if (!itemId) {
-        console.log('❌ [CreateEvent] No itemId found, clearing form');
+        console.log("❌ [CreateEvent] No itemId found, clearing form");
         clearForm();
         return;
       }
-      
+
       const drafts = await draftService.getDrafts();
-      console.log('🔍 [CreateEvent] Available drafts:', drafts.map(d => ({ id: d.id, location_id: d.location_id })));
-      
+      console.log(
+        "🔍 [CreateEvent] Available drafts:",
+        drafts.map((d) => ({ id: d.id, location_id: d.location_id }))
+      );
+
       if (drafts.length > 0) {
         // Find draft that matches current item ID
-        const matchingDraft = drafts.find(draft => {
+        const matchingDraft = drafts.find((draft) => {
           const matches = draft.location_id === itemId;
-          console.log(`🔍 [CreateEvent] Checking draft ${draft.id}: location_id=${draft.location_id}, itemId=${itemId}, matches=${matches}`);
+          console.log(
+            `🔍 [CreateEvent] Checking draft ${draft.id}: location_id=${draft.location_id}, itemId=${itemId}, matches=${matches}`
+          );
           return matches;
         });
 
         if (matchingDraft) {
-          console.log('✅ [CreateEvent] Found matching draft:', matchingDraft.id);
+          console.log(
+            "✅ [CreateEvent] Found matching draft:",
+            matchingDraft.id
+          );
           setCurrentDraft(matchingDraft);
           restoreDraftData(matchingDraft);
         } else {
-          console.log('❌ [CreateEvent] No matching draft found for itemId:', itemId);
+          console.log(
+            "❌ [CreateEvent] No matching draft found for itemId:",
+            itemId
+          );
           // Clear form fields when no draft is found
           clearForm();
         }
       } else {
-        console.log('❌ [CreateEvent] No drafts available, clearing form');
+        console.log("❌ [CreateEvent] No drafts available, clearing form");
         clearForm();
       }
-        
+
       // Clean up old drafts (keep only the latest one)
       if (drafts.length > 1) {
         cleanupOldDrafts();
       }
     } catch (error) {
-      console.error('Error loading draft:', error);
+      console.error("Error loading draft:", error);
     }
   };
 
   // Helper function to clear form fields
   const clearForm = () => {
-    setName('');
-    setDescription('');
-    setStartDate(null);
-    setEndDate(null);
-    setSelectedTopics('');
-    setSelectedTopicsName('');
+    setName("");
+    setDescription("");
+    setStartDate(new Date()); // instead of null
+    setEndDate(new Date());
+    setSelectedTopics("");
+    setSelectedTopicsName("");
     setIsPrivate(false);
-    setExternalUrl('');
+    setExternalUrl("");
     setImages([]);
     setCurrentDraft(null);
     setHasUnsavedChanges(false);
-    console.log('🧹 [CreateEvent] Form cleared');
+    console.log("🧹 [CreateEvent] Form cleared");
   };
 
   // Helper function to restore draft data to form
   const restoreDraftData = (draft: EventDraft) => {
     // Restore form data from draft
-    setName(draft.name || '');
-    setDescription(draft.description || '');
+    setName(draft.name || "");
+    setDescription(draft.description || "");
     if (draft.start_datetime) {
-      setStartDate(new Date(draft.start_datetime));
+      setStartDate(
+        draft.start_datetime ? new Date(draft.start_datetime) : new Date()
+      );
     }
     if (draft.end_datetime) {
-      setEndDate(new Date(draft.end_datetime));
+      setEndDate(
+        draft.end_datetime ? new Date(draft.end_datetime) : new Date()
+      );
     }
     if (draft.address) {
       setAddress1(draft.address);
     }
     if (draft.city) {
-      setLocationDetails(prev => ({ ...prev, city: draft.city! }));
+      setLocationDetails((prev) => ({ ...prev, city: draft.city! }));
     }
     if (draft.state) {
-      setLocationDetails(prev => ({ ...prev, state: draft.state! }));
+      setLocationDetails((prev) => ({ ...prev, state: draft.state! }));
     }
     if (draft.postal_code) {
-      setLocationDetails(prev => ({ ...prev, zip: draft.postal_code! }));
+      setLocationDetails((prev) => ({ ...prev, zip: draft.postal_code! }));
     }
     if (draft.category_id) {
       setSelectedTopics(draft.category_id);
@@ -312,22 +335,22 @@ export default function CreateEvent() {
       setSelectedTopicsName(draft.category_id); // We'll need to get the name from category_id
     }
     setIsPrivate(draft.is_private || false);
-    setExternalUrl(draft.external_url || '');
-    
+    setExternalUrl(draft.external_url || "");
+
     // Restore images
     if (draft.image_urls && draft.image_urls.length > 0) {
       const restoredImages = draft.image_urls.map((uri, index) => ({
         uri,
-        type: 'image/jpeg',
+        type: "image/jpeg",
         name: `image_${index}.jpg`,
       }));
       setImages(restoredImages);
     }
 
     Toast.show({
-      type: 'info',
-      text1: 'Draft Restored',
-      text2: 'Your previous draft has been restored',
+      type: "info",
+      text1: "Draft Restored",
+      text2: "Your previous draft has been restored",
     });
   };
 
@@ -339,7 +362,7 @@ export default function CreateEvent() {
         setCurrentDraft(null);
         setHasUnsavedChanges(false);
       } catch (error) {
-        console.error('Error clearing draft:', error);
+        console.error("Error clearing draft:", error);
       }
     }
   };
@@ -356,19 +379,35 @@ export default function CreateEvent() {
         }
       }
     } catch (error) {
-      console.error('Error cleaning up old drafts:', error);
+      console.error("Error cleaning up old drafts:", error);
     }
   };
 
   // Track changes for save draft button state (NO AUTO-SAVE)
   useEffect(() => {
     // Only track if user has made changes (for button state) - NO AUTO-SAVE
-    if (draftLoaded && (name.trim().length > 0 || description.trim().length > 0)) {
+    if (
+      draftLoaded &&
+      (name.trim().length > 0 || description.trim().length > 0)
+    ) {
       setHasUnsavedChanges(true);
     } else {
       setHasUnsavedChanges(false);
     }
-  }, [name, description, startDate, endDate, latitude, longitude, address1, selectedTopics, isPrivate, externalUrl, images, draftLoaded]);
+  }, [
+    name,
+    description,
+    startDate,
+    endDate,
+    latitude,
+    longitude,
+    address1,
+    selectedTopics,
+    isPrivate,
+    externalUrl,
+    images,
+    draftLoaded,
+  ]);
 
   useEffect(() => {
     console.log("createevent_useEffect");
@@ -405,12 +444,22 @@ export default function CreateEvent() {
     if (params.locationType) setlocationType(params.locationType as string);
     if (params.latitude) {
       const parsedLat = parseFloat(params.latitude as string);
-      console.log("Setting latitude:", parsedLat, "from params:", params.latitude);
+      console.log(
+        "Setting latitude:",
+        parsedLat,
+        "from params:",
+        params.latitude
+      );
       setlatitude(parsedLat);
     }
     if (params.longitude) {
       const parsedLng = parseFloat(params.longitude as string);
-      console.log("Setting longitude:", parsedLng, "from params:", params.longitude);
+      console.log(
+        "Setting longitude:",
+        parsedLng,
+        "from params:",
+        params.longitude
+      );
       setlongitude(parsedLng);
     }
     if (params.address) setAddress1(params.address as string);
@@ -792,8 +841,10 @@ export default function CreateEvent() {
     }
   };
 
-  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
-  
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(
+    null
+  );
+
   const debouncedSearch = (query: string) => {
     if (searchTimeout) {
       clearTimeout(searchTimeout);
@@ -960,8 +1011,8 @@ export default function CreateEvent() {
         city: locationDetails.city,
         state: locationDetails.state,
         zip: locationDetails.zip,
-        start_datetime: startDate.toISOString(),
-        end_datetime: endDate.toISOString(),
+        start_datetime: startDate ? startDate.toISOString() : "",
+        end_datetime: endDate ? endDate.toISOString() : "",
         external_url: externalUrl || null,
         external_title: externalTitle || null,
         image_urls: imageUrls,
@@ -978,9 +1029,15 @@ export default function CreateEvent() {
           promtIds.push(selectedPrompts?.id);
         }
         // Get coordinates from params if state is not set (fallback for timing issues)
-        const finalLatitude = latitude || (params.latitude ? parseFloat(params.latitude as string) : undefined);
-        const finalLongitude = longitude || (params.longitude ? parseFloat(params.longitude as string) : undefined);
-        
+        const finalLatitude =
+          latitude ||
+          (params.latitude ? parseFloat(params.latitude as string) : undefined);
+        const finalLongitude =
+          longitude ||
+          (params.longitude
+            ? parseFloat(params.longitude as string)
+            : undefined);
+
         eventData = {
           name,
           description,
@@ -990,8 +1047,8 @@ export default function CreateEvent() {
           type: locationType,
           latitude: finalLatitude,
           longitude: finalLongitude,
-          start_datetime: startDate.toISOString(),
-          end_datetime: endDate.toISOString(),
+          start_datetime: startDate ? startDate.toISOString() : "",
+          end_datetime: endDate ? endDate.toISOString() : "",
           external_url: externalUrl || null,
           external_title: externalTitle || null,
           image_urls: imageUrls,
@@ -999,7 +1056,7 @@ export default function CreateEvent() {
           topic_id: selectedTopics,
           ...(eventID?.eventId && { event_id: eventID.eventId }),
         };
-        
+
         console.log("🔧 [CreateEvent] State values when building eventData:", {
           locationId,
           locationType,
@@ -1041,10 +1098,10 @@ export default function CreateEvent() {
         text1: "Activity Created!",
         text2: "Your activity has been created successfully",
       });
-      
+
       // Clear draft after successful creation
       await clearDraft();
-      
+
       setEventID(undefined);
       // Navigate to summary screen with event data
       router.push({
@@ -1136,7 +1193,9 @@ export default function CreateEvent() {
               marginBottom: 16,
             }}
           >
-            <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", flex: 1 }}
+            >
               <TouchableOpacity
                 onPress={handleBack}
                 style={{
@@ -1167,7 +1226,7 @@ export default function CreateEvent() {
                 Create Activity
               </Text>
             </View>
-            
+
             <TouchableOpacity
               onPress={() => saveDraft(true)}
               disabled={isDraftSaving || !hasUnsavedChanges}
@@ -1175,12 +1234,12 @@ export default function CreateEvent() {
                 paddingHorizontal: 12,
                 paddingVertical: 6,
                 borderRadius: 16,
-                backgroundColor: hasUnsavedChanges ? '#8B5CF6' : '#6B7280',
+                backgroundColor: hasUnsavedChanges ? "#8B5CF6" : "#6B7280",
                 opacity: isDraftSaving ? 0.6 : 1,
               }}
             >
-              <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>
-                {isDraftSaving ? 'Saving...' : 'Save Draft'}
+              <Text style={{ color: "white", fontSize: 12, fontWeight: "600" }}>
+                {isDraftSaving ? "Saving..." : "Save Draft"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -1199,8 +1258,8 @@ export default function CreateEvent() {
               setDescription={setDescription}
               isPrivate={isPrivate}
               setIsPrivate={setIsPrivate}
-              startDateTime={startDate.toISOString()}
-              endDateTime={endDate.toISOString()}
+              startDateTime={startDate ? startDate.toISOString() : ""}
+              endDateTime={endDate ? endDate.toISOString() : ""}
               venueName={locationDetails.address1}
               address={locationDetails.address1}
               city={locationDetails.city}
@@ -1248,8 +1307,8 @@ export default function CreateEvent() {
             />
 
             <DateTimeSection
-              startDate={startDate}
-              endDate={endDate}
+              startDate={startDate || ""}
+              endDate={endDate || ""}
               onShowDatePicker={showDatePicker}
               onShowTimePicker={showTimePicker}
             />
