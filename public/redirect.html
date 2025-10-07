@@ -334,7 +334,16 @@
         const urlParams = new URLSearchParams(window.location.search);
         const action = urlParams.get('action');
         const eventId = urlParams.get('eventId');
-        const auto = urlParams.get('auto');
+
+        // Create deep link based on action
+        let deepLink = null;
+        if (action === 'share' && eventId) {
+            deepLink = `orbit://event/${eventId}`;
+        } else if (action === 'reset') {
+            deepLink = 'orbit://reset-password';
+        } else {
+            deepLink = 'orbit://';
+        }
 
         // Update UI based on action
         function updateUI() {
@@ -360,73 +369,52 @@
             }
         }
 
-        // Function to open mobile app
-        function openMobileApp() {
+        // Function to open mobile app (like working p.html)
+        function openMobileApp(manual = false) {
+            if (!deepLink) {
+                showFallback('Missing or invalid deep link.');
+                return;
+            }
+
+            window.location.href = deepLink;
+
+            if (!manual) {
+                setTimeout(() => {
+                    showFallback();
+                }, 1800);
+            }
+        }
+
+        function showFallback(reason) {
             const loading = document.getElementById('loading');
             const error = document.getElementById('error');
             
-            loading.style.display = 'flex';
-            error.style.display = 'none';
+            loading.style.display = 'none';
+            error.style.display = 'block';
             
-            // Determine the mobile URL based on action
-            let mobileUrl;
-            if (action === 'reset') {
-                mobileUrl = 'orbit-social-app://reset-password';
-            } else if (action === 'share' && eventId) {
-                mobileUrl = 'orbit-social-app://event/' + eventId;
-            } else {
-                mobileUrl = 'orbit-social-app://'; // Default to app home
+            if (reason) {
+                console.log('Fallback reason:', reason);
             }
-            
-            const fallbackUrl = 'https://app.orbitsocialapp.com'; // Redirect to your web app
-            
-            // Create a hidden iframe to attempt the deep link
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = mobileUrl;
-            document.body.appendChild(iframe);
-            
-            // Set a timeout to show error if app doesn't open
-            setTimeout(() => {
-                loading.style.display = 'none';
-                error.style.display = 'block';
-                
-                // Redirect to web app with appropriate path
-                setTimeout(() => {
-                    let webUrl = fallbackUrl;
-                    
-                    // Add specific paths based on action
-                    if (action === 'reset') {
-                        webUrl = fallbackUrl + '/reset-password';
-                    } else if (action === 'share' && eventId) {
-                        webUrl = fallbackUrl + '/event/' + eventId;
-                    }
-                    
-                    window.location.href = webUrl;
-                }, 2000);
-            }, 3000);
-            
-            // Clean up iframe
-            setTimeout(() => {
-                document.body.removeChild(iframe);
-            }, 1000);
         }
 
-        // Initialize the page
+        // Initialize the page (like working p.html)
         function init() {
+            // Create button first
+            const container = document.querySelector('.container');
+            const button = document.createElement('button');
+            button.id = 'openButton';
+            button.className = 'button';
+            button.onclick = () => openMobileApp(true);
+            container.appendChild(button);
+            
+            // Update UI after button is created
             updateUI();
             
-            // Auto-open if auto parameter is present
-            if (auto === 'true') {
+            // Auto-open the app
+            if (deepLink) {
                 openMobileApp();
             } else {
-                // Show button for manual opening
-                const container = document.querySelector('.container');
-                const button = document.createElement('button');
-                button.id = 'openButton';
-                button.className = 'button';
-                button.onclick = openMobileApp;
-                container.appendChild(button);
+                showFallback('Provide valid action and eventId parameters.');
             }
         }
 
