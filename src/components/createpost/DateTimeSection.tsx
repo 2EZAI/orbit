@@ -19,7 +19,6 @@ export default function DateTimeSection({
   onShowTimePicker,
 }: DateTimeSectionProps) {
   const { theme } = useTheme();
-console.log("startDate>>",startDate)
   return (
    
     <View

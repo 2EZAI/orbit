@@ -16,6 +16,7 @@ import {
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Platform,
   ScrollView,
   TouchableOpacity,
@@ -25,6 +26,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { supabase } from "~/src/lib/supabase";
+import { draftService } from "~/src/services/draftService";
+import { EventDraft } from "~/src/types/draftTypes";
 
 // Import modal components (we'll create these next)
 import { PasswordModal } from "~/src/components/settings/PasswordModal";
@@ -152,6 +155,13 @@ export default function SettingsScreen() {
   const [showInterests, setShowInterests] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  
+  // Drafts state
+  const [drafts, setDrafts] = useState<EventDraft[]>([]);
+  const [showDrafts, setShowDrafts] = useState(false);
+  const [loadingDrafts, setLoadingDrafts] = useState(false);
+  const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
+  const [clearingAllDrafts, setClearingAllDrafts] = useState(false);
 
   const handleBack = () => {
     router.back();
@@ -188,6 +198,99 @@ export default function SettingsScreen() {
       pathname: "/(app)/(webview)",
       params: { external_url, title },
     });
+  };
+
+  // Drafts functionality
+  const loadDrafts = async () => {
+    try {
+      setLoadingDrafts(true);
+      const userDrafts = await draftService.getDrafts();
+      setDrafts(userDrafts);
+    } catch (error) {
+      console.error('Error loading drafts:', error);
+    } finally {
+      setLoadingDrafts(false);
+    }
+  };
+
+  const handleDraftsPress = () => {
+    loadDrafts();
+    setShowDrafts(true);
+  };
+
+  const handleDeleteDraft = async (draftId: string, draftName: string) => {
+    Alert.alert(
+      "Delete Draft",
+      `Are you sure you want to delete "${draftName || 'Untitled Activity'}"? This action cannot be undone.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setDeletingDraftId(draftId);
+              await draftService.deleteDraft(draftId);
+              setDrafts(drafts.filter(draft => draft.id !== draftId));
+            } catch (error) {
+              console.error('Error deleting draft:', error);
+              Alert.alert("Error", "Failed to delete draft. Please try again.");
+            } finally {
+              setDeletingDraftId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleResumeDraft = (draft: EventDraft) => {
+    setShowDrafts(false);
+    // Navigate to create screen with draft data
+    router.push({
+      pathname: "/(app)/(create)",
+      params: {
+        draftId: draft.id,
+        resumeDraft: 'true',
+        locationId: draft.location_id, // Pass the location_id so the screen knows the context
+      },
+    });
+    // Close the settings modal after navigation
+    router.back();
+  };
+
+  const handleClearAllDrafts = async () => {
+    Alert.alert(
+      "Clear All Drafts",
+      `Are you sure you want to delete all ${drafts.length} drafts? This action cannot be undone.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete All",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setClearingAllDrafts(true);
+              for (const draft of drafts) {
+                await draftService.deleteDraft(draft.id);
+              }
+              setDrafts([]);
+            } catch (error) {
+              console.error('Error clearing all drafts:', error);
+              Alert.alert("Error", "Failed to delete some drafts. Please try again.");
+            } finally {
+              setClearingAllDrafts(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -281,6 +384,15 @@ export default function SettingsScreen() {
           title="Map & Location Privacy"
           onPress={() => setShowPrivacy(true)}
         />
+        
+        {/* Drafts Section */}
+        <SectionHeader title="Activity Drafts" />
+        <SettingItem
+          icon={<FileText size={20} color={theme.colors.primary} />}
+          title="My Drafts"
+          onPress={handleDraftsPress}
+          loading={loadingDrafts}
+        />
         {/* Privacy & more */}
         <SectionHeader title="Privacy & more" />
         <SettingItem
@@ -348,6 +460,191 @@ export default function SettingsScreen() {
         isOpen={showDeleteAccount}
         onClose={() => setShowDeleteAccount(false)}
       />
+
+      {/* Drafts Modal */}
+      {showDrafts && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: theme.colors.card,
+              borderRadius: 20,
+              padding: 20,
+              margin: 20,
+              maxHeight: '80%',
+              width: '90%',
+            }}
+          >
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 20,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: 'bold',
+                  color: theme.colors.text,
+                }}
+              >
+                My Drafts ({drafts.length})
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                {drafts.length > 0 && (
+                  <TouchableOpacity
+                    onPress={handleClearAllDrafts}
+                    disabled={clearingAllDrafts}
+                    style={{
+                      padding: 8,
+                      borderRadius: 16,
+                      backgroundColor: clearingAllDrafts ? '#9CA3AF' : '#EF4444',
+                      marginRight: 8,
+                      opacity: clearingAllDrafts ? 0.7 : 1,
+                    }}
+                  >
+                    {clearingAllDrafts ? (
+                      <ActivityIndicator size={12} color="white" />
+                    ) : (
+                      <Text style={{ color: 'white', fontSize: 12 }}>Clear All</Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  onPress={() => setShowDrafts(false)}
+                  style={{
+                    padding: 8,
+                    borderRadius: 16,
+                    backgroundColor: theme.colors.border,
+                  }}
+                >
+                  <Text style={{ color: theme.colors.text }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {loadingDrafts ? (
+              <View style={{ alignItems: 'center', padding: 20 }}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text style={{ marginTop: 10, color: theme.colors.text }}>
+                  Loading drafts...
+                </Text>
+              </View>
+            ) : drafts.length === 0 ? (
+              <View style={{ alignItems: 'center', padding: 20 }}>
+                <Text style={{ color: theme.colors.text, textAlign: 'center' }}>
+                  No drafts found. Start creating an activity to see your drafts here.
+                </Text>
+              </View>
+            ) : (
+              <ScrollView style={{ maxHeight: 400 }}>
+                {drafts.map((draft) => (
+                  <View
+                    key={draft.id}
+                    style={{
+                      backgroundColor: theme.colors.background,
+                      borderRadius: 12,
+                      padding: 16,
+                      marginBottom: 12,
+                      borderWidth: 1,
+                      borderColor: theme.colors.border,
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        marginBottom: 8,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 16,
+                          fontWeight: '600',
+                          color: theme.colors.text,
+                          flex: 1,
+                        }}
+                        numberOfLines={2}
+                      >
+                        {draft.name || 'Untitled Activity'}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteDraft(draft.id, draft.name)}
+                        disabled={deletingDraftId === draft.id}
+                        style={{
+                          padding: 4,
+                          marginLeft: 8,
+                          opacity: deletingDraftId === draft.id ? 0.5 : 1,
+                        }}
+                      >
+                        {deletingDraftId === draft.id ? (
+                          <ActivityIndicator size={16} color="#EF4444" />
+                        ) : (
+                          <Trash2 size={16} color="#EF4444" />
+                        )}
+                      </TouchableOpacity>
+                    </View>
+
+                    {draft.description && (
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          color: theme.colors.text,
+                          opacity: 0.7,
+                          marginBottom: 8,
+                        }}
+                        numberOfLines={2}
+                      >
+                        {draft.description}
+                      </Text>
+                    )}
+
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: theme.colors.text,
+                        opacity: 0.5,
+                        marginBottom: 12,
+                      }}
+                    >
+                      Last updated: {new Date(draft.updated_at).toLocaleDateString()}
+                    </Text>
+
+                    <TouchableOpacity
+                      onPress={() => handleResumeDraft(draft)}
+                      style={{
+                        backgroundColor: theme.colors.primary,
+                        paddingHorizontal: 16,
+                        paddingVertical: 8,
+                        borderRadius: 8,
+                        alignSelf: 'flex-start',
+                      }}
+                    >
+                      <Text style={{ color: 'white', fontWeight: '600' }}>
+                        Resume Draft
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }

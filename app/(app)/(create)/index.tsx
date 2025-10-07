@@ -21,11 +21,12 @@ import * as FileSystem from "expo-file-system";
 import { useUser } from "~/src/lib/UserProvider";
 import { supabase } from "~/src/lib/supabase";
 import { router } from "expo-router";
-import { debounce } from "lodash";
 import Toast from "react-native-toast-message";
 import { useLocalSearchParams } from "expo-router";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { draftService } from "~/src/services/draftService";
+import { EventDraft } from "~/src/types/draftTypes";
 
 // Import modular components
 import BasicInfoSection from "~/src/components/createpost/BasicInfoSection";
@@ -124,8 +125,256 @@ export default function CreateEvent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
 
+  // Draft-related state
+  const [currentDraft, setCurrentDraft] = useState<EventDraft | null>(null);
+  const [isDraftSaving, setIsDraftSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+
+  // Auto-save draft functionality
+  const saveDraft = async (isManual = false) => {
+    if (isDraftSaving) return;
+
+    try {
+      setIsDraftSaving(true);
+      
+      // Get the item ID (either event ID or location ID)
+      const itemId = params.eventId || params.locationId;
+      console.log('💾 [CreateEvent] Saving draft with itemId:', itemId);
+      console.log('💾 [CreateEvent] Params received:', { eventId: params.eventId, locationId: params.locationId });
+      
+      const draftData = {
+        name,
+        description,
+        start_datetime: startDate ? startDate.toISOString() : null,
+        end_datetime: endDate ? endDate.toISOString() : null,
+        venue_name: address1,
+        address: address1,
+        city: locationDetails?.city,
+        state: locationDetails?.state,
+        postal_code: locationDetails?.zip,
+        location_id: itemId, // This will be either event ID or location ID
+        category_id: selectedTopics,
+        is_private: isPrivate,
+        external_url: externalUrl,
+        image_urls: images.map(img => img.uri),
+        type: 'user_created',
+      };
+
+      const savedDraft = await draftService.saveDraft(draftData);
+      setCurrentDraft(savedDraft);
+      setHasUnsavedChanges(false);
+
+      if (isManual) {
+        Toast.show({
+          type: 'success',
+          text1: 'Draft Saved',
+          text2: 'Your activity draft has been saved successfully',
+        });
+      }
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      if (isManual) {
+        Toast.show({
+          type: 'error',
+          text1: 'Save Failed',
+          text2: 'Failed to save draft. Please try again.',
+        });
+      }
+    } finally {
+      setIsDraftSaving(false);
+    }
+  };
+
+  // Save draft on component unmount (when user navigates away)
+  useEffect(() => {
+    return () => {
+      // Final save on unmount
+      if (hasUnsavedChanges && (name.trim() || description.trim())) {
+        saveDraft(false);
+      }
+    };
+  }, []); // Empty dependency array - only run on mount/unmount
+
+  // Load existing draft on component mount
+  useEffect(() => {
+    loadDraft();
+  }, [params.eventId, params.locationId, params.draftId]); // Re-run when params change
+
+  const loadDraft = async () => {
+    try {
+      setDraftLoaded(true);
+      
+      // Debug: Log what parameters we received
+      console.log('🔍 [CreateEvent] Received params:', params);
+      
+      // Check if we're resuming a specific draft from settings
+      if (params.draftId && params.resumeDraft === 'true') {
+        console.log('🔍 [CreateEvent] Resuming draft from settings:', params.draftId);
+        const specificDraft = await draftService.getDraft(params.draftId as string);
+        if (specificDraft) {
+          console.log('✅ [CreateEvent] Draft found, restoring data');
+          setCurrentDraft(specificDraft);
+          restoreDraftData(specificDraft);
+          return;
+        } else {
+          console.log('❌ [CreateEvent] Draft not found');
+        }
+      }
+
+      // Only load draft if it matches the current item (event/location) being created for
+      const itemId = params.eventId || params.locationId;
+      console.log('🔍 [CreateEvent] Looking for draft with itemId:', itemId);
+      
+      if (!itemId) {
+        console.log('❌ [CreateEvent] No itemId found, clearing form');
+        clearForm();
+        return;
+      }
+      
+      const drafts = await draftService.getDrafts();
+      console.log('🔍 [CreateEvent] Available drafts:', drafts.map(d => ({ id: d.id, location_id: d.location_id })));
+      
+      if (drafts.length > 0) {
+        // Find draft that matches current item ID
+        const matchingDraft = drafts.find(draft => {
+          const matches = draft.location_id === itemId;
+          console.log(`🔍 [CreateEvent] Checking draft ${draft.id}: location_id=${draft.location_id}, itemId=${itemId}, matches=${matches}`);
+          return matches;
+        });
+
+        if (matchingDraft) {
+          console.log('✅ [CreateEvent] Found matching draft:', matchingDraft.id);
+          setCurrentDraft(matchingDraft);
+          restoreDraftData(matchingDraft);
+        } else {
+          console.log('❌ [CreateEvent] No matching draft found for itemId:', itemId);
+          // Clear form fields when no draft is found
+          clearForm();
+        }
+      } else {
+        console.log('❌ [CreateEvent] No drafts available, clearing form');
+        clearForm();
+      }
+        
+      // Clean up old drafts (keep only the latest one)
+      if (drafts.length > 1) {
+        cleanupOldDrafts();
+      }
+    } catch (error) {
+      console.error('Error loading draft:', error);
+    }
+  };
+
+  // Helper function to clear form fields
+  const clearForm = () => {
+    setName('');
+    setDescription('');
+    setStartDate(null);
+    setEndDate(null);
+    setSelectedTopics('');
+    setSelectedTopicsName('');
+    setIsPrivate(false);
+    setExternalUrl('');
+    setImages([]);
+    setCurrentDraft(null);
+    setHasUnsavedChanges(false);
+    console.log('🧹 [CreateEvent] Form cleared');
+  };
+
+  // Helper function to restore draft data to form
+  const restoreDraftData = (draft: EventDraft) => {
+    // Restore form data from draft
+    setName(draft.name || '');
+    setDescription(draft.description || '');
+    if (draft.start_datetime) {
+      setStartDate(new Date(draft.start_datetime));
+    }
+    if (draft.end_datetime) {
+      setEndDate(new Date(draft.end_datetime));
+    }
+    if (draft.address) {
+      setAddress1(draft.address);
+    }
+    if (draft.city) {
+      setLocationDetails(prev => ({ ...prev, city: draft.city! }));
+    }
+    if (draft.state) {
+      setLocationDetails(prev => ({ ...prev, state: draft.state! }));
+    }
+    if (draft.postal_code) {
+      setLocationDetails(prev => ({ ...prev, zip: draft.postal_code! }));
+    }
+    if (draft.category_id) {
+      setSelectedTopics(draft.category_id);
+    }
+    if (draft.category_id) {
+      setSelectedTopicsName(draft.category_id); // We'll need to get the name from category_id
+    }
+    setIsPrivate(draft.is_private || false);
+    setExternalUrl(draft.external_url || '');
+    
+    // Restore images
+    if (draft.image_urls && draft.image_urls.length > 0) {
+      const restoredImages = draft.image_urls.map((uri, index) => ({
+        uri,
+        type: 'image/jpeg',
+        name: `image_${index}.jpg`,
+      }));
+      setImages(restoredImages);
+    }
+
+    Toast.show({
+      type: 'info',
+      text1: 'Draft Restored',
+      text2: 'Your previous draft has been restored',
+    });
+  };
+
+  // Clear draft after successful event creation
+  const clearDraft = async () => {
+    if (currentDraft) {
+      try {
+        await draftService.deleteDraft(currentDraft.id);
+        setCurrentDraft(null);
+        setHasUnsavedChanges(false);
+      } catch (error) {
+        console.error('Error clearing draft:', error);
+      }
+    }
+  };
+
+  // Clean up old drafts (keep only the latest one)
+  const cleanupOldDrafts = async () => {
+    try {
+      const drafts = await draftService.getDrafts();
+      if (drafts.length > 1) {
+        // Delete all drafts except the latest one
+        const draftsToDelete = drafts.slice(1);
+        for (const draft of draftsToDelete) {
+          await draftService.deleteDraft(draft.id);
+        }
+      }
+    } catch (error) {
+      console.error('Error cleaning up old drafts:', error);
+    }
+  };
+
+  // Track changes for save draft button state (NO AUTO-SAVE)
+  useEffect(() => {
+    // Only track if user has made changes (for button state) - NO AUTO-SAVE
+    if (draftLoaded && (name.trim().length > 0 || description.trim().length > 0)) {
+      setHasUnsavedChanges(true);
+    } else {
+      setHasUnsavedChanges(false);
+    }
+  }, [name, description, startDate, endDate, latitude, longitude, address1, selectedTopics, isPrivate, externalUrl, images, draftLoaded]);
+
   useEffect(() => {
     console.log("createevent_useEffect");
+
+    // Load existing draft on mount
+    loadDraft();
 
     // Handle router params
     if (params.categoryId && params.categoryName) {
@@ -543,7 +792,17 @@ export default function CreateEvent() {
     }
   };
 
-  const debouncedSearch = debounce(searchAddress, 300);
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+  
+  const debouncedSearch = (query: string) => {
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    const timeout = setTimeout(() => {
+      searchAddress(query);
+    }, 300);
+    setSearchTimeout(timeout);
+  };
 
   const handleAddressSelect = (feature: MapboxFeature) => {
     const contextMap = new Map(
@@ -779,9 +1038,13 @@ export default function CreateEvent() {
       // console.log("event>>", event);
       Toast.show({
         type: "success",
-        text1: "Event Created!",
-        text2: "Your event has been created successfully",
+        text1: "Activity Created!",
+        text2: "Your activity has been created successfully",
       });
+      
+      // Clear draft after successful creation
+      await clearDraft();
+      
       setEventID(undefined);
       // Navigate to summary screen with event data
       router.push({
@@ -821,7 +1084,11 @@ export default function CreateEvent() {
     }
   };
 
-  const handleBack = () => {
+  const handleBack = async () => {
+    // Save draft before navigating away
+    if (hasUnsavedChanges && (name.trim() || description.trim())) {
+      await saveDraft(false);
+    }
     router.back();
   };
 
@@ -865,38 +1132,57 @@ export default function CreateEvent() {
             style={{
               flexDirection: "row",
               alignItems: "center",
+              justifyContent: "space-between",
               marginBottom: 16,
             }}
           >
+            <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+              <TouchableOpacity
+                onPress={handleBack}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: theme.dark
+                    ? "rgba(139, 92, 246, 0.2)"
+                    : "rgba(139, 92, 246, 0.1)",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  marginRight: 12,
+                  borderWidth: 1,
+                  borderColor: theme.dark
+                    ? "rgba(139, 92, 246, 0.3)"
+                    : "rgba(139, 92, 246, 0.2)",
+                }}
+              >
+                <ArrowLeft size={18} color="#8B5CF6" />
+              </TouchableOpacity>
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: "700",
+                  color: theme.colors.text,
+                }}
+              >
+                Create Activity
+              </Text>
+            </View>
+            
             <TouchableOpacity
-              onPress={handleBack}
+              onPress={() => saveDraft(true)}
+              disabled={isDraftSaving || !hasUnsavedChanges}
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: theme.dark
-                  ? "rgba(139, 92, 246, 0.2)"
-                  : "rgba(139, 92, 246, 0.1)",
-                justifyContent: "center",
-                alignItems: "center",
-                marginRight: 12,
-                borderWidth: 1,
-                borderColor: theme.dark
-                  ? "rgba(139, 92, 246, 0.3)"
-                  : "rgba(139, 92, 246, 0.2)",
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 16,
+                backgroundColor: hasUnsavedChanges ? '#8B5CF6' : '#6B7280',
+                opacity: isDraftSaving ? 0.6 : 1,
               }}
             >
-              <ArrowLeft size={18} color="#8B5CF6" />
+              <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>
+                {isDraftSaving ? 'Saving...' : 'Save Draft'}
+              </Text>
             </TouchableOpacity>
-            <Text
-              style={{
-                fontSize: 20,
-                fontWeight: "700",
-                color: theme.colors.text,
-              }}
-            >
-              Create Event
-            </Text>
           </View>
         </View>
 
