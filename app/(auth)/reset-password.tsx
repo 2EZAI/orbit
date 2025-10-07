@@ -1,27 +1,28 @@
+import { router } from "expo-router";
+import { AlertTriangle, ArrowLeft, Mail } from "lucide-react-native";
+import { MotiView } from "moti";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  TouchableOpacity,
-  SafeAreaView,
-  View,
-  TouchableWithoutFeedback,
   Keyboard,
+  SafeAreaView,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from "react-native";
-import { supabase } from "../../src/lib/supabase";
-import { router } from "expo-router";
-import { Input } from "~/src/components/ui/input";
-import { Button } from "~/src/components/ui/button";
-import { Text } from "~/src/components/ui/text";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 import { useTheme } from "~/src/components/ThemeProvider";
-import { Mail ,AlertTriangle,ArrowLeft} from "lucide-react-native";
-import { MotiView } from "moti";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Button } from "~/src/components/ui/button";
+import { Input } from "~/src/components/ui/input";
+import { Text } from "~/src/components/ui/text";
+import { supabase } from "../../src/lib/supabase";
 
 export default function ResetPassword(): JSX.Element {
   const [email, setEmail] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+  const [success, setSuccess] = useState<boolean>(false);
   const { theme } = useTheme();
  const insets = useSafeAreaInsets();
 
@@ -56,14 +57,13 @@ const handleBack = () => {
         return;
       }
 
-      Toast.show({
-        type: "success",
-        text1: "Success",
-        text2: "Password reset email sent. Please check your inbox.",
-      });
-
-      // Optionally redirect the user back to the sign-in page
-      router.push("/(auth)/sign-in");
+      // Show success message and redirect after delay
+      setSuccess(true);
+      
+      // Redirect to previous screen after 1.5 seconds
+      setTimeout(() => {
+        router.back();
+      }, 2000);
     } catch (error) {
       if (error instanceof Error) {
         setError(error.message);
@@ -176,6 +176,36 @@ const handleBack = () => {
                   </TouchableOpacity>
                 </View>
               )}
+
+            {/* Success Message */}
+            {success && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  padding: 16,
+                  marginBottom: 24,
+                  backgroundColor: theme.dark
+                    ? "rgba(34, 197, 94, 0.15)"
+                    : "rgba(34, 197, 94, 0.1)",
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: theme.dark
+                    ? "rgba(34, 197, 94, 0.3)"
+                    : "rgba(34, 197, 94, 0.2)",
+                }}
+              >
+                <Mail size={20} color="#22C55E" style={{ marginRight: 12 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: "#22C55E" }}>
+                    Email Sent Successfully!
+                  </Text>
+                  <Text style={{ fontSize: 12, color: "#16A34A", marginTop: 4 }}>
+                    Please check your inbox and follow the instructions to reset your password.
+                  </Text>
+                </View>
+              </View>
+            )}
               <Text className="mb-4 text-lg font-medium">Email Address</Text>
               <View className="flex-row items-center h-14 bg-input rounded-xl">
                 <View className="px-4">
