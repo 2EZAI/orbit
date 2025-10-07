@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   TouchableOpacity,
@@ -57,6 +57,7 @@ import {
   FilterState,
   generateDefaultFilters,
 } from "~/src/components/map/MarkerFilter";
+import { useAuth } from "~/src/lib/auth";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const STORY_CARD_WIDTH = screenWidth * 0.8;
@@ -361,6 +362,7 @@ const TikTokLocationSection = ({
 export default function Home() {
   const { theme, isDarkMode } = useTheme();
   const { user } = useUser();
+  const { session } = useAuth();
   const router = useRouter();
   const { eventId = null } = useLocalSearchParams<{ eventId: string }>();
   const { fetchAllNoifications, unReadCount } = useNotificationsApi();
@@ -415,9 +417,17 @@ export default function Home() {
       console.log(data.allContent[0]);
       if (eventId) {
         console.log("🔗 [Home] Deep link eventId:", eventId);
-        console.log("🔗 [Home] Searching in allContent:", data.allContent.length, "items");
+        console.log(
+          "🔗 [Home] Searching in allContent:",
+          data.allContent.length,
+          "items"
+        );
         const found = data.allContent.find((val) => val.id === eventId);
-        console.log("🔗 [Home] Found event:", found ? "YES" : "NO", found?.name);
+        console.log(
+          "🔗 [Home] Found event:",
+          found ? "YES" : "NO",
+          found?.name
+        );
         if (found) {
           console.log("🔗 [Home] Opening UnifiedDetailsSheet for:", found.name);
           handleEventSelect(found);
@@ -1037,7 +1047,11 @@ export default function Home() {
 
   // Add handlers like the map component
   const handleEventSelect = (event: any) => {
-    console.log("🔗 [Home] handleEventSelect called with:", event?.name, event?.id);
+    console.log(
+      "🔗 [Home] handleEventSelect called with:",
+      event?.name,
+      event?.id
+    );
     setSelectedEvent(event);
     setIsSelectedItemLocation(false);
     console.log("🔗 [Home] selectedEvent set, UnifiedDetailsSheet should show");
@@ -1160,6 +1174,100 @@ export default function Home() {
     return flatList;
   }, [data, filteredData, activeQuickFilter, sectionEngagement]);
 
+  const headerActions = useMemo(() => {
+    if (session) {
+      return [
+        {
+          icon: <Bell size={18} color="white" strokeWidth={2.5} />,
+          onPress: () => {
+            router.push({
+              pathname: `/(app)/(notification)`,
+              params: { from: "home" },
+            });
+          },
+          backgroundColor: theme.colors.primary,
+          badge: !!(unReadCount && unReadCount > 0) ? (
+            <View
+              style={{
+                position: "absolute",
+                top: -4,
+                right: -4,
+                backgroundColor: "#ff3b30",
+                borderRadius: 10,
+                minWidth: 20,
+                height: 20,
+                justifyContent: "center",
+                alignItems: "center",
+                borderWidth: 2,
+                borderColor: "white",
+              }}
+            >
+              <Text
+                style={{ color: "white", fontSize: 12, fontWeight: "bold" }}
+              >
+                {unReadCount > 99 ? "99+" : String(unReadCount)}
+              </Text>
+            </View>
+          ) : undefined,
+        },
+        {
+          icon: (
+            <Image
+              source={
+                user?.avatar_url
+                  ? { uri: user.avatar_url }
+                  : require("~/assets/favicon.png")
+              }
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                borderWidth: 2,
+                borderColor: theme.colors.primary,
+              }}
+            />
+          ),
+          onPress: () => router.push("/(app)/(profile)"),
+        },
+      ];
+    } else {
+      return [
+        {
+          icon: <Bell size={18} color="white" strokeWidth={2.5} />,
+          onPress: () => {
+            router.push({
+              pathname: `/(app)/(notification)`,
+              params: { from: "home" },
+            });
+          },
+          backgroundColor: theme.colors.primary,
+          badge: !!(unReadCount && unReadCount > 0) ? (
+            <View
+              style={{
+                position: "absolute",
+                top: -4,
+                right: -4,
+                backgroundColor: "#ff3b30",
+                borderRadius: 10,
+                minWidth: 20,
+                height: 20,
+                justifyContent: "center",
+                alignItems: "center",
+                borderWidth: 2,
+                borderColor: "white",
+              }}
+            >
+              <Text
+                style={{ color: "white", fontSize: 12, fontWeight: "bold" }}
+              >
+                {unReadCount > 99 ? "99+" : String(unReadCount)}
+              </Text>
+            </View>
+          ) : undefined,
+        },
+      ];
+    }
+  }, [session]);
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -1209,63 +1317,7 @@ export default function Home() {
           backgroundColor={theme.colors.card}
         />
 
-        <ScreenHeader
-          title="Discover"
-          actions={[
-            {
-              icon: <Bell size={18} color="white" strokeWidth={2.5} />,
-              onPress: () => {
-                router.push({
-                  pathname: `/(app)/(notification)`,
-                  params: { from: "home" },
-                });
-              },
-              backgroundColor: theme.colors.primary,
-              badge: !!(unReadCount && unReadCount > 0) ? (
-                <View
-                  style={{
-                    position: "absolute",
-                    top: -4,
-                    right: -4,
-                    backgroundColor: "#ff3b30",
-                    borderRadius: 10,
-                    minWidth: 20,
-                    height: 20,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    borderWidth: 2,
-                    borderColor: "white",
-                  }}
-                >
-                  <Text
-                    style={{ color: "white", fontSize: 12, fontWeight: "bold" }}
-                  >
-                    {unReadCount > 99 ? "99+" : String(unReadCount)}
-                  </Text>
-                </View>
-              ) : undefined,
-            },
-            {
-              icon: (
-                <Image
-                  source={
-                    user?.avatar_url
-                      ? { uri: user.avatar_url }
-                      : require("~/assets/favicon.png")
-                  }
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    borderWidth: 2,
-                    borderColor: theme.colors.primary,
-                  }}
-                />
-              ),
-              onPress: () => router.push("/(app)/(profile)"),
-            },
-          ]}
-        />
+        <ScreenHeader title="Discover" actions={headerActions} />
 
         {/* Search Bar */}
         <View style={styles.searchContainer}>
@@ -1365,63 +1417,7 @@ export default function Home() {
       />
 
       <SafeAreaView style={{ backgroundColor: theme.colors.card }}>
-        <ScreenHeader
-          title="Discover"
-          actions={[
-            {
-              icon: <Bell size={18} color="white" strokeWidth={2.5} />,
-              onPress: () => {
-                router.push({
-                  pathname: `/(app)/(notification)`,
-                  params: { from: "home" },
-                });
-              },
-              backgroundColor: theme.colors.primary,
-              badge: !!(unReadCount && unReadCount > 0) ? (
-                <View
-                  style={{
-                    position: "absolute",
-                    top: -4,
-                    right: -4,
-                    backgroundColor: "#ff3b30",
-                    borderRadius: 10,
-                    minWidth: 20,
-                    height: 20,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    borderWidth: 2,
-                    borderColor: "white",
-                  }}
-                >
-                  <Text
-                    style={{ color: "white", fontSize: 12, fontWeight: "bold" }}
-                  >
-                    {unReadCount > 99 ? "99+" : String(unReadCount)}
-                  </Text>
-                </View>
-              ) : undefined,
-            },
-            {
-              icon: (
-                <Image
-                  source={
-                    user?.avatar_url
-                      ? { uri: user.avatar_url }
-                      : require("~/assets/favicon.png")
-                  }
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    borderWidth: 2,
-                    borderColor: theme.colors.primary,
-                  }}
-                />
-              ),
-              onPress: () => router.push("/(app)/(profile)"),
-            },
-          ]}
-        />
+        <ScreenHeader title="Discover" actions={headerActions} />
 
         {/* Search Bar */}
         <View style={styles.searchContainer}>

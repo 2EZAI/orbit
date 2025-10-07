@@ -19,6 +19,7 @@ import { SearchSheet } from "~/src/components/search/SearchSheet";
 import { MarkerLegend } from "~/src/components/map/MarkerLegend";
 import { MarkerFilter, FilterState } from "~/src/components/map/MarkerFilter";
 import { LocationPreferencesModal } from "~/src/components/settings/LocationPreferencesModal";
+import { useAuth } from "~/src/lib/auth";
 
 type TimeFrame = "Today" | "Week" | "Weekend";
 
@@ -54,6 +55,7 @@ export function MapControls({
   const router = useRouter();
   const { theme, isDarkMode } = useTheme();
   const { user, userlocation } = useUser();
+  const { session } = useAuth();
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [isLegendVisible, setIsLegendVisible] = useState(false);
   const [isFilterVisible, setIsFilterVisible] = useState(false);
@@ -312,33 +314,35 @@ export function MapControls({
             </TouchableOpacity>
 
             {/* User Avatar */}
-            <TouchableOpacity
-              onPress={() => router.push("/(app)/(profile)")}
-              activeOpacity={0.8}
-              style={{
-                borderRadius: 18,
-                borderWidth: 2.5,
-                borderColor: theme.colors.primary,
-                shadowColor: theme.colors.primary,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.25,
-                shadowRadius: 8,
-                elevation: 6,
-              }}
-            >
-              <Image
-                source={
-                  user?.avatar_url
-                    ? { uri: user.avatar_url }
-                    : require("~/assets/favicon.png")
-                }
+            {!session ? null : (
+              <TouchableOpacity
+                onPress={() => router.push("/(app)/(profile)")}
+                activeOpacity={0.8}
                 style={{
-                  width: 42,
-                  height: 42,
                   borderRadius: 18,
+                  borderWidth: 2.5,
+                  borderColor: theme.colors.primary,
+                  shadowColor: theme.colors.primary,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 8,
+                  elevation: 6,
                 }}
-              />
-            </TouchableOpacity>
+              >
+                <Image
+                  source={
+                    user?.avatar_url
+                      ? { uri: user.avatar_url }
+                      : require("~/assets/favicon.png")
+                  }
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 18,
+                  }}
+                />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
