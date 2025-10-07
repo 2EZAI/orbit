@@ -48,7 +48,9 @@ export function TopicSingleSelectDropdown({
           .select("id, name")
           .order("name");
         if (error) throw error;
-        if (mounted) setTopics((data || []) as Topic[]);
+        if (mounted) {
+          setTopics((data || []) as Topic[]);
+        }
       } catch (e) {
         console.error("Error fetching topics:", e);
       } finally {
@@ -62,10 +64,15 @@ export function TopicSingleSelectDropdown({
   }, []);
 
   const selectedLabel = useMemo(() => {
-    if (selectedName && selectedName.trim() !== "") return selectedName;
+
+    if (
+      selectedName &&
+      selectedName.trim() !== "" 
+    )
+      return selectedName;
     const found = topics.find((t) => t.id === selectedId);
     return found?.name;
-  }, [selectedId, selectedName, topics]);
+  }, [selectedId, selectedName, topics, loading]);
 
   const filteredTopics = useMemo(() => {
     const q = search.trim().toLowerCase();
