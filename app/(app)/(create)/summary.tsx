@@ -1,11 +1,13 @@
-import React , {useState} from "react";
+import React , {useState, useEffect} from "react";
 import { View, StatusBar } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ConfettiAnimation } from "~/src/components/ui/ConfettiAnimation";
 import EventSummaryCard from "~/src/components/createpost/EventSummaryCard";
 import { DeviceEventEmitter } from "react-native";
 import InviteUsers from "~/src/components/createpost/InviteUsers";
+
 
 
 interface EventImage {
@@ -26,6 +28,18 @@ export default function EventSummary() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const [isInviteOpen, setIsInviteOpen] = useState<Boolean>(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  // Trigger confetti when component mounts (event creation success)
+  useEffect(() => {
+    // Small delay to let the screen render first
+    const timer = setTimeout(() => {
+      setShowConfetti(true);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
 console.log("params>>",params);
   // Parse the event data from params
   const eventData = {
@@ -92,6 +106,12 @@ const handleInviteUser = () => {
         barStyle={theme.dark ? "light-content" : "dark-content"}
         backgroundColor="transparent"
         translucent
+      />
+
+      {/* Confetti Animation */}
+      <ConfettiAnimation 
+        isActive={showConfetti}
+        onComplete={() => setShowConfetti(false)}
       />
 
       {/* Cosmic Background */}

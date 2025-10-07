@@ -18,6 +18,7 @@ import {
   Share,
   TouchableOpacity,
   View,
+  Animated,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocationEvents } from "~/hooks/useLocationEvents";
@@ -25,6 +26,7 @@ import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
 import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
+import { ConfettiAnimation } from "~/src/components/ui/ConfettiAnimation";
 import { UnifiedDetailsSheetContent } from "./UnifiedDetailsSheetContent";
 import { UnifiedSheetButtons } from "./UnifiedSheetButtons";
 
@@ -113,6 +115,7 @@ export const UnifiedDetailsSheet = React.memo(
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
     const [manuallyUpdated, setManuallyUpdated] = useState(false);
+    const [showConfetti, setShowConfetti] = useState(false);
 
     // Memoize the event type check to prevent repeated calculations
     const isEventType = useMemo(() => {
@@ -134,6 +137,11 @@ export const UnifiedDetailsSheet = React.memo(
       useState<any>(null);
     const insets = useSafeAreaInsets();
     const { theme, isDarkMode } = useTheme();
+
+    // Simple confetti trigger
+    const triggerConfetti = () => {
+      setShowConfetti(true);
+    };
 
     const {
       UpdateEventStatus,
@@ -177,7 +185,7 @@ export const UnifiedDetailsSheet = React.memo(
 
           https://orbit-redirects.vercel.app/?action=share&eventId=${currentData.id}
           `,
-          title: isEventType ? "Event on Orbit" : "Location on Orbit",
+          title: isEventType ? "Activity on Orbit" : "Location on Orbit",
         });
       } catch (error) {
         console.error("Error sharing:", error);
@@ -216,11 +224,11 @@ export const UnifiedDetailsSheet = React.memo(
     };
 
     const handleCreateEvent = () => {
-      // For events, we want to create a new event at the same location
-      // For locations, we want to create an event at that location
+      // For events, we want to create a new activity at the same location
+      // For locations, we want to create an activity at that location
       const locationData = isEventType ? (data as any).location : data;
 
-      console.log("🔧 [UnifiedDetailsSheet] handleCreateEvent:", {
+      console.log("🔧 [UnifiedDetailsSheet] handleCreateActivity:", {
         isEventType,
         data: data,
         locationData: locationData,
@@ -265,7 +273,7 @@ export const UnifiedDetailsSheet = React.memo(
         categoryName: simplifiedCategory.name,
       };
 
-      console.log("🔧 [UnifiedDetailsSheet] Create event params:", params);
+      console.log("🔧 [UnifiedDetailsSheet] Create activity params:", params);
 
       router.push({
         pathname: "/(app)/(create)",
@@ -277,7 +285,7 @@ export const UnifiedDetailsSheet = React.memo(
       // Close the sheet first
       onClose();
 
-      // Navigate to edit event screen
+      // Navigate to edit activity screen
       router.push({
         pathname: "/(app)/(create)",
         params: {
@@ -350,6 +358,9 @@ export const UnifiedDetailsSheet = React.memo(
         const updatedData = { ...(detailData || data), join_status: true };
         setDetailData(updatedData as UnifiedData);
         setManuallyUpdated(true);
+
+        // Trigger confetti animation
+        triggerConfetti();
 
         setLoading(false);
       } catch (error) {
@@ -455,6 +466,10 @@ export const UnifiedDetailsSheet = React.memo(
       setManuallyUpdated(false);
       setDetailData(data); // Use data directly, no API call needed
 
+      // Check if this is a deep link arrival (user came from shared link)
+      // You can add logic here to detect if user came from deep link
+      // For now, we'll only trigger confetti for specific user actions
+
       // Events for this location are automatically loaded by the useLocationEvents hook
 
       return () => {
@@ -527,6 +542,11 @@ export const UnifiedDetailsSheet = React.memo(
         presentationStyle="overFullScreen"
       >
         <View style={{ flex: 1 }}>
+          {/* Confetti Animation */}
+          <ConfettiAnimation 
+            isActive={showConfetti}
+            onComplete={() => setShowConfetti(false)}
+          />
           {/* Full Screen Backdrop */}
           <View
             className="absolute top-0 right-0 bottom-0 left-0"
@@ -701,7 +721,7 @@ export const UnifiedDetailsSheet = React.memo(
                         className="mb-3 text-lg font-bold"
                         style={{ color: theme.colors.text }}
                       >
-                        {isEventType ? "Event Photos" : "Location Photos"}
+                        {isEventType ? "Activity Photos" : "Location Photos"}
                       </Text>
                       <ScrollView
                         horizontal
@@ -749,7 +769,7 @@ export const UnifiedDetailsSheet = React.memo(
                         className="mb-3 text-lg font-bold"
                         style={{ color: theme.colors.text }}
                       >
-                        Event Categories
+                        Activity Categories
                       </Text>
                       <View className="flex-row flex-wrap gap-2">
                         {(currentData as any).categories
