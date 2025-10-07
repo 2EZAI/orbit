@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "./supabase";
 import { Session } from "@supabase/supabase-js";
-import { router } from "expo-router";
 
 type AuthContextType = {
   session: Session | null;
@@ -32,13 +31,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("Auth state change:", event, "Session:", !!session);
       setSession(session);
 
-      // Only redirect on sign out - let app layout handle authenticated routing
       if (event === "SIGNED_OUT") {
-        console.log("User signed out, redirecting to landing page");
-        // Small delay to allow providers to clean up
-        setTimeout(() => {
-          router.replace("/");
-        }, 100);
+        console.log("User signed out; navigation handled elsewhere");
       }
       // Don't redirect on SIGNED_IN - causes issues with session persistence
     });

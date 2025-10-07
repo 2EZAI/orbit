@@ -155,7 +155,7 @@ export default function SettingsScreen() {
   const [showInterests, setShowInterests] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
-  
+
   // Drafts state
   const [drafts, setDrafts] = useState<EventDraft[]>([]);
   const [showDrafts, setShowDrafts] = useState(false);
@@ -182,9 +182,10 @@ export default function SettingsScreen() {
       // Sign out from Supabase
       await supabase.auth.signOut();
       // Reset navigation to the first screen (e.g., "/")router.back();
+      // router.dismiss();
       router.back();
-
       router.replace("/(app)/(map)");
+
       console.log("Logout successful - app layout will handle redirect");
     } catch (error) {
       console.error("Error logging out:", error);
@@ -207,7 +208,7 @@ export default function SettingsScreen() {
       const userDrafts = await draftService.getDrafts();
       setDrafts(userDrafts);
     } catch (error) {
-      console.error('Error loading drafts:', error);
+      console.error("Error loading drafts:", error);
     } finally {
       setLoadingDrafts(false);
     }
@@ -221,7 +222,9 @@ export default function SettingsScreen() {
   const handleDeleteDraft = async (draftId: string, draftName: string) => {
     Alert.alert(
       "Delete Draft",
-      `Are you sure you want to delete "${draftName || 'Untitled Activity'}"? This action cannot be undone.`,
+      `Are you sure you want to delete "${
+        draftName || "Untitled Activity"
+      }"? This action cannot be undone.`,
       [
         {
           text: "Cancel",
@@ -234,9 +237,9 @@ export default function SettingsScreen() {
             try {
               setDeletingDraftId(draftId);
               await draftService.deleteDraft(draftId);
-              setDrafts(drafts.filter(draft => draft.id !== draftId));
+              setDrafts(drafts.filter((draft) => draft.id !== draftId));
             } catch (error) {
-              console.error('Error deleting draft:', error);
+              console.error("Error deleting draft:", error);
               Alert.alert("Error", "Failed to delete draft. Please try again.");
             } finally {
               setDeletingDraftId(null);
@@ -254,7 +257,7 @@ export default function SettingsScreen() {
       pathname: "/(app)/(create)",
       params: {
         draftId: draft.id,
-        resumeDraft: 'true',
+        resumeDraft: "true",
         locationId: draft.location_id, // Pass the location_id so the screen knows the context
       },
     });
@@ -282,8 +285,11 @@ export default function SettingsScreen() {
               }
               setDrafts([]);
             } catch (error) {
-              console.error('Error clearing all drafts:', error);
-              Alert.alert("Error", "Failed to delete some drafts. Please try again.");
+              console.error("Error clearing all drafts:", error);
+              Alert.alert(
+                "Error",
+                "Failed to delete some drafts. Please try again."
+              );
             } finally {
               setClearingAllDrafts(false);
             }
@@ -384,7 +390,7 @@ export default function SettingsScreen() {
           title="Map & Location Privacy"
           onPress={() => setShowPrivacy(true)}
         />
-        
+
         {/* Drafts Section */}
         <SectionHeader title="Activity Drafts" />
         <SettingItem
@@ -465,14 +471,14 @@ export default function SettingsScreen() {
       {showDrafts && (
         <View
           style={{
-            position: 'absolute',
+            position: "absolute",
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
+            backgroundColor: "rgba(0,0,0,0.5)",
+            justifyContent: "center",
+            alignItems: "center",
             zIndex: 1000,
           }}
         >
@@ -482,28 +488,28 @@ export default function SettingsScreen() {
               borderRadius: 20,
               padding: 20,
               margin: 20,
-              maxHeight: '80%',
-              width: '90%',
+              maxHeight: "80%",
+              width: "90%",
             }}
           >
             <View
               style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
                 marginBottom: 20,
               }}
             >
               <Text
                 style={{
                   fontSize: 20,
-                  fontWeight: 'bold',
+                  fontWeight: "bold",
                   color: theme.colors.text,
                 }}
               >
                 My Drafts ({drafts.length})
               </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
                 {drafts.length > 0 && (
                   <TouchableOpacity
                     onPress={handleClearAllDrafts}
@@ -511,7 +517,9 @@ export default function SettingsScreen() {
                     style={{
                       padding: 8,
                       borderRadius: 16,
-                      backgroundColor: clearingAllDrafts ? '#9CA3AF' : '#EF4444',
+                      backgroundColor: clearingAllDrafts
+                        ? "#9CA3AF"
+                        : "#EF4444",
                       marginRight: 8,
                       opacity: clearingAllDrafts ? 0.7 : 1,
                     }}
@@ -519,7 +527,9 @@ export default function SettingsScreen() {
                     {clearingAllDrafts ? (
                       <ActivityIndicator size={12} color="white" />
                     ) : (
-                      <Text style={{ color: 'white', fontSize: 12 }}>Clear All</Text>
+                      <Text style={{ color: "white", fontSize: 12 }}>
+                        Clear All
+                      </Text>
                     )}
                   </TouchableOpacity>
                 )}
@@ -537,16 +547,17 @@ export default function SettingsScreen() {
             </View>
 
             {loadingDrafts ? (
-              <View style={{ alignItems: 'center', padding: 20 }}>
+              <View style={{ alignItems: "center", padding: 20 }}>
                 <ActivityIndicator size="large" color={theme.colors.primary} />
                 <Text style={{ marginTop: 10, color: theme.colors.text }}>
                   Loading drafts...
                 </Text>
               </View>
             ) : drafts.length === 0 ? (
-              <View style={{ alignItems: 'center', padding: 20 }}>
-                <Text style={{ color: theme.colors.text, textAlign: 'center' }}>
-                  No drafts found. Start creating an activity to see your drafts here.
+              <View style={{ alignItems: "center", padding: 20 }}>
+                <Text style={{ color: theme.colors.text, textAlign: "center" }}>
+                  No drafts found. Start creating an activity to see your drafts
+                  here.
                 </Text>
               </View>
             ) : (
@@ -565,22 +576,22 @@ export default function SettingsScreen() {
                   >
                     <View
                       style={{
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
                         marginBottom: 8,
                       }}
                     >
                       <Text
                         style={{
                           fontSize: 16,
-                          fontWeight: '600',
+                          fontWeight: "600",
                           color: theme.colors.text,
                           flex: 1,
                         }}
                         numberOfLines={2}
                       >
-                        {draft.name || 'Untitled Activity'}
+                        {draft.name || "Untitled Activity"}
                       </Text>
                       <TouchableOpacity
                         onPress={() => handleDeleteDraft(draft.id, draft.name)}
@@ -621,7 +632,8 @@ export default function SettingsScreen() {
                         marginBottom: 12,
                       }}
                     >
-                      Last updated: {new Date(draft.updated_at).toLocaleDateString()}
+                      Last updated:{" "}
+                      {new Date(draft.updated_at).toLocaleDateString()}
                     </Text>
 
                     <TouchableOpacity
@@ -631,10 +643,10 @@ export default function SettingsScreen() {
                         paddingHorizontal: 16,
                         paddingVertical: 8,
                         borderRadius: 8,
-                        alignSelf: 'flex-start',
+                        alignSelf: "flex-start",
                       }}
                     >
-                      <Text style={{ color: 'white', fontWeight: '600' }}>
+                      <Text style={{ color: "white", fontWeight: "600" }}>
                         Resume Draft
                       </Text>
                     </TouchableOpacity>

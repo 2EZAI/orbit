@@ -46,7 +46,7 @@ export default function AppLayout() {
             !session &&
             (currentRoute.name === "(create)" ||
               currentRoute.name === "(chat)" ||
-              currentRoute.name === "(profile)" ||
+              // currentRoute.name === "(profile)" ||
               currentRoute.name === "(social)")
           ) {
             Toast.show({
