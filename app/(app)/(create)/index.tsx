@@ -330,10 +330,9 @@ export default function CreateEvent() {
     }
     if (draft.category_id) {
       setSelectedTopics(draft.category_id);
+      setSelectedTopicsName("");
     }
-    if (draft.category_id) {
-      setSelectedTopicsName(draft.category_id); // We'll need to get the name from category_id
-    }
+
     setIsPrivate(draft.is_private || false);
     setExternalUrl(draft.external_url || "");
 
