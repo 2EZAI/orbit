@@ -252,6 +252,8 @@ export default function SettingsScreen() {
 
   const handleResumeDraft = (draft: EventDraft) => {
     setShowDrafts(false);
+        // Close the settings modal after navigation
+        router.back();
     // Navigate to create screen with draft data
     router.push({
       pathname: "/(app)/(create)",
@@ -261,8 +263,6 @@ export default function SettingsScreen() {
         locationId: draft.location_id, // Pass the location_id so the screen knows the context
       },
     });
-    // Close the settings modal after navigation
-    router.back();
   };
 
   const handleClearAllDrafts = async () => {
