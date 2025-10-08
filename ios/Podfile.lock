@@ -247,6 +247,8 @@ PODS:
     - ExpoModulesCore
   - ExpoClipboard (7.0.1):
     - ExpoModulesCore
+  - ExpoContacts (14.0.5):
+    - ExpoModulesCore
   - ExpoDocumentPicker (13.0.2):
     - ExpoModulesCore
   - ExpoFileSystem (18.0.12):
@@ -2355,6 +2357,7 @@ DEPENDENCIES:
   - ExpoAsset (from `../node_modules/expo-asset/ios`)
   - ExpoBlur (from `../node_modules/expo-blur/ios`)
   - ExpoClipboard (from `../node_modules/expo-clipboard/ios`)
+  - ExpoContacts (from `../node_modules/expo-contacts/ios`)
   - ExpoDocumentPicker (from `../node_modules/expo-document-picker/ios`)
   - ExpoFileSystem (from `../node_modules/expo-file-system/ios`)
   - ExpoFont (from `../node_modules/expo-font/ios`)
@@ -2512,6 +2515,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-blur/ios"
   ExpoClipboard:
     :path: "../node_modules/expo-clipboard/ios"
+  ExpoContacts:
+    :path: "../node_modules/expo-contacts/ios"
   ExpoDocumentPicker:
     :path: "../node_modules/expo-document-picker/ios"
   ExpoFileSystem:
@@ -2726,6 +2731,7 @@ SPEC CHECKSUMS:
   ExpoAsset: 48386d40d53a8c1738929b3ed509bcad595b5516
   ExpoBlur: cb75554318a537db7a65ad589a0a5f32173ca39b
   ExpoClipboard: 44fd1c8959ee8f6175d059dc011b154c9709a969
+  ExpoContacts: 98484e09e4caccd2daa6042f341dc2e62a29697e
   ExpoDocumentPicker: 1b799812735778618aa7f92b848ff66c5d23ef58
   ExpoFileSystem: 42d363d3b96f9afab980dcef60d5657a4443c655
   ExpoFont: f354e926f8feae5e831ec8087f36652b44a0b188

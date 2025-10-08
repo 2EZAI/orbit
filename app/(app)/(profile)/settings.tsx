@@ -266,7 +266,12 @@ export default function SettingsScreen() {
       ]
     );
   };
-
+  const handleImportContacts = () => {
+    router.back();
+    router.push({
+      pathname: "/(app)/contacts",
+    });
+  };
   const handleResumeDraft = (draft: EventDraft) => {
     setShowDrafts(false);
     // Close the settings modal after navigation
@@ -443,6 +448,11 @@ export default function SettingsScreen() {
           onPress={() =>
             openWebview("https://yourapp.com/privacy", "Privacy Policy")
           }
+        />
+        <SettingItem
+          icon={<FileText size={20} color={theme.colors.primary} />}
+          title="Import Contacts"
+          onPress={handleImportContacts}
         />
       </ScrollView>
 
