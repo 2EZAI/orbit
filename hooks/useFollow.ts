@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { supabase } from "~/src/lib/supabase";
 import { useAuth } from "~/src/lib/auth";
 import Toast from "react-native-toast-message";
+import { haptics } from "~/src/lib/haptics";
 
 interface UseFollowReturn {
   isFollowing: (userId: string) => Promise<boolean>;
@@ -86,6 +87,7 @@ export function useFollow(): UseFollowReturn {
             throw error;
           }
         } else {
+          haptics.impact(); // Medium haptic for follow action
           Toast.show({
             type: "success",
             text1: "Success",
@@ -126,6 +128,7 @@ export function useFollow(): UseFollowReturn {
 
         if (error) throw error;
 
+        haptics.selection(); // Light haptic for unfollow action
         Toast.show({
           type: "success",
           text1: "Success",

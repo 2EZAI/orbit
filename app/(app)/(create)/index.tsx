@@ -27,6 +27,7 @@ import { useTheme } from "~/src/components/ThemeProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { draftService } from "~/src/services/draftService";
 import { EventDraft } from "~/src/types/draftTypes";
+import { haptics } from "~/src/lib/haptics";
 
 // Import modular components
 import BasicInfoSection from "~/src/components/createpost/BasicInfoSection";
@@ -169,6 +170,7 @@ export default function CreateEvent() {
       setHasUnsavedChanges(false);
 
       if (isManual) {
+        haptics.impact(); // Medium haptic feedback for manual save
         Toast.show({
           type: "success",
           text1: "Draft Saved",

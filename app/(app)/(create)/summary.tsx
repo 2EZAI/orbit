@@ -7,6 +7,7 @@ import { ConfettiAnimation } from "~/src/components/ui/ConfettiAnimation";
 import EventSummaryCard from "~/src/components/createpost/EventSummaryCard";
 import { DeviceEventEmitter } from "react-native";
 import InviteUsers from "~/src/components/createpost/InviteUsers";
+import { haptics } from "~/src/lib/haptics";
 
 
 
@@ -30,11 +31,13 @@ export default function EventSummary() {
   const [isInviteOpen, setIsInviteOpen] = useState<Boolean>(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
-  // Trigger confetti when component mounts (event creation success)
+  // Trigger confetti and celebration haptics when component mounts (event creation success)
   useEffect(() => {
     // Small delay to let the screen render first
     const timer = setTimeout(() => {
       setShowConfetti(true);
+      // Strong celebration haptics for event creation
+      haptics.celebration();
     }, 500);
 
     return () => clearTimeout(timer);

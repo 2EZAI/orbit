@@ -29,6 +29,7 @@ import { Text } from "~/src/components/ui/text";
 import { ConfettiAnimation } from "~/src/components/ui/ConfettiAnimation";
 import { UnifiedDetailsSheetContent } from "./UnifiedDetailsSheetContent";
 import { UnifiedSheetButtons } from "./UnifiedSheetButtons";
+import { haptics } from "~/src/lib/haptics";
 
 // Additional types that were in the old hook
 export interface Category {
@@ -138,10 +139,18 @@ export const UnifiedDetailsSheet = React.memo(
     const insets = useSafeAreaInsets();
     const { theme, isDarkMode } = useTheme();
 
-    // Simple confetti trigger
+    // Simple confetti trigger with celebration haptics
     const triggerConfetti = () => {
       setShowConfetti(true);
+      haptics.celebration();
     };
+
+    // Trigger light haptics when sheet opens (especially for deep links)
+    useEffect(() => {
+      if (isOpen && data) {
+        haptics.light();
+      }
+    }, [isOpen, data?.id]);
 
     const {
       UpdateEventStatus,
@@ -179,6 +188,7 @@ export const UnifiedDetailsSheet = React.memo(
       const currentData = detailData || data;
 
       try {
+        haptics.selection(); // Light haptic on share action
         await Share.share({
           message: `Check out ${currentData?.name} on Orbit!
           ${currentData?.description}
