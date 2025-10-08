@@ -81,7 +81,7 @@ function decode(base64: string): Uint8Array {
 
 export default function CreateEvent() {
   const params = useLocalSearchParams();
-  const { theme } = useTheme();
+  const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
   const [input, setInput] = useState("");
   const [isStartDate, setIsStartDate] = useState(true);
@@ -125,7 +125,7 @@ export default function CreateEvent() {
   const [externalTitle, setExternalTitle] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
-
+  const [loading, setLoading] = useState(false);
   // Draft-related state
   const [currentDraft, setCurrentDraft] = useState<EventDraft | null>(null);
   const [isDraftSaving, setIsDraftSaving] = useState(false);
@@ -203,7 +203,8 @@ export default function CreateEvent() {
 
   // Load existing draft on component mount
   useEffect(() => {
-    loadDraft();
+    setLoading(true);
+    loadDraft().finally(() => setLoading(false));
   }, [params.eventId, params.locationId, params.draftId]); // Re-run when params change
 
   const loadDraft = async () => {
@@ -1149,7 +1150,21 @@ export default function CreateEvent() {
     }
     router.back();
   };
-
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+        <StatusBar
+          barStyle={isDarkMode ? "light-content" : "dark-content"}
+          backgroundColor={theme.colors.background}
+        />
+        <ActivityIndicator
+          size="large"
+          color={theme.colors.primary}
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        />
+      </View>
+    );
+  }
   return (
     <View
       style={{
