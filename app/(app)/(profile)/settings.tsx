@@ -156,6 +156,19 @@ export default function SettingsScreen() {
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
 
+  // Log user ID on mount
+  React.useEffect(() => {
+    const getUserId = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        console.log('👤 [Settings] ===================================');
+        console.log('👤 [Settings] YOUR USER ID:', session.user.id);
+        console.log('👤 [Settings] ===================================');
+      }
+    };
+    getUserId();
+  }, []);
+
   // Drafts state
   const [drafts, setDrafts] = useState<EventDraft[]>([]);
   const [showDrafts, setShowDrafts] = useState(false);

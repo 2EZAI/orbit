@@ -5,6 +5,7 @@ import {
   Switch,
   ActivityIndicator,
 } from "react-native";
+import * as Location from "expo-location";
 import { Text } from "~/src/components/ui/text";
 import { KeyboardAwareSheet } from "./KeyboardAwareSheet";
 import { useTheme } from "~/src/components/ThemeProvider";
@@ -12,6 +13,7 @@ import { useAuth } from "~/src/lib/auth";
 import { useUser } from "~/src/lib/UserProvider";
 import Toast from "react-native-toast-message";
 import { Shield, X, Eye, EyeOff, MapPin, Users } from "lucide-react-native";
+import { supabase } from "~/src/lib/supabase";
 
 interface PrivacyModalProps {
   isOpen: boolean;
@@ -38,9 +40,67 @@ export function PrivacyModal({ isOpen, onClose }: PrivacyModalProps) {
 
     setSaving(true);
     try {
+      // Update the user preference
       await updateUser({
         is_live_location_shared: isLiveLocationEnabled ? 1 : 0,
       } as any);
+
+      // If enabling live location, get and save current location
+      if (isLiveLocationEnabled) {
+        try {
+          console.log('📍 [PrivacyModal] Requesting location permissions...');
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          
+          if (status !== "granted") {
+            console.log('❌ [PrivacyModal] Location permission denied');
+            Toast.show({
+              type: "error",
+              text1: "Location Permission Required",
+              text2: "Please enable location access to share your live location",
+            });
+            // Revert the toggle
+            setIsLiveLocationEnabled(false);
+            setSaving(false);
+            return;
+          }
+
+          console.log('📍 [PrivacyModal] Getting current location...');
+          const location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.High,
+          });
+
+          console.log('📍 [PrivacyModal] Got location:', location.coords);
+
+          // Update live location in user_locations table
+          const { error: locationError } = await supabase
+            .from("user_locations")
+            .update({
+              live_location_latitude: location.coords.latitude.toString(),
+              live_location_longitude: location.coords.longitude.toString(),
+              last_updated: new Date().toISOString(),
+            })
+            .eq("user_id", session.user.id);
+
+          if (locationError) {
+            console.error('❌ [PrivacyModal] Error updating live location:', locationError);
+          } else {
+            console.log('✅ [PrivacyModal] Live location updated successfully');
+          }
+        } catch (locError) {
+          console.error('❌ [PrivacyModal] Error getting location:', locError);
+        }
+      } else {
+        // If disabling, clear the live location coordinates
+        await supabase
+          .from("user_locations")
+          .update({
+            live_location_latitude: null,
+            live_location_longitude: null,
+          })
+          .eq("user_id", session.user.id);
+        
+        console.log('🔒 [PrivacyModal] Live location cleared');
+      }
 
       Toast.show({
         type: "success",

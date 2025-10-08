@@ -129,6 +129,14 @@ export function MapboxMarkers({
   const [visibleMarkers, setVisibleMarkers] = useState(0);
   const [isRendering, setIsRendering] = useState(false);
 
+  // Log follower list for debugging
+  useEffect(() => {
+    console.log('👥 [MapboxMarkers] Follower list updated:', {
+      count: followerList?.length || 0,
+      followers: followerList,
+    });
+  }, [followerList]);
+
   // Get the appropriate cluster data based on selected timeframe
   const getActiveClusters = useCallback(() => {
     switch (selectedTimeFrame) {
@@ -384,6 +392,43 @@ export function MapboxMarkers({
           animated={true}
         />
       )}
+
+      {/* Friend markers - Live location */}
+      {followerList && followerList.length > 0 && followerList.map((friend: any, index: number) => {
+        // Only render if friend has valid coordinates
+        if (!friend.live_location_latitude || !friend.live_location_longitude) {
+          return null;
+        }
+
+        const lat = parseFloat(friend.live_location_latitude);
+        const lng = parseFloat(friend.live_location_longitude);
+
+        // Skip invalid coordinates
+        if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
+          return null;
+        }
+
+        console.log(`👥 [MapboxMarkers] Rendering friend marker ${index}:`, {
+          userId: friend.userId,
+          lat,
+          lng,
+          nearbyCount: friend.nearbyCount,
+        });
+
+        return (
+          <MapboxGL.MarkerView
+            key={`friend-${friend.userId}`}
+            id={`friend-marker-${friend.userId}`}
+            coordinate={[lng, lat]} // [longitude, latitude] for Mapbox
+          >
+            <UserMarkerWithCount
+              avatarUrl={friend.avatar_url}
+              count={friend.nearbyCount}
+              showCount={friend.nearbyCount > 1}
+            />
+          </MapboxGL.MarkerView>
+        );
+      })}
     </>
   );
 }
