@@ -323,24 +323,24 @@ export function useUnifiedMapData({
       zoomLevel: number = 10
     ): UnifiedCluster[] => {
       if (!items || !Array.isArray(items) || items.length === 0) {
-        console.log(
-          `[UnifiedMapData] createClusters: No items to cluster for ${type}`
-        );
+        // console.log(
+        //   `[UnifiedMapData] createClusters: No items to cluster for ${type}`
+        // );
         return [];
       }
 
-      console.log(
-        `[UnifiedMapData] createClusters: Starting with ${items.length} ${type}s at zoom level ${zoomLevel}`
-      );
+      // console.log(
+      //   `[UnifiedMapData] createClusters: Starting with ${items.length} ${type}s at zoom level ${zoomLevel}`
+      // );
 
       // Debug: Log first few items to see their structure
-      if (items.length > 0) {
-        console.log(`[UnifiedMapData] createClusters: First ${type} item:`, {
-          id: items[0].id,
-          name: items[0].name,
-          location: items[0].location,
-        });
-      }
+      // if (items.length > 0) {
+      //   console.log(`[UnifiedMapData] createClusters: First ${type} item:`, {
+      //     id: items[0].id,
+      //     name: items[0].name,
+      //     location: items[0].location,
+      //   });
+      // }
 
       // LESS AGGRESSIVE CLUSTERING: Only cluster when really close together
       const clusters: UnifiedCluster[] = [];
@@ -486,12 +486,12 @@ export function useUnifiedMapData({
         }
       });
 
-      console.log(
-        `[UnifiedMapData] ✅ Created ${clusters.length} clusters from ${items.length} ${type}s at zoom ${zoomLevel} (radius: ${CLUSTER_RADIUS})`
-      );
-      console.log(
-        `[UnifiedMapData] createClusters: Final processed count: ${processedItems.size}/${items.length}`
-      );
+      // console.log(
+      //   `[UnifiedMapData] ✅ Created ${clusters.length} clusters from ${items.length} ${type}s at zoom ${zoomLevel} (radius: ${CLUSTER_RADIUS})`
+      // );
+      // console.log(
+      //   `[UnifiedMapData] createClusters: Final processed count: ${processedItems.size}/${items.length}`
+      // );
       return clusters;
     },
     []
@@ -603,9 +603,9 @@ export function useUnifiedMapData({
           createClustersWithTimeout(tomorrowEvents, "event", zoomLevel),
         ]);
 
-        console.log(
-          `[UnifiedMapData] ✅ Created ${eventClusters.length} event clusters and ${locationClusters.length} location clusters in parallel`
-        );
+        // console.log(
+        //   `[UnifiedMapData] ✅ Created ${eventClusters.length} event clusters and ${locationClusters.length} location clusters in parallel`
+        // );
 
         // Update all cluster states
         setClusters(eventClusters);
@@ -618,7 +618,7 @@ export function useUnifiedMapData({
           `[UnifiedMapData] ⚡ Created ${eventClusters.length} event clusters and ${locationClusters.length} location clusters`
         );
         console.log(
-          `[UnifiedMapData] 📊 Time-based clusters: ${nowEventClusters.length} now, ${todayEventClusters.length} today, ${tomorrowEventClusters.length} tomorrow`
+          // `[UnifiedMapData] 📊 Time-based clusters: ${nowEventClusters.length} now, ${todayEventClusters.length} today, ${tomorrowEventClusters.length} tomorrow`
         );
       } catch (error) {
         console.error("[UnifiedMapData] Error processing clusters:", error);
