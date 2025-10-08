@@ -159,11 +159,13 @@ export default function SettingsScreen() {
   // Log user ID on mount
   React.useEffect(() => {
     const getUserId = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session?.user?.id) {
-        console.log('👤 [Settings] ===================================');
-        console.log('👤 [Settings] YOUR USER ID:', session.user.id);
-        console.log('👤 [Settings] ===================================');
+        console.log("👤 [Settings] ===================================");
+        console.log("👤 [Settings] YOUR USER ID:", session.user.id);
+        console.log("👤 [Settings] ===================================");
       }
     };
     getUserId();
@@ -197,7 +199,9 @@ export default function SettingsScreen() {
       // Reset navigation to the first screen (e.g., "/")router.back();
       // router.dismiss();
       router.back();
-      router.replace("/(app)/(map)");
+      // router.replace("/");
+      router.dismissAll();
+      // router.dismissTo("/(app)/(map)");
 
       console.log("Logout successful - app layout will handle redirect");
     } catch (error) {
@@ -265,8 +269,8 @@ export default function SettingsScreen() {
 
   const handleResumeDraft = (draft: EventDraft) => {
     setShowDrafts(false);
-        // Close the settings modal after navigation
-        router.back();
+    // Close the settings modal after navigation
+    router.back();
     // Navigate to create screen with draft data
     router.push({
       pathname: "/(app)/(create)",
