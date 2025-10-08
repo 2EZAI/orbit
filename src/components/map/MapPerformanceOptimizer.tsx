@@ -172,10 +172,10 @@ export function MapPerformanceOptimizer({
         return [];
       }
 
-      console.log(
-        `🔍 Filtering ${clusters.length} clusters with filters:`,
-        filters
-      );
+      // console.log(
+      //   `🔍 Filtering ${clusters.length} clusters with filters:`,
+      //   filters
+      // );
 
       const filtered = clusters
         .filter((cluster) => {
@@ -248,41 +248,41 @@ export function MapPerformanceOptimizer({
   // Memoize filtered clusters to prevent repeated filtering
   const filteredClustersToday = useMemo(() => {
     const filtered = filterClusters(clustersToday);
-    console.log(
-      `🔍 Filtering clusters: ${clustersToday.length} → ${filtered.length} (Today)`
-    );
+    // console.log(
+    //   `🔍 Filtering clusters: ${clustersToday.length} → ${filtered.length} (Today)`
+    // );
     return filtered;
   }, [clustersToday, filterClusters]);
 
   const filteredClustersNow = useMemo(() => {
     const filtered = filterClusters(clustersNow);
-    console.log(
-      `🔍 Filtering clusters: ${clustersNow.length} → ${filtered.length} (Now)`
-    );
+    // console.log(
+    //   `🔍 Filtering clusters: ${clustersNow.length} → ${filtered.length} (Now)`
+    // );
     return filtered;
   }, [clustersNow, filterClusters]);
 
   const filteredClustersTomorrow = useMemo(() => {
     const filtered = filterClusters(clustersTomorrow);
-    console.log(
-      `🔍 Filtering clusters: ${clustersTomorrow.length} → ${filtered.length} (Tomorrow)`
-    );
+    // console.log(
+    //   `🔍 Filtering clusters: ${clustersTomorrow.length} → ${filtered.length} (Tomorrow)`
+    // );
     return filtered;
   }, [clustersTomorrow, filterClusters]);
 
   const filteredClusters = useMemo(() => {
     const filtered = filterClusters(clusters);
-    console.log(
-      `🔍 Filtering clusters: ${clusters.length} → ${filtered.length} (All)`
-    );
+    // console.log(
+    //   `🔍 Filtering clusters: ${clusters.length} → ${filtered.length} (All)`
+    // );
     return filtered;
   }, [clusters, filterClusters]);
 
   const filteredClustersLocations = useMemo(() => {
     const filtered = filterClusters(clustersLocations);
-    console.log(
-      `🔍 Filtering clusters: ${clustersLocations.length} → ${filtered.length} (Locations)`
-    );
+    // console.log(
+    //   `🔍 Filtering clusters: ${clustersLocations.length} → ${filtered.length} (Locations)`
+    // );
     return filtered;
   }, [clustersLocations, filterClusters]);
 

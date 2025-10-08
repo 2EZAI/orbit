@@ -338,7 +338,7 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
     const preloadImages = async () => {
       if (events.length === 0 && locations.length === 0) return;
 
-      console.log("🖼️ [MapStateManager] Starting image preloading...");
+      // console.log("🖼️ [MapStateManager] Starting image preloading...");
 
       // Collect all image URLs
       const imageUrls: string[] = [];
@@ -372,9 +372,9 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
       // Optimized image preloading - prioritize visible markers
       const imagesToPreload = imageUrls.slice(0, 5); // Reduced to 5 most critical images
 
-      console.log(
-        `🖼️ [MapStateManager] Preloading ${imagesToPreload.length} critical images...`
-      );
+      // console.log(
+      //   `🖼️ [MapStateManager] Preloading ${imagesToPreload.length} critical images...`
+      // );
 
       // Batch preload with concurrent loading for better performance
       const preloadBatch = async () => {
@@ -513,7 +513,7 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
 
   // Handle route params for showing event/location cards
   useEffect(() => {
-    console.log("🗺️ [MapStateManager] Checking params:", params);
+    // console.log("🗺️ [MapStateManager] Checking params:", params);
     
     if (params.eventId) {
       console.log("🗺️ [MapStateManager] Looking for event with ID:", params.eventId);
@@ -761,14 +761,20 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
     if (!session?.user.id) return [];
 
     try {
+      console.log('👥 [MapStateManager] Fetching friends live locations...');
+      
       const { data: follows, error: followError } = await supabase
         .from("follows")
         .select("following_id")
         .eq("follower_id", session?.user.id);
 
       if (followError) throw followError;
-      if (!follows || follows.length === 0) return [];
+      if (!follows || follows.length === 0) {
+        console.log('❌ [MapStateManager] No follows found');
+        return [];
+      }
 
+      console.log('👥 [MapStateManager] Following count:', follows.length);
       const followingIds = follows.map((f) => f.following_id);
 
       const { data: mutuals, error: mutualError } = await supabase
@@ -778,29 +784,44 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
         .eq("following_id", session?.user.id);
 
       if (mutualError) throw mutualError;
+      console.log('👥 [MapStateManager] Mutual followers count:', mutuals?.length || 0);
 
       const mutualFollowerIds = mutuals.map((m) => m.follower_id);
 
       const { data: users, error: usersError } = await supabase
         .from("users")
-        .select("id, avatar_url")
-        .in("id", mutualFollowerIds)
-        .eq("is_live_location_shared", 1);
+        .select("id, avatar_url, is_live_location_shared")
+        .in("id", mutualFollowerIds);
 
       if (usersError) throw usersError;
+      console.log('👥 [MapStateManager] All mutual users:', users?.length || 0);
+      console.log('👥 [MapStateManager] Users with location sharing:', users?.filter(u => u.is_live_location_shared === 1).length || 0);
 
-      const live_usersIds = users.map((m) => m.id);
+      const live_usersIds = users?.filter(u => u.is_live_location_shared === 1).map((m) => m.id) || [];
+      console.log('👥 [MapStateManager] Live users IDs:', live_usersIds);
+
+      if (live_usersIds.length === 0) {
+        console.log('❌ [MapStateManager] No friends have live location sharing enabled');
+        setFollowerList([]);
+        return [];
+      }
 
       const { data: locations, error: locationError } = await supabase
         .from("user_locations")
         .select("user_id, live_location_latitude, live_location_longitude")
         .in("user_id", live_usersIds);
 
-      if (locationError) throw locationError;
+      if (locationError) {
+        console.error('❌ [MapStateManager] Error fetching locations:', locationError);
+        throw locationError;
+      }
+      
+      console.log('👥 [MapStateManager] Locations data:', JSON.stringify(locations, null, 2));
+      console.log('👥 [MapStateManager] Number of locations found:', locations?.length || 0);
 
       const result = live_usersIds.map((userId) => {
         const userDetail = users.find((u) => u.id === userId);
-        const locationDetail = locations.find((l) => l.user_id === userId);
+        const locationDetail = locations?.find((l) => l.user_id === userId);
 
         return {
           userId,
@@ -812,11 +833,13 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
         };
       });
 
+      console.log('👥 [MapStateManager] Final result:', result);
       const updatedFollowerList = getNearbyFollowerCounts(result);
+      console.log('✅ [MapStateManager] Updated follower list:', updatedFollowerList.length);
       setFollowerList(updatedFollowerList);
       return result;
     } catch (error) {
-      console.error("Error fetching followed user details:", error);
+      console.error("❌ [MapStateManager] Error fetching followed user details:", error);
       return [];
     }
   }, [session?.user.id]);
@@ -863,10 +886,90 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
     return R * c;
   };
 
+  // Log current user ID for debugging
+  useEffect(() => {
+    if (session?.user?.id) {
+      console.log('👤 [MapStateManager] ===================================');
+      console.log('👤 [MapStateManager] YOUR USER ID:', session.user.id);
+      console.log('👤 [MapStateManager] ===================================');
+    }
+  }, [session?.user?.id]);
+
   // Initialize follower data
   useEffect(() => {
     getFollowedUserDetails();
   }, [getFollowedUserDetails]);
+
+  // Update live location periodically if sharing is enabled
+  useEffect(() => {
+    if (!session?.user?.id || !user) return;
+
+    const isLiveLocationEnabled = (user as any).is_live_location_shared === 1;
+    
+    if (!isLiveLocationEnabled) {
+      console.log('📍 [MapStateManager] Live location sharing disabled');
+      return;
+    }
+
+    console.log('📍 [MapStateManager] Starting live location updates...');
+    
+    let locationSubscription: Location.LocationSubscription | null = null;
+
+    const startLocationUpdates = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          console.log('❌ [MapStateManager] Location permission not granted');
+          return;
+        }
+
+        // Watch position and update database every time location changes significantly
+        locationSubscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.Balanced,
+            timeInterval: 30000, // Update every 30 seconds
+            distanceInterval: 50, // Or when user moves 50 meters
+          },
+          async (location) => {
+            console.log('📍 [MapStateManager] Location update:', location.coords);
+            
+            try {
+              const { error } = await supabase
+                .from("user_locations")
+                .update({
+                  live_location_latitude: location.coords.latitude.toString(),
+                  live_location_longitude: location.coords.longitude.toString(),
+                  last_updated: new Date().toISOString(),
+                })
+                .eq("user_id", session.user.id);
+
+              if (error) {
+                console.error('❌ [MapStateManager] Error updating live location:', error);
+              } else {
+                console.log('✅ [MapStateManager] Live location updated');
+              }
+            } catch (updateError) {
+              console.error('❌ [MapStateManager] Exception updating live location:', updateError);
+            }
+          }
+        );
+
+        console.log('✅ [MapStateManager] Location watch started');
+      } catch (error) {
+        console.error('❌ [MapStateManager] Error starting location watch:', error);
+      }
+    };
+
+    startLocationUpdates();
+
+    // Cleanup
+    return () => {
+      if (locationSubscription) {
+        console.log('🔒 [MapStateManager] Stopping location watch');
+        locationSubscription.remove();
+      }
+    };
+  }, [session?.user?.id, user]);
 
   // Set up event listeners
   useEffect(() => {

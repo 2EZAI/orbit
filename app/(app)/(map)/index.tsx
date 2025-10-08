@@ -89,17 +89,6 @@ export default function Map() {
           {(eventHandlers) => (
             <>
               {/* Event/Location Card - Show only when details sheet is not open */}
-              {(() => {
-                console.log("🗺️ [Map] UnifiedCard render check:", {
-                  hasSelectedEvent: !!state.selectedEvent,
-                  selectedEventId: state.selectedEvent?.id,
-                  selectedEventName: state.selectedEvent?.name,
-                  showDetails: state.showDetails,
-                  isEvent: state.isEvent,
-                  shouldShowCard: !!(state.selectedEvent && !state.showDetails),
-                });
-                return null;
-              })()}
               {state.selectedEvent && !state.showDetails && (
                 <>
                   {/* REMOVED: Debug logging for performance */}
