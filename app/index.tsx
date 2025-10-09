@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
 import {
   Animated,
   Dimensions,
@@ -522,8 +523,13 @@ export default function LandingPage() {
     }
   };
   // Redirect authenticated users to the app
+  useFocusEffect(
+    React.useCallback(() => {
+      checkIfFirstTime();
+    }, [])
+  );
+
   useEffect(() => {
-    checkIfFirstTime();
     if (!loading && session) {
       console.log("Landing page: User is authenticated, redirecting to app");
       router.replace("/(app)/(map)");
