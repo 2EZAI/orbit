@@ -170,6 +170,7 @@ export function SearchSheet({
             venue_name: event.venue_name || "",
             description: event.description || "",
             type: event.type || "event",
+            created_by: typeof event.created_by === 'string' ? event.created_by : JSON.stringify(event.created_by || {}),
           },
         });
         break;

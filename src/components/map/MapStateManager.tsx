@@ -537,6 +537,7 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
           venue_name: params.venue_name ? (Array.isArray(params.venue_name) ? params.venue_name[0] : params.venue_name) : "",
           type: params.type ? (Array.isArray(params.type) ? params.type[0] : params.type) : "event",
           is_ticketmaster: params.source === "ticketmaster",
+          created_by: params.created_by ? (Array.isArray(params.created_by) ? JSON.parse(params.created_by[0]) : (typeof params.created_by === 'string' && params.created_by.startsWith('{') ? JSON.parse(params.created_by) : params.created_by)) : undefined,
           start_datetime: new Date().toISOString(), // Default to now to avoid invalid date errors
           end_datetime: new Date(Date.now() + 3600000).toISOString(), // Default to 1 hour from now
           location: {
@@ -625,7 +626,7 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
     console.log("🎯 [MapStateManager] handleEventClick called!", {
       eventId: event.id,
       eventName: event.name,
-      eventType: event.categories?.[0]?.name || "Unknown",
+      eventType: event.categories?.[0]?.name || event.type || "Unknown",
     });
 
     console.log(JSON.stringify(event, null, 2));
