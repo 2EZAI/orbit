@@ -131,7 +131,7 @@ export default function CreateEvent() {
   const [isDraftSaving, setIsDraftSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
-  
+
   // Edit mode state
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
@@ -139,7 +139,7 @@ export default function CreateEvent() {
   // Auto-save draft functionality
   const saveDraft = async (isManual = false) => {
     if (isDraftSaving) return;
-    
+
     // Don't save drafts in edit mode
     if (isEditMode) {
       console.log("✏️ [CreateEvent] Edit mode - skipping draft save");
@@ -220,13 +220,15 @@ export default function CreateEvent() {
   const loadDraft = async () => {
     try {
       setDraftLoaded(true);
-
       // Debug: Log what parameters we received
       console.log("🔍 [CreateEvent] Received params:", params);
 
       // Check if we're in EDIT MODE (editing existing event)
       if (params.editMode === "true" && params.eventId) {
-        console.log("✏️ [CreateEvent] Edit mode detected, loading event:", params.eventId);
+        console.log(
+          "✏️ [CreateEvent] Edit mode detected, loading event:",
+          params.eventId
+        );
         await loadEventForEdit(params.eventId as string);
         return;
       }
@@ -261,13 +263,10 @@ export default function CreateEvent() {
       }
 
       const drafts = await draftService.getDrafts();
-      console.log(
-        "🔍 [CreateEvent] Available drafts:",
-        drafts.map((d) => ({ id: d.id, location_id: d.location_id }))
-      );
 
       if (drafts.length > 0) {
         // Find draft that matches current item ID
+
         const matchingDraft = drafts.find((draft) => {
           const matches = draft.location_id === itemId;
           console.log(
@@ -309,7 +308,7 @@ export default function CreateEvent() {
   const loadEventForEdit = async (eventId: string) => {
     try {
       console.log("✏️ [CreateEvent] Fetching event for edit:", eventId);
-      
+
       const { data: eventData, error } = await supabase
         .from("events")
         .select("*")
@@ -331,20 +330,28 @@ export default function CreateEvent() {
       // Populate form with event data
       setName(eventData.name || "");
       setDescription(eventData.description || "");
-      setStartDate(eventData.start_datetime ? new Date(eventData.start_datetime) : new Date());
-      setEndDate(eventData.end_datetime ? new Date(eventData.end_datetime) : new Date());
+      setStartDate(
+        eventData.start_datetime
+          ? new Date(eventData.start_datetime)
+          : new Date()
+      );
+      setEndDate(
+        eventData.end_datetime ? new Date(eventData.end_datetime) : new Date()
+      );
       setAddress1(eventData.address || eventData.venue_name || "");
       setSelectedTopics(eventData.category_id || "");
       setIsPrivate(eventData.is_private || false);
       setExternalUrl(eventData.external_url || "");
-      
+
       // Load images if they exist
       if (eventData.image_urls && eventData.image_urls.length > 0) {
-        const loadedImages = eventData.image_urls.map((uri: string, index: number) => ({
-          uri,
-          type: "image/jpeg",
-          name: `image_${index}.jpg`,
-        }));
+        const loadedImages = eventData.image_urls.map(
+          (uri: string, index: number) => ({
+            uri,
+            type: "image/jpeg",
+            name: `image_${index}.jpg`,
+          })
+        );
         setImages(loadedImages);
       }
 
@@ -443,6 +450,7 @@ export default function CreateEvent() {
 
   // Clear draft after successful event creation
   const clearDraft = async () => {
+    console.log("🧹 [CreateEvent] Clearing draft", currentDraft);
     if (currentDraft) {
       try {
         await draftService.deleteDraft(currentDraft.id);
@@ -1163,12 +1171,12 @@ export default function CreateEvent() {
 
       // Determine if we're updating or creating
       const isUpdating = isEditMode && editingEventId;
-      const apiUrl = isUpdating 
+      const apiUrl = isUpdating
         ? `${process.env.BACKEND_MAP_URL}/api/events/${editingEventId}`
         : `${process.env.BACKEND_MAP_URL}/api/events`;
       const method = isUpdating ? "PUT" : "POST";
 
-      console.log(`${isUpdating ? '✏️ Updating' : '✨ Creating'} event:`, {
+      console.log(`${isUpdating ? "✏️ Updating" : "✨ Creating"} event:`, {
         method,
         url: apiUrl,
         eventId: editingEventId,
@@ -1187,19 +1195,21 @@ export default function CreateEvent() {
         const responseData = await response.json();
         throw new Error(responseData.error || "Failed to create event");
       }
-
-      const event = await response.json();
-      // console.log("event>>", event);
-      Toast.show({
-        type: "success",
-        text1: isEditMode ? "Activity Updated!" : "Activity Created!",
-        text2: isEditMode ? "Your activity has been updated successfully" : "Your activity has been created successfully",
-      });
-
-      // Clear draft after successful creation (but not in edit mode)
       if (!isEditMode) {
         await clearDraft();
       }
+      const event = await response.json();
+      // console.log("event>>", event);
+
+      Toast.show({
+        type: "success",
+        text1: isEditMode ? "Activity Updated!" : "Activity Created!",
+        text2: isEditMode
+          ? "Your activity has been updated successfully"
+          : "Your activity has been created successfully",
+      });
+
+      // Clear draft after successful creation (but not in edit mode)
 
       setEventID(undefined);
       // Navigate to summary screen with event data
@@ -1352,7 +1362,9 @@ export default function CreateEvent() {
                   opacity: isDraftSaving ? 0.6 : 1,
                 }}
               >
-                <Text style={{ color: "white", fontSize: 12, fontWeight: "600" }}>
+                <Text
+                  style={{ color: "white", fontSize: 12, fontWeight: "600" }}
+                >
                   {isDraftSaving ? "Saving..." : "Save Draft"}
                 </Text>
               </TouchableOpacity>
