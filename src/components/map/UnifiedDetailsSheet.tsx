@@ -30,6 +30,8 @@ import { ConfettiAnimation } from "~/src/components/ui/ConfettiAnimation";
 import { UnifiedDetailsSheetContent } from "./UnifiedDetailsSheetContent";
 import { UnifiedSheetButtons } from "./UnifiedSheetButtons";
 import { haptics } from "~/src/lib/haptics";
+import { useEventJoinStatus } from "~/hooks/useEventJoinStatus";
+import { useJoinEvent } from "~/hooks/useJoinEvent";
 
 // Additional types that were in the old hook
 export interface Category {
@@ -139,6 +141,26 @@ export const UnifiedDetailsSheet = React.memo(
     const insets = useSafeAreaInsets();
     const { theme, isDarkMode } = useTheme();
 
+    // NEW: Use the join event hooks (like web app)
+    const { joinEvent, leaveEvent, isLoading: isJoining } = useJoinEvent();
+    
+    // NEW: Get actual join status and creator check from database
+    // Extract created_by ID (could be string or object)
+    const createdById = isEventType 
+      ? (typeof (data as any).created_by === 'string' 
+          ? (data as any).created_by 
+          : (data as any).created_by?.id)
+      : undefined;
+
+    const {
+      isJoined: isJoinedFromDB,
+      isCreator,
+      refetch: refetchJoinStatus,
+    } = useEventJoinStatus(
+      isEventType ? data.id : undefined,
+      createdById
+    );
+
     // Simple confetti trigger with celebration haptics
     const triggerConfetti = () => {
       setShowConfetti(true);
@@ -243,7 +265,7 @@ export const UnifiedDetailsSheet = React.memo(
         data: data,
         locationData: locationData,
       });
-
+      
       // Close the sheet first
       onClose();
 
@@ -275,12 +297,12 @@ export const UnifiedDetailsSheet = React.memo(
 
       const params = {
         locationId: locationData.id || "",
-        locationType: (locationData as any).type || "",
+          locationType: (locationData as any).type || "",
         latitude,
         longitude,
-        address: (locationData as any).address || "",
-        categoryId: simplifiedCategory.id,
-        categoryName: simplifiedCategory.name,
+          address: (locationData as any).address || "",
+          categoryId: simplifiedCategory.id,
+          categoryName: simplifiedCategory.name,
       };
 
       console.log("🔧 [UnifiedDetailsSheet] Create activity params:", params);
@@ -338,64 +360,71 @@ export const UnifiedDetailsSheet = React.memo(
   };
   */
 
-    // NEW: Simplified detail handling - data comes from unified API
+    // Use data directly like web app (backend should return complete data)
     const hitDetailApi = async () => {
-      try {
-        // Skip API call if we just manually updated the state
-        if (manuallyUpdated) {
-          setLoading(false);
-          return;
-        }
-
-        // The unified API already provides complete data, so we just use it directly
-        setDetailData(data as UnifiedData);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error in detail handling:", error);
-        setLoading(false);
-      }
+      setDetailData(data as UnifiedData);
+      setLoading(false);
     };
 
     const handleJoinEvent = async () => {
       if (!isEventType) return;
 
-      setLoading(true);
       try {
-        await UpdateEventStatus(data as any);
-        console.log("✅ Successfully joined event!");
+        const source =
+          (data as any).is_ticketmaster || (data as any).source === 'ticketmaster'
+            ? 'ticketmaster'
+            : 'supabase';
 
-        // Directly update the detailData with joined status
-        const updatedData = { ...(detailData || data), join_status: true };
+        if (isJoinedFromDB) {
+          // Leave event
+          await leaveEvent(data.id, source);
+        } else {
+          // Join event
+          await joinEvent(data.id, source);
+          
+          // Trigger confetti animation when joining
+          triggerConfetti();
+        }
+
+        // Refetch status from database
+        await refetchJoinStatus();
+
+        // Update local detail data
+        const updatedData = { 
+          ...(detailData || data), 
+          join_status: !isJoinedFromDB 
+        };
         setDetailData(updatedData as UnifiedData);
         setManuallyUpdated(true);
 
-        // Trigger confetti animation
-        triggerConfetti();
-
-        setLoading(false);
+        console.log(`✅ Successfully ${isJoinedFromDB ? 'left' : 'joined'} event!`);
       } catch (error) {
-        console.error("❌ Error joining event:", error);
-        setLoading(false);
+        console.error("❌ Error updating event status:", error);
       }
     };
 
     const handleLeaveEvent = async () => {
       if (!isEventType) return;
 
-      setLoading(true);
       try {
-        await UpdateEventStatus(data as any);
-        console.log("✅ Successfully left event!");
+        const source =
+          (data as any).is_ticketmaster || (data as any).source === 'ticketmaster'
+            ? 'ticketmaster'
+            : 'supabase';
 
-        // Directly update the detailData with left status
+        await leaveEvent(data.id, source);
+
+        // Refetch status from database
+        await refetchJoinStatus();
+
+        // Update local detail data
         const updatedData = { ...(detailData || data), join_status: false };
         setDetailData(updatedData as UnifiedData);
         setManuallyUpdated(true);
 
-        setLoading(false);
+        console.log("✅ Successfully left event!");
       } catch (error) {
         console.error("❌ Error leaving event:", error);
-        setLoading(false);
       }
     };
 
@@ -474,11 +503,9 @@ export const UnifiedDetailsSheet = React.memo(
 
       // Reset manual update flag when opening with new data
       setManuallyUpdated(false);
-      setDetailData(data); // Use data directly, no API call needed
-
-      // Check if this is a deep link arrival (user came from shared link)
-      // You can add logic here to detect if user came from deep link
-      // For now, we'll only trigger confetti for specific user actions
+      
+      // Fetch full details if needed
+      hitDetailApi();
 
       // Events for this location are automatically loaded by the useLocationEvents hook
 
@@ -503,6 +530,15 @@ export const UnifiedDetailsSheet = React.memo(
     const currentData = detailData || data;
     const similarItems = getSimilarItems;
 
+    // Debug log to see what data we have
+    console.log('🔍 [UnifiedDetailsSheet] Current data:', {
+      id: currentData.id,
+      name: currentData.name,
+      description: currentData.description,
+      created_by: currentData.created_by,
+      type: currentData.type,
+    });
+
     // Get primary category with googleAPI filtering
     const getPrimaryCategory = () => {
       if (isEventType) {
@@ -517,7 +553,8 @@ export const UnifiedDetailsSheet = React.memo(
 
     const categoryName = getPrimaryCategory();
     const hasTickets = !!currentData.external_url;
-    const isJoined = (currentData as any).join_status;
+    // Use database join status (isJoinedFromDB) instead of local join_status
+    const isJoined = isJoinedFromDB;
     const attendeeCount = (currentData as any).attendees?.count || 0;
     const attendeeProfiles = (currentData as any).attendees?.profiles || [];
 
@@ -536,11 +573,7 @@ export const UnifiedDetailsSheet = React.memo(
         eventSource.includes("google") ||
         eventSource.includes("api"));
 
-    // Check if current user is the creator of the event
-    const isCreator =
-      isEventType &&
-      (currentData as any).created_by &&
-      (currentData as any).created_by.id === (currentData as any).user_id;
+    // Use database creator check (isCreator from hook) - already defined above
 
     return (
       <Modal
@@ -629,7 +662,7 @@ export const UnifiedDetailsSheet = React.memo(
                     className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
                   >
                     <ArrowLeft size={20} color="#000" />
-                  </TouchableOpacity>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Floating Stats - Show attendee count prominently for events */}
