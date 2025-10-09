@@ -52,22 +52,22 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ],
     ios: {
       bundleIdentifier: "com.dovydmcnugget.orbit",
-      buildNumber: "13",
+      buildNumber: "14",
       supportsTablet: true,
       config: {
         usesNonExemptEncryption: false,
       },
       infoPlist: {
-        UIBackgroundModes: [
-          "remote-notification"
-        ],
-        NSUserTrackingUsageDescription: "This identifier will be used to deliver personalized ads to you.",
-        NSUserNotificationUsageDescription: "This app uses notifications to keep you informed."
+        UIBackgroundModes: ["remote-notification"],
+        NSUserTrackingUsageDescription:
+          "This identifier will be used to deliver personalized ads to you.",
+        NSUserNotificationUsageDescription:
+          "This app uses notifications to keep you informed.",
       },
     },
     android: {
       package: "com.dovydmcnugget.orbit",
-      "googleServicesFile": "./assets/google-services.json",
+      googleServicesFile: "./assets/google-services.json",
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#FFFFFF",
