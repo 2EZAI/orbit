@@ -19,6 +19,9 @@ import { useAuth } from "~/src/lib/auth";
 import { formatDate, formatTime } from "~/src/lib/date";
 import { Text } from "../ui/text";
 import { UnifiedDetailsSheet } from "./UnifiedDetailsSheet";
+import { useEventJoinStatus } from "~/hooks/useEventJoinStatus";
+import { useJoinEvent } from "~/hooks/useJoinEvent";
+import { haptics } from "~/src/lib/haptics";
 
 type UnifiedData = MapEvent | MapLocation;
 
@@ -195,7 +198,8 @@ const getThemeColors = (data: UnifiedData) => {
 const getContextActions = (
   data: UnifiedData,
   detailData?: any,
-  treatAsEvent?: boolean
+  treatAsEvent?: boolean,
+  isJoined?: boolean
 ) => {
   if (treatAsEvent) {
     const categories =
@@ -205,7 +209,8 @@ const getContextActions = (
     const categoryName = categories[0]?.name?.toLowerCase() || "";
     const name =
       (detailData as MapEvent)?.name || (data as MapEvent).name || "";
-    const joinStatus = (detailData as any)?.join_status || false;
+    // Use passed isJoined parameter instead of local join_status
+    const joinStatus = isJoined || false;
 
     const isTicketmaster =
       (data as any)?.is_ticketmaster || (detailData as any)?.is_ticketmaster;
@@ -306,6 +311,26 @@ export const UnifiedCard = React.memo(
       longitude: number;
     } | null>(null);
 
+    // NEW: Use the join event hooks (like web app)
+    const { joinEvent, leaveEvent, isLoading: isJoining } = useJoinEvent();
+    
+    // NEW: Get actual join status and creator check from database
+    // Extract created_by ID (could be string or object)
+    const createdById = treatAsEvent 
+      ? (typeof (data as any).created_by === 'string' 
+          ? (data as any).created_by 
+          : (data as any).created_by?.id)
+      : undefined;
+
+    const {
+      isJoined: isJoinedFromDB,
+      isCreator,
+      refetch: refetchJoinStatus,
+    } = useEventJoinStatus(
+      treatAsEvent ? data.id : undefined,
+      createdById
+    );
+
     // Helper: Find nearest item in nearbyData (excluding current)
     const findNearestItem = () => {
       const current = detailData || data;
@@ -358,8 +383,8 @@ export const UnifiedCard = React.memo(
       [detailData?.id, data.id] // Only depend on IDs, not full objects
     );
     const contextActions = useMemo(
-      () => getContextActions(data, detailData, treatAsEvent),
-      [data.id, treatAsEvent, detailData] // Only depend on IDs, not full objects
+      () => getContextActions(data, detailData, treatAsEvent, isJoinedFromDB),
+      [data.id, treatAsEvent, detailData, isJoinedFromDB] // Include isJoinedFromDB
     );
 
     useEffect(() => {
@@ -423,7 +448,7 @@ export const UnifiedCard = React.memo(
             handleTicketPurchase();
           } else {
             // For user events: Join button -> turns into "Create Orbit"
-            if (treatAsEvent && !(detailData as any)?.join_status) {
+            if (treatAsEvent && !isJoinedFromDB) {
               hitUpdateEventApi();
             }
           }
@@ -432,7 +457,7 @@ export const UnifiedCard = React.memo(
           handleShowDetails();
           break;
         case "create":
-          if (detailData?.source === "user" && detailData?.join_status) {
+          if (detailData?.source === "user" && isJoinedFromDB) {
             // For EVENTS: "Create Orbit" -> creates group chat
             handleCreateOrbit();
           } else {
@@ -451,24 +476,37 @@ export const UnifiedCard = React.memo(
     };
 
     const hitUpdateEventApi = async () => {
-      console.log(treatAsEvent);
       if (!treatAsEvent) return;
 
-      setLoading(true);
       try {
-        console.log("detailData", detailData);
-        console.log("data", data);
-        // COMMENTED OUT: UpdateEventStatus - needs update for unified API
-        await UpdateEventStatus(data as any);
-        const updatedData = { ...(detailData || data), join_status: true };
+        const source =
+          (detailData || data).is_ticketmaster || (detailData || data).source === 'ticketmaster'
+            ? 'ticketmaster'
+            : 'supabase';
+
+        if (isJoinedFromDB) {
+          // Leave event
+          await leaveEvent(data.id, source);
+        } else {
+          // Join event
+          await joinEvent(data.id, source);
+          // Add haptics for premium feel
+          haptics.impact();
+        }
+
+        // Refetch status from database
+        await refetchJoinStatus();
+
+        // Update local detail data
+        const updatedData = { 
+          ...(detailData || data), 
+          join_status: !isJoinedFromDB 
+        };
         setDetailData(updatedData as UnifiedData);
-        setTimeout(() => {
-          setLoading(false);
-          // No longer needed - data is already complete
-        }, 2000);
+
+        console.log(`✅ Successfully ${isJoinedFromDB ? 'left' : 'joined'} event!`);
       } catch (error) {
         console.error("Error updating event status:", error);
-        setLoading(false);
       }
     };
 

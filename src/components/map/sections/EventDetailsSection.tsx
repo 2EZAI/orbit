@@ -1,9 +1,8 @@
 import React from "react";
-import { TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View, Linking } from "react-native";
 import { Calendar, MapPin, Navigation, User } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
-import { UserAvatar } from "~/src/components/ui/user-avatar";
 
 interface EventDetailsSectionProps {
   data: any;
@@ -67,115 +66,135 @@ export function EventDetailsSection({
   };
 
   const handleDirections = () => {
-    const lat = data.location?.coordinates[1];
-    const lng = data.location?.coordinates[0];
+    const lat = data.location?.coordinates?.[1];
+    const lng = data.location?.coordinates?.[0];
 
     if (lat && lng) {
       const url = `https://maps.apple.com/?daddr=${lat},${lng}`;
-      // Linking.openURL(url); // You'll need to import Linking
+      Linking.openURL(url);
     }
   };
 
   return (
     <View className="mb-6">
-      {/* Event Date & Time */}
-      {data.start_datetime && (
-        <View
-          className="flex-row items-center p-3 mb-3 rounded-xl"
-          style={{
-            backgroundColor: isDarkMode
-              ? "rgba(139, 92, 246, 0.1)"
-              : "rgb(245, 243, 255)",
-          }}
-        >
-          <View className="justify-center items-center mr-3 w-10 h-10 bg-purple-500 rounded-full">
-            <Calendar size={20} color="white" />
-          </View>
-          <View className="flex-1">
-            <Text className="mb-1 text-xs font-medium tracking-wide text-purple-600 uppercase">
-              When
-            </Text>
-            <Text
-              className="text-base font-bold leading-tight"
-              style={{ color: theme.colors.text }}
-            >
-              {formatEventDateTime()}
-            </Text>
-          </View>
+      {/* Description Section - Matches web EventDescription component */}
+      {data.description && (
+        <View className="mb-4">
+          <Text className="mb-2 text-lg font-bold" style={{ color: theme.colors.text }}>
+            About This Event
+          </Text>
+          <Text 
+            className="text-base leading-relaxed"
+            style={{ color: isDarkMode ? theme.colors.text : "#6B7280" }}
+          >
+            {data.description}
+          </Text>
         </View>
       )}
 
-      {/* Venue & Address */}
+      {/* Event Details Card - Matches web EventDetails component */}
       <View
-        className="flex-row items-start p-3 mb-4 rounded-xl"
+        className="p-4 rounded-xl border"
         style={{
-          backgroundColor: isDarkMode
-            ? "rgba(59, 130, 246, 0.1)"
-            : "rgb(239, 246, 255)",
+          backgroundColor: isDarkMode ? "rgba(255,255,255,0.05)" : theme.colors.card,
+          borderColor: isDarkMode ? "rgba(255,255,255,0.1)" : theme.colors.border,
         }}
       >
-        <View className="justify-center items-center mt-0.5 mr-3 w-10 h-10 bg-blue-500 rounded-full">
-          <MapPin size={20} color="white" />
-        </View>
-        <View className="flex-1">
-          <Text className="mb-1 text-xs font-medium tracking-wide text-blue-600 uppercase">
-            Where
-          </Text>
-          <Text
-            className="mb-2 text-sm leading-relaxed"
-            style={{
-              color: isDarkMode ? theme.colors.text : "#6B7280",
-            }}
+        {/* Section Header */}
+        <View className="flex-row items-center mb-3">
+          <Calendar size={16} color={isDarkMode ? "rgba(255,255,255,0.6)" : "#6B7280"} />
+          <Text 
+            className="ml-2 text-sm"
+            style={{ color: isDarkMode ? "rgba(255,255,255,0.6)" : "#6B7280" }}
           >
-            {data.address}
+            Event Details
           </Text>
+        </View>
+
+        <View style={{ gap: 12 }}>
+          {/* Event Date/Time */}
+          {data.start_datetime && (
+            <View className="flex-row items-start" style={{ gap: 8 }}>
+              <View
+                className="p-1.5 rounded"
+                style={{
+                  backgroundColor: isDarkMode ? "rgba(139, 92, 246, 0.2)" : "rgba(139, 92, 246, 0.1)",
+                }}
+              >
+                <Calendar size={12} color="#8B5CF6" />
+              </View>
+              <View className="flex-1">
+                <Text className="font-medium" style={{ color: theme.colors.text }}>
+                  {formatEventDateTime()}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Venue Information */}
+          {(data.venue_name || data.address) && (
+            <View className="flex-row items-start" style={{ gap: 8 }}>
+              <View
+                className="p-1.5 rounded"
+                style={{
+                  backgroundColor: isDarkMode ? "rgba(107, 114, 128, 0.2)" : "rgba(107, 114, 128, 0.1)",
+                }}
+              >
+                <MapPin size={12} color="#6B7280" />
+              </View>
+              <View className="flex-1">
+                {data.venue_name && (
+                  <Text className="font-medium" style={{ color: theme.colors.text }}>
+                    {data.venue_name}
+                  </Text>
+                )}
+                {data.address && (
+                  <Text className="text-sm" style={{ color: isDarkMode ? "rgba(255,255,255,0.7)" : "#6B7280" }}>
+                    {data.address}
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* Creator Information */}
+          {data.created_by && (
+            <View className="flex-row items-center" style={{ gap: 8 }}>
+              <View
+                className="p-1.5 rounded"
+                style={{
+                  backgroundColor: isDarkMode ? "rgba(16, 185, 129, 0.2)" : "rgba(16, 185, 129, 0.1)",
+                }}
+              >
+                <User size={12} color="#10B981" />
+              </View>
+              <View className="flex-1">
+                <Text className="font-medium" style={{ color: theme.colors.text }}>
+                  Created by {data.created_by.username || data.created_by.name || 'Host'}
+                </Text>
+                {data.created_by.username && (
+                  <Text className="text-xs" style={{ color: isDarkMode ? "rgba(255,255,255,0.6)" : "#6B7280" }}>
+                    @{data.created_by.username}
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Action Buttons */}
+        <View className="flex-row mt-4" style={{ gap: 8 }}>
           <TouchableOpacity
             onPress={handleDirections}
-            className="flex-row items-center self-start px-3 py-1.5 bg-blue-500 rounded-full"
+            className="flex-1 flex-row items-center justify-center py-2.5 px-3 rounded-lg bg-purple-500"
           >
             <Navigation size={14} color="white" />
             <Text className="ml-1.5 text-sm font-semibold text-white">
-              Directions
+              Get Directions
             </Text>
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* Creator Information */}
-      {data.created_by && (
-        <TouchableOpacity
-          className="flex-row items-center px-4 py-3 mb-6 rounded-2xl"
-          style={{
-            backgroundColor: isDarkMode
-              ? "rgba(59, 130, 246, 0.1)"
-              : "rgb(239, 246, 255)",
-          }}
-        >
-          <UserAvatar
-            size={36}
-            user={{
-              id: data.created_by.id,
-              name: data.created_by.name || "Host",
-              image: data.created_by.avatar_url,
-            }}
-          />
-          <View className="flex-1 ml-3">
-            <Text className="text-sm font-medium text-blue-600">
-              Created by
-            </Text>
-            <Text
-              className="text-base font-semibold"
-              style={{ color: theme.colors.text }}
-            >
-              {data.created_by.name ||
-                `@${data.created_by.username}` ||
-                "Community Member"}
-            </Text>
-          </View>
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
-
-

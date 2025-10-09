@@ -106,6 +106,12 @@ export default function UnifiedEventsTab({
   };
 
   const loadCreatedEvents = async () => {
+    // Prevent fetching if userId is invalid (empty string or null)
+    if (!userId || userId.trim() === '') {
+      console.log('Invalid userId, skipping created events fetch');
+      return;
+    }
+
     try {
       // First try using the API
       try {
@@ -226,6 +232,12 @@ export default function UnifiedEventsTab({
   };
 
   const loadJoinedEvents = async () => {
+    // Prevent fetching if userId is invalid (empty string or null)
+    if (!userId || userId.trim() === '') {
+      console.log('Invalid userId, skipping joined events fetch');
+      return;
+    }
+
     try {
       // First try using the API
       try {

@@ -131,10 +131,20 @@ export default function CreateEvent() {
   const [isDraftSaving, setIsDraftSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
+  
+  // Edit mode state
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
   // Auto-save draft functionality
   const saveDraft = async (isManual = false) => {
     if (isDraftSaving) return;
+    
+    // Don't save drafts in edit mode
+    if (isEditMode) {
+      console.log("✏️ [CreateEvent] Edit mode - skipping draft save");
+      return;
+    }
 
     try {
       setIsDraftSaving(true);
@@ -214,6 +224,13 @@ export default function CreateEvent() {
       // Debug: Log what parameters we received
       console.log("🔍 [CreateEvent] Received params:", params);
 
+      // Check if we're in EDIT MODE (editing existing event)
+      if (params.editMode === "true" && params.eventId) {
+        console.log("✏️ [CreateEvent] Edit mode detected, loading event:", params.eventId);
+        await loadEventForEdit(params.eventId as string);
+        return;
+      }
+
       // Check if we're resuming a specific draft from settings
       if (params.draftId && params.resumeDraft === "true") {
         console.log(
@@ -285,6 +302,74 @@ export default function CreateEvent() {
       }
     } catch (error) {
       console.error("Error loading draft:", error);
+    }
+  };
+
+  // Helper function to load event data for editing
+  const loadEventForEdit = async (eventId: string) => {
+    try {
+      console.log("✏️ [CreateEvent] Fetching event for edit:", eventId);
+      
+      const { data: eventData, error } = await supabase
+        .from("events")
+        .select("*")
+        .eq("id", eventId)
+        .single();
+
+      if (error) throw error;
+      if (!eventData) {
+        console.error("❌ [CreateEvent] Event not found");
+        return;
+      }
+
+      console.log("✅ [CreateEvent] Event loaded for edit:", eventData);
+
+      // Set edit mode state
+      setIsEditMode(true);
+      setEditingEventId(eventId);
+
+      // Populate form with event data
+      setName(eventData.name || "");
+      setDescription(eventData.description || "");
+      setStartDate(eventData.start_datetime ? new Date(eventData.start_datetime) : new Date());
+      setEndDate(eventData.end_datetime ? new Date(eventData.end_datetime) : new Date());
+      setAddress1(eventData.address || eventData.venue_name || "");
+      setSelectedTopics(eventData.category_id || "");
+      setIsPrivate(eventData.is_private || false);
+      setExternalUrl(eventData.external_url || "");
+      
+      // Load images if they exist
+      if (eventData.image_urls && eventData.image_urls.length > 0) {
+        const loadedImages = eventData.image_urls.map((uri: string, index: number) => ({
+          uri,
+          type: "image/jpeg",
+          name: `image_${index}.jpg`,
+        }));
+        setImages(loadedImages);
+      }
+
+      // Set location details if available
+      if (eventData.city || eventData.state || eventData.postal_code) {
+        setLocationDetails({
+          address1: eventData.address || "",
+          city: eventData.city || "",
+          state: eventData.state || "",
+          zip: eventData.postal_code || "",
+        });
+      }
+
+      Toast.show({
+        type: "info",
+        text1: "Edit Mode",
+        text2: "You are now editing your event",
+      });
+    } catch (error) {
+      console.error("❌ [CreateEvent] Error loading event for edit:", error);
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Failed to load event for editing",
+      });
     }
   };
 
@@ -1076,17 +1161,27 @@ export default function CreateEvent() {
       }
       console.log("eventData>>", eventData);
 
-      const response = await fetch(
-        `${process.env.BACKEND_MAP_URL}/api/events`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify(eventData),
-        }
-      );
+      // Determine if we're updating or creating
+      const isUpdating = isEditMode && editingEventId;
+      const apiUrl = isUpdating 
+        ? `${process.env.BACKEND_MAP_URL}/api/events/${editingEventId}`
+        : `${process.env.BACKEND_MAP_URL}/api/events`;
+      const method = isUpdating ? "PUT" : "POST";
+
+      console.log(`${isUpdating ? '✏️ Updating' : '✨ Creating'} event:`, {
+        method,
+        url: apiUrl,
+        eventId: editingEventId,
+      });
+
+      const response = await fetch(apiUrl, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(eventData),
+      });
 
       if (!response.ok) {
         const responseData = await response.json();
@@ -1097,12 +1192,14 @@ export default function CreateEvent() {
       // console.log("event>>", event);
       Toast.show({
         type: "success",
-        text1: "Activity Created!",
-        text2: "Your activity has been created successfully",
+        text1: isEditMode ? "Activity Updated!" : "Activity Created!",
+        text2: isEditMode ? "Your activity has been updated successfully" : "Your activity has been created successfully",
       });
 
-      // Clear draft after successful creation
-      await clearDraft();
+      // Clear draft after successful creation (but not in edit mode)
+      if (!isEditMode) {
+        await clearDraft();
+      }
 
       setEventID(undefined);
       // Navigate to summary screen with event data
@@ -1239,25 +1336,27 @@ export default function CreateEvent() {
                   color: theme.colors.text,
                 }}
               >
-                Create Activity
+                {isEditMode ? "Edit Activity" : "Create Activity"}
               </Text>
             </View>
 
-            <TouchableOpacity
-              onPress={() => saveDraft(true)}
-              disabled={isDraftSaving || !hasUnsavedChanges}
-              style={{
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 16,
-                backgroundColor: hasUnsavedChanges ? "#8B5CF6" : "#6B7280",
-                opacity: isDraftSaving ? 0.6 : 1,
-              }}
-            >
-              <Text style={{ color: "white", fontSize: 12, fontWeight: "600" }}>
-                {isDraftSaving ? "Saving..." : "Save Draft"}
-              </Text>
-            </TouchableOpacity>
+            {!isEditMode && (
+              <TouchableOpacity
+                onPress={() => saveDraft(true)}
+                disabled={isDraftSaving || !hasUnsavedChanges}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 16,
+                  backgroundColor: hasUnsavedChanges ? "#8B5CF6" : "#6B7280",
+                  opacity: isDraftSaving ? 0.6 : 1,
+                }}
+              >
+                <Text style={{ color: "white", fontSize: 12, fontWeight: "600" }}>
+                  {isDraftSaving ? "Saving..." : "Save Draft"}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -1381,7 +1480,7 @@ export default function CreateEvent() {
                     marginRight: 8,
                   }}
                 >
-                  Create Event
+                  {isEditMode ? "Update Activity" : "Create Event"}
                 </Text>
               </View>
             )}

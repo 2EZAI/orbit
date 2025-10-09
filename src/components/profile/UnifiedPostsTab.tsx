@@ -130,6 +130,14 @@ export default function UnifiedPostsTab({
       return;
     }
 
+    // Prevent fetching if userId is invalid (empty string or null)
+    if (!userId || userId.trim() === '') {
+      console.log('Invalid userId, skipping post fetch');
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     const currentPage = isRefresh ? 1 : page;
 
     if (isRefresh) {
