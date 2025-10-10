@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import EventSummaryCard from "~/src/components/createpost/EventSummaryCard";
 import { DeviceEventEmitter } from "react-native";
 import InviteUsers from "~/src/components/createpost/InviteUsers";
+import { User as AuthUser } from "@supabase/supabase-js";
 
 
 interface EventImage {
@@ -19,6 +20,12 @@ interface LocationDetails {
   city: string;
   state: string;
   zip: string;
+}
+interface User extends AuthUser {
+  first_name: string | null;
+  last_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
 }
 
 export default function EventSummary() {
@@ -38,12 +45,23 @@ console.log("params>>",params);
     locationDetails: params.locationDetails
       ? (JSON.parse(params.locationDetails as string) as LocationDetails)
       : undefined,
+    
     externalUrl: params.externalUrl as string,
     eventLocation: {
       lat: parseFloat(params.lat as string),
       lng: parseFloat(params.lng as string),
     },
+    coCreators:params.coCreators
+  ? (JSON.parse(params.coCreators as string) as User[])
+  : undefined,
+   ticketEnabled: params.ticketEnabled,
+  ticketLimitPerUser:params.ticketLimitPerUser,
+          ticketTotal:params.ticketTotal,
   };
+  console.log("eventData.coCreators>",eventData.coCreators)
+  eventData.coCreators.coCreators.map((user)=>{
+console.log("user.user>",user.user);
+  });
 
   const handleConfirm = () => {
     // Navigate to the map view centered on the event location
@@ -69,6 +87,15 @@ console.log("params>>",params);
 
   const handleEdit = () => {
     console.log("params.eventId>",params.eventId);
+    const ticketInfoStr =params.ticketInfo;
+console.log("ticketInfoStr>",ticketInfoStr);
+let ticketInfo;
+try {
+  ticketInfo = JSON.parse(ticketInfoStr);
+} catch (e) {
+  ticketInfo = null;
+}
+console.log("ticketInfo>",ticketInfo);
     // console.log("params.eventId as string>",params.eventId as string);
      DeviceEventEmitter.emit("editEvent", {
       eventId: params.eventId,
@@ -127,6 +154,10 @@ const handleInviteUser = () => {
           onConfirm={handleConfirm}
           onEdit={handleEdit}
           onInviteUsers={handleInviteUser}
+          coCreators={eventData.coCreators}
+          ticketEnabled={eventData.ticketEnabled}
+          ticketLimitPerUser={eventData.ticketLimitPerUser}
+          ticketTotal={eventData.ticketTotal}
         />
       </View>
       {isInviteOpen && (

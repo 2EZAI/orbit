@@ -5,28 +5,39 @@ import { Input } from "~/src/components/ui/input";
 import { useTheme } from "~/src/components/ThemeProvider";
 
 interface CreateTicketSectionProps {
-  externalUrl: string;
-  setExternalUrl: (url: string) => void;
-  externalUrlTitle: string;
-  setExternalUrlTitle: (url: string) => void;
+  isTicketEnabledProp: boolean;
+  setIsTicketEnabledProp: (check: boolean) => void;
+  isTotalTicketQuantity: boolean;
+  setIsTotalTicketQuantity: (check: boolean) => void;
+  totalTicketQuantity: string;
+  setTotalTicketQuantity: (total: string) => void;
+  perPerson: string;
+  setPerPerson: (total: string) => void;
 }
 
 export default function CreateTicketSection({
-  externalUrl,
-  setExternalUrl,
-  externalUrlTitle,
-  setExternalUrlTitle,
+  isTicketEnabledProp,
+  setIsTicketEnabledProp,
+  isTotalTicketQuantity,
+  setIsTotalTicketQuantity,
+  totalTicketQuantity,
+  setTotalTicketQuantity,
+  perPerson,
+  setPerPerson,
 }: CreateTicketSectionProps) {
   const { theme } = useTheme();
-  const [isMuted, setIsMuted] = useState(false);
-  const [isTicketQuantity, setIsTicketQuantity] = useState(false);
+  const [isTicketEnabled, setIsTicketEnabled] = useState(isTicketEnabledProp || false);
+  // const [isTotalTicketQuantity, setIsTotalTicketQuantity] = useState(false);
+  // const [totalTicketQuantity, setTotalTicketQuantity] = useState(null);
 
   const handleToggleMute = async () => {
     try {
-      if (isMuted) {
-        setIsMuted(false);
+      if (isTicketEnabled) {
+        setIsTicketEnabled(false);
+        setIsTicketEnabledProp(false);
       } else {
-        setIsMuted(true);
+        setIsTicketEnabled(true);
+        setIsTicketEnabledProp(true);
       }
     } catch (error) {
       console.error("Error toggling mute:", error);
@@ -36,10 +47,10 @@ export default function CreateTicketSection({
 
   const handleToggleTicketQuentity = async () => {
     try {
-      if (isTicketQuantity) {
-        setIsTicketQuantity(false);
+      if (isTotalTicketQuantity) {
+        setIsTotalTicketQuantity(false);
       } else {
-        setIsTicketQuantity(true);
+        setIsTotalTicketQuantity(true);
       }
     } catch (error) {
       console.error("Error toggling mute:", error);
@@ -89,7 +100,7 @@ export default function CreateTicketSection({
         </Text>
       </View>
 
-      <View>
+      <View style={{ marginBottom: 24 }}>
         <Text
           style={{
             fontSize: 16,
@@ -101,7 +112,7 @@ export default function CreateTicketSection({
           Enable Tickets
         </Text>
         <Switch
-          value={!isMuted}
+          value={isTicketEnabled}
           onValueChange={handleToggleMute}
           trackColor={{
             false: theme.colors.border,
@@ -111,7 +122,7 @@ export default function CreateTicketSection({
         />
       </View>
 
-      <View>
+   { isTicketEnabled && <View style={{ marginBottom: 24 }}>
         <Text
           style={{
             fontSize: 16,
@@ -120,11 +131,11 @@ export default function CreateTicketSection({
             marginBottom: 12,
           }}
         >
-          Ticket Quantity
+         Total Ticket Quantity
         </Text>
 
         <Switch
-          value={isTicketQuantity}
+          value={isTotalTicketQuantity}
           onValueChange={handleToggleTicketQuentity}
           trackColor={{
             false: theme.colors.border,
@@ -132,7 +143,53 @@ export default function CreateTicketSection({
           }}
           thumbColor={"white"}
         />
-        {isTicketQuantity && (
+        {isTotalTicketQuantity && (
+          <View
+            style={{
+              height: 56,
+              backgroundColor: theme.dark
+                ? "rgba(255, 255, 255, 0.05)"
+                : "rgba(255, 255, 255, 0.7)",
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: theme.dark
+                ? "rgba(139, 92, 246, 0.2)"
+                : "rgba(139, 92, 246, 0.15)",
+              paddingHorizontal: 16,
+               marginTop: 12,
+            }}
+          >
+            <Input
+              value={totalTicketQuantity}
+              onChangeText={setTotalTicketQuantity}
+              placeholder="Enter Quantity"
+              placeholderTextColor={theme.colors.text + "66"}
+              style={{
+                flex: 1,
+                backgroundColor: "transparent",
+                borderWidth: 0,
+                height: 56,
+                fontSize: 16,
+                color: theme.colors.text,
+              }}
+            />
+          </View>
+        )}
+      </View>
+   }
+    {isTicketEnabled &&  <View style={{ marginBottom: 24 }}>
+        <Text
+          style={{
+            fontSize: 16,
+            fontWeight: "600",
+            color: theme.colors.text,
+            marginBottom: 12,
+          }}
+        >
+         Limit per person
+        </Text>
+
+        
           <View
             style={{
               height: 56,
@@ -148,9 +205,9 @@ export default function CreateTicketSection({
             }}
           >
             <Input
-              value={externalUrl}
-              onChangeText={setExternalUrl}
-              placeholder="Enter Quantity"
+              value={perPerson}
+              onChangeText={setPerPerson}
+              placeholder="Enter limit"
               placeholderTextColor={theme.colors.text + "66"}
               style={{
                 flex: 1,
@@ -162,8 +219,9 @@ export default function CreateTicketSection({
               }}
             />
           </View>
-        )}
+        
       </View>
+}
     </View>
   );
 }

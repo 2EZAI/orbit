@@ -26,7 +26,7 @@ import Toast from "react-native-toast-message";
 import { useLocalSearchParams } from "expo-router";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
+import { User as AuthUser } from "@supabase/supabase-js";
 // Import modular components
 import BasicInfoSection from "~/src/components/createpost/BasicInfoSection";
 import PromptsSection from "~/src/components/createpost/PromptsSection";
@@ -36,8 +36,10 @@ import LocationSection from "~/src/components/createpost/LocationSection";
 import DateTimeSection from "~/src/components/createpost/DateTimeSection";
 import AdditionalInfoSection from "~/src/components/createpost/AdditionalInfoSection";
 import CreateTicketSection from "~/src/components/createpost/CreateTicketSection";
+import CreateCoCreatorSection from "~/src/components/createpost/CreateCoCreatorSection";
 
 import StepIndicator from "~/src/components/createpost/StepIndicator";
+import SelectCoCreators from "~/src/components/createpost/SelectCoCreators";
 
 interface EventImage {
   uri: string;
@@ -79,6 +81,12 @@ function decode(base64: string): Uint8Array {
   return bytes;
 }
 
+interface User extends AuthUser {
+  first_name: string | null;
+  last_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+}
 
 export default function CreateEvent() {
   const params = useLocalSearchParams();
@@ -89,7 +97,6 @@ export default function CreateEvent() {
   const [showDateModal, setShowDateModal] = useState(false);
   const [eventID, setEventID] = useState<string | undefined>(undefined);
 
-  
   const [locationId, setlocationId] = useState<string | undefined>(undefined);
   const [locationType, setlocationType] = useState<string | undefined>(
     undefined
@@ -128,9 +135,15 @@ export default function CreateEvent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
 
+  const [isTicketEnabled, setIsTicketEnabled] = useState(false);
+  const [isTotalTicketQuantity, setIsTotalTicketQuantity] = useState(false);
+  const [totalTicketQuantity, setTotalTicketQuantity] = useState("");
+  const [perPerson, setPerPerson] = useState("");
+  const [isInviteOpen, setIsInviteOpen] = useState<Boolean>(false);
+  const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
+
   useEffect(() => {
     console.log("createevent_useEffect");
-
     // Handle router params
     if (params.categoryId && params.categoryName) {
       const simpleCategory = {
@@ -142,22 +155,20 @@ export default function CreateEvent() {
       setSelectedTopics(params.categoryId);
       setSelectedTopicsName(params.categoryName);
       setshowPrompts(true);
-      if (params.prompts){
+      if (params.prompts) {
         try {
           const raw = params.prompts;
-          console.log("params.prompts>",raw)
+          console.log("params.prompts>", raw);
 
-         const parsedPrompts_: Prompt[] = raw;
-         console.log("parsedPrompts_", parsedPrompts_);
-  setPrompts(parsedPrompts_);
-        
-      } catch (e) {
-        console.error("Invalid prompts data", e);
+          const parsedPrompts_: Prompt[] = raw;
+          console.log("parsedPrompts_", parsedPrompts_);
+          setPrompts(parsedPrompts_);
+        } catch (e) {
+          console.error("Invalid prompts data", e);
+        }
       }
-      }
-      
     }
-console.log("params.latitude>",params.latitude)
+    console.log("params.latitude>", params.latitude);
     if (params.locationId) setlocationId(params.locationId as string);
     if (params.locationType) setlocationType(params.locationType as string);
     if (params.latitude) setlatitude(parseFloat(params.latitude as string));
@@ -215,80 +226,82 @@ console.log("params.latitude>",params.latitude)
         console.log(`🎯 [${callId}] passDataToCreateEvent COMPLETED`);
       }
     );
-     DeviceEventEmitter.addListener(
-      "editEvent",
-      (...args: any[]) => { 
-        const [
-          eventId,
-        ] = args;
-        // console.log("eventId>>",eventId);
-        setEventID(eventId ? eventId : undefined);
-      }
-    );
+    DeviceEventEmitter.addListener("editEvent", (...args: any[]) => {
+      const [eventId] = args;
+      // console.log("eventId>>",eventId);
+      setEventID(eventId ? eventId : undefined);
+    });
   }, []);
 
+  const handleInviteUser = () => {
+    setIsInviteOpen(true);
+  };
+
   const validateCheck = () => {
-  const validations = [
-    () => name.trim() !== "" && description.trim() !== "",                     // Step 0: Basic Info
-    () => selectedTopics !== "",                                              // Step 1: Category
-    () => true,                                                               // Step 2: Prompts (optional)
-    () => images.length > 0,                                                 // Step 3: Images
-    () => {
-      if (locationType === "static" || locationType === "googleApi") {
-        return true;
-      }
-      return locationDetails.city !== "" && locationDetails.state !== "";
-    },                                                                       // Step 4: Location
-    () => {
-      const truncateToMinute = (date) =>
-        new Date(
-          date.getFullYear(),
-          date.getMonth(),
-          date.getDate(),
-          date.getHours(),
-          date.getMinutes()
-        );
+    const validations = [
+      () => name.trim() !== "" && description.trim() !== "", // Step 0: Basic Info
+      () => selectedTopics !== "", // Step 1: Category
+      () => true, // Step 2: Prompts (optional)
+      () => images.length > 0, // Step 3: Images
+      () => {
+        if (locationType === "static" || locationType === "googleApi") {
+          return true;
+        }
+        return locationDetails.city !== "" && locationDetails.state !== "";
+      }, // Step 4: Location
+      () => {
+        const truncateToMinute = (date) =>
+          new Date(
+            date.getFullYear(),
+            date.getMonth(),
+            date.getDate(),
+            date.getHours(),
+            date.getMinutes()
+          );
 
-      const startTruncated = truncateToMinute(startDate);
-      const endTruncated = truncateToMinute(endDate);
+        const startTruncated = truncateToMinute(startDate);
+        const endTruncated = truncateToMinute(endDate);
 
-      return startTruncated < endTruncated;
-    },                                                                       // Step 5: Date & Time
-    () => true                                                                // Step 6: Additional (optional)
-  ];
+        return startTruncated < endTruncated;
+      }, // Step 5: Date & Time
 
-  return validations.every(validate => validate());
-};
+      () => {
+        if (isTotalTicketQuantity && totalTicketQuantity === "") {
+          return false;
+        } else {
+          return true;
+        }
+      },
 
+      () => true, // Step 6: Additional (optional)
+    ];
+
+    return validations.every((validate) => validate());
+  };
 
   const handleEventCreation = () => {
     if (!validateCheck()) {
-   
-      if(endDate.getTime() <= startDate.getTime())
-      {
+      if (endDate.getTime() <= startDate.getTime()) {
         console.log("ffff");
         Toast.show({
           type: "error",
           text1: "End Date-Time Start Date-Time error",
-          text2: "End Date-Time cannot be the same or earlier than Start Date-Time",
+          text2:
+            "End Date-Time cannot be the same or earlier than Start Date-Time",
         });
         return;
-      
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Please complete all required fields",
+          text2: "Fill in the missing information to continue",
+        });
+        return;
       }
-      else{
-      Toast.show({
-        type: "error",
-        text1: "Please complete all required fields",
-        text2: "Fill in the missing information to continue",
-      });
-      return;
-      }
-     
     }
 
-      handleCreateEvent();
+    handleCreateEvent();
   };
-
 
   const showDatePicker = (isStart: boolean) => {
     setIsStartDate(isStart);
@@ -357,9 +370,11 @@ console.log("params.latitude>",params.latitude)
               // Set state
               if (isStart) {
                 setStartDate(dateObject);
-                 // Automatically set endDate to 6 hours after startDate
-  const newEndDate = new Date(dateObject.getTime() + 6 * 60 * 60 * 1000); // Add 6 hours
-  setEndDate(newEndDate);
+                // Automatically set endDate to 6 hours after startDate
+                const newEndDate = new Date(
+                  dateObject.getTime() + 6 * 60 * 60 * 1000
+                ); // Add 6 hours
+                setEndDate(newEndDate);
               } else {
                 setEndDate(dateObject);
               }
@@ -387,11 +402,11 @@ console.log("params.latitude>",params.latitude)
         newDate.setMinutes(currentDate.getMinutes());
 
         if (isStart) {
-          console.log("Ljh?",newDate)
+          console.log("Ljh?", newDate);
           setStartDate(newDate);
-           // Automatically set endDate to 6 hours after startDate
-  const newEndDate = new Date(newDate.getTime() + 6 * 60 * 60 * 1000); // Add 6 hours
-  setEndDate(newEndDate);
+          // Automatically set endDate to 6 hours after startDate
+          const newEndDate = new Date(newDate.getTime() + 6 * 60 * 60 * 1000); // Add 6 hours
+          setEndDate(newEndDate);
         } else {
           setEndDate(newDate);
         }
@@ -457,8 +472,8 @@ console.log("params.latitude>",params.latitude)
         if (isStart) {
           setStartDate(newDate);
           // Automatically set endDate to 6 hours after startDate
-  const newEndDate = new Date(newDate.getTime() + 6 * 60 * 60 * 1000); // Add 6 hours
-  setEndDate(newEndDate);
+          const newEndDate = new Date(newDate.getTime() + 6 * 60 * 60 * 1000); // Add 6 hours
+          setEndDate(newEndDate);
         } else {
           setEndDate(newDate);
         }
@@ -697,6 +712,18 @@ console.log("params.latitude>",params.latitude)
         throw new Error("No valid auth session");
       }
 
+      var ticketTotalEnable = false;
+      var ticketTotal = null;
+      var perUser = null;
+
+      if (isTicketEnabled) {
+        ticketTotalEnable = isTotalTicketQuantity;
+        perUser = perPerson;
+      }
+      if (ticketTotalEnable) {
+        ticketTotal = totalTicketQuantity;
+      }
+      const selectedUserIds = selectedUsers.map((user) => user.id);
       // 2. Create event using our API
       let eventData: any = {
         name,
@@ -710,15 +737,20 @@ console.log("params.latitude>",params.latitude)
         start_datetime: startDate.toISOString(),
         end_datetime: endDate.toISOString(),
         external_url: externalUrl || null,
-        external_title:externalTitle || null,
+        external_title: externalTitle || null,
         image_urls: imageUrls,
         is_private: isPrivate,
         topic_id: selectedTopics,
+        ticket_enabled: isTicketEnabled,
+        ticket_total_enabled: ticketTotalEnable,
+        ticket_total: ticketTotal,
+        ticket_limit_per_user: perUser,
+        co_creator_user_ids: selectedUserIds,
         ...(eventID?.eventId && { event_id: eventID.eventId }),
       };
-//       if (eventID !== undefined) {
-//   eventData.event_id = eventID;
-// }
+      //       if (eventID !== undefined) {
+      //   eventData.event_id = eventID;
+      // }
       if (locationType === "static" || locationType === "googleApi") {
         let promtIds: string[] = []; // an empty array
         if (selectedPrompts?.id != undefined) {
@@ -740,13 +772,18 @@ console.log("params.latitude>",params.latitude)
           image_urls: imageUrls,
           is_private: isPrivate,
           topic_id: selectedTopics,
+          ticket_enabled: isTicketEnabled,
+          ticket_total_enabled: ticketTotalEnable,
+          ticket_total: ticketTotal,
+          ticket_limit_per_user: perUser,
+          co_creator_user_ids: selectedUserIds,
           ...(eventID?.eventId && { event_id: eventID.eventId }),
         };
-//         if (eventID !== undefined) {
-//   eventData.event_id = eventID;
-// }
+        //         if (eventID !== undefined) {
+        //   eventData.event_id = eventID;
+        // }
       }
-      console.log("eventData>>",eventData);
+      console.log("eventData>>", eventData);
 
       const response = await fetch(
         `${process.env.BACKEND_MAP_URL}/api/events`,
@@ -766,13 +803,13 @@ console.log("params.latitude>",params.latitude)
       }
 
       const event = await response.json();
-      // console.log("event>>", event);
+      console.log("event>>", event);
       Toast.show({
         type: "success",
         text1: "Event Created!",
         text2: "Your event has been created successfully",
       });
- setEventID(undefined);
+      setEventID(undefined);
       // Navigate to summary screen with event data
       router.push({
         pathname: "/(app)/(create)/summary",
@@ -796,6 +833,13 @@ console.log("params.latitude>",params.latitude)
           lat: event.location.latitude,
           lng: event.location.longitude,
           eventId: event.id, // Pass the event ID
+          ticketEnabled: event.ticket_enabled,
+          ticketLimitPerUser:event.ticket_limit_per_user,
+          ticketTotal:event.ticket_total,
+          ticketInfo: JSON.stringify(event?.ticket_info),
+          coCreators: JSON.stringify({
+                coCreators:event?.co_creators
+              })
         },
       });
     } catch (error: any) {
@@ -813,6 +857,27 @@ console.log("params.latitude>",params.latitude)
 
   const handleBack = () => {
     router.back();
+  };
+
+  const handleTicketToggle = (check: boolean) => {
+    console.log("check >", check);
+    setIsTicketEnabled(check);
+  };
+  const handleIsTotalTicketQuantity = (check: boolean) => {
+    console.log("IsTotalTicketQuantity >", check);
+    setIsTotalTicketQuantity(check);
+  };
+
+  const handleTicketTotal = (total: string) => {
+    console.log("total >", total);
+
+    setTotalTicketQuantity(total);
+  };
+
+  const handlePerPerson = (count: string) => {
+    console.log("count >", count);
+
+    setPerPerson(count);
   };
 
   return (
@@ -890,85 +955,96 @@ console.log("params.latitude>",params.latitude)
           </View>
         </View>
 
-<ScrollView
-showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 100 }}
-      keyboardShouldPersistTaps="handled"
->
-<View >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View>
+            <BasicInfoSection
+              name={name}
+              setName={setName}
+              description={description}
+              setDescription={setDescription}
+              isPrivate={isPrivate}
+              setIsPrivate={setIsPrivate}
+            />
 
-          <BasicInfoSection
-            name={name}
-            setName={setName}
-            description={description}
-            setDescription={setDescription}
-            isPrivate={isPrivate}
-            setIsPrivate={setIsPrivate}
-          />
-       
-          <CategorySection
-            selectedTopics={selectedTopics}
-            selectedTopicsName={selectedTopicsName}
-            onSelectTopic={setSelectedTopics}
-          />
-       
-     
-         {prompts?.length>0 ?  <PromptsSection
-            prompts={prompts}
-            selectedPrompts={selectedPrompts}
-            setSelectedPrompts={setSelectedPrompts}
-          /> :
-        
-          <View style={{ alignItems: "center", padding: 40 }}>
-            <Text style={{ fontSize: 16, color: theme.colors.text + "CC" }}>
-              No prompts available for this category
-            </Text>
+            <CategorySection
+              selectedTopics={selectedTopics}
+              selectedTopicsName={selectedTopicsName}
+              onSelectTopic={setSelectedTopics}
+            />
+
+            {prompts?.length > 0 ? (
+              <PromptsSection
+                prompts={prompts}
+                selectedPrompts={selectedPrompts}
+                setSelectedPrompts={setSelectedPrompts}
+              />
+            ) : (
+              <View style={{ alignItems: "center", padding: 40 }}>
+                <Text style={{ fontSize: 16, color: theme.colors.text + "CC" }}>
+                  No prompts available for this category
+                </Text>
+              </View>
+            )}
+
+            <ImagesSection
+              images={images}
+              onPickImage={pickImage}
+              onRemoveImage={removeImage}
+            />
+
+            <LocationSection
+              locationType={locationType}
+              address1={address1}
+              setAddress1={setAddress1}
+              address2={address2}
+              setAddress2={setAddress2}
+              locationDetails={locationDetails}
+              searchResults={searchResults}
+              showResults={showResults}
+              onSearchAddress={debouncedSearch}
+              onAddressSelect={handleAddressSelect}
+            />
+
+            <DateTimeSection
+              startDate={startDate}
+              endDate={endDate}
+              onShowDatePicker={showDatePicker}
+              onShowTimePicker={showTimePicker}
+            />
+
+            <AdditionalInfoSection
+              externalUrl={externalUrl}
+              setExternalUrl={setExternalUrl}
+              externalUrlTitle={externalTitle}
+              setExternalUrlTitle={setExternalTitle}
+            />
+
+            <CreateTicketSection
+              isTicketEnabledProp={isTicketEnabled}
+              setIsTicketEnabledProp={handleTicketToggle}
+              isTotalTicketQuantity={isTotalTicketQuantity}
+              setIsTotalTicketQuantity={handleIsTotalTicketQuantity}
+              totalTicketQuantity={totalTicketQuantity}
+              setTotalTicketQuantity={handleTicketTotal}
+              perPerson={perPerson}
+              setPerPerson={handlePerPerson}
+            />
+
+            <CreateCoCreatorSection
+              isUserModelVisible={isInviteOpen}
+              setIsUserModelVisible={setIsInviteOpen}
+              selectedUsers={selectedUsers}
+              onSelectedUsers={(data: User[]) => {
+                console.log("data>", data);
+                setSelectedUsers(data);
+              }}
+            />
           </View>
-          }
-       
-          <ImagesSection
-            images={images}
-            onPickImage={pickImage}
-            onRemoveImage={removeImage}
-          />
-        
-          <LocationSection
-            locationType={locationType}
-            address1={address1}
-            setAddress1={setAddress1}
-            address2={address2}
-            setAddress2={setAddress2}
-            locationDetails={locationDetails}
-            searchResults={searchResults}
-            showResults={showResults}
-            onSearchAddress={debouncedSearch}
-            onAddressSelect={handleAddressSelect}
-          />
-       
-          <DateTimeSection
-            startDate={startDate}
-            endDate={endDate}
-            onShowDatePicker={showDatePicker}
-            onShowTimePicker={showTimePicker}
-          />
-       
-          <AdditionalInfoSection
-            externalUrl={externalUrl}
-            setExternalUrl={setExternalUrl}
-            externalUrlTitle={externalTitle}
-            setExternalUrlTitle={setExternalTitle}
-          />
-
-          <CreateTicketSection
-            externalUrl={externalUrl}
-            setExternalUrl={setExternalUrl}
-            externalUrlTitle={externalTitle}
-            setExternalUrlTitle={setExternalTitle}
-          />
-          
-        
-</View>
-</ScrollView>
+        </ScrollView>
 
         {/* Navigation Buttons */}
         <View
@@ -976,22 +1052,20 @@ showsVerticalScrollIndicator={false}
             flexDirection: "row",
             justifyContent: "space-between",
             paddingTop: 16,
-            
           }}
         >
-          
-
           <TouchableOpacity
             onPress={handleEventCreation}
-            disabled={isLoading }
+            disabled={isLoading}
             style={{
               flex: 1,
               height: 50,
-              backgroundColor: validateCheck() ? "#8B5CF6"  : "transparent",
+              backgroundColor: validateCheck() ? "#8B5CF6" : "transparent",
               borderRadius: 16,
               borderWidth: 1,
-              borderColor:
-                validateCheck()  ?  "#8B5CF6": theme.colors.text + "20" ,
+              borderColor: validateCheck()
+                ? "#8B5CF6"
+                : theme.colors.text + "20",
               justifyContent: "center",
               alignItems: "center",
               shadowColor: "#8B5CF6",
@@ -1010,14 +1084,13 @@ showsVerticalScrollIndicator={false}
                   style={{
                     fontSize: 16,
                     fontWeight: "700",
-                     color: validateCheck() ? "white"  : theme.colors.text + "40",
+                    color: validateCheck() ? "white" : theme.colors.text + "40",
 
                     marginRight: 8,
                   }}
                 >
-                   Create Event 
+                  Create Event
                 </Text>
-                
               </View>
             )}
           </TouchableOpacity>
@@ -1058,6 +1131,24 @@ showsVerticalScrollIndicator={false}
             </View>
           </View>
         </Modal>
+      )}
+      {isInviteOpen && (
+        <SelectCoCreators
+          eventId={params.eventId as string}
+          isOpen={!!setIsInviteOpen}
+          onClose={() => {
+            setIsInviteOpen(false);
+          }}
+          onDone={(selectedList) => {
+            setIsInviteOpen(false);
+            console.log("Selected users:", selectedList); // or handle as needed
+            setSelectedUsers(selectedList);
+          }}
+          goToMap={() => {
+            setIsInviteOpen(false);
+            handleConfirm();
+          }}
+        />
       )}
     </View>
   );

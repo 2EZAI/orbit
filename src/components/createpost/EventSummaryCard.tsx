@@ -10,12 +10,24 @@ import {
   Lock,
   CheckCircle,
 } from "lucide-react-native";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "~/src/components/ui/avatar";
 import { useTheme } from "~/src/components/ThemeProvider";
+import { User as AuthUser } from "@supabase/supabase-js";
 
 interface EventImage {
   uri: string;
   type: string;
   name: string;
+}
+interface User extends AuthUser {
+  first_name: string | null;
+  last_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
 }
 
 interface EventSummaryCardProps {
@@ -31,6 +43,12 @@ interface EventSummaryCardProps {
     state: string;
     zip: string;
   };
+  coCreators?:{
+    coCreators:User[];
+  }
+  ticketEnabled:string;
+          ticketLimitPerUser: string;
+          ticketTotal: string;
   externalUrl?: string;
   onConfirm: () => void;
   onEdit: () => void;
@@ -45,12 +63,37 @@ export default function EventSummaryCard({
   startDate,
   endDate,
   locationDetails,
+  coCreators,
+   ticketEnabled,
+          ticketLimitPerUser,
+          ticketTotal,
   externalUrl,
   onConfirm,
   onEdit,
   onInviteUsers,
 }: EventSummaryCardProps) {
   const { theme } = useTheme();
+
+const getUserDisplayName = (user: User) => {
+    const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim();
+    return fullName || user.username || "Unknown User";
+  };
+
+   const getUserInitials = (user: User) => {
+    if (user.first_name && user.last_name) {
+      return `${user.first_name[0]}${user.last_name[0]}`.toUpperCase();
+    }
+    if (user.first_name) {
+      return user.first_name[0].toUpperCase();
+    }
+    if (user.last_name) {
+      return user.last_name[0].toUpperCase();
+    }
+    if (user.username) {
+      return user.username[0].toUpperCase();
+    }
+    return "?";
+  };
 
   return (
     <View
@@ -286,6 +329,37 @@ export default function EventSummaryCard({
             </View>
           )}
 
+{/* ticket */}
+          {ticketEnabled && (
+            <View style={{ marginBottom: 24 }}>
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: "600",
+                  color: theme.colors.text,
+                  marginBottom: 12,
+                }}
+              >
+                Ticket
+              </Text>
+              <View
+                style={{
+                  padding: 12,
+                  borderRadius: 12,
+                  backgroundColor: theme.dark
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(255, 255, 255, 0.3)",
+                }}
+              >
+                <Text style={{ color: theme.colors.text, flex: 1 }}>
+                 Ticket Total: {ticketTotal}
+                </Text>
+                <Text style={{ color: theme.colors.text, flex: 1 }}>
+                 Ticket Limit Per Person: {ticketLimitPerUser}
+                </Text>
+              </View>
+            </View>
+          )}
           {/* External URL */}
           {externalUrl && (
             <View>
@@ -312,6 +386,73 @@ export default function EventSummaryCard({
               </View>
             </View>
           )}
+
+           {/* Selected Users List */}
+    {coCreators && coCreators.coCreators &&  <View >
+       <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: "600",
+                  color: theme.colors.text,
+                  marginBottom: 12,
+                }}
+              >
+                Co Creators
+              </Text>
+              <View className="flex-row flex-wrap gap-2">
+        {coCreators?.coCreators?.map((user) => (
+          <TouchableOpacity
+            key={user.id}
+            onPress={() => toggleUserSelection(user)}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: `${theme.colors.primary}`,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: `${theme.colors.primary}30`,
+            }}
+          >
+
+            <Avatar
+                                className="mr-2 w-6 h-6"
+                                alt={getUserDisplayName(user?.user)}
+                              >
+                                {user.avatar_url ? (
+                                  <AvatarImage
+                                    source={{ uri: user?.user.avatar_url }}
+                                  />
+                                ) : (
+                                  <AvatarFallback>
+                                    <Text
+                                      style={{
+                                        fontSize: 12,
+                                        fontWeight: "600",
+                                        color: theme.colors.text,
+                                      }}
+                                    >
+                                      {getUserInitials(user?.user)}
+                                    </Text>
+                                  </AvatarFallback>
+                                )}
+                              </Avatar>
+            <Text
+              style={{
+                color: theme.colors.text,
+                fontWeight: "600",
+                fontSize: 14,
+                marginRight: 8,
+              }}
+            >
+              {getUserDisplayName(user.user)}
+            </Text>
+        
+          </TouchableOpacity>
+        ))}
+      </View>
+      </View>}
         </View>
 
         {/* Action Buttons */}

@@ -7,9 +7,10 @@ import { ExpoConfig, ConfigContext } from "expo/config";
 const DEFAULT_BACKEND_URL =
   "https://orbit-chat-backend-old-9d2b903ab237.herokuapp.com";
 
+
 export default ({ config }: ConfigContext): ExpoConfig => {
   const backendUrl = process.env.BACKEND_CHAT_URL || DEFAULT_BACKEND_URL;
-  // console.log("Configuring app with backend URL:", backendUrl);
+  console.log("Configuring app with backend URL:", backendUrl);
   // console.log("Environment:", process.env.NODE_ENV || "development");
 
   // Validate required environment variables
