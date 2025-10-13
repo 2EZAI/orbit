@@ -1,13 +1,7 @@
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { router } from "expo-router";
-import {
-  ArrowLeft,
-  Tag,
-  UserCheck,
-  Users,
-  X
-} from "lucide-react-native";
-import React, { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Tag, UserCheck, Users, X } from "lucide-react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   DeviceEventEmitter,
   Dimensions,
@@ -18,20 +12,19 @@ import {
   Share,
   TouchableOpacity,
   View,
-  Animated,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useEventJoinStatus } from "~/hooks/useEventJoinStatus";
+import { useJoinEvent } from "~/hooks/useJoinEvent";
 import { useLocationEvents } from "~/hooks/useLocationEvents";
 import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
 import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 import { useTheme } from "~/src/components/ThemeProvider";
-import { Text } from "~/src/components/ui/text";
 import { ConfettiAnimation } from "~/src/components/ui/ConfettiAnimation";
+import { Text } from "~/src/components/ui/text";
+import { haptics } from "~/src/lib/haptics";
 import { UnifiedDetailsSheetContent } from "./UnifiedDetailsSheetContent";
 import { UnifiedSheetButtons } from "./UnifiedSheetButtons";
-import { haptics } from "~/src/lib/haptics";
-import { useEventJoinStatus } from "~/hooks/useEventJoinStatus";
-import { useJoinEvent } from "~/hooks/useJoinEvent";
 
 // Additional types that were in the old hook
 export interface Category {
@@ -117,9 +110,13 @@ export const UnifiedDetailsSheet = React.memo(
     );
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
+    // Track viewer open state to avoid late momentum callbacks re-opening the modal
+    const isViewerOpenRef = useRef<boolean>(false);
+    useEffect(() => {
+      isViewerOpenRef.current = !!selectedImage;
+    }, [selectedImage]);
     const [manuallyUpdated, setManuallyUpdated] = useState(false);
     const [showConfetti, setShowConfetti] = useState(false);
-
     // Memoize the event type check to prevent repeated calculations
     const isEventType = useMemo(() => {
       const result = isEventData(data, isEvent);
@@ -143,23 +140,20 @@ export const UnifiedDetailsSheet = React.memo(
 
     // NEW: Use the join event hooks (like web app)
     const { joinEvent, leaveEvent, isLoading: isJoining } = useJoinEvent();
-    
+
     // NEW: Get actual join status and creator check from database
     // Extract created_by ID (could be string or object)
-    const createdById = isEventType 
-      ? (typeof (data as any).created_by === 'string' 
-          ? (data as any).created_by 
-          : (data as any).created_by?.id)
+    const createdById = isEventType
+      ? typeof (data as any).created_by === "string"
+        ? (data as any).created_by
+        : (data as any).created_by?.id
       : undefined;
 
     const {
       isJoined: isJoinedFromDB,
       isCreator,
       refetch: refetchJoinStatus,
-    } = useEventJoinStatus(
-      isEventType ? data.id : undefined,
-      createdById
-    );
+    } = useEventJoinStatus(isEventType ? data.id : undefined, createdById);
 
     // Simple confetti trigger with celebration haptics
     const triggerConfetti = () => {
@@ -265,7 +259,7 @@ export const UnifiedDetailsSheet = React.memo(
         data: data,
         locationData: locationData,
       });
-      
+
       // Close the sheet first
       onClose();
 
@@ -297,12 +291,12 @@ export const UnifiedDetailsSheet = React.memo(
 
       const params = {
         locationId: locationData.id || "",
-          locationType: (locationData as any).type || "",
+        locationType: (locationData as any).type || "",
         latitude,
         longitude,
-          address: (locationData as any).address || "",
-          categoryId: simplifiedCategory.id,
-          categoryName: simplifiedCategory.name,
+        address: (locationData as any).address || "",
+        categoryId: simplifiedCategory.id,
+        categoryName: simplifiedCategory.name,
       };
 
       console.log("🔧 [UnifiedDetailsSheet] Create activity params:", params);
@@ -371,9 +365,10 @@ export const UnifiedDetailsSheet = React.memo(
 
       try {
         const source =
-          (data as any).is_ticketmaster || (data as any).source === 'ticketmaster'
-            ? 'ticketmaster'
-            : 'supabase';
+          (data as any).is_ticketmaster ||
+          (data as any).source === "ticketmaster"
+            ? "ticketmaster"
+            : "supabase";
 
         if (isJoinedFromDB) {
           // Leave event
@@ -381,7 +376,7 @@ export const UnifiedDetailsSheet = React.memo(
         } else {
           // Join event
           await joinEvent(data.id, source);
-          
+
           // Trigger confetti animation when joining
           triggerConfetti();
         }
@@ -390,14 +385,16 @@ export const UnifiedDetailsSheet = React.memo(
         await refetchJoinStatus();
 
         // Update local detail data
-        const updatedData = { 
-          ...(detailData || data), 
-          join_status: !isJoinedFromDB 
+        const updatedData = {
+          ...(detailData || data),
+          join_status: !isJoinedFromDB,
         };
         setDetailData(updatedData as UnifiedData);
         setManuallyUpdated(true);
 
-        console.log(`✅ Successfully ${isJoinedFromDB ? 'left' : 'joined'} event!`);
+        console.log(
+          `✅ Successfully ${isJoinedFromDB ? "left" : "joined"} event!`
+        );
       } catch (error) {
         console.error("❌ Error updating event status:", error);
       }
@@ -408,9 +405,10 @@ export const UnifiedDetailsSheet = React.memo(
 
       try {
         const source =
-          (data as any).is_ticketmaster || (data as any).source === 'ticketmaster'
-            ? 'ticketmaster'
-            : 'supabase';
+          (data as any).is_ticketmaster ||
+          (data as any).source === "ticketmaster"
+            ? "ticketmaster"
+            : "supabase";
 
         await leaveEvent(data.id, source);
 
@@ -503,7 +501,7 @@ export const UnifiedDetailsSheet = React.memo(
 
       // Reset manual update flag when opening with new data
       setManuallyUpdated(false);
-      
+
       // Fetch full details if needed
       hitDetailApi();
 
@@ -531,7 +529,7 @@ export const UnifiedDetailsSheet = React.memo(
     const similarItems = getSimilarItems;
 
     // Debug log to see what data we have
-    console.log('🔍 [UnifiedDetailsSheet] Current data:', {
+    console.log("🔍 [UnifiedDetailsSheet] Current data:", {
       id: currentData.id,
       name: currentData.name,
       description: currentData.description,
@@ -586,7 +584,7 @@ export const UnifiedDetailsSheet = React.memo(
       >
         <View style={{ flex: 1 }}>
           {/* Confetti Animation */}
-          <ConfettiAnimation 
+          <ConfettiAnimation
             isActive={showConfetti}
             onComplete={() => setShowConfetti(false)}
           />
@@ -637,7 +635,12 @@ export const UnifiedDetailsSheet = React.memo(
                   {(currentData?.image_urls || []).map((imageUrl, index) => (
                     <TouchableOpacity
                       key={index}
-                      onPress={() => setSelectedImage(imageUrl)}
+                      onPress={() => {
+                        // Open viewer at tapped image index
+                        isViewerOpenRef.current = true;
+                        setSelectedImage(imageUrl);
+                        setSelectedImageIndex(index);
+                      }}
                       style={{
                         width: SCREEN_WIDTH,
                         height: SCREEN_HEIGHT * 0.35,
@@ -662,7 +665,7 @@ export const UnifiedDetailsSheet = React.memo(
                     className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
                   >
                     <ArrowLeft size={20} color="#000" />
-                    </TouchableOpacity>
+                  </TouchableOpacity>
                 </View>
 
                 {/* Floating Stats - Show attendee count prominently for events */}
@@ -779,7 +782,7 @@ export const UnifiedDetailsSheet = React.memo(
                                 key={index}
                                 onPress={() => {
                                   setSelectedImage(url);
-                                  setSelectedImageIndex(index + 1); // +1 because we're slicing from index 1
+                                  setSelectedImageIndex(index + 1);
                                 }}
                                 className="overflow-hidden w-32 h-32 rounded-xl"
                               >
@@ -864,11 +867,17 @@ export const UnifiedDetailsSheet = React.memo(
           </BottomSheet>
 
           {/* Enhanced Image Viewer Modal with Swiping */}
+
           <Modal
             visible={!!selectedImage}
             transparent={true}
             animationType="fade"
-            onRequestClose={() => setSelectedImage(null)}
+            onRequestClose={() => {
+              // Close viewer and guard against late momentum events
+              isViewerOpenRef.current = false;
+              setSelectedImage(null);
+              
+            }}
             statusBarTranslucent={true}
             presentationStyle="overFullScreen"
           >
@@ -887,7 +896,12 @@ export const UnifiedDetailsSheet = React.memo(
               <View className="absolute top-0 right-0 left-0 z-10 flex-row justify-between items-center p-4 pt-12">
                 <TouchableOpacity
                   className="justify-center items-center w-10 h-10 rounded-full bg-white/20"
-                  onPress={() => setSelectedImage(null)}
+                  onPress={() => {
+                    console.log("Closing image viewer");
+                    isViewerOpenRef.current = false;
+                    setSelectedImage(null);
+                    
+                  }}
                 >
                   <X size={24} color="white" />
                 </TouchableOpacity>
@@ -906,15 +920,17 @@ export const UnifiedDetailsSheet = React.memo(
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
                 onMomentumScrollEnd={(event) => {
+                  // If viewer was just closed, ignore late momentum events
+                  if (!isViewerOpenRef.current) return;
                   const newIndex = Math.round(
                     event.nativeEvent.contentOffset.x / SCREEN_WIDTH
                   );
                   setSelectedImageIndex(newIndex);
-                  if (currentData?.image_urls?.[newIndex]) {
-                    setSelectedImage(currentData.image_urls[newIndex]);
-                  }
                 }}
-                contentOffset={{ x: selectedImageIndex * SCREEN_WIDTH, y: 0 }}
+                contentOffset={{
+                  x: Math.max(0, selectedImageIndex) * SCREEN_WIDTH,
+                  y: 0,
+                }}
                 style={{ flex: 1 }}
               >
                 {(currentData?.image_urls || []).map(
@@ -945,6 +961,8 @@ export const UnifiedDetailsSheet = React.memo(
                       <TouchableOpacity
                         key={index}
                         onPress={() => {
+                          // Jump to tapped dot and ensure viewer remains open
+                          isViewerOpenRef.current = true;
                           setSelectedImageIndex(index);
                           if (currentData?.image_urls?.[index]) {
                             setSelectedImage(currentData.image_urls[index]);
