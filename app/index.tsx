@@ -20,6 +20,7 @@ import { Text } from "~/src/components/ui/text";
 import { useAuth } from "~/src/lib/auth";
 import { cacheMonitor } from "~/src/lib/cacheMonitor";
 import { cacheWarmer } from "~/src/lib/cacheWarmer";
+import { useIsFocused } from "@react-navigation/native";
 const { width, height } = Dimensions.get("window");
 
 // Background images data
@@ -502,6 +503,7 @@ const GeometricPattern = ({ rotation }: { rotation: Animated.Value }) => {
 };
 
 export default function LandingPage() {
+  const isFocused = useIsFocused();
   const { theme } = useTheme();
   const { session, loading } = useAuth();
   const insets = useSafeAreaInsets();
@@ -530,12 +532,12 @@ export default function LandingPage() {
   );
 
   useEffect(() => {
-    if (!loading && session) {
+    if (!loading && session && isFocused) {
       console.log("Landing page: User is authenticated, redirecting to app");
       router.replace("/(app)/(map)");
       return;
     }
-  }, [session, loading]);
+  }, [session, loading, isFocused]);
 
   useEffect(() => {
     // Initialize app and create orbiting images
