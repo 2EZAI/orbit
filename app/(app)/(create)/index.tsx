@@ -119,8 +119,10 @@ export default function CreateEvent() {
   });
   const [searchResults, setSearchResults] = useState<MapboxFeature[]>([]);
   const [showResults, setShowResults] = useState<boolean>(false);
-  const [startDate, setStartDate] = useState(new Date());
-  const [endDate, setEndDate] = useState(new Date());
+  let today = new Date();
+
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(today);
   const [externalUrl, setExternalUrl] = useState("");
   const [externalTitle, setExternalTitle] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -382,10 +384,13 @@ export default function CreateEvent() {
 
   // Helper function to clear form fields
   const clearForm = () => {
+    let today = new Date();
+    let tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
     setName("");
     setDescription("");
-    setStartDate(new Date()); // instead of null
-    setEndDate(new Date());
+    setStartDate(today);
+    setEndDate(tomorrow);
     setSelectedTopics("");
     setSelectedTopicsName("");
     setIsPrivate(false);
