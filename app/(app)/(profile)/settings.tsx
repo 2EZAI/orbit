@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useNavigation } from "expo-router";
 import {
   ArrowLeft,
   ChevronRight,
@@ -145,7 +145,7 @@ function SectionHeader({ title }: SectionHeaderProps) {
 export default function SettingsScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-
+  const navigation = useNavigation();
   // Modal states
   const [showPersonalInfo, setShowPersonalInfo] = useState(false);
   const [showUsername, setShowUsername] = useState(false);
@@ -200,7 +200,12 @@ export default function SettingsScreen() {
       // router.dismiss();
       router.back();
       // router.replace("/");
-      router.dismissAll();
+      navigation.dispatch({ type: "POP_TO_TOP" });
+      // navigation.reset({
+      //   index: 0,
+      //   routes: [{ name: "/" }],
+      // });
+      // Optionally, navigate to a specific screen after logout
       // router.dismissTo("/(app)/(map)");
 
       console.log("Logout successful - app layout will handle redirect");
