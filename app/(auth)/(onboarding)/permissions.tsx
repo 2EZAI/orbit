@@ -12,7 +12,7 @@ import { Text } from "~/src/components/ui/text";
 import * as Location from "expo-location";
 import * as ImagePicker from "expo-image-picker";
 import * as Notifications from "expo-notifications";
-
+import * as Contacts from "expo-contacts";
 // Configure notifications
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -28,6 +28,7 @@ import {
   CheckCircle2,
   Bell,
   ArrowLeft,
+  Contact,
 } from "lucide-react-native";
 import { useAuth } from "~/src/lib/auth";
 import { supabase } from "~/src/lib/supabase";
@@ -38,7 +39,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-type Permission = "location" | "camera" | "photos" | "notifications";
+type Permission =
+  | "location"
+  | "camera"
+  | "photos"
+  | "notifications"
+  | "contacts";
 
 interface PermissionState {
   granted: boolean;
@@ -58,6 +64,7 @@ export default function PermissionsScreen() {
     camera: { granted: false, loading: false },
     photos: { granted: false, loading: false },
     notifications: { granted: false, loading: false },
+    contacts: { granted: false, loading: false },
   });
 
   const handleBack = () => {
@@ -94,6 +101,11 @@ export default function PermissionsScreen() {
       const notificationStatus = await Notifications.getPermissionsAsync();
       if (notificationStatus.granted) {
         updatePermissionState("notifications", { granted: true });
+      }
+      // Check contacts permission
+      const contactsStatus = await Contacts.getPermissionsAsync();
+      if (contactsStatus.granted) {
+        updatePermissionState("contacts", { granted: true });
       }
     } catch (error) {
       console.error("Error checking existing permissions:", error);
@@ -201,9 +213,20 @@ export default function PermissionsScreen() {
       updatePermissionState("photos", { loading: false });
     }
   };
-
+  const requestContactsPermission = async () => {
+    updatePermissionState("contacts", { loading: true });
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      updatePermissionState("contacts", { granted: status === "granted" });
+    } catch (e) {
+      console.error("Error requesting contacts permission:", e);
+      updatePermissionState("contacts", { granted: false });
+    } finally {
+      updatePermissionState("contacts", { loading: false });
+    }
+  };
   const allPermissionsGranted = Object.values(permissions).every(
-    (p) => p.granted
+    (p) => p.granted || (p.key === "contacts" && !p.granted)
   );
 
   const hitNotificationApi = async (type: string) => {
@@ -232,13 +255,10 @@ export default function PermissionsScreen() {
         throw new Error(await response.text());
       }
 
-        const data_ = await response.json();
-        console.log("response>",data_);
-        
-    }
-    catch(e)
-    {
-console.log("error_catch>",e);
+      const data_ = await response.json();
+      console.log("response>", data_);
+    } catch (e) {
+      console.log("error_catch>", e);
     }
   };
 
@@ -258,7 +278,11 @@ console.log("error_catch>",e);
 
       console.log("Permissions saved, navigating to app");
       hitNotificationApi("welcome");
-      router.replace("/(app)/");
+      if (permissions.contacts.granted) {
+        router.replace("/(app)/contacts");
+      } else {
+        router.replace("/(app)/");
+      }
     } catch (error) {
       console.error("Error saving permissions state:", error);
       Toast.show({
@@ -302,6 +326,13 @@ console.log("error_catch>",e);
       description:
         "Get notified about new events, messages, and updates from friends",
       onPress: requestNotificationPermission,
+    },
+    {
+      key: "contacts" as Permission,
+      icon: Contact,
+      title: "Contacts Access",
+      description: "Access your contacts to invite friends to events",
+      onPress: requestContactsPermission,
     },
   ];
 
@@ -661,7 +692,13 @@ console.log("error_catch>",e);
         {/* Continue Button */}
         <TouchableOpacity
           onPress={handleContinue}
-          disabled={!allPermissionsGranted || isSubmitting}
+          disabled={
+            !permissions.camera.granted ||
+            !permissions.location.granted ||
+            !permissions.location.granted ||
+            !permissions.photos.granted ||
+            isSubmitting
+          }
           style={{
             height: 64,
             backgroundColor:

@@ -200,6 +200,7 @@ export default function SettingsScreen() {
       // router.dismiss();
       router.back();
       // router.replace("/");
+
       navigation.dispatch({ type: "POP_TO_TOP" });
       // navigation.reset({
       //   index: 0,
