@@ -11,13 +11,13 @@ import {
 
 export function useSocialLoginsApi() {
   const [error, setError] = useState<Error | null>(null);
-  
+
   GoogleSignin.configure({
     scopes: ["https://www.googleapis.com/auth/drive.readonly"],
     iosClientId:
-      "809354453079-21bet8phmjrskmnt17in7250ehhn97g3.apps.googleusercontent.com",
+      "687195339278-vf4jcpfcj0mi7r2g74mgnbo9n4frlv5l.apps.googleusercontent.com",
     webClientId:
-      "809354453079-9k7nsnt1n71ki815t2qtv4i4nqjelkan.apps.googleusercontent.com",
+      "687195339278-vf4jcpfcj0mi7r2g74mgnbo9n4frlv5l.apps.googleusercontent.com",
   });
 
   const appleUserExistsOrNot = async (uesrId: string) => {
@@ -37,13 +37,13 @@ export function useSocialLoginsApi() {
   };
 
   const googleUserExistsOrNot = async (uesrId: string) => {
-    // console.error('uesr>', uesrId);
+    console.error("uesr>", uesrId);
     const { data, error } = await supabase
       .from("users")
       .select("id")
       .eq("google_id", uesrId)
       .maybeSingle(); // Use maybeSingle() if email might not exist
-
+    console.log("data, error>", data, error);
     if (error) {
       console.error("❌ Error querying Supabase:", error);
       return false;
@@ -62,7 +62,7 @@ export function useSocialLoginsApi() {
           updated_at: new Date().toISOString(),
         })
         .eq("id", user.id);
-
+console.log("supabaseError>", supabaseError);
       if (supabaseError) throw supabaseError;
     } catch (e) {
       console.log(
@@ -73,7 +73,6 @@ export function useSocialLoginsApi() {
       throw e;
     }
   };
-
 
   const appleLogin = async () => {
     try {
@@ -109,6 +108,7 @@ export function useSocialLoginsApi() {
           }
         } else {
           //new user
+          console.log("new user", credential);
           const {
             error,
             data: { user },
@@ -136,7 +136,7 @@ export function useSocialLoginsApi() {
         throw new Error("No identityToken.");
       }
     } catch (e) {
-      if (e instanceof Error && 'code' in e) {
+      if (e instanceof Error && "code" in e) {
         const err = e as { code: string };
         if (err.code === "ERR_REQUEST_CANCELED") {
           // handle that the user canceled the sign-in flow
@@ -155,6 +155,7 @@ export function useSocialLoginsApi() {
     try {
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
+      console.log("userInfo>", userInfo, userInfo.data?.user.id);
       if (userInfo.data && userInfo.data.idToken) {
         const {
           data: { user },
@@ -175,6 +176,7 @@ export function useSocialLoginsApi() {
           // User is signed in.
           // Navigate to home
           // router.replace("/(app)/home");
+          console.log("user exist, navigate to home");
         } else {
           await updateUser(
             {
@@ -205,10 +207,10 @@ export function useSocialLoginsApi() {
       }
     }
   };
-  
+
   return {
     error,
     appleLogin,
-    googleLogin
+    googleLogin,
   };
 }

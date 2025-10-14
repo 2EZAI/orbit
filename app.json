@@ -40,7 +40,7 @@
       "expo-apple-authentication",
       "@react-native-google-signin/google-signin",
       {
-        "iosUrlScheme": "com.googleusercontent.apps.809354453079-21bet8phmjrskmnt17in7250ehhn97g3"
+        "iosUrlScheme": "com.googleusercontent.apps.687195339278-vf4jcpfcj0mi7r2g74mgnbo9n4frlv5l"
       },
       [
         "@config-plugins/react-native-webrtc",
