@@ -1,4 +1,4 @@
-import React , {useState} from "react";
+import React, { useState } from "react";
 import { View, StatusBar } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { useTheme } from "~/src/components/ThemeProvider";
@@ -7,7 +7,6 @@ import EventSummaryCard from "~/src/components/createpost/EventSummaryCard";
 import { DeviceEventEmitter } from "react-native";
 import InviteUsers from "~/src/components/createpost/InviteUsers";
 import { User as AuthUser } from "@supabase/supabase-js";
-
 
 interface EventImage {
   uri: string;
@@ -33,7 +32,7 @@ export default function EventSummary() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const [isInviteOpen, setIsInviteOpen] = useState<Boolean>(false);
-console.log("params>>",params);
+  console.log("params>>", params);
   // Parse the event data from params
   const eventData = {
     name: params.name as string,
@@ -45,22 +44,22 @@ console.log("params>>",params);
     locationDetails: params.locationDetails
       ? (JSON.parse(params.locationDetails as string) as LocationDetails)
       : undefined,
-    
+
     externalUrl: params.externalUrl as string,
     eventLocation: {
       lat: parseFloat(params.lat as string),
       lng: parseFloat(params.lng as string),
     },
-    coCreators:params.coCreators
-  ? (JSON.parse(params.coCreators as string) as User[])
-  : undefined,
-   ticketEnabled: params.ticketEnabled,
-  ticketLimitPerUser:params.ticketLimitPerUser,
-          ticketTotal:params.ticketTotal,
+    coCreators: params.coCreators
+      ? (JSON.parse(params.coCreators as string) as User[])
+      : undefined,
+    ticketEnabled: params.ticketEnabled,
+    ticketLimitPerUser: params.ticketLimitPerUser,
+    ticketTotal: params.ticketTotal,
   };
-  console.log("eventData.coCreators>",eventData.coCreators)
-  eventData.coCreators.coCreators.map((user)=>{
-console.log("user.user>",user.user);
+  console.log("eventData.coCreators>", eventData.coCreators);
+  eventData.coCreators.coCreators.map((user) => {
+    console.log("user.user>", user.user);
   });
 
   const handleConfirm = () => {
@@ -86,25 +85,25 @@ console.log("user.user>",user.user);
   };
 
   const handleEdit = () => {
-    console.log("params.eventId>",params.eventId);
-    const ticketInfoStr =params.ticketInfo;
-console.log("ticketInfoStr>",ticketInfoStr);
-let ticketInfo;
-try {
-  ticketInfo = JSON.parse(ticketInfoStr);
-} catch (e) {
-  ticketInfo = null;
-}
-console.log("ticketInfo>",ticketInfo);
+    console.log("params.eventId>", params.eventId);
+    const ticketInfoStr = params.ticketInfo;
+    console.log("ticketInfoStr>", ticketInfoStr);
+    let ticketInfo;
+    try {
+      ticketInfo = JSON.parse(ticketInfoStr);
+    } catch (e) {
+      ticketInfo = null;
+    }
+    console.log("ticketInfo>", ticketInfo);
     // console.log("params.eventId as string>",params.eventId as string);
-     DeviceEventEmitter.emit("editEvent", {
+    DeviceEventEmitter.emit("editEvent", {
       eventId: params.eventId,
     });
     // Go back to the create event screen
     router.back();
   };
 
-const handleInviteUser = () => {
+  const handleInviteUser = () => {
     setIsInviteOpen(true);
   };
 
@@ -167,11 +166,10 @@ const handleInviteUser = () => {
           onClose={() => {
             setIsInviteOpen(false);
           }}
-          goToMap={()=>{
+          goToMap={() => {
             setIsInviteOpen(false);
-            handleConfirm()
+            handleConfirm();
           }}
-         
         />
       )}
     </View>

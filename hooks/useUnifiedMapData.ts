@@ -3,7 +3,14 @@ import { supabase } from "~/src/lib/supabase";
 import { format } from "date-fns";
 import * as Location from "expo-location";
 import { useAuth } from "~/src/lib/auth";
+import { User as AuthUser } from "@supabase/supabase-js";
 
+interface User extends AuthUser {
+  first_name: string | null;
+  last_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+}
 // Types from existing useMapEvents hook
 export interface MapEvent {
   id: string;
@@ -54,6 +61,12 @@ export interface MapEvent {
   source?: string;
   type?: string;
   mainType: "event"; //  new type to differentiate
+  ticket_enabled?: boolean;
+  ticket_total?: number | null;
+  ticket_limit_per_user?: number | null;
+  co_creators?:Array<{
+    user:User[];
+  }>;
 }
 
 export interface MapLocation {

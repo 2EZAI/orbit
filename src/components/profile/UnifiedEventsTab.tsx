@@ -6,6 +6,7 @@ import {
   RefreshControl,
   Pressable,
 } from "react-native";
+import { User as AuthUser } from "@supabase/supabase-js";
 import { Text } from "~/src/components/ui/text";
 import { SocialEventCard } from "~/src/components/social/SocialEventCard";
 import { UnifiedDetailsSheet } from "~/src/components/map/UnifiedDetailsSheet";
@@ -16,6 +17,12 @@ import { supabase } from "~/src/lib/supabase";
 
 type EventTab = "Created" | "Joined";
 
+interface User extends AuthUser {
+  first_name: string | null;
+  last_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+}
 interface Event {
   id: string;
   name: string;
@@ -32,6 +39,12 @@ interface Event {
   location_id?: string;
   category_id?: string;
   is_ticketmaster?: boolean;
+  ticket_enabled?: boolean;
+  ticket_total?: number | null;
+  ticket_limit_per_user?: number | null;
+  co_creators?:{
+    user:User[];
+  }
   external_url?: string;
   distance?: number; // Add missing distance property
   location?: {

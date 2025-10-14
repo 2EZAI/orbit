@@ -784,6 +784,20 @@ console.log("prompts>",detail?.category?.prompts)
                   </View>
                 )}
 
+                    {/* tcket Tags */}
+                {data?.ticket_enabled && (
+                  <View className="mb-3">
+                     <View
+                              
+                              className="px-2 py-1 mr-2 rounded-full bg-white/15"
+                            >
+                              <Text className="text-xs text-white">
+                                Ticket
+                              </Text>
+                            </View>
+                  </View>
+                )}
+
                 {/* Context-Aware Action Buttons */}
                 <View className="flex-row gap-2">
                   {contextActions.map((action, index) => (

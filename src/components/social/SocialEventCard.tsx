@@ -495,7 +495,7 @@ export function SocialEventCard({
       style={{
         backgroundColor: theme.colors.card,
         borderColor: theme.colors.border,
-        height: 160, // Make it more compact
+        height: 190, // Make it more compact
       }}
     >
       {/* Background Image with Blur */}
@@ -539,16 +539,34 @@ export function SocialEventCard({
           </View>
         </View>
 
+ {/* Header with Icon and Category */}
+        {data?.ticket_enabled && <View className="mt-1 mb-1 flex-row justify-between items-center">
+          <View className="flex-row items-center">
+            <Text className="mr-2 text-lg">{itemIcon}</Text>
+            <View
+              style={{ backgroundColor: isDarkMode
+                          ? "rgba(255,255,255,0.95)"
+                          : "rgba(255,255,255,0.95)", }}
+              className="px-2 py-1 rounded-full"
+            >
+              <Text className="text-xs font-semibold text-black">
+                Ticket
+              </Text>
+            </View>
+          </View>
+        </View>}
+
         {/* Main Content */}
         <View className="flex-1 justify-center">
           {/* Title */}
-          <Text className="mb-1 text-lg font-bold text-white" numberOfLines={1}>
+          <Text className="mb-1 text-lg font-bold text-white" 
+          numberOfLines={1}>
             {displayValues.title}
           </Text>
 
           {/* Date/Time for Events */}
           {displayValues.dateTime && (
-            <View className="flex-row items-center mb-1">
+            <View className="flex-row items-center mb-1 ">
               <Calendar size={12} color="white" />
               <Text className="ml-1 text-sm text-white/90">
                 {displayValues.dateTime.date} • {displayValues.dateTime.time}
@@ -569,7 +587,7 @@ export function SocialEventCard({
 
         {/* Single Action Button */}
         <TouchableOpacity
-          className="py-2 mt-2 rounded-full"
+          className="py-2 mt-6 rounded-full"
           style={{ backgroundColor: theme.colors.primary }}
           onPress={() => handleContextAction("details")}
         >
