@@ -1,63 +1,60 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import { LinearGradient } from "expo-linear-gradient";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-  View,
-  TouchableOpacity,
-  ActivityIndicator,
+  Bell,
+  Bookmark,
+  Calendar,
+  Clock,
+  Filter,
+  MapPin,
+  Search,
+  Sparkles,
+  Users,
+} from "lucide-react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Animated,
+  Dimensions,
   FlatList,
   Image,
-  TextInput,
-  Platform,
-  StyleSheet,
-  StatusBar,
-  Animated,
   RefreshControl,
   ScrollView,
-  Dimensions,
+  StatusBar,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Text } from "~/src/components/ui/text";
-import { OptimizedImage } from "~/src/components/ui/optimized-image";
-import { useTheme } from "~/src/components/ThemeProvider";
-import { useUser } from "~/src/lib/UserProvider";
 import { useHomeFeed } from "~/hooks/useHomeFeed";
 import { useNotificationsApi } from "~/hooks/useNotificationsApi";
-import {
-  Filter,
-  Search,
-  Bell,
-  User,
-  MapPin,
-  Calendar,
-  Users,
-  Heart,
-  Share,
-  Bookmark,
-  Sparkles,
-  Clock,
-} from "lucide-react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { OptimizedImage } from "~/src/components/ui/optimized-image";
+import { Text } from "~/src/components/ui/text";
+import { useUser } from "~/src/lib/UserProvider";
 
 // Components
+import { CompactEventCard } from "~/src/components/feed/CompactEventCard";
+import { EventCard } from "~/src/components/feed/EventCard";
 import { FeaturedSection } from "~/src/components/feed/FeaturedSection";
 import { FeedSection } from "~/src/components/feed/FeedSection";
-import { EventCard } from "~/src/components/feed/EventCard";
-import { LocationCard } from "~/src/components/feed/LocationCard";
-import { CompactEventCard } from "~/src/components/feed/CompactEventCard";
-import { MarkerFilter } from "~/src/components/map/MarkerFilter";
-import { SectionViewSheet } from "~/src/components/SectionViewSheet";
-import { UnifiedDetailsSheet } from "~/src/components/map/UnifiedDetailsSheet";
-import { SearchSheet } from "~/src/components/search/SearchSheet";
-import { ScreenHeader } from "~/src/components/ui/screen-header";
 import { HomeLoadingScreen } from "~/src/components/feed/HomeLoadingScreen";
+import { MarkerFilter } from "~/src/components/map/MarkerFilter";
+import {
+  UnifiedData,
+  UnifiedDetailsSheet,
+} from "~/src/components/map/UnifiedDetailsSheet";
+import { SearchSheet } from "~/src/components/search/SearchSheet";
+import { SectionViewSheet } from "~/src/components/SectionViewSheet";
+import { ScreenHeader } from "~/src/components/ui/screen-header";
 
 // Utils
-import { handleSectionViewMore } from "~/src/lib/utils/sectionViewMore";
 import {
   FilterState,
   generateDefaultFilters,
 } from "~/src/components/map/MarkerFilter";
+import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
 import { useAuth } from "~/src/lib/auth";
+import { handleSectionViewMore } from "~/src/lib/utils/sectionViewMore";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const STORY_CARD_WIDTH = screenWidth * 0.8;
@@ -369,7 +366,10 @@ export default function Home() {
 
   // Home feed data
   const { data, loading, error, refetch } = useHomeFeed();
-
+  const [shareData, setShareData] = useState<{
+    data: UnifiedData;
+    isEventType: boolean;
+  } | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const [isSelectedItemLocation, setIsSelectedItemLocation] = useState(false);
   const [currentFeaturedIndex, setCurrentFeaturedIndex] = useState(0);
@@ -1598,6 +1598,10 @@ export default function Home() {
               handleEventSelect(data);
             }
           }}
+          onShare={(data, isEvent) => {
+            setSelectedEvent(null);
+            setShareData({ data, isEventType: isEvent });
+          }}
           onShowControler={() => {}}
           isEvent={!isSelectedItemLocation}
         />
@@ -1611,6 +1615,19 @@ export default function Home() {
         locationsList={[]}
         onShowControler={() => {}}
       />
+      {console.log(
+        "🔗 [Home] Rendered with selectedEvent:",
+        selectedEvent,
+        shareData
+      )}
+      {shareData && (
+        <UnifiedShareSheet
+          isOpen={!!shareData}
+          onClose={() => setShareData(null)}
+          data={shareData?.data}
+          isEventType={shareData?.isEventType}
+        />
+      )}
     </View>
   );
 }
