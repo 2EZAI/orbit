@@ -200,14 +200,7 @@ export default function SettingsScreen() {
       // router.dismiss();
       router.back();
       // router.replace("/");
-
       navigation.dispatch({ type: "POP_TO_TOP" });
-      // navigation.reset({
-      //   index: 0,
-      //   routes: [{ name: "/" }],
-      // });
-      // Optionally, navigate to a specific screen after logout
-      // router.dismissTo("/(app)/(map)");
 
       console.log("Logout successful - app layout will handle redirect");
     } catch (error) {
