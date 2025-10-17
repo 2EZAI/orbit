@@ -12,6 +12,7 @@ import {
   Shield,
   Trash2,
   User,
+  ClipboardList,
 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
@@ -432,7 +433,7 @@ export default function SettingsScreen() {
         />
         <SectionHeader title="Proposals" />
         <SettingItem
-          icon={<FileText size={20} color={theme.colors.primary} />}
+          icon={<ClipboardList size={20} color={theme.colors.primary} />}
           title="Proposals"
           onPress={handleProposalsPress}
         />
