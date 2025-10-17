@@ -13,16 +13,18 @@ import { UnifiedData } from "./UnifiedDetailsSheet";
 
 import React, { useState } from "react";
 interface IProps {
-  data: UnifiedData | undefined;
+  data?: UnifiedData;
   onBack: () => void;
   proposals: IProposal[];
-  onAdd: () => void;
+  onAdd?: () => void;
+  onShowEventDetails?: (proposal: IProposal) => void;
 }
 const ProposalSelectList: React.FC<IProps> = ({
   data,
   onBack,
   proposals,
-  onAdd,
+  onAdd = () => {},
+  onShowEventDetails = () => {},
 }) => {
   const { theme } = useTheme();
   const [selectedProposals, setSelectedProposals] = useState<string>("");
@@ -42,8 +44,11 @@ const ProposalSelectList: React.FC<IProps> = ({
           },
         ]}
         onPress={() => {
-          if (isEventAlreadyAdded) return;
-          setSelectedProposals(item.id);
+          if (data && !isEventAlreadyAdded) {
+            setSelectedProposals(item.id);
+          } else {
+            onShowEventDetails(item);
+          }
         }}
       >
         <View style={styles.itemContent}>
@@ -55,27 +60,31 @@ const ProposalSelectList: React.FC<IProps> = ({
           >
             {item.events_attached.length} events added
           </Text>
-          <Text
+          {data ? (
+            <Text
+              style={[
+                styles.eventAlreadyAddedText,
+                { color: theme.colors.text + "40" },
+              ]}
+            >
+              {isEventAlreadyAdded ? "Event already added" : ""}
+            </Text>
+          ) : null}
+        </View>
+        {data ? (
+          <View
             style={[
-              styles.eventAlreadyAddedText,
-              { color: theme.colors.text + "40" },
+              styles.iconContainer,
+              {
+                backgroundColor: isSelected
+                  ? theme.colors.primary
+                  : theme.colors.border,
+              },
             ]}
           >
-            {isEventAlreadyAdded ? "Event already added" : ""}
-          </Text>
-        </View>
-        <View
-          style={[
-            styles.iconContainer,
-            {
-              backgroundColor: isSelected
-                ? theme.colors.primary
-                : theme.colors.border,
-            },
-          ]}
-        >
-          {isSelected && <CheckCircle2 size={28} color="white" />}
-        </View>
+            {isSelected && <CheckCircle2 size={28} color="white" />}
+          </View>
+        ) : null}
       </TouchableOpacity>
     );
   };
@@ -108,12 +117,14 @@ const ProposalSelectList: React.FC<IProps> = ({
               color: theme.colors.text,
             }}
           >
-            Select Proposals
+            {data ? `Select Proposals` : "Your Proposals"}
           </Text>
         </View>
-        <TouchableOpacity onPress={onAdd}>
-          <PlusCircle size={30} color={theme.colors.primary} />
-        </TouchableOpacity>
+        {data ? (
+          <TouchableOpacity onPress={onAdd}>
+            <PlusCircle size={30} color={theme.colors.primary} />
+          </TouchableOpacity>
+        ) : null}
       </View>
       <View style={styles.list}>
         <FlatList
@@ -122,42 +133,44 @@ const ProposalSelectList: React.FC<IProps> = ({
           keyExtractor={(item) => item.id}
         />
       </View>
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          onPress={handleSubmit}
-          disabled={loading || !validateCheck()}
-          style={[
-            styles.button,
-            {
-              backgroundColor: validateCheck() ? "#8B5CF6" : "transparent",
+      {data ? (
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            onPress={handleSubmit}
+            disabled={loading || !validateCheck()}
+            style={[
+              styles.button,
+              {
+                backgroundColor: validateCheck() ? "#8B5CF6" : "transparent",
 
-              borderColor: validateCheck()
-                ? "#8B5CF6"
-                : theme.colors.text + "20",
+                borderColor: validateCheck()
+                  ? "#8B5CF6"
+                  : theme.colors.text + "20",
 
-              opacity: loading ? 0.7 : 1,
-            },
-          ]}
-        >
-          {loading ? (
-            <ActivityIndicator color="white" size="small" />
-          ) : (
-            <View className="flex-row items-center">
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: "700",
-                  color: validateCheck() ? "white" : theme.colors.text + "40",
+                opacity: loading ? 0.7 : 1,
+              },
+            ]}
+          >
+            {loading ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <View className="flex-row items-center">
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: validateCheck() ? "white" : theme.colors.text + "40",
 
-                  marginRight: 8,
-                }}
-              >
-                Add Event to Proposal
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
+                    marginRight: 8,
+                  }}
+                >
+                  Add Event to Proposal
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+      ) : null}
     </View>
   );
 };

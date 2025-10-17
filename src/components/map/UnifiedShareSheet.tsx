@@ -1,24 +1,10 @@
-import {
-  Modal,
-  View,
-  Text,
-  Share,
-  TouchableOpacity,
-  FlatList,
-} from "react-native";
-import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import { useTheme } from "../ThemeProvider";
-import { UnifiedData } from "./UnifiedDetailsSheet";
-import { haptics } from "~/src/lib/haptics";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Sheet } from "../ui/sheet";
 import React, { useEffect, useState } from "react";
-import ShareContent from "./ShareContent";
-import { title } from "process";
-import AddProposalContent from "./AddProposalContent";
 import { useProposals } from "~/hooks/useProposals";
-import { get } from "lodash";
+import { Sheet } from "../ui/sheet";
+import AddProposalContent from "./AddProposalContent";
 import ProposalSelectList from "./ProposalSelectList";
+import ShareContent from "./ShareContent";
+import { UnifiedData } from "./UnifiedDetailsSheet";
 interface IProps {
   onClose: () => void;
   isOpen: boolean;

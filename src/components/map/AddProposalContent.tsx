@@ -27,6 +27,7 @@ const AddProposalContent: React.FC<IProps> = ({ onBack, data }) => {
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
   const [showTimePicker, setShowTimePicker] = useState<boolean>(false);
+  console.log("AddProposalContent data:", data?.source);
   const validateCheck = () => {
     return !!title.trim();
   };
@@ -36,7 +37,7 @@ const AddProposalContent: React.FC<IProps> = ({ onBack, data }) => {
       title: title.trim(),
       start_datetime: startDate.toISOString(),
       events_attached: [
-        { id: data.id, name: data.name, type: data.type || "event" },
+        { id: data.id, name: data.name, type: data.source || "event" },
       ],
     });
     console.log("New Proposal Created:", newProposal);

@@ -57,6 +57,7 @@ export type UnifiedData = (MapEvent | MapLocation) & {
   phone?: string;
   type?: string;
   is_ticketmaster?: boolean;
+  source?: string;
 };
 
 interface UnifiedDetailsSheetProps {
