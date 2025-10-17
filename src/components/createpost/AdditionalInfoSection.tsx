@@ -19,6 +19,7 @@ export default function AdditionalInfoSection({
 }: AdditionalInfoSectionProps) {
   const { theme } = useTheme();
 
+
   return (
     
     <View

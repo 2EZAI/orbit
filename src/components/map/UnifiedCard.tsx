@@ -23,7 +23,7 @@ import {
   Calendar,
   Star,
 } from "lucide-react-native";
-import {  Prompt } from "~/hooks/useMapEvents";
+import { Prompt } from "~/hooks/useMapEvents";
 import { Icon } from "react-native-elements";
 import { Button } from "../ui/button";
 import { useRouter } from "expo-router";
@@ -209,7 +209,7 @@ const getContextActions = (
   treatAsEvent?: boolean
 ) => {
   if (treatAsEvent) {
-    console.log("detailData>",detailData)
+    console.log("detailData>", detailData);
     const categories =
       (detailData as MapEvent)?.categories ||
       (data as MapEvent).categories ||
@@ -220,8 +220,10 @@ const getContextActions = (
     const joinStatus = (detailData as any)?.join_status || false;
     const isTicketmaster =
       (detailData as any)?.is_ticketmaster || (data as any)?.is_ticketmaster;
-    const hasTickets = (detailData as any)?.external_url || (data as any)?.external_url;
-    const hasTitle = (detailData as any)?.external_title || (data as any)?.external_title ;
+    const hasTickets =
+      (detailData as any)?.external_url || (data as any)?.external_url;
+    const hasTitle =
+      (detailData as any)?.external_title || (data as any)?.external_title;
 
     if (categoryName.includes("food") || name.includes("dinner")) {
       return [
@@ -264,8 +266,12 @@ const getContextActions = (
           ? "Create Orbit"
           : isTicketmaster
           ? "Buy Tickets"
-          :hasTickets ? (hasTitle ? hasTitle :"Buy Tickets" ) :"Join Event",
-        action: joinStatus ? "create" :(hasTickets ?"buy_tickets" : "join"),
+          : hasTickets
+          ? hasTitle
+            ? hasTitle
+            : "Buy Tickets"
+          : "Join Event",
+        action: joinStatus ? "create" : hasTickets ? "buy_tickets" : "join",
         icon: joinStatus ? "💬" : isTicketmaster ? "🎫" : "✨",
       },
     ];
@@ -301,7 +307,7 @@ export const UnifiedCard = React.memo(
       longitude: number;
     } | null>(null);
 
-console.log("treatAsEvent>",treatAsEvent)
+    console.log("treatAsEvent>", treatAsEvent);
     // Get theme colors and context based on data - ULTRA OPTIMIZED
     const theme = useMemo(
       () => getThemeColors(detailData || data),
@@ -387,7 +393,6 @@ console.log("treatAsEvent>",treatAsEvent)
       transform: [{ translateX: translateX.value }],
     }));
 
-
     const handleTicketPurchase = () => {
       const currentData = detailData || data;
       if (!currentData.external_url) return;
@@ -406,8 +411,8 @@ console.log("treatAsEvent>",treatAsEvent)
     const handleContextAction = (action: string) => {
       switch (action) {
         case "buy_tickets":
-           handleTicketPurchase();
-        break;
+          handleTicketPurchase();
+          break;
         case "join":
           // For EVENTS: Join button -> turns into "Create Orbit"
           if (treatAsEvent && !(detailData as any)?.join_status) {
@@ -549,13 +554,14 @@ console.log("treatAsEvent>",treatAsEvent)
         params: {
           locationId: locationData.id,
           locationType: (locationData as any).type || "",
-          latitude: (locationData as any).location?.coordinates?.[1]?.toString() || "",
+          latitude:
+            (locationData as any).location?.coordinates?.[1]?.toString() || "",
           longitude:
             (locationData as any).location?.coordinates?.[0]?.toString() || "",
           address: (locationData as any).address || "",
           categoryId: simplifiedCategory.id,
           categoryName: simplifiedCategory.name,
-          prompts:JSON.stringify(locationData?.category?.prompts ?? []),
+          prompts: JSON.stringify(locationData?.category?.prompts ?? []),
         },
       });
     };
@@ -570,8 +576,8 @@ console.log("treatAsEvent>",treatAsEvent)
     // Get display values based on data type - ULTRA OPTIMIZED
     const displayValues = useMemo(() => {
       const detail = detailData || data;
-console.log("detail>",detail)
-console.log("prompts>",detail?.category?.prompts)
+      console.log("detail>", detail);
+      console.log("prompts>", detail?.category?.prompts);
 
       if (treatAsEvent) {
         return {
@@ -784,17 +790,12 @@ console.log("prompts>",detail?.category?.prompts)
                   </View>
                 )}
 
-                    {/* tcket Tags */}
+                {/* tcket Tags */}
                 {data?.ticket_enabled && (
                   <View className="mb-3">
-                     <View
-                              
-                              className="px-2 py-1 mr-2 rounded-full bg-white/15"
-                            >
-                              <Text className="text-xs text-white">
-                                Ticket
-                              </Text>
-                            </View>
+                    <View className="px-2 py-1 mr-2 rounded-full bg-white/15">
+                      <Text className="text-xs text-white">Ticket</Text>
+                    </View>
                   </View>
                 )}
 

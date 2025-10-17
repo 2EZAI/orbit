@@ -113,6 +113,7 @@ export default function CreateEvent() {
 
   const { showActionSheetWithOptions } = useActionSheet();
   const { user } = useUser();
+  const [isEditable, setIsEditable] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [images, setImages] = useState<EventImage[]>([]);
@@ -168,7 +169,11 @@ export default function CreateEvent() {
         }
       }
     }
-    console.log("params.latitude>", params.latitude);
+    console.log("params>", params);
+    if( params?.data) {
+     const data = params?.data;
+     handleData(data);
+    }
     if (params.locationId) setlocationId(params.locationId as string);
     if (params.locationType) setlocationType(params.locationType as string);
     if (params.latitude) setlatitude(parseFloat(params.latitude as string));
@@ -228,10 +233,149 @@ export default function CreateEvent() {
     );
     DeviceEventEmitter.addListener("editEvent", (...args: any[]) => {
       const [eventId] = args;
-      // console.log("eventId>>",eventId);
+      console.log("eventId>>",eventId);
       setEventID(eventId ? eventId : undefined);
     });
+    DeviceEventEmitter.addListener("editEventAdmin", (...args: any[]) => {
+      const data = args[0]?.data;
+     handleData(data);
+    });
+
+      return () => {
+      // 🔥 Component will unmount (destroyed)
+      console.log('Component unmounted');
+      // cleanup here (e.g., remove listeners, cancel timers)
+    };
   }, []);
+
+  handleData=(data)=>{
+     setIsEditable(true);
+      // console.log("dattasss>>",data);
+      const event = typeof data === "string" ? JSON.parse(data) : data;
+      console.log("event>>", event);
+      // Basic event fields
+      const id = event.id;
+      const name = event.name;
+      const privacy = event.is_private;
+      const description = event.description;
+      const startDateTime = event.start_datetime;
+      const endDateTime = event.end_datetime;
+
+      // Location
+      const address = event.address;
+      const city = event.city;
+      const state = event.state;
+      const postalCode = event.postal_code;
+      const latitude = event.location?.latitude;
+      const longitude = event.location?.longitude;
+
+      // Co-creators
+      const coCreators =
+        event.co_creators?.map((co) => ({
+          id: co.user_id,
+          username: co.user?.username,
+          avatar: co.user?.avatar_url,
+          name: co.user?.name,
+        })) || [];
+
+      // Categories / Topics
+      const categories = event.categories?.map((cat) => cat.name) || [];
+      const categoriesIds = event.categories?.map((cat) => cat.id) || [];
+      const topics =
+        event.event_topics?.map((topic) => topic.topics?.name) || [];
+
+      // Attendees
+      const attendees = event.attendees?.profiles || [];
+
+      const ticketEnabled = event.ticket_enabled;
+      const ticketLimitPerUser = event.ticket_limit_per_user;
+      const ticketRemaining = event.ticket_remaining;
+      const ticketTotal = event.ticket_total;
+      const ticketTotalEnabled = event.ticket_total_enabled;
+
+      const startDatetime = event.start_datetime;
+      const endDatetime = event.end_datetime;
+
+      const externalTitle = event.external_title;
+      const externalUrl = event.external_url;
+      // Image
+
+      const imageUrlData =
+        event.image_urls
+          ?.map((url) => {
+            try {
+              const { pathname } = new URL(url);
+              const parts = pathname.split("/");
+              const lastPart = parts[parts.length - 1]; // e.g. "file.jpg"
+
+              const [filename, extension] = lastPart.split(".");
+
+              console.log("Filename:", filename);
+              console.log("File extension:", extension);
+
+              return {
+                uri: url,
+                name: filename,
+                type: extension,
+              };
+            } catch (e) {
+              console.warn("Invalid URL:", url);
+              return null;
+            }
+          })
+          .filter(Boolean) || [];
+
+      console.log("imageUrlData>>:", imageUrlData);
+
+      console.log("name>", name);
+      console.log("id>>", id);
+      const myEvent = {
+  eventId: id
+};
+      setEventID(myEvent);
+      setName(name);
+      setIsPrivate(privacy);
+      setDescription(description);
+      setAddress1(address);
+      setSelectedUsers(coCreators);
+      setImages(imageUrlData);
+      // setSelectedTopicsName(categories);
+      setSelectedTopics(categoriesIds);
+
+      setIsTicketEnabled(ticketEnabled);
+      if(ticketLimitPerUser!=null){
+      setPerPerson(ticketLimitPerUser.toString());
+      }
+      if(ticketTotal!=null){
+      setTotalTicketQuantity(ticketTotal.toString());
+      }
+      setIsTotalTicketQuantity(ticketTotalEnabled);
+
+      setExternalTitle(externalTitle);
+      setExternalUrl(externalUrl);
+
+      //  const isoString = startDatetime; // e.g., 2025-08-09T00:00:00.000Z
+      console.log("ISO date>", startDatetime);
+      const startDateObject = new Date(startDatetime);
+      const endDatetimeObject = new Date(endDatetime);
+
+      console.log("startDateObject>", startDateObject);
+      console.log("endDatetimeObject>", endDatetimeObject);
+      // Set state
+      setStartDate(startDateObject);
+      setEndDate(endDatetimeObject);
+
+      const newLocationDetails = {
+        address1: address,
+        address2: "",
+        city: city,
+        state: state,
+        zip: postalCode,
+        coordinates: [longitude, latitude],
+      };
+      console.log("sdsdsddddds>>", newLocationDetails);
+      setLocationDetails(newLocationDetails);
+  }
 
   const handleInviteUser = () => {
     setIsInviteOpen(true);
@@ -581,6 +725,7 @@ export default function CreateEvent() {
       zip: contextMap.get("postcode") || "",
       coordinates: feature.center,
     };
+    console.log("newLocationDetails>", newLocationDetails);
 
     setLocationDetails(newLocationDetails);
     setAddress1(newLocationDetails.address1);
@@ -834,12 +979,12 @@ export default function CreateEvent() {
           lng: event.location.longitude,
           eventId: event.id, // Pass the event ID
           ticketEnabled: event.ticket_enabled,
-          ticketLimitPerUser:event.ticket_limit_per_user,
-          ticketTotal:event.ticket_total,
+          ticketLimitPerUser: event.ticket_limit_per_user,
+          ticketTotal: event.ticket_total,
           ticketInfo: JSON.stringify(event?.ticket_info),
           coCreators: JSON.stringify({
-                coCreators:event?.co_creators
-              })
+            coCreators: event?.co_creators,
+          }),
         },
       });
     } catch (error: any) {
@@ -950,7 +1095,7 @@ export default function CreateEvent() {
                 color: theme.colors.text,
               }}
             >
-              Create Event
+              {isEditable ? "Update Event" : "Create Event"}
             </Text>
           </View>
         </View>

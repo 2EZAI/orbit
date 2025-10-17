@@ -22,6 +22,7 @@ import { Text } from "~/src/components/ui/text";
 import { OptimizedImage } from "~/src/components/ui/optimized-image";
 import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
 import { useAuth } from "~/src/lib/auth";
+import { TicketDialog } from "~/src/components/map/TicketDialog";
 
 // Additional types that were in the old hook
 export interface Category {
@@ -152,6 +153,8 @@ export const UnifiedDetailsSheet = React.memo(
     const [isEditable, setIsEditable] = useState(false);
     const [manuallyUpdated, setManuallyUpdated] = useState(false);
     const { session } = useAuth();
+    const [showDialog, setShowDialog] = useState(false);
+    const [ticketCount, setTicketCount] = useState(null);
 
     // Memoize the event type check to prevent repeated calculations
     const isEventType = useMemo(
@@ -257,6 +260,11 @@ export const UnifiedDetailsSheet = React.memo(
       }
     };
 
+    const handleConfirm = (count) => {
+      setTicketCount(count);
+      setShowDialog(false);
+    };
+
     const formatDateRange = (start: string, end?: string) => {
       try {
         const startDate = new Date(start);
@@ -296,17 +304,20 @@ export const UnifiedDetailsSheet = React.memo(
       }
     };
 
-    const editHandle = async () => {
+    const editHandle = () => {
+      onClose();
       const currentData = detailData || data;
 
-      try {
-        await Share.share({
-          message: `Check out ${currentData?.name} on Orbit!\n${currentData?.description}`,
-          title: isEventType ? "Event on Orbit" : "Location on Orbit",
-        });
-      } catch (error) {
-        console.error("Error sharing:", error);
-      }
+      // Navigate to summary screen with event data
+      router.push({
+        pathname: "/(app)/(create)",
+        params: {
+          data: JSON.stringify(data),
+        },
+      });
+      DeviceEventEmitter.emit("editEventAdmin", {
+        data: JSON.stringify(data),
+      });
     };
 
     const handleCreatorClick = () => {
@@ -477,24 +488,33 @@ export const UnifiedDetailsSheet = React.memo(
     };
 
     const handleJoinEvent = async () => {
-      if (!isEventType) return;
-
-      setLoading(true);
-      try {
-        await UpdateEventStatus(data as any);
-        console.log("✅ Successfully joined event!");
-
-        // Directly update the detailData with joined status
-        const updatedData = { ...(detailData || data), join_status: true };
-        setDetailData(updatedData as UnifiedData);
-        setManuallyUpdated(true);
-
-        setLoading(false);
-        // Emit event to reload map and show event card
-        DeviceEventEmitter.emit("refreshMapData", true);
-      } catch (error) {
-        console.error("❌ Error joining event:", error);
-        setLoading(false);
+      const currentData = detailData || data;
+      console.log(
+        "currentData?.ticket_limit_per_user >",
+        currentData?.ticket_limit_per_user
+      );
+      if (
+        currentData?.ticket_limit_per_user != null &&
+        currentData?.ticket_limit_per_user > 1
+      ) {
+        setShowDialog(true);
+      } else {
+        // if (!isEventType) return;
+        // setLoading(true);
+        // try {
+        //   await UpdateEventStatus(data as any);
+        //   console.log("✅ Successfully joined event!");
+        //   // Directly update the detailData with joined status
+        //   const updatedData = { ...(detailData || data), join_status: true };
+        //   setDetailData(updatedData as UnifiedData);
+        //   setManuallyUpdated(true);
+        //   setLoading(false);
+        //   // Emit event to reload map and show event card
+        //   DeviceEventEmitter.emit("refreshMapData", true);
+        // } catch (error) {
+        //   console.error("❌ Error joining event:", error);
+        //   setLoading(false);
+        // }
       }
     };
 
@@ -2285,6 +2305,12 @@ export const UnifiedDetailsSheet = React.memo(
                 isEvent={true} // Always treat location events as events
               />
             )}
+
+            <TicketDialog
+              visible={showDialog}
+              onClose={() => setShowDialog(false)}
+              onConfirm={handleConfirm}
+            />
           </View>
         </GestureHandlerRootView>
       </Modal>

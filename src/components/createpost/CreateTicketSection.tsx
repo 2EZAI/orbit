@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState , useEffect } from "react";
 import { View, ScrollView, Switch } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Input } from "~/src/components/ui/input";
@@ -29,6 +29,11 @@ export default function CreateTicketSection({
   const [isTicketEnabled, setIsTicketEnabled] = useState(isTicketEnabledProp || false);
   // const [isTotalTicketQuantity, setIsTotalTicketQuantity] = useState(false);
   // const [totalTicketQuantity, setTotalTicketQuantity] = useState(null);
+
+useEffect(()=>{
+  console.log("sdsdsd",totalTicketQuantity);
+setIsTicketEnabled(isTicketEnabledProp)
+},[isTicketEnabledProp]);
 
   const handleToggleMute = async () => {
     try {
