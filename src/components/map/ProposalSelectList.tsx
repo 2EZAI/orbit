@@ -37,12 +37,14 @@ interface IProps {
   proposals: IProposal[];
   onAdd?: () => void;
   onShowEventDetails?: (proposal: IProposal) => void;
+  onShowProposalDetail?: (proposal: IProposal) => void;
 }
 const ProposalSelectList: React.FC<IProps> = ({
   data,
   onBack,
   proposals,
   onAdd = () => {},
+  onShowProposalDetail,
   onShowEventDetails = () => {},
 }) => {
   const { theme, isDarkMode } = useTheme();
@@ -265,9 +267,15 @@ const ProposalSelectList: React.FC<IProps> = ({
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setShowSuccess(true);
         
-        // Wait for success animation, then go back
+        // Wait for success animation, then navigate to proposal details
         setTimeout(() => {
-          onBack();
+          // Find the proposal that was just updated
+          const updatedProposal = proposals.find(p => p.id === selectedProposals);
+          if (updatedProposal && onShowProposalDetail) {
+            onShowProposalDetail(updatedProposal);
+          } else {
+            onBack();
+          }
         }, 1500);
       }
     } catch (error) {

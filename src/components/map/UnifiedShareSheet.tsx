@@ -4,14 +4,16 @@ import { Sheet } from "../ui/sheet";
 import AddProposalContent from "./AddProposalContent";
 import ProposalSelectList from "./ProposalSelectList";
 import ShareContent from "./ShareContent";
+import ProposalDetail from "./ProposalDetail";
 import { UnifiedData } from "./UnifiedDetailsSheet";
+import { IProposal } from "~/hooks/useProposals";
 interface IProps {
   onClose: () => void;
   isOpen: boolean;
   data: UnifiedData | undefined;
   isEventType?: boolean;
 }
-type UIType = "share" | "add-proposal" | "view-proposals";
+type UIType = "share" | "add-proposal" | "view-proposals" | "proposal-detail";
 const UnifiedShareSheet: React.FC<IProps> = ({
   onClose,
   isOpen,
@@ -20,6 +22,8 @@ const UnifiedShareSheet: React.FC<IProps> = ({
 }) => {
   const { proposals, getAllProposals } = useProposals();
   const [uiType, setUiType] = useState<UIType>("share");
+  const [selectedProposal, setSelectedProposal] = useState<IProposal | null>(null);
+  
   useEffect(() => {
     getAllProposals();
   }, [uiType]);
@@ -28,7 +32,7 @@ const UnifiedShareSheet: React.FC<IProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       expanded={uiType !== "share"}
-      isScrollable={false}
+      isScrollable={uiType === "proposal-detail"}
     >
       {uiType === "share" ? (
         <ShareContent
@@ -55,6 +59,14 @@ const UnifiedShareSheet: React.FC<IProps> = ({
           }}
           data={data}
         />
+      ) : uiType === "proposal-detail" ? (
+        <ProposalDetail
+          proposal={selectedProposal!}
+          onClose={() => {
+            setSelectedProposal(null);
+            setUiType("share");
+          }}
+        />
       ) : (
         <ProposalSelectList
           data={data}
@@ -62,6 +74,10 @@ const UnifiedShareSheet: React.FC<IProps> = ({
           proposals={proposals}
           onAdd={() => {
             setUiType("add-proposal");
+          }}
+          onShowProposalDetail={(proposal) => {
+            setSelectedProposal(proposal);
+            setUiType("proposal-detail");
           }}
         />
       )}
