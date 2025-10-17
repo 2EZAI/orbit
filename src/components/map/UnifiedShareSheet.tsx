@@ -75,6 +75,9 @@ const UnifiedShareSheet: React.FC<IProps> = ({
           data={data}
           onBack={() => setUiType("share")}
           proposals={proposals}
+          onAdd={() => {
+            setUiType("add-proposal");
+          }}
         />
       )}
     </Sheet>

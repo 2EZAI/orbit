@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2 } from "lucide-react-native";
+import { ArrowLeft, CheckCircle2, PlusCircle } from "lucide-react-native";
 import {
   ActivityIndicator,
   FlatList,
@@ -16,13 +16,21 @@ interface IProps {
   data: UnifiedData | undefined;
   onBack: () => void;
   proposals: IProposal[];
+  onAdd: () => void;
 }
-const ProposalSelectList: React.FC<IProps> = ({ data, onBack, proposals }) => {
+const ProposalSelectList: React.FC<IProps> = ({
+  data,
+  onBack,
+  proposals,
+  onAdd,
+}) => {
   const { theme } = useTheme();
   const [selectedProposals, setSelectedProposals] = useState<string>("");
   const { loading, addEventToProposal } = useProposals();
   const renderItem = (item: IProposal) => {
     const isSelected = selectedProposals === item.id;
+    const isEventAlreadyAdded =
+      item.events_attached.findIndex((val) => val.id === data?.id) !== -1;
     return (
       <TouchableOpacity
         style={[
@@ -34,12 +42,28 @@ const ProposalSelectList: React.FC<IProps> = ({ data, onBack, proposals }) => {
           },
         ]}
         onPress={() => {
+          if (isEventAlreadyAdded) return;
           setSelectedProposals(item.id);
         }}
       >
-        <Text style={[styles.text, { color: theme.colors.text }]}>
-          {item.title}
-        </Text>
+        <View style={styles.itemContent}>
+          <Text style={[styles.text, { color: theme.colors.text }]}>
+            {item.title}
+          </Text>
+          <Text
+            style={[styles.eventAddedText, { color: theme.colors.text + "80" }]}
+          >
+            {item.events_attached.length} events added
+          </Text>
+          <Text
+            style={[
+              styles.eventAlreadyAddedText,
+              { color: theme.colors.text + "40" },
+            ]}
+          >
+            {isEventAlreadyAdded ? "Event already added" : ""}
+          </Text>
+        </View>
         <View
           style={[
             styles.iconContainer,
@@ -72,21 +96,25 @@ const ProposalSelectList: React.FC<IProps> = ({ data, onBack, proposals }) => {
   };
   return (
     <View style={styles.container}>
-      <View className="flex-row items-center">
-        <TouchableOpacity onPress={() => onBack()} className="mr-3">
-          <ArrowLeft size={24} color={theme.colors.text} />
+      <View className="flex-row items-center justify-between">
+        <View className="flex-row items-center">
+          <TouchableOpacity onPress={() => onBack()} className="mr-3">
+            <ArrowLeft size={24} color={theme.colors.text} />
+          </TouchableOpacity>
+          <Text
+            style={{
+              fontSize: 20,
+              fontWeight: "700",
+              color: theme.colors.text,
+            }}
+          >
+            Select Proposals
+          </Text>
+        </View>
+        <TouchableOpacity onPress={onAdd}>
+          <PlusCircle size={30} color={theme.colors.primary} />
         </TouchableOpacity>
-        <Text
-          style={{
-            fontSize: 20,
-            fontWeight: "700",
-            color: theme.colors.text,
-          }}
-        >
-          Select Proposals
-        </Text>
       </View>
-
       <View style={styles.list}>
         <FlatList
           data={proposals}
@@ -98,27 +126,23 @@ const ProposalSelectList: React.FC<IProps> = ({ data, onBack, proposals }) => {
         <TouchableOpacity
           onPress={handleSubmit}
           disabled={loading || !validateCheck()}
-          style={{
-            flex: 1,
-            height: 50,
-            backgroundColor: validateCheck() ? "#8B5CF6" : "transparent",
-            borderRadius: 16,
-            borderWidth: 1,
-            borderColor: validateCheck() ? "#8B5CF6" : theme.colors.text + "20",
-            justifyContent: "center",
-            alignItems: "center",
-            shadowColor: "#8B5CF6",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 12,
-            elevation: 8,
-            opacity: loading ? 0.7 : 1,
-          }}
+          style={[
+            styles.button,
+            {
+              backgroundColor: validateCheck() ? "#8B5CF6" : "transparent",
+
+              borderColor: validateCheck()
+                ? "#8B5CF6"
+                : theme.colors.text + "20",
+
+              opacity: loading ? 0.7 : 1,
+            },
+          ]}
         >
           {loading ? (
             <ActivityIndicator color="white" size="small" />
           ) : (
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <View className="flex-row items-center">
               <Text
                 style={{
                   fontSize: 16,
@@ -128,7 +152,7 @@ const ProposalSelectList: React.FC<IProps> = ({ data, onBack, proposals }) => {
                   marginRight: 8,
                 }}
               >
-                {"Add Event"}
+                Add Event to Proposal
               </Text>
             </View>
           )}
@@ -167,7 +191,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   text: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "500",
     lineHeight: 24,
   },
@@ -175,5 +199,28 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     paddingTop: 16,
+  },
+  button: {
+    borderRadius: 16,
+    borderWidth: 1,
+    flex: 1,
+    height: 50,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#8B5CF6",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  itemContent: {
+    gap: 5,
+  },
+  eventAddedText: {
+    fontSize: 16,
+  },
+  eventAlreadyAddedText: {
+    fontSize: 14,
+    fontStyle: "italic",
   },
 });
