@@ -54,6 +54,16 @@ const ProposalDetail: React.FC<IProps> = ({ proposal, onClose }) => {
       return `${startDateStr} at ${startTimeStr} to ${endDateStr} at ${endTimeStr}`;
     }
   };
+  const getBorderColor = (type: string) => {
+    switch (type) {
+      case "event":
+        return "#22C55E";
+      case "ticketmaster":
+        return "#EF4444";
+      default:
+        return "#8B5CF6";
+    }
+  };
   return (
     <View style={styles.container}>
       <View className="flex-row items-center">
@@ -113,10 +123,11 @@ const ProposalDetail: React.FC<IProps> = ({ proposal, onClose }) => {
           {proposal.events_attached.map((event, index) => (
             <View
               key={index}
-              style={[styles.item, { borderColor: theme.colors.primary }]}
+              style={[styles.item, { borderColor: getBorderColor(event.type) }]}
             >
-              <Text>{event.name}</Text>
-              <Text>{event.type}</Text>
+              <Text style={[styles.itemText, { color: theme.colors.text }]}>
+                {event.name}
+              </Text>
             </View>
           ))}
         </View>
@@ -134,9 +145,15 @@ const styles = StyleSheet.create({
   },
   item: {
     marginTop: 12,
-    paddingVertical: 10,
+    paddingVertical: 15,
     paddingHorizontal: 15,
     borderRadius: 12,
     borderWidth: 1,
+  },
+  itemText: {
+    fontSize: 16,
+    fontWeight: "600",
+    lineHeight: 22,
+    width: "80%",
   },
 });
