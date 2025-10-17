@@ -1,6 +1,6 @@
 import { haptics } from "~/src/lib/haptics";
 import { UnifiedData } from "./UnifiedDetailsSheet";
-import { Share, Text, TouchableOpacity, View, Dimensions } from "react-native";
+import { Share, Text, TouchableOpacity, View, Dimensions, ScrollView } from "react-native";
 import { useTheme } from "../ThemeProvider";
 import { MotiView } from "moti";
 import { LinearGradient } from "expo-linear-gradient";
@@ -14,9 +14,17 @@ import {
   Sparkles,
   Users,
   Calendar,
-  Zap
+  Zap,
+  ClipboardList
 } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useChat } from "~/src/lib/chat";
+import { useAuth } from "~/src/lib/auth";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "~/src/components/ui/avatar";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 interface IProps {
@@ -34,10 +42,101 @@ const ShareContent: React.FC<IProps> = ({
   const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
   const [isSharing, setIsSharing] = useState(false);
+  const [recentChats, setRecentChats] = useState<any[]>([]);
+  const [loadingChats, setLoadingChats] = useState(true);
+  
+  const { client } = useChat();
+  const { session } = useAuth();
 
-  const handleShareInChat = async () => {
+  // Fetch recent chats from Stream
+  useEffect(() => {
+    const fetchRecentChats = async () => {
+      if (!client || !session?.user?.id) {
+        setLoadingChats(false);
+        return;
+      }
+
+      try {
+        setLoadingChats(true);
+        
+        // Get recent channels (last 3)
+        const channels = await client.queryChannels({
+          type: 'messaging',
+          members: { $in: [session.user.id] },
+        }, {
+          last_message_at: -1,
+        }, {
+          limit: 3,
+        });
+
+        // Extract user info from channels
+        const recentUsers = channels
+          .map(channel => {
+            // Access members as object values (not membersArray)
+            const members = Object.values(channel.state.members || {});
+            const otherMembers = members
+              .filter((member: any) => member.user?.id !== session.user?.id)
+              .map((member: any) => ({
+                id: member.user?.id,
+                name: member.user?.name || member.user?.username || 'Unknown',
+                avatar: member.user?.image || null,
+                lastMessage: channel.state.messages?.[0]?.text || '',
+                isOnline: member.user?.online || false,
+                channelId: channel.id,
+              }));
+            return otherMembers[0]; // Get the other user from each channel
+          })
+          .filter(Boolean);
+
+        setRecentChats(recentUsers);
+      } catch (error) {
+        console.error('Error fetching recent chats:', error);
+        setRecentChats([]);
+      } finally {
+        setLoadingChats(false);
+      }
+    };
+
+    fetchRecentChats();
+  }, [client, session?.user?.id]);
+
+  const handleShareToChat = async (chatUser: any) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // TODO: Implement chat sharing
+    
+    try {
+      if (!client || !session?.user?.id) return;
+
+      // Check if we already have a channel with this user
+      if (chatUser.channelId) {
+        // Use existing channel
+        const channel = client.channel('messaging', chatUser.channelId);
+        
+        // Send the share message
+        await channel.sendMessage({
+          text: `Check out ${data?.name} on Orbit! ${data?.description} https://orbit-redirects.vercel.app/?action=share&eventId=${data?.id || ""}`,
+        });
+      } else {
+        // Create new channel with this user (following your existing pattern)
+        const timestamp = Date.now();
+        const randomStr = Math.random().toString(36).substring(7);
+        const uniqueChannelId = `${timestamp}-${randomStr}`;
+
+        const channel = client.channel('messaging', uniqueChannelId, {
+          members: [session.user.id, chatUser.id],
+        });
+
+        await channel.watch();
+
+        // Send the share message
+        await channel.sendMessage({
+          text: `Check out ${data?.name} on Orbit! ${data?.description} https://orbit-redirects.vercel.app/?action=share&eventId=${data?.id || ""}`,
+        });
+      }
+
+      onClose();
+    } catch (error) {
+      console.error('Error sharing to chat:', error);
+    }
   };
 
   const handleCreateProposal = async () => {
@@ -45,7 +144,7 @@ const ShareContent: React.FC<IProps> = ({
     onChangeType("add-proposal");
   };
 
-  const onShare = async () => {
+  const handleNativeShare = async () => {
     const currentData = data;
     setIsSharing(true);
 
@@ -72,243 +171,313 @@ const ShareContent: React.FC<IProps> = ({
     }
   };
 
-  const actionButtons = [
-    {
-      id: "chat",
-      title: "Share in Chat",
-      subtitle: "Send to friends",
-      icon: MessageCircle,
-      onPress: handleShareInChat,
-      gradient: ["#3B82F6", "#1D4ED8"],
-      delay: 100,
-    },
-    {
-      id: "proposal",
-      title: "Create Proposal",
-      subtitle: "Plan together",
-      icon: Plus,
-      onPress: handleCreateProposal,
-      gradient: ["#8B5CF6", "#A855F7"],
-      delay: 200,
-    },
-    {
-      id: "share",
-      title: "Share",
-      subtitle: "External apps",
-      icon: Share2,
-      onPress: onShare,
-      gradient: ["#10B981", "#059669"],
-      delay: 300,
-      isLoading: isSharing,
-    },
-  ];
-
   return (
-    <View style={{ flex: 1, backgroundColor: "transparent" }}>
-      {/* Premium Header */}
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Header */}
       <MotiView
         from={{ opacity: 0, translateY: -20 }}
         animate={{ opacity: 1, translateY: 0 }}
-        transition={{ type: "timing", duration: 400 }}
-        style={styles.headerContainer}
+        transition={{ type: "timing", duration: 300 }}
+        style={styles.header}
       >
-        <LinearGradient
-          colors={isDarkMode ? ["rgba(0,0,0,0.8)", "rgba(0,0,0,0.4)"] : ["rgba(255,255,255,0.9)", "rgba(255,255,255,0.6)"]}
-          style={styles.headerGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-        >
-          <BlurView intensity={20} style={styles.headerBlur}>
-            <View style={styles.headerContent}>
-              <MotiView
-                from={{ scale: 0, rotate: "-180deg" }}
-                animate={{ scale: 1, rotate: "0deg" }}
-                transition={{ type: "spring", damping: 15, stiffness: 300 }}
-              >
-                <LinearGradient
-                  colors={["#8B5CF6", "#A855F7"]}
-                  style={styles.headerIconContainer}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Sparkles size={24} color="white" />
-                </LinearGradient>
-              </MotiView>
-              
-              <View style={styles.headerTextContainer}>
-                <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-                  Share {isEventType ? "Activity" : "Location"}
-                </Text>
-                <Text style={[styles.headerSubtitle, { color: theme.colors.text + "70" }]}>
-                  Choose how to share
-                </Text>
-              </View>
-            </View>
-          </BlurView>
-        </LinearGradient>
+        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+          Share {isEventType ? "Activity" : "Location"}
+        </Text>
       </MotiView>
 
-      {/* Action Buttons */}
-      <View style={[styles.contentContainer, { paddingBottom: insets.bottom + 20 }]}>
-        {actionButtons.map((button, index) => (
-          <MotiView
-            key={button.id}
-            from={{ 
-              opacity: 0, 
-              translateY: 50, 
-              scale: 0.9 
-            }}
-            animate={{ 
-              opacity: 1, 
-              translateY: 0, 
-              scale: 1 
-            }}
-            transition={{ 
-              type: "timing", 
-              duration: 400, 
-              delay: button.delay 
-            }}
-            style={styles.buttonContainer}
+      {/* Recent Chats Section */}
+      <MotiView
+        from={{ opacity: 0, translateY: 20 }}
+        animate={{ opacity: 1, translateY: 0 }}
+        transition={{ type: "timing", duration: 300, delay: 100 }}
+        style={styles.recentContactsContainer}
+      >
+        {loadingChats ? (
+          <View style={styles.loadingContainer}>
+            <Text style={[styles.loadingText, { color: theme.colors.text }]}>
+              Loading recent chats...
+            </Text>
+          </View>
+        ) : recentChats.length > 0 ? (
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.recentContactsScroll}
           >
-            <TouchableOpacity
-              onPress={button.onPress}
-              activeOpacity={0.8}
-              style={styles.premiumButton}
-              disabled={button.isLoading}
-            >
+            {recentChats.map((chatUser, index) => (
               <MotiView
-                animate={{
-                  scale: button.isLoading ? 0.98 : 1,
-                }}
-                transition={{ type: "timing", duration: 150 }}
+                key={chatUser.id}
+                from={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ type: "timing", duration: 200, delay: 150 + index * 50 }}
               >
-                <LinearGradient
-                  colors={button.gradient}
-                  style={styles.buttonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
+                <TouchableOpacity
+                  style={styles.contactItem}
+                  activeOpacity={0.7}
+                  onPress={() => handleShareToChat(chatUser)}
                 >
-                  <View style={styles.buttonContent}>
-                    <View style={styles.iconContainer}>
-                      <button.icon size={24} color="white" />
-                    </View>
-                    <View style={styles.textContainer}>
-                      <Text style={styles.buttonTitle}>{button.title}</Text>
-                      <Text style={styles.buttonSubtitle}>{button.subtitle}</Text>
-                    </View>
-                    {button.isLoading ? (
-                      <View style={styles.loadingContainer}>
-                        <Text style={styles.loadingText}>...</Text>
-                      </View>
-                    ) : (
-                      <Zap size={20} color="rgba(255,255,255,0.6)" />
-                    )}
+                  <View style={[styles.contactAvatar, { 
+                    borderColor: chatUser.isOnline ? "#10B981" : theme.colors.border,
+                  }]}>
+                    <Avatar style={styles.avatarComponent}>
+                      {chatUser.avatar ? (
+                        <AvatarImage source={{ uri: chatUser.avatar }} />
+                      ) : null}
+                      <AvatarFallback style={[styles.avatarFallback, { backgroundColor: theme.colors.card }]}>
+                        <Text style={styles.avatarInitial}>
+                          {chatUser.name.charAt(0).toUpperCase()}
+                        </Text>
+                      </AvatarFallback>
+                    </Avatar>
+                    {chatUser.isOnline && <View style={styles.onlineIndicator} />}
                   </View>
-                </LinearGradient>
+                  <Text style={[styles.contactName, { color: theme.colors.text }]}>
+                    {chatUser.name}
+                  </Text>
+                </TouchableOpacity>
               </MotiView>
-            </TouchableOpacity>
-          </MotiView>
-        ))}
-      </View>
+            ))}
+          </ScrollView>
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyText, { color: theme.colors.text }]}>
+              No recent chats
+            </Text>
+          </View>
+        )}
+      </MotiView>
+
+      {/* Divider */}
+      <MotiView
+        from={{ opacity: 0, scaleX: 0 }}
+        animate={{ opacity: 1, scaleX: 1 }}
+        transition={{ type: "timing", duration: 300, delay: 400 }}
+        style={[styles.divider, { backgroundColor: theme.colors.border }]}
+      />
+
+      {/* Action Buttons */}
+      <MotiView
+        from={{ opacity: 0, translateY: 20 }}
+        animate={{ opacity: 1, translateY: 0 }}
+        transition={{ type: "timing", duration: 300, delay: 500 }}
+        style={styles.actionsContainer}
+      >
+        {/* Create Proposal Button */}
+        <MotiView
+          from={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "timing", duration: 300, delay: 600 }}
+        >
+          <TouchableOpacity
+            style={[styles.actionButton, { 
+              backgroundColor: theme.colors.card,
+              borderColor: theme.colors.border,
+            }]}
+            activeOpacity={0.7}
+            onPress={handleCreateProposal}
+          >
+            <LinearGradient
+              colors={["#8B5CF6", "#A855F7"]}
+              style={styles.actionButtonIcon}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <ClipboardList size={20} color="white" />
+            </LinearGradient>
+            <View style={styles.actionButtonContent}>
+              <Text style={[styles.actionButtonTitle, { color: theme.colors.text }]}>
+                Create Proposal
+              </Text>
+              <Text style={[styles.actionButtonSubtitle, { color: theme.colors.text + "70" }]}>
+                Plan together
+              </Text>
+            </View>
+            <Share2 size={20} color={theme.colors.text + "40"} />
+          </TouchableOpacity>
+        </MotiView>
+
+        {/* Native Share Button */}
+        <MotiView
+          from={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "timing", duration: 300, delay: 700 }}
+        >
+          <TouchableOpacity
+            style={[styles.actionButton, { 
+              backgroundColor: theme.colors.card,
+              borderColor: theme.colors.border,
+            }]}
+            activeOpacity={0.7}
+            onPress={handleNativeShare}
+            disabled={isSharing}
+          >
+            <View style={[styles.actionButtonIcon, { backgroundColor: theme.colors.primary }]}>
+              <Share2 size={20} color="white" />
+            </View>
+            <View style={styles.actionButtonContent}>
+              <Text style={[styles.actionButtonTitle, { color: theme.colors.text }]}>
+                {isSharing ? "Sharing..." : "Share"}
+              </Text>
+              <Text style={[styles.actionButtonSubtitle, { color: theme.colors.text + "70" }]}>
+                External apps
+              </Text>
+            </View>
+            {isSharing ? (
+              <View style={styles.loadingSpinner}>
+                <Text style={[styles.loadingDots, { color: theme.colors.text }]}>⋯</Text>
+              </View>
+            ) : (
+              <Share2 size={20} color={theme.colors.text + "40"} />
+            )}
+          </TouchableOpacity>
+        </MotiView>
+      </MotiView>
+
+      {/* Bottom Padding */}
+      <View style={{ height: insets.bottom + 20 }} />
     </View>
   );
 };
 const styles = {
-  headerContainer: {
-    position: "relative" as const,
-    zIndex: 1000,
-  },
-  headerGradient: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-  },
-  headerBlur: {
-    borderRadius: 0,
-  },
-  headerContent: {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    gap: 16,
-  },
-  headerIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center" as const,
-    alignItems: "center" as const,
-  },
-  headerTextContainer: {
+  container: {
     flex: 1,
+    paddingTop: 20,
+  },
+  
+  // Header
+  header: {
+    alignItems: "center" as const,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: "700" as const,
-    letterSpacing: -0.5,
-    marginBottom: 4,
+    fontSize: 18,
+    fontWeight: "600" as const,
+    textAlign: "center" as const,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    fontWeight: "500" as const,
+  
+  // Recent Contacts Section
+  recentContactsContainer: {
+    paddingBottom: 20,
   },
-  contentContainer: {
-    flex: 1,
+  recentContactsScroll: {
     paddingHorizontal: 20,
-    paddingTop: 20,
     gap: 16,
   },
-  buttonContainer: {
-    marginBottom: 8,
-  },
-  premiumButton: {
-    borderRadius: 20,
-    overflow: "hidden" as const,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 12,
-  },
-  buttonGradient: {
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-  },
-  buttonContent: {
-    flexDirection: "row" as const,
+  contactItem: {
     alignItems: "center" as const,
-    gap: 16,
+    gap: 8,
+    minWidth: 70,
   },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.2)",
+  contactAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    justifyContent: "center" as const,
+    alignItems: "center" as const,
+    position: "relative" as const,
+  },
+  avatarComponent: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+  },
+  avatarFallback: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     justifyContent: "center" as const,
     alignItems: "center" as const,
   },
-  textContainer: {
-    flex: 1,
-  },
-  buttonTitle: {
-    fontSize: 18,
-    fontWeight: "700" as const,
+  avatarInitial: {
+    fontSize: 20,
+    fontWeight: "600" as const,
     color: "white",
-    marginBottom: 4,
   },
-  buttonSubtitle: {
-    fontSize: 14,
+  onlineIndicator: {
+    position: "absolute" as const,
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#10B981",
+    borderWidth: 2,
+    borderColor: "white",
+  },
+  contactName: {
+    fontSize: 12,
     fontWeight: "500" as const,
-    color: "rgba(255,255,255,0.8)",
+    textAlign: "center" as const,
+    maxWidth: 60,
   },
   loadingContainer: {
-    width: 24,
-    height: 24,
+    alignItems: "center" as const,
+    paddingVertical: 20,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontWeight: "500" as const,
+  },
+  emptyContainer: {
+    alignItems: "center" as const,
+    paddingVertical: 20,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontWeight: "500" as const,
+    opacity: 0.7,
+  },
+  
+  // Divider
+  divider: {
+    height: 1,
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+  
+  // Action Buttons
+  actionsContainer: {
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  actionButton: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+  },
+  actionButtonIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: "center" as const,
     alignItems: "center" as const,
   },
-  loadingText: {
+  actionButtonContent: {
+    flex: 1,
+  },
+  actionButtonTitle: {
     fontSize: 16,
-    fontWeight: "700" as const,
-    color: "rgba(255,255,255,0.8)",
+    fontWeight: "600" as const,
+    marginBottom: 2,
+  },
+  actionButtonSubtitle: {
+    fontSize: 12,
+    fontWeight: "500" as const,
+  },
+  loadingSpinner: {
+    width: 20,
+    height: 20,
+    justifyContent: "center" as const,
+    alignItems: "center" as const,
+  },
+  loadingDots: {
+    fontSize: 16,
+    fontWeight: "600" as const,
   },
 };
 
