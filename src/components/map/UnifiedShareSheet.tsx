@@ -20,7 +20,6 @@ const UnifiedShareSheet: React.FC<IProps> = ({
 }) => {
   const { proposals, getAllProposals } = useProposals();
   const [uiType, setUiType] = useState<UIType>("share");
-  console.log("UnifiedShareSheet data:", proposals);
   useEffect(() => {
     getAllProposals();
   }, [uiType]);

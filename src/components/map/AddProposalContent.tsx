@@ -1,5 +1,5 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { ArrowLeft, Calendar, Clock } from "lucide-react-native";
+import { ArrowLeft, Calendar, Clock, Sparkles, Plus, Zap } from "lucide-react-native";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -9,319 +9,441 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Dimensions,
 } from "react-native";
 import { Icon } from "react-native-elements";
 import { useProposals } from "~/hooks/useProposals";
 import { useTheme } from "../ThemeProvider";
 import { Input } from "../ui/input";
 import { UnifiedData } from "./UnifiedDetailsSheet";
+import { MotiView } from "moti";
+import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Haptics from "expo-haptics";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 interface IProps {
   onBack: () => void;
   data: UnifiedData | undefined;
 }
 const AddProposalContent: React.FC<IProps> = ({ onBack, data }) => {
-  console.log("AddProposalContent data:", data);
-  const { theme } = useTheme();
+  const { theme, isDarkMode } = useTheme();
   const { loading, addProposal } = useProposals();
+  const insets = useSafeAreaInsets();
   const [title, setTitle] = useState<string>("");
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
   const [showTimePicker, setShowTimePicker] = useState<boolean>(false);
-  console.log("AddProposalContent data:", data?.source);
+  const [isCreating, setIsCreating] = useState(false);
+
   const validateCheck = () => {
     return !!title.trim();
   };
+
+  const handleBackPress = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onBack();
+  };
+
   const handleCreateProposal = async () => {
     if (!validateCheck() || !data) return;
-    const newProposal = await addProposal({
-      title: title.trim(),
-      start_datetime: startDate.toISOString(),
-      events_attached: [
-        { id: data.id, name: data.name, type: data.source || "event" },
-      ],
-    });
-    console.log("New Proposal Created:", newProposal);
-    if (newProposal) {
-      onBack();
+    
+    setIsCreating(true);
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    try {
+      const newProposal = await addProposal({
+        title: title.trim(),
+        start_datetime: startDate.toISOString(),
+        events_attached: [
+          { id: data.id, name: data.name, type: data.source || "event" },
+        ],
+      });
+      
+      if (newProposal) {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        onBack();
+      }
+    } catch (error) {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setIsCreating(false);
     }
   };
-  const onOpenDatePicker = () => {
+
+  const onOpenDatePicker = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Keyboard.dismiss();
     setShowDatePicker(true);
   };
-  const onOpenTimePicker = () => {
+
+  const onOpenTimePicker = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Keyboard.dismiss();
     setShowTimePicker(true);
   };
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        <View className="flex-row items-center">
-          <TouchableOpacity onPress={() => onBack()} className="mr-3">
-            <ArrowLeft size={24} color={theme.colors.text} />
-          </TouchableOpacity>
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "700",
-              color: theme.colors.text,
-            }}
-          >
-            Add Proposal
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Premium Header */}
+      <MotiView
+        from={{ opacity: 0, translateY: -20 }}
+        animate={{ opacity: 1, translateY: 0 }}
+        transition={{ type: "timing", duration: 400 }}
+        style={styles.headerContainer}
+      >
+        <LinearGradient
+          colors={isDarkMode ? ["rgba(0,0,0,0.8)", "rgba(0,0,0,0.4)"] : ["rgba(255,255,255,0.9)", "rgba(255,255,255,0.6)"]}
+          style={styles.headerGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        >
+          <BlurView intensity={20} style={styles.headerBlur}>
+            <View style={styles.headerContent}>
+              <MotiView
+                from={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", damping: 15, stiffness: 300, delay: 100 }}
+              >
+                <TouchableOpacity 
+                  onPress={handleBackPress}
+                  style={styles.backButton}
+                  activeOpacity={0.7}
+                >
+                  <ArrowLeft size={24} color={theme.colors.text} />
+                </TouchableOpacity>
+              </MotiView>
+              
+              <MotiView
+                from={{ opacity: 0, translateX: -10 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                transition={{ type: "spring", damping: 15, stiffness: 300, delay: 200 }}
+              >
+                <View style={styles.headerTextContainer}>
+                  <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+                    Create Proposal
+                  </Text>
+                  <Text style={[styles.headerSubtitle, { color: theme.colors.text + "70" }]}>
+                    Plan your activity
+                  </Text>
+                </View>
+              </MotiView>
+            </View>
+          </BlurView>
+        </LinearGradient>
+      </MotiView>
+
+      {/* Content */}
+      <View style={[styles.contentContainer, { paddingBottom: insets.bottom + 20 }]}>
+        {/* Title Input */}
+        <MotiView
+          from={{ opacity: 0, translateY: 30 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: "timing", duration: 400, delay: 300 }}
+          style={styles.inputContainer}
+        >
+          <Text style={[styles.inputLabel, { color: theme.colors.text }]}>
+            Proposal Title
           </Text>
-        </View>
-        <View>
-          <Text
-            style={{
-              fontSize: 16,
-              fontWeight: "600",
-              color: theme.colors.text,
-              marginBottom: 8,
-            }}
-          >
-            Title
-          </Text>
-          <View
-            style={{
-              backgroundColor: theme.colors.card,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-            }}
-          >
+          <View style={[styles.inputWrapper, { 
+            backgroundColor: theme.colors.card,
+            borderColor: theme.colors.border,
+          }]}>
             <Input
               value={title}
               onChangeText={setTitle}
-              placeholder="Enter title"
-              style={{
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                fontSize: 16,
-                color: theme.colors.text,
-                backgroundColor: "transparent",
-                borderWidth: 0,
-              }}
-              placeholderTextColor={theme.colors.text + "60"}
+              placeholder="Enter proposal title"
+              style={[styles.input, { color: theme.colors.text }]}
+              placeholderTextColor={theme.colors.text + "50"}
             />
           </View>
-        </View>
-        <View>
-          <View style={styles.dateContainer}>
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "600",
-                color: theme.colors.text,
-              }}
-            >
-              Start Time
-            </Text>
+        </MotiView>
 
-            <View style={styles.clockIcon}>
-              {Platform.OS === "ios" ? (
-                <Clock size={18} color="#8B5CF6" />
-              ) : (
-                <Icon
-                  name="clock-outline"
-                  type="material-community"
-                  size={18}
-                  color="#8B5CF6"
-                />
-              )}
-            </View>
-          </View>
-
-          <View style={{ gap: 12 }}>
-            <TouchableOpacity
-              onPress={() => onOpenDatePicker()}
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: 12,
-                borderRadius: 12,
-                borderWidth: 1,
-                backgroundColor: theme.dark
-                  ? "rgba(255, 255, 255, 0.05)"
-                  : "rgba(255, 255, 255, 0.7)",
-                borderColor: theme.dark
-                  ? "rgba(139, 92, 246, 0.2)"
-                  : "rgba(139, 92, 246, 0.15)",
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                {Platform.OS === "ios" ? (
-                  <Calendar
-                    size={20}
-                    color={theme.colors.text + "66"}
-                    style={{ marginRight: 12 }}
-                  />
-                ) : (
-                  <Icon
-                    name="calendar-outline"
-                    type="material-community"
-                    size={20}
-                    color={theme.colors.text + "66"}
-                    style={{ marginRight: 12 }}
-                  />
-                )}
-                <Text style={{ color: theme.colors.text }}>Date</Text>
-              </View>
-              <Text style={{ color: "#8B5CF6", fontWeight: "600" }}>
-                {startDate?.toLocaleDateString()}
-              </Text>
-            </TouchableOpacity>
-            {showDatePicker && (
-              <DateTimePicker
-                themeVariant="light"
-                value={startDate}
-                minimumDate={new Date()}
-                mode={"date"}
-                onChange={(event, date) => {
-                  if (event.type === "dismissed") {
-                    setShowDatePicker(false);
-                  } else if (date) {
-                    setShowDatePicker(Platform.OS === "ios");
-
-                    setStartDate(date);
-                  }
-                }}
-              />
-            )}
-            <TouchableOpacity
-              onPress={() => onOpenTimePicker()}
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: 12,
-                borderRadius: 12,
-                borderWidth: 1,
-                backgroundColor: theme.dark
-                  ? "rgba(255, 255, 255, 0.05)"
-                  : "rgba(255, 255, 255, 0.7)",
-                borderColor: theme.dark
-                  ? "rgba(139, 92, 246, 0.2)"
-                  : "rgba(139, 92, 246, 0.15)",
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                {Platform.OS === "ios" ? (
-                  <Clock
-                    size={20}
-                    color={theme.colors.text + "66"}
-                    style={{ marginRight: 12 }}
-                  />
-                ) : (
-                  <Icon
-                    name="clock-outline"
-                    type="material-community"
-                    size={20}
-                    color={theme.colors.text + "66"}
-                    style={{ marginRight: 12 }}
-                  />
-                )}
-                <Text style={{ color: theme.colors.text }}>Time</Text>
-              </View>
-              <Text style={{ color: "#8B5CF6", fontWeight: "600" }}>
-                {startDate.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </Text>
-            </TouchableOpacity>
-            {showTimePicker && (
-              <DateTimePicker
-                themeVariant="light"
-                value={startDate}
-                minimumDate={new Date()}
-                mode={"time"}
-                onChange={(event, date) => {
-                  if (event.type === "dismissed") {
-                    setShowTimePicker(false);
-                  } else if (date) {
-                    setShowTimePicker(Platform.OS === "ios");
-
-                    setStartDate(date);
-                  }
-                }}
-              />
-            )}
-          </View>
-        </View>
-      </View>
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          onPress={handleCreateProposal}
-          disabled={loading || !validateCheck()}
-          style={{
-            flex: 1,
-            height: 50,
-            backgroundColor: validateCheck() ? "#8B5CF6" : "transparent",
-            borderRadius: 16,
-            borderWidth: 1,
-            borderColor: validateCheck() ? "#8B5CF6" : theme.colors.text + "20",
-            justifyContent: "center",
-            alignItems: "center",
-            shadowColor: "#8B5CF6",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 12,
-            elevation: 8,
-            opacity: loading ? 0.7 : 1,
-          }}
+        {/* Date and Time Pickers */}
+        <MotiView
+          from={{ opacity: 0, translateY: 30 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: "timing", duration: 400, delay: 400 }}
+          style={styles.pickerContainer}
         >
-          {loading ? (
-            <ActivityIndicator color="white" size="small" />
-          ) : (
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: "700",
-                  color: validateCheck() ? "white" : theme.colors.text + "40",
-
-                  marginRight: 8,
-                }}
+          <Text style={[styles.inputLabel, { color: theme.colors.text }]}>
+            Date & Time
+          </Text>
+          
+          <View style={styles.pickerRow}>
+            {/* Date Picker */}
+            <TouchableOpacity
+              onPress={onOpenDatePicker}
+              style={[styles.pickerButton, {
+                backgroundColor: theme.colors.card,
+                borderColor: theme.colors.border,
+              }]}
+              activeOpacity={0.7}
+            >
+              <LinearGradient
+                colors={["#8B5CF6", "#A855F7"]}
+                style={styles.pickerIconContainer}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
               >
-                {"Create Proposal"}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
+                <Calendar size={18} color="white" />
+              </LinearGradient>
+              <View style={styles.pickerTextContainer}>
+                <Text style={[styles.pickerLabel, { color: theme.colors.text + "70" }]}>
+                  Date
+                </Text>
+                <Text style={[styles.pickerValue, { color: theme.colors.text }]}>
+                  {startDate.toLocaleDateString()}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Time Picker */}
+            <TouchableOpacity
+              onPress={onOpenTimePicker}
+              style={[styles.pickerButton, {
+                backgroundColor: theme.colors.card,
+                borderColor: theme.colors.border,
+              }]}
+              activeOpacity={0.7}
+            >
+              <LinearGradient
+                colors={["#10B981", "#059669"]}
+                style={styles.pickerIconContainer}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Clock size={18} color="white" />
+              </LinearGradient>
+              <View style={styles.pickerTextContainer}>
+                <Text style={[styles.pickerLabel, { color: theme.colors.text + "70" }]}>
+                  Time
+                </Text>
+                <Text style={[styles.pickerValue, { color: theme.colors.text }]}>
+                  {startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </MotiView>
+
+        {/* Create Button */}
+        <MotiView
+          from={{ opacity: 0, translateY: 30 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: "timing", duration: 400, delay: 500 }}
+          style={styles.buttonContainer}
+        >
+          <TouchableOpacity
+            onPress={handleCreateProposal}
+            disabled={!validateCheck() || isCreating}
+            activeOpacity={0.8}
+            style={styles.createButton}
+          >
+            <MotiView
+              animate={{
+                scale: validateCheck() ? 1 : 0.95,
+                opacity: validateCheck() ? 1 : 0.6,
+              }}
+              transition={{ type: "timing", duration: 200 }}
+            >
+              <LinearGradient
+                colors={validateCheck() ? ["#8B5CF6", "#A855F7"] : ["#6B7280", "#9CA3AF"]}
+                style={styles.buttonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                {isCreating ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <View style={styles.buttonContent}>
+                    <Plus size={20} color="white" />
+                    <Text style={styles.buttonText}>
+                      Create Proposal
+                    </Text>
+                  </View>
+                )}
+              </LinearGradient>
+            </MotiView>
+          </TouchableOpacity>
+        </MotiView>
+
+        {/* Date Picker Modal */}
+        {showDatePicker && (
+          <DateTimePicker
+            value={startDate}
+            mode="date"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={(event, selectedDate) => {
+              setShowDatePicker(false);
+              if (selectedDate) {
+                setStartDate(selectedDate);
+              }
+            }}
+          />
+        )}
+
+        {/* Time Picker Modal */}
+        {showTimePicker && (
+          <DateTimePicker
+            value={startDate}
+            mode="time"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={(event, selectedTime) => {
+              setShowTimePicker(false);
+              if (selectedTime) {
+                setStartDate(selectedTime);
+              }
+            }}
+          />
+        )}
       </View>
     </View>
   );
 };
-export default AddProposalContent;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "transparent",
+  },
+  
+  // Header Styles
+  headerContainer: {
+    position: "relative",
+    zIndex: 1000,
+  },
+  headerGradient: {
     paddingHorizontal: 20,
-
-    paddingBottom: 20,
+    paddingVertical: 16,
   },
-  content: {
-    flex: 1,
-    gap: 20,
+  headerBlur: {
+    borderRadius: 0,
   },
-  dateContainer: {
+  headerContent: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 5,
+    gap: 16,
   },
-  clockIcon: {
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(139, 92, 246, 0.1)",
     justifyContent: "center",
     alignItems: "center",
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(139, 92, 246, 0.1)",
   },
-  buttonContainer: {
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  
+  // Content Styles
+  contentContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    gap: 24,
+  },
+  
+  // Input Styles
+  inputContainer: {
+    marginBottom: 8,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 12,
+  },
+  inputWrapper: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  input: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    fontSize: 16,
+    backgroundColor: "transparent",
+    borderWidth: 0,
+  },
+  
+  // Picker Styles
+  pickerContainer: {
+    marginBottom: 8,
+  },
+  pickerRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    paddingTop: 16,
+    gap: 12,
+  },
+  pickerButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+  },
+  pickerIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  pickerTextContainer: {
+    flex: 1,
+  },
+  pickerLabel: {
+    fontSize: 12,
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+  pickerValue: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  
+  // Button Styles
+  buttonContainer: {
+    marginTop: 20,
+  },
+  createButton: {
+    borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: "#8B5CF6",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  buttonGradient: {
+    height: 56,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  buttonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "white",
+    letterSpacing: -0.2,
   },
 });
+
+export default AddProposalContent;
