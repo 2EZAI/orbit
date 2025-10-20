@@ -16,6 +16,7 @@ import { Category, Prompt } from "~/hooks/useMapEvents";
 import { Text } from "~/src/components/ui/text";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react-native";
 import { useActionSheet } from "@expo/react-native-action-sheet";
+import { ImagePickerService } from "~/src/lib/imagePicker";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 import { useUser } from "~/src/lib/UserProvider";
@@ -860,48 +861,26 @@ export default function CreateEvent() {
 
   const pickImage = async () => {
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
+      const results = await ImagePickerService.pickImage({
         allowsMultipleSelection: true,
         quality: 0.8,
         allowsEditing: false,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
       });
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        // Filter out invalid assets
-        const validAssets = result.assets.filter((asset) => {
-          const isValidUri = asset.uri && asset.uri.startsWith("file://");
-          // For ImagePicker, we just need to check if it's an image type
-          const isValidType = asset.type === "image";
-          return isValidUri && isValidType;
-        });
-
-        if (validAssets.length === 0) {
-          throw new Error(
-            "No valid images selected. Please select JPEG or PNG images."
+      if (results.length > 0) {
+        // Check if adding these images would exceed the limit
+        if (images.length + results.length > 5) {
+          Alert.alert(
+            "Too Many Images",
+            "You can only add up to 5 images. Please remove some images first.",
+            [{ text: "OK" }]
           );
+          return;
         }
 
-        // Map assets to include file extension and proper MIME type
-        const processedAssets = validAssets.map((asset) => {
-          const extension = asset.uri.split(".").pop()?.toLowerCase();
-
-          // Determine MIME type based on file extension
-          let mimeType = "image/jpeg"; // default
-          if (extension === "png") {
-            mimeType = "image/png";
-          } else if (extension === "heic") {
-            mimeType = "image/heic";
-          }
-
-          return {
-            uri: asset.uri,
-            type: mimeType,
-            name: `image-${Date.now()}.${extension || "jpg"}`,
-          };
-        });
-
-        setImages((prevImages) => [...prevImages, ...processedAssets]);
+        setImages((prevImages) => [...prevImages, ...results]);
+        setHasUnsavedChanges(true);
       }
     } catch (error: any) {
       console.error("Image picker error:", error);
