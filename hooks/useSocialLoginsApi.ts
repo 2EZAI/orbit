@@ -199,7 +199,7 @@ export function useSocialLoginsApi() {
           //exist user
           // User is signed in.
           // Navigate to home
-          router.push("/(app)/(map)");
+          router.navigate("/(app)/(map)");
           console.log("user exist, navigate to home");
         } else {
           console.log(await supabase.auth.getSession());

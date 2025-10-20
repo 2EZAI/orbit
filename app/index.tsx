@@ -535,7 +535,7 @@ export default function LandingPage() {
   useEffect(() => {
     if (!loading && session && isFocused && !isSocialLogin) {
       console.log("Landing page: User is authenticated, redirecting to app");
-      router.replace("/(app)/(map)");
+      router.navigate("/(app)/(map)");
       return;
     }
   }, [session, loading, isFocused, isSocialLogin]);
@@ -598,7 +598,7 @@ export default function LandingPage() {
   const handleSignUp = async () => {
     // router.push("/(auth)/sign-up");
     await AsyncStorage.setItem("hasStarted", "true");
-    router.replace("/(app)/(map)");
+    router.navigate("/(app)/(map)");
   };
 
   // Show loading while checking authentication
