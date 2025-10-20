@@ -3,6 +3,7 @@ import { TouchableOpacity, View } from "react-native";
 import { MapPin, Navigation } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
+import { openMapDirections } from "~/src/lib/nativeActions";
 
 interface LocationDetailsSectionProps {
   data: any;
@@ -11,13 +12,12 @@ interface LocationDetailsSectionProps {
 export function LocationDetailsSection({ data }: LocationDetailsSectionProps) {
   const { theme, isDarkMode } = useTheme();
 
-  const handleDirections = () => {
+  const handleDirections = async () => {
     const lat = data.location?.coordinates[1];
     const lng = data.location?.coordinates[0];
 
     if (lat && lng) {
-      const url = `https://maps.apple.com/?daddr=${lat},${lng}`;
-      // Linking.openURL(url); // You'll need to import Linking
+      await openMapDirections(lat, lng, data.address);
     }
   };
 

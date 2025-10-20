@@ -3,6 +3,7 @@ import { TouchableOpacity, View } from "react-native";
 import { Clock, DollarSign, Phone, Star } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
+import { makePhoneCall } from "~/src/lib/nativeActions";
 
 interface LocationBusinessInfoSectionProps {
   data: any;
@@ -141,9 +142,7 @@ export function LocationBusinessInfoSection({ data }: LocationBusinessInfoSectio
       {/* Phone Number */}
       {data.phone && (
         <TouchableOpacity
-          onPress={() => {
-            // Linking.openURL(`tel:${data.phone}`); // You'll need to import Linking
-          }}
+          onPress={() => makePhoneCall(data.phone)}
           className="flex-row items-center p-3 mb-3 rounded-xl"
           style={{
             backgroundColor: isDarkMode
