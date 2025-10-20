@@ -24,6 +24,7 @@ import {
   Calendar,
   Plus,
 } from "lucide-react-native";
+import { ImagePickerService } from "~/src/lib/imagePicker";
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "~/src/lib/supabase";
 import { useAuth } from "~/src/lib/auth";
@@ -125,18 +126,23 @@ export default function CreatePost() {
   };
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      allowsMultipleSelection: true,
-      quality: 0.8,
-      selectionLimit: 4,
-    });
+    try {
+      const results = await ImagePickerService.pickImage({
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        selectionLimit: 4,
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+      });
 
-    if (!result.canceled) {
-      setMediaFiles([
-        ...mediaFiles,
-        ...result.assets.map((asset) => asset.uri),
-      ]);
+      if (results.length > 0) {
+        setMediaFiles([
+          ...mediaFiles,
+          ...results.map((result) => result.uri),
+        ]);
+      }
+    } catch (error) {
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to pick image. Please try again.");
     }
   };
 

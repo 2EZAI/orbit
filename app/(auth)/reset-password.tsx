@@ -43,7 +43,7 @@ const handleBack = () => {
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: "https://orbit-redirects.vercel.app/?action=reset&auto=true",
+        redirectTo: "https://orbit-redirects.vercel.app/reset-password",
       });
 
       if (error) {

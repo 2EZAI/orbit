@@ -1,6 +1,7 @@
 import {
   Channel,
   MessageList,
+  MessageInput,
   Thread,
   MessageSimple,
   useChannelContext,
@@ -24,7 +25,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "~/src/components/ui/avatar";
-import { Info, Calendar } from "lucide-react-native";
+import { Info } from "lucide-react-native";
 import { Icon } from "react-native-elements";
 import type {
   Channel as ChannelType,
@@ -36,27 +37,7 @@ import { useTheme } from "~/src/components/ThemeProvider";
 import { ArrowLeft, Phone, Video } from "lucide-react-native";
 import { useVideo } from "~/src/lib/video";
 import ActiveCallBanner from "~/src/components/chat/ActiveCallBanner";
-import { useMessageContext } from "stream-chat-expo";
-import { CustomMessageInput } from "~/src/components/chat/CustomMessageInput";
 
-interface Event {
-  id: string;
-  name: string;
-  startDate: string;
-  location?: string;
-}
-
-interface EventAttachment extends StreamAttachment<DefaultGenerics> {
-  type: string;
-  title: string;
-  text: string;
-  event_data: Event;
-}
-
-interface EventMessage {
-  text: string;
-  attachments: EventAttachment[];
-}
 
 // BULLETPROOF Message Component - ONLY renders polls, returns NULL for everything else
 // This forces Stream to use its default components for all non-poll messages
@@ -433,75 +414,7 @@ const CustomPollComponent = ({ message }: { message: any }) => {
   );
 };
 
-// Event search component
-const EventSearchHeader = ({ queryText }: { queryText: string }) => (
-  <View className="flex-row items-center p-3 space-x-2 border-b border-border">
-    <Calendar size={20} className="text-foreground" />
-    <Text className="text-foreground">Events matching "{queryText}"</Text>
-  </View>
-);
 
-// Event search result item
-const EventSearchItem = ({
-  event,
-  onSelect,
-}: {
-  event: any;
-  onSelect: (event: any) => void;
-}) => (
-  <TouchableOpacity
-    onPress={() => onSelect(event)}
-    className="flex-row items-center p-3 space-x-3 border-b border-border"
-  >
-    <Calendar size={20} className="text-foreground" />
-    <View className="flex-1">
-      <Text className="font-medium text-foreground">{event.name}</Text>
-      <Text className="text-sm text-muted-foreground">
-        {new Date(event.startDate).toLocaleDateString()}
-      </Text>
-    </View>
-  </TouchableOpacity>
-);
-
-// Custom MessageInput wrapper that handles sending messages with attachments
-function CustomMessageInputWrapper({ onCommand }: { onCommand?: (command: string, args: string) => void }) {
-  const { channel } = useChannelContext();
-  const [isSending, setIsSending] = useState(false);
-
-  const handleSendMessage = async (text: string, attachments?: any[]) => {
-    if (!channel || isSending) return;
-
-    try {
-      setIsSending(true);
-      
-      const messageData: any = {};
-      
-      if (text.trim()) {
-        messageData.text = text.trim();
-      }
-      
-      if (attachments && attachments.length > 0) {
-        messageData.attachments = attachments;
-      }
-
-      await channel.sendMessage(messageData);
-    } catch (error) {
-      console.error("Error sending message:", error);
-      Alert.alert("Error", "Failed to send message. Please try again.");
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  return (
-    <CustomMessageInput
-      onSendMessage={handleSendMessage}
-      onCommand={onCommand}
-      placeholder="Type a message..."
-      disabled={isSending}
-    />
-  );
-}
 
 export default function ChannelScreen() {
   const { session } = useAuth();
@@ -516,9 +429,6 @@ export default function ChannelScreen() {
   const [memberCount, setMemberCount] = useState<number>(0);
   const channelRef = useRef<ChannelType | null>(null);
   const { theme } = useTheme();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Event[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
   const [orbitMsg, setorbitMsg] = useState<any>(null);
   const { videoClient } = useVideo();
 
@@ -667,82 +577,6 @@ export default function ChannelScreen() {
     }
   }, [channel]);
 
-  // Handle command selection
-  const handleCommand = useCallback(
-    async (name: string, value?: string) => {
-      console.log("handleCommand called with:", { name, value });
-      if (name === "event" && value) {
-        setIsSearching(true);
-        try {
-          // console.log("[EventSearch] Searching with query:", value);
-          // console.log(
-          //   "[EventSearch] Backend URL:",
-          //   process.env.BACKEND_CHAT_URL
-          // );
-          const response = await fetch(
-            `${process.env.BACKEND_CHAT_URL}/commands`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${client?.tokenManager.token}`,
-              },
-              body: JSON.stringify({
-                message: {
-                  command: "event",
-                  args: value,
-                  text: `/event ${value}`,
-                  cid: channel?.cid,
-                },
-                user: {
-                  id: client?.userID,
-                },
-              }),
-            }
-          );
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error("[EventSearch] Error response:", {
-              status: response.status,
-              text: errorText,
-            });
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-
-          const data = await response.json();
-          // console.log("[EventSearch] Response:", data);
-
-          if (data.message?.attachments) {
-            const eventMessage = {
-              text: data.message.text,
-              attachments: data.message.attachments,
-            };
-            await channel?.sendMessage(eventMessage);
-          } else {
-            Alert.alert("Error", data.message?.text || "No events found");
-          }
-        } catch (error) {
-          console.error("[EventSearch] Error searching events:", error);
-          Alert.alert("Error", "Failed to search events. Please try again.");
-        } finally {
-          setIsSearching(false);
-        }
-      }
-    },
-    [channel, client]
-  );
-
-  useEffect(() => {
-    if (channel) {
-      // Register event command
-      channel.on("message.new", (event) => {
-        if (event.message?.command === "event") {
-          handleCommand("event", event.message.args);
-        }
-      });
-    }
-  }, [channel, handleCommand]);
 
   const hitNoificationApi = async (
     typee: string,
@@ -957,7 +791,7 @@ export default function ChannelScreen() {
               ) : (
                 <>
                   <MessageList onThreadSelect={setThread} />
-                  <CustomMessageInputWrapper onCommand={handleCommand} />
+                  <MessageInput />
                 </>
               )}
             </>

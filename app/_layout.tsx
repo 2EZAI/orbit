@@ -41,19 +41,22 @@ const toastConfig = {
 function RootLayoutContent() {
   const { isDarkMode, theme } = useTheme();
   function handleDeepLink(url: string) {
+    console.log("Handling deep link URL:", url);
     const parsed = Linking.parse(url);
     // parsed = { scheme: 'orbit', hostname: 'event', path: '123', queryParams: {} }
 
     if (parsed.hostname === "event") {
+      console.log("parsed path>", parsed.queryParams);
       const rawId = parsed.path || "";
       // rawId may contain further path pieces; split if needed
       const eventId = rawId.split("/")[0];
+
       if (eventId) {
-        router.replace({
+        router.navigate({
           pathname: "/(app)/(home)",
           params: {
-
-            eventId: eventId, // Pass the event ID if available
+            eventId: eventId,
+            eventType: parsed.queryParams?.type || "supabase", // Pass the event ID if available
           },
         });
       }

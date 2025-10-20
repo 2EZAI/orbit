@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   TouchableOpacity,
@@ -24,6 +24,8 @@ import {
 import { router } from "expo-router";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
 import { UnifiedDetailsSheet } from "~/src/components/map/UnifiedDetailsSheet";
+import { useUpdateEvents } from "~/hooks/useUpdateEvents";
+import { supabase } from "~/src/lib/supabase";
 
 interface Post {
   id: string;
@@ -75,6 +77,77 @@ export function PostDetailCard({
   const [newComment, setNewComment] = useState("");
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const [isSelectedItemLocation, setIsSelectedItemLocation] = useState(false);
+  const [eventDetailData, setEventDetailData] = useState<any | null>(null);
+  const [loadingEventDetail, setLoadingEventDetail] = useState(false);
+  
+  const { fetchEventDetail } = useUpdateEvents();
+
+  // Fetch complete event details when an event is selected
+  const fetchCompleteEventDetails = async (event: any) => {
+    if (!event?.id) return;
+    
+    setLoadingEventDetail(true);
+    try {
+      // Always fetch from API directly to get complete data
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        const response = await fetch(
+          `${process.env.BACKEND_MAP_URL}/api/events/${event.id}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              source: event.is_ticketmaster ? "ticketmaster" : "supabase",
+            }),
+          }
+        );
+        
+        if (response.ok) {
+          const completeData = await response.json();
+          console.log("✅ Fetched complete event data:", {
+            id: completeData.id,
+            name: completeData.name,
+            created_by: completeData.created_by,
+            type: completeData.type,
+            attendees: completeData.attendees,
+            categories: completeData.categories
+          });
+          setEventDetailData(completeData);
+          return completeData;
+        } else {
+          console.error("❌ Failed to fetch event details:", response.status);
+        }
+      }
+      
+      // Fallback: try the update events hook
+      const detailData = await fetchEventDetail(event);
+      if (detailData) {
+        console.log("✅ Fallback event data:", {
+          id: detailData.id,
+          name: detailData.name,
+          created_by: detailData.created_by,
+          type: detailData.type
+        });
+        setEventDetailData(detailData);
+        return detailData;
+      }
+      
+      // Final fallback: use original event data
+      console.log("⚠️ Using original event data as fallback");
+      setEventDetailData(event);
+      return event;
+    } catch (error) {
+      console.error("❌ Error fetching complete event details:", error);
+      // Fallback to original event data
+      setEventDetailData(event);
+      return event;
+    } finally {
+      setLoadingEventDetail(false);
+    }
+  };
 
   const handleSubmitComment = () => {
     if (newComment.trim()) {
@@ -213,17 +286,28 @@ export function PostDetailCard({
             {/* Event Card */}
             {post.event && (
               <TouchableOpacity
-                onPress={() => {
+                onPress={async () => {
                   setSelectedEvent(post.event);
                   setIsSelectedItemLocation(false);
+                  // Fetch complete event details
+                  await fetchCompleteEventDetails(post.event);
                 }}
                 className="p-4 mb-4 bg-blue-50 rounded-xl border border-blue-200"
+                disabled={loadingEventDetail}
               >
                 <View className="flex-row items-center">
                   <View className="flex-1">
                     <Text className="text-lg font-semibold text-blue-900">
                       {post.event.name}
                     </Text>
+                    {loadingEventDetail && (
+                      <View className="flex-row items-center mt-1">
+                        <ActivityIndicator size="small" color="#3B82F6" />
+                        <Text className="ml-2 text-xs text-blue-600">
+                          Loading event details...
+                        </Text>
+                      </View>
+                    )}
                     <Text className="mt-1 text-sm text-blue-700">
                       {format(
                         new Date(post.event.start_datetime),
@@ -337,11 +421,12 @@ export function PostDetailCard({
       {selectedEvent && (
         <>
           <UnifiedDetailsSheet
-            data={selectedEvent as any}
+            data={eventDetailData || selectedEvent}
             isOpen={!!selectedEvent}
             onClose={() => {
               setSelectedEvent(null);
               setIsSelectedItemLocation(false);
+              setEventDetailData(null);
             }}
             nearbyData={[]}
             onDataSelect={(data) => {

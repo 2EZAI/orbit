@@ -24,6 +24,7 @@ import { useChat } from "~/src/lib/chat";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useKeyboardAware } from "~/src/hooks/useKeyboardAware";
+import { ImagePickerService } from "~/src/lib/imagePicker";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 
@@ -124,19 +125,24 @@ export default function UsernameScreen() {
   };
 
   async function pickImage() {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
+    try {
+      const results = await ImagePickerService.pickImage({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      });
 
-    if (!result.canceled) {
-      setProfileImage(result.assets[0].uri);
-      // Clear validation errors when image is selected
-      if (showValidationErrors) {
-        setShowValidationErrors(false);
+      if (results.length > 0) {
+        setProfileImage(results[0].uri);
+        // Clear validation errors when image is selected
+        if (showValidationErrors) {
+          setShowValidationErrors(false);
+        }
       }
+    } catch (error) {
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to pick image. Please try again.");
     }
   }
 

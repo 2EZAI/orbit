@@ -54,6 +54,7 @@ export const useMapCamera = ({
       latitude: number | null | undefined;
     }) => {
       if (!cameraRef.current) return;
+      
       const lng =
         typeof location?.longitude === "number" &&
         Number.isFinite(location.longitude)
@@ -64,9 +65,11 @@ export const useMapCamera = ({
         Number.isFinite(location.latitude)
           ? location.latitude
           : null;
+          
       if (lng == null || lat == null) return;
 
       if (isFollowingUser) setIsFollowingUser(false);
+      
       cameraRef.current.setCamera({
         centerCoordinate: [lng, lat],
         zoomLevel: 13, // Approximately 5-mile radius view - consistent with default

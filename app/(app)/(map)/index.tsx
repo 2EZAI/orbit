@@ -85,7 +85,7 @@ export default function Map() {
   return (
     <MapStateManager cameraRef={cameraRef}>
       {(state) => (
-        <MapEventHandlers>
+        <MapEventHandlers cameraRef={cameraRef}>
           {(eventHandlers) => (
             <>
               {/* Event/Location Card - Show only when details sheet is not open */}
@@ -213,6 +213,12 @@ export default function Map() {
 
                   // Enhanced recenter handler - FIXED COORDINATE ORDER
                   const handleRecenterClick = useCallback(() => {
+                    console.log("🗺️ [Map] Recenter button clicked");
+                    console.log("🗺️ [Map] User preference:", user?.event_location_preference);
+                    console.log("🗺️ [Map] User location:", userlocation);
+                    console.log("🗺️ [Map] State location:", state.location);
+                    console.log("🗺️ [Map] Camera ref:", !!cameraRef.current);
+                    
                     if (
                       user?.event_location_preference === 1 &&
                       userlocation?.latitude &&
@@ -235,9 +241,7 @@ export default function Map() {
                       // Don't refresh data - just center the map
                     } else {
                       // Fallback: get current location if no location available
-                      console.log(
-                        "🗺️ [Map] No location available, getting current location"
-                      );
+                      console.log("🗺️ [Map] No location available, getting current location");
                       state.getCurrentLocation();
                     }
                   }, [
@@ -247,6 +251,7 @@ export default function Map() {
                     eventHandlers,
                     state.getCurrentLocation,
                     state.forceRefresh,
+                    cameraRef,
                   ]);
 
                   return (

@@ -1,8 +1,9 @@
 import React from "react";
-import { TouchableOpacity, View, Linking } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 import { Calendar, MapPin, Navigation, User } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
+import { openMapDirections } from "~/src/lib/nativeActions";
 
 interface EventDetailsSectionProps {
   data: any;
@@ -65,13 +66,12 @@ export function EventDetailsSection({
     }
   };
 
-  const handleDirections = () => {
+  const handleDirections = async () => {
     const lat = data.location?.coordinates?.[1];
     const lng = data.location?.coordinates?.[0];
 
     if (lat && lng) {
-      const url = `https://maps.apple.com/?daddr=${lat},${lng}`;
-      Linking.openURL(url);
+      await openMapDirections(lat, lng, data.address || data.venue_name);
     }
   };
 

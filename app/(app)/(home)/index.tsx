@@ -361,7 +361,10 @@ export default function Home() {
   const { user } = useUser();
   const { session } = useAuth();
   const router = useRouter();
-  const { eventId = null } = useLocalSearchParams<{ eventId: string }>();
+  const { eventId = null, eventType = null } = useLocalSearchParams<{
+    eventId: string;
+    eventType: string;
+  }>();
   const { fetchAllNoifications, unReadCount } = useNotificationsApi();
 
   // Home feed data
@@ -410,9 +413,36 @@ export default function Home() {
   useEffect(() => {
     fetchAllNoifications(1, 20);
   }, []);
-
+  const handleDeepLinkEvent = async () => {
+    console.log("handling deep link event>", eventId, eventType);
+    if (!session) return;
+    if (eventId && eventType) {
+      const response = await fetch(
+        `${process.env.BACKEND_MAP_URL}/api/events/${eventId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            // source: isTicketmaster ? "ticketmaster" : "supabase",
+            source: eventType,
+          }),
+        }
+      );
+      console.log("deep link response>", response);
+      if (!response.ok) {
+        return;
+      }
+      const data = await response.json();
+      handleEventSelect(data);
+    }
+  };
   // Initialize filters when data changes
   useEffect(() => {
+    if (eventId) {
+    }
     if (data.allContent.length > 0 && Object.keys(filters).length === 0) {
       console.log(data.allContent[0]);
       if (eventId) {
@@ -432,7 +462,8 @@ export default function Home() {
           console.log("🔗 [Home] Opening UnifiedDetailsSheet for:", found.name);
           handleEventSelect(found);
         } else {
-          console.log("🔗 [Home] Event not found in feed data");
+          console.log("🔗 [Home] Event not found in feed data calling api");
+          handleDeepLinkEvent();
         }
       }
       const defaultFilters = generateDefaultFilters(

@@ -507,6 +507,7 @@ export default function LandingPage() {
   const { theme } = useTheme();
   const { session, loading } = useAuth();
   const insets = useSafeAreaInsets();
+  const [isSocialLogin, setIsSocialLogin] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [orbitingImages, setOrbitingImages] = useState<any[]>([]);
   const [fireflies, setFireflies] = useState<string[]>([]);
@@ -532,12 +533,12 @@ export default function LandingPage() {
   );
 
   useEffect(() => {
-    if (!loading && session && isFocused) {
+    if (!loading && session && isFocused && !isSocialLogin) {
       console.log("Landing page: User is authenticated, redirecting to app");
-      router.replace("/(app)/(map)");
+      router.navigate("/(app)/(map)");
       return;
     }
-  }, [session, loading, isFocused]);
+  }, [session, loading, isFocused, isSocialLogin]);
 
   useEffect(() => {
     // Initialize app and create orbiting images
@@ -591,13 +592,13 @@ export default function LandingPage() {
   }, [isReady]);
 
   const handleGetStarted = () => {
-    router.push("/(auth)/sign-in");
+    router.navigate("/(auth)/sign-in");
   };
 
   const handleSignUp = async () => {
     // router.push("/(auth)/sign-up");
     await AsyncStorage.setItem("hasStarted", "true");
-    router.push("/(app)/(map)");
+    router.navigate("/(app)/(map)");
   };
 
   // Show loading while checking authentication
@@ -770,7 +771,10 @@ export default function LandingPage() {
             <>
               {Platform.OS == "ios" && (
                 <TouchableOpacity
-                  onPress={appleLogin}
+                  onPress={async () => {
+                    setIsSocialLogin(true);
+                    await appleLogin();
+                  }}
                   style={{
                     backgroundColor: "transparent",
                     paddingVertical: 18,
@@ -795,7 +799,10 @@ export default function LandingPage() {
               )}
 
               <TouchableOpacity
-                onPress={googleLogin}
+                onPress={async () => {
+                  setIsSocialLogin(true);
+                  await googleLogin();
+                }}
                 style={{
                   backgroundColor: "transparent",
                   paddingVertical: 18,

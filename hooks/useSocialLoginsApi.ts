@@ -6,6 +6,7 @@ import * as AppleAuthentication from "expo-apple-authentication";
 import {
   GoogleSignin,
   GoogleSigninButton,
+  SignInResponse,
   statusCodes,
 } from "@react-native-google-signin/google-signin";
 
@@ -36,22 +37,32 @@ export function useSocialLoginsApi() {
     return !!data; // true if found, false if null
   };
 
-  const googleUserExistsOrNot = async (uesrId: string) => {
-    console.error("uesr>", uesrId);
-    const { data, error } = await supabase
-      .from("users")
-      .select("id")
-      .eq("google_id", uesrId)
-      .maybeSingle(); // Use maybeSingle() if email might not exist
-    console.log("data, error>", data, error);
-    if (error) {
-      console.error("❌ Error querying Supabase:", error);
+  const checkUserOnboarded = async (userId: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("username")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error("❌ Error checking onboarding status:", error);
+        return false;
+      }
+      console.log("onboard data>", data);
+      // User is onboarded if they have a username set (not null, undefined, or empty string)
+      const hasUsername = !!(
+        data &&
+        data.username &&
+        data.username.trim().length > 0
+      );
+
+      return hasUsername;
+    } catch (e) {
+      console.error("❌ Exception checking onboarding status:", e);
       return false;
     }
-
-    return !!data; // true if found, false if null
   };
-
   // Update user data
   const updateUser = async (updates: any, user: any) => {
     try {
@@ -62,7 +73,7 @@ export function useSocialLoginsApi() {
           updated_at: new Date().toISOString(),
         })
         .eq("id", user.id);
-console.log("supabaseError>", supabaseError);
+      console.log("supabaseError>", supabaseError);
       if (supabaseError) throw supabaseError;
     } catch (e) {
       console.log(
@@ -70,6 +81,32 @@ console.log("supabaseError>", supabaseError);
         e instanceof Error ? e : new Error("An error occurred")
       );
       // setError(e instanceof Error ? e : new Error("An error occurred"));
+      throw e;
+    }
+  };
+  const createGoogleUser = async (newUserData: SignInResponse) => {
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .insert({
+          google_id: newUserData?.data?.user.id || "",
+          register_type: "google",
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("❌ Error creating user:", error);
+        throw error;
+      }
+
+      return data;
+    } catch (e) {
+      console.log(
+        "error>",
+        e instanceof Error ? e : new Error("An error occurred")
+      );
       throw e;
     }
   };
@@ -83,40 +120,26 @@ console.log("supabaseError>", supabaseError);
         ],
       });
       // console.log("credential>", credential);
-
+      console.log("credential>", credential);
       // Sign in via Supabase Auth.
       if (credential.identityToken) {
         // console.log("credential??>", credential);
-        const exists = await appleUserExistsOrNot(credential?.user);
-        console.log(exists ? "✅ User exists" : "❌ User does not exist");
-
+        const {
+          error,
+          data: { user },
+        } = await supabase.auth.signInWithIdToken({
+          provider: "apple",
+          token: credential.identityToken,
+        });
+        const exists = await checkUserOnboarded(user?.id || "");
         if (exists) {
           //user exsist navigate to home
-
-          const {
-            error,
-            data: { user },
-          } = await supabase.auth.signInWithIdToken({
-            provider: "apple",
-            token: credential.identityToken,
-          });
-          console.log(JSON.stringify({ error, user }, null, 2));
-          if (!error) {
-            // User is signed in.
-            // Navigate to home
-            // router.replace("/(app)/home");
-          }
+          // User is signed in.
+          // Navigate to home
+          // router.replace("/(app)/home");
+          router.push("/(app)/(map)");
         } else {
           //new user
-          console.log("new user", credential);
-          const {
-            error,
-            data: { user },
-          } = await supabase.auth.signInWithIdToken({
-            provider: "apple",
-            token: credential.identityToken,
-          });
-          console.log(JSON.stringify({ error, user }, null, 2));
           if (!error) {
             await updateUser(
               {
@@ -164,20 +187,22 @@ console.log("supabaseError>", supabaseError);
           provider: "google",
           token: userInfo.data.idToken,
         });
+
         // console.log("userInfo>", userInfo);
         // console.log("userInfo.data.idToken>", userInfo.data.idToken);
         // console.log("data>", user);
         // console.log("error>", error);
-        const exists = await googleUserExistsOrNot(userInfo.data.user.id);
+        const exists = await checkUserOnboarded(user?.id || "");
         console.log(exists ? "✅ User exists" : "❌ User does not exist");
 
         if (exists) {
           //exist user
           // User is signed in.
           // Navigate to home
-          // router.replace("/(app)/home");
+          router.navigate("/(app)/(map)");
           console.log("user exist, navigate to home");
         } else {
+          console.log(await supabase.auth.getSession());
           await updateUser(
             {
               google_id: userInfo.data.user.id,

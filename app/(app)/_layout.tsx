@@ -1,16 +1,14 @@
 // ~/app/(app)/_layout.tsx
+import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { router, Tabs } from "expo-router";
+import { useEffect, useRef } from "react";
 import { View } from "react-native";
-import { useAuth } from "~/src/lib/auth";
+import Toast from "react-native-toast-message";
+import { Walkthrough } from "react-native-wlkt";
+import useNotifications from "~/hooks/useNotifications";
 import { useTheme } from "~/src/components/ThemeProvider";
 import TabBar from "~/src/components/shared/TabBar";
-import { Redirect } from "expo-router";
-import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import useNotifications from "~/hooks/useNotifications";
-import { useRef } from "react";
-import { Walkthrough } from "react-native-wlkt";
-import { useEffect, useState } from "react";
-import Toast from "react-native-toast-message";
+import { useAuth } from "~/src/lib/auth";
 
 export default function AppLayout() {
   const { theme } = useTheme();
@@ -56,9 +54,9 @@ export default function AppLayout() {
               autoHide: true,
               topOffset: 50,
             });
-            // router.back();
-            // Redirect unauthenticated users to the landing index screen
+
             router.dismissAll();
+
             return null;
           }
 

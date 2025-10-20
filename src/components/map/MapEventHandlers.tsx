@@ -8,6 +8,7 @@ import {
 
 interface MapEventHandlersProps {
   children: (handlers: MapEventHandlers) => React.ReactNode;
+  cameraRef: React.RefObject<any>;
 }
 
 interface MapEventHandlers {
@@ -21,8 +22,54 @@ interface MapEventHandlers {
   setHideCount: (hide: boolean) => void;
 }
 
-export function MapEventHandlers({ children }: MapEventHandlersProps) {
-  const { cameraRef, handleRecenter: cameraRecenter } = useMapCamera();
+export function MapEventHandlers({ children, cameraRef }: MapEventHandlersProps) {
+  // Create a custom handleRecenter that uses the passed cameraRef
+  const handleRecenter = useCallback(
+    (location: {
+      longitude: number | null | undefined;
+      latitude: number | null | undefined;
+    }) => {
+      console.log("🗺️ [MapEventHandlers] handleRecenter called with:", location);
+      console.log("🗺️ [MapEventHandlers] cameraRef.current:", !!cameraRef.current);
+      
+      if (!cameraRef.current) {
+        console.log("🗺️ [MapEventHandlers] Camera ref is null, cannot recenter");
+        return;
+      }
+      
+      const lng =
+        typeof location?.longitude === "number" &&
+        Number.isFinite(location.longitude)
+          ? location.longitude
+          : null;
+      const lat =
+        typeof location?.latitude === "number" &&
+        Number.isFinite(location.latitude)
+          ? location.latitude
+          : null;
+          
+      console.log("🗺️ [MapEventHandlers] Parsed coordinates:", { lng, lat });
+      
+      if (lng == null || lat == null) {
+        console.log("🗺️ [MapEventHandlers] Invalid coordinates, cannot recenter");
+        return;
+      }
+      
+      console.log("🗺️ [MapEventHandlers] Setting camera to:", [lng, lat]);
+      try {
+        cameraRef.current.setCamera({
+          centerCoordinate: [lng, lat],
+          zoomLevel: 13,
+          animationDuration: 500,
+          animationMode: "flyTo",
+        });
+        console.log("🗺️ [MapEventHandlers] Camera set successfully");
+      } catch (error) {
+        console.error("🗺️ [MapEventHandlers] Error setting camera:", error);
+      }
+    },
+    [cameraRef]
+  );
 
   // Refs for throttling and debouncing
   const lastRegionChangeRef = useRef<number>(0);
@@ -231,14 +278,6 @@ export function MapEventHandlers({ children }: MapEventHandlersProps) {
     [cameraRef]
   );
 
-  // Recenter handler
-  const handleRecenter = useCallback(
-    (location: any) => {
-      cameraRecenter(location);
-      console.log("🗺️ [Map] Recentering to location");
-    },
-    [cameraRecenter]
-  );
 
   // Zoom level setter
   const setCurrentZoomLevel = useCallback((zoom: number) => {
