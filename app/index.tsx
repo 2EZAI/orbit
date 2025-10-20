@@ -535,7 +535,7 @@ export default function LandingPage() {
   useEffect(() => {
     if (!loading && session && isFocused && !isSocialLogin) {
       console.log("Landing page: User is authenticated, redirecting to app");
-      // router.replace("/(app)/(map)");
+      router.replace("/(app)/(map)");
       return;
     }
   }, [session, loading, isFocused, isSocialLogin]);
