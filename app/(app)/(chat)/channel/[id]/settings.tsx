@@ -709,7 +709,17 @@ export default function ChatSettingsScreen() {
               data={members}
               keyExtractor={(item) => item.user_id}
               renderItem={({ item }) => (
-                <View
+                <TouchableOpacity
+                  onPress={() => {
+                    if (item.user_id !== client?.userID) {
+                      setShowMembersModal(false);
+                      // Dismiss the modal and navigate to profile
+                      router.dismiss();
+                      setTimeout(() => {
+                        router.push(`/(app)/profile/${item.user_id}`);
+                      }, 1000);
+                    }
+                  }}
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
@@ -773,7 +783,7 @@ export default function ChatSettingsScreen() {
                       />
                     </TouchableOpacity>
                   )}
-                </View>
+                </TouchableOpacity>
               )}
             />
           </View>

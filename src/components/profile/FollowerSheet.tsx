@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router } from "expo-router";
 import { useFollow, ChatUser } from "~/hooks/useFollow";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
@@ -25,6 +26,7 @@ const FollowerSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
   const [followerUsers, setFollowerUsers] = useState<ChatUser[]>([]);
   const [localLoadingIds, setLocalLoadingIds] = useState<string[]>([]);
   const [followingIds, setFollowingIds] = useState<string[]>([]);
+  const [followLoadingIds, setFollowLoadingIds] = useState<string[]>([]);
   useEffect(() => {
     if (isOpen && userId) {
       getFollowerUsers(userId).then((followers) => {
@@ -38,14 +40,22 @@ const FollowerSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
   }, [isOpen, userId, getFollowerUsers]);
 
   const toggleFollow = async (target: ChatUser) => {
-    const isFollowing = followingIds.includes(target.id);
-    if (isFollowing) {
-      await unfollowUser(target.id);
-      setFollowingIds((prev) => prev.filter((id) => id !== target.id));
-    } else {
-      console.log("Following user:", target.id);
-      await followUser(target.id);
-      setFollowingIds((prev) => [...prev, target.id]);
+    setFollowLoadingIds((prev) => [...prev, target.id]);
+    
+    try {
+      const isFollowing = followingIds.includes(target.id);
+      if (isFollowing) {
+        await unfollowUser(target.id);
+        setFollowingIds((prev) => prev.filter((id) => id !== target.id));
+      } else {
+        console.log("Following user:", target.id);
+        await followUser(target.id);
+        setFollowingIds((prev) => [...prev, target.id]);
+      }
+    } catch (error) {
+      console.error("Error toggling follow:", error);
+    } finally {
+      setFollowLoadingIds((prev) => prev.filter((id) => id !== target.id));
     }
   };
   const getDisplayName = (profile: ChatUser | null) => {
@@ -105,6 +115,8 @@ const FollowerSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
         : item.first_name || "";
 
     const isFollowing = followingIds.includes(item.id);
+    const isLoading = followLoadingIds.includes(item.id);
+    
     return (
       <View
         style={{
@@ -115,48 +127,58 @@ const FollowerSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
           gap: 12,
         }}
       >
-        <UserAvatar
-          size={48}
-          user={{
-            id: item.id,
-            name: getDisplayName(item),
-            image: item.avatar_url || null,
+        <TouchableOpacity
+          onPress={() => {
+            onClose();
+            router.push(`/(app)/profile/${item.id}`);
           }}
-        />
-
-        <View style={{ flex: 1 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-              flexWrap: "wrap",
+          style={{ flexDirection: "row", flex: 1, alignItems: "center", gap: 12 }}
+        >
+          <UserAvatar
+            size={48}
+            user={{
+              id: item.id,
+              name: getDisplayName(item),
+              image: item.avatar_url || null,
             }}
-          >
-            <Text
+          />
+
+          <View style={{ flex: 1 }}>
+            <View
               style={{
-                color: theme.colors.text,
-                fontSize: 16,
-                fontWeight: "600",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
               }}
             >
-              {getDisplayName(item)}
-            </Text>
-            {renderRelationshipBadge(item)}
-          </View>
+              <Text
+                style={{
+                  color: theme.colors.text,
+                  fontSize: 16,
+                  fontWeight: "600",
+                }}
+              >
+                {getDisplayName(item)}
+              </Text>
+              {renderRelationshipBadge(item)}
+            </View>
 
-          <Text
-            style={{
-              color: theme.colors.text + "99",
-              fontSize: 12,
-              marginTop: 2,
-            }}
-          >
-            @{item.username || "Anonymous"}
-          </Text>
-        </View>
+            <Text
+              style={{
+                color: theme.colors.text + "99",
+                fontSize: 12,
+                marginTop: 2,
+              }}
+            >
+              @{item.username || "Anonymous"}
+            </Text>
+          </View>
+        </TouchableOpacity>
+        
         <TouchableOpacity
-          onPress={() => toggleFollow(item)}
+          onPress={() => !isLoading && toggleFollow(item)}
+          disabled={isLoading}
           style={{
             paddingHorizontal: 14,
             height: 34,
@@ -168,19 +190,27 @@ const FollowerSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
             backgroundColor: isFollowing
               ? theme.colors.primary + "20"
               : theme.colors.primary,
+            opacity: isLoading ? 0.7 : 1,
           }}
         >
-          <Text
-            style={{
-              fontSize: 14,
-              fontWeight: "500",
-              color: isFollowing
-                ? theme.colors.primary
-                : theme.colors.background,
-            }}
-          >
-            {isFollowing ? "Unfollow" : "Follow"}
-          </Text>
+          {isLoading ? (
+            <ActivityIndicator 
+              size="small" 
+              color={isFollowing ? theme.colors.primary : theme.colors.background} 
+            />
+          ) : (
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: "500",
+                color: isFollowing
+                  ? theme.colors.primary
+                  : theme.colors.background,
+              }}
+            >
+              {isFollowing ? "Unfollow" : "Follow"}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
     );
@@ -240,45 +270,30 @@ const FollowerSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
               Your followers
             </Text>
           </View>
-          {loading ? (
-            <View
-              style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <ActivityIndicator size="large" color={theme.colors.primary} />
-              <Text style={{ marginTop: 16, color: theme.colors.text }}>
-                Loading followers...
-              </Text>
-            </View>
-          ) : (
-            <BottomSheetFlatList
-              data={followerUsers}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={{
-                paddingBottom: 120 + insets.bottom,
-                paddingHorizontal: 20,
-                paddingTop: 10,
-              }}
-              renderItem={renderItem}
-              ListEmptyComponent={() => (
-                <View
-                  style={{
-                    flex: 1,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    marginTop: 50,
-                  }}
-                >
-                  <Text style={{ color: theme.colors.text, fontSize: 16 }}>
-                    No followers yet.
-                  </Text>
-                </View>
-              )}
-            />
-          )}
+          <BottomSheetFlatList
+            data={followerUsers}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{
+              paddingBottom: 120 + insets.bottom,
+              paddingHorizontal: 20,
+              paddingTop: 10,
+            }}
+            renderItem={renderItem}
+            ListEmptyComponent={() => (
+              <View
+                style={{
+                  flex: 1,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  marginTop: 50,
+                }}
+              >
+                <Text style={{ color: theme.colors.text, fontSize: 16 }}>
+                  No followers yet.
+                </Text>
+              </View>
+            )}
+          />
         </BottomSheet>
       </View>
     </Modal>
