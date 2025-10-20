@@ -1,63 +1,56 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import { LinearGradient } from "expo-linear-gradient";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-  View,
-  TouchableOpacity,
-  ActivityIndicator,
+  Bell,
+  Bookmark,
+  Calendar,
+  Clock,
+  Filter,
+  MapPin,
+  Search,
+  Sparkles,
+  Users,
+} from "lucide-react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Animated,
+  Dimensions,
   FlatList,
   Image,
-  TextInput,
-  Platform,
-  StyleSheet,
-  StatusBar,
-  Animated,
   RefreshControl,
   ScrollView,
-  Dimensions,
+  StatusBar,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Text } from "~/src/components/ui/text";
-import { OptimizedImage } from "~/src/components/ui/optimized-image";
-import { useTheme } from "~/src/components/ThemeProvider";
-import { useUser } from "~/src/lib/UserProvider";
 import { useHomeFeed } from "~/hooks/useHomeFeed";
 import { useNotificationsApi } from "~/hooks/useNotificationsApi";
-import {
-  Filter,
-  Search,
-  Bell,
-  User,
-  MapPin,
-  Calendar,
-  Users,
-  Heart,
-  Share,
-  Bookmark,
-  Sparkles,
-  Clock,
-} from "lucide-react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { OptimizedImage } from "~/src/components/ui/optimized-image";
+import { Text } from "~/src/components/ui/text";
+import { useUser } from "~/src/lib/UserProvider";
 
 // Components
+import { CompactEventCard } from "~/src/components/feed/CompactEventCard";
+import { EventCard } from "~/src/components/feed/EventCard";
 import { FeaturedSection } from "~/src/components/feed/FeaturedSection";
 import { FeedSection } from "~/src/components/feed/FeedSection";
-import { EventCard } from "~/src/components/feed/EventCard";
-import { LocationCard } from "~/src/components/feed/LocationCard";
-import { CompactEventCard } from "~/src/components/feed/CompactEventCard";
+import { HomeLoadingScreen } from "~/src/components/feed/HomeLoadingScreen";
 import { MarkerFilter } from "~/src/components/map/MarkerFilter";
-import { SectionViewSheet } from "~/src/components/SectionViewSheet";
 import { UnifiedDetailsSheet } from "~/src/components/map/UnifiedDetailsSheet";
 import { SearchSheet } from "~/src/components/search/SearchSheet";
+import { SectionViewSheet } from "~/src/components/SectionViewSheet";
 import { ScreenHeader } from "~/src/components/ui/screen-header";
-import { HomeLoadingScreen } from "~/src/components/feed/HomeLoadingScreen";
 
 // Utils
-import { handleSectionViewMore } from "~/src/lib/utils/sectionViewMore";
 import {
   FilterState,
   generateDefaultFilters,
 } from "~/src/components/map/MarkerFilter";
 import { useAuth } from "~/src/lib/auth";
+import { handleSectionViewMore } from "~/src/lib/utils/sectionViewMore";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const STORY_CARD_WIDTH = screenWidth * 0.8;
@@ -364,7 +357,10 @@ export default function Home() {
   const { user } = useUser();
   const { session } = useAuth();
   const router = useRouter();
-  const { eventId = null } = useLocalSearchParams<{ eventId: string }>();
+  const { eventId = null, eventType = null } = useLocalSearchParams<{
+    eventId: string;
+    eventType: string;
+  }>();
   const { fetchAllNoifications, unReadCount } = useNotificationsApi();
 
   // Home feed data
@@ -410,9 +406,36 @@ export default function Home() {
   useEffect(() => {
     fetchAllNoifications(1, 20);
   }, []);
-
+  const handleDeepLinkEvent = async () => {
+    console.log("handling deep link event>", eventId, eventType);
+    if (!session) return;
+    if (eventId && eventType) {
+      const response = await fetch(
+        `${process.env.BACKEND_MAP_URL}/api/events/${eventId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            // source: isTicketmaster ? "ticketmaster" : "supabase",
+            source: eventType,
+          }),
+        }
+      );
+      console.log("deep link response>", response);
+      if (!response.ok) {
+        return;
+      }
+      const data = await response.json();
+      handleEventSelect(data);
+    }
+  };
   // Initialize filters when data changes
   useEffect(() => {
+    if (eventId) {
+    }
     if (data.allContent.length > 0 && Object.keys(filters).length === 0) {
       console.log(data.allContent[0]);
       if (eventId) {
@@ -432,7 +455,8 @@ export default function Home() {
           console.log("🔗 [Home] Opening UnifiedDetailsSheet for:", found.name);
           handleEventSelect(found);
         } else {
-          console.log("🔗 [Home] Event not found in feed data");
+          console.log("🔗 [Home] Event not found in feed data calling api");
+          handleDeepLinkEvent();
         }
       }
       const defaultFilters = generateDefaultFilters(
