@@ -20,16 +20,71 @@ export class ImagePickerService {
    * Request camera permissions
    */
   static async requestCameraPermissions(): Promise<boolean> {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    return status === "granted";
+    try {
+      console.log('🔍 [ImagePicker] Requesting camera permissions...');
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      console.log('🔍 [ImagePicker] Camera permission status:', status);
+      
+      if (status === "granted") {
+        console.log('✅ [ImagePicker] Camera permission granted');
+        return true;
+      } else if (status === "denied") {
+        console.log('❌ [ImagePicker] Camera permission denied');
+        Alert.alert(
+          "Permission Denied",
+          "Camera permission was denied. Please enable it in your device settings to take photos.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Open Settings", onPress: () => {
+              console.log('User should open settings manually');
+            }}
+          ]
+        );
+        return false;
+      } else {
+        console.log('⚠️ [ImagePicker] Camera permission status unknown:', status);
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ [ImagePicker] Error requesting camera permissions:', error);
+      return false;
+    }
   }
 
   /**
    * Request media library permissions
    */
   static async requestMediaLibraryPermissions(): Promise<boolean> {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    return status === "granted";
+    try {
+      console.log('🔍 [ImagePicker] Requesting media library permissions...');
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      console.log('🔍 [ImagePicker] Media library permission status:', status);
+      
+      if (status === "granted") {
+        console.log('✅ [ImagePicker] Media library permission granted');
+        return true;
+      } else if (status === "denied") {
+        console.log('❌ [ImagePicker] Media library permission denied');
+        Alert.alert(
+          "Permission Denied",
+          "Media library permission was denied. Please enable it in your device settings to select photos.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Open Settings", onPress: () => {
+              // This would open device settings, but we can't do that directly
+              console.log('User should open settings manually');
+            }}
+          ]
+        );
+        return false;
+      } else {
+        console.log('⚠️ [ImagePicker] Media library permission status unknown:', status);
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ [ImagePicker] Error requesting media library permissions:', error);
+      return false;
+    }
   }
 
   /**
@@ -66,14 +121,11 @@ export class ImagePickerService {
    * Launch camera to take a photo
    */
   static async launchCamera(options: ImagePickerOptions = {}): Promise<ImagePickerResult[]> {
+    console.log('🔍 [ImagePicker] Launching camera...');
     const hasPermission = await this.requestCameraPermissions();
     
     if (!hasPermission) {
-      Alert.alert(
-        "Camera Permission Required",
-        "Please grant camera permission to take photos.",
-        [{ text: "OK" }]
-      );
+      console.log('❌ [ImagePicker] Camera permission not granted, cannot launch camera');
       return [];
     }
 
@@ -95,14 +147,11 @@ export class ImagePickerService {
    * Launch image library to select photos
    */
   static async launchImageLibrary(options: ImagePickerOptions = {}): Promise<ImagePickerResult[]> {
+    console.log('🔍 [ImagePicker] Launching image library...');
     const hasPermission = await this.requestMediaLibraryPermissions();
     
     if (!hasPermission) {
-      Alert.alert(
-        "Media Library Permission Required",
-        "Please grant media library permission to select photos.",
-        [{ text: "OK" }]
-      );
+      console.log('❌ [ImagePicker] Media library permission not granted, cannot launch library');
       return [];
     }
 
@@ -110,7 +159,7 @@ export class ImagePickerService {
       mediaTypes: options.mediaTypes || ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: options.allowsMultipleSelection || false,
       quality: options.quality || 0.8,
-      selectionLimit: options.selectionLimit || 1,
+      selectionLimit: options.allowsMultipleSelection ? (options.selectionLimit || undefined) : 1,
       allowsEditing: options.allowsEditing || false,
       ...options,
     });
@@ -148,17 +197,33 @@ export class ImagePickerService {
    * Combined method that shows action sheet and handles both camera and gallery
    */
   static async pickImage(options: ImagePickerOptions = {}): Promise<ImagePickerResult[]> {
+    console.log('🔍 [ImagePicker] Starting image picker with options:', options);
     return new Promise((resolve) => {
       this.showImageSourcePicker(
         async () => {
-          const results = await this.launchCamera(options);
-          resolve(results);
+          console.log('📷 [ImagePicker] User selected camera');
+          try {
+            const results = await this.launchCamera(options);
+            console.log('📷 [ImagePicker] Camera results:', results.length, 'images');
+            resolve(results);
+          } catch (error) {
+            console.error('❌ [ImagePicker] Camera error:', error);
+            resolve([]);
+          }
         },
         async () => {
-          const results = await this.launchImageLibrary(options);
-          resolve(results);
+          console.log('🖼️ [ImagePicker] User selected gallery');
+          try {
+            const results = await this.launchImageLibrary(options);
+            console.log('🖼️ [ImagePicker] Gallery results:', results.length, 'images');
+            resolve(results);
+          } catch (error) {
+            console.error('❌ [ImagePicker] Gallery error:', error);
+            resolve([]);
+          }
         },
         () => {
+          console.log('❌ [ImagePicker] User cancelled');
           resolve([]);
         }
       );
