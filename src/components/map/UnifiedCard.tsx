@@ -32,6 +32,7 @@ interface UnifiedCardProps {
   nearbyData: UnifiedData[];
   onShowDetails: () => void;
   treatAsEvent?: boolean; // Explicit prop to override type detection
+  mapCenter?: [number, number] | null; // Current map center for location change detection
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -288,6 +289,7 @@ export const UnifiedCard = React.memo(
     nearbyData,
     onShowDetails,
     treatAsEvent = true, // Default to true to maintain existing behavior
+    mapCenter,
   }: UnifiedCardProps) => {
     // Debug logging for UnifiedCard data
     console.log("🎴 [UnifiedCard] Component rendered with data:", {
@@ -561,6 +563,9 @@ export const UnifiedCard = React.memo(
           address: (locationData as any).address || "",
           categoryId: simplifiedCategory.id,
           categoryName: simplifiedCategory.name,
+          // Pass current map center for location change detection
+          currentLat: mapCenter ? mapCenter[1]?.toString() : "",
+          currentLng: mapCenter ? mapCenter[0]?.toString() : "",
         },
       });
     };
@@ -835,7 +840,7 @@ export const UnifiedCard = React.memo(
     // Custom comparison to ensure re-render when data changes
     return (
       prevProps.data?.id === nextProps.data?.id &&
-      prevProps.data?.join_status === nextProps.data?.join_status &&
+      (prevProps.data as any)?.join_status === (nextProps.data as any)?.join_status &&
       prevProps.treatAsEvent === nextProps.treatAsEvent &&
       prevProps.nearbyData?.length === nextProps.nearbyData?.length
     );

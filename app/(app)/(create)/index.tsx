@@ -1225,6 +1225,9 @@ export default function CreateEvent() {
           lat: event.location.latitude,
           lng: event.location.longitude,
           eventId: event.id, // Pass the event ID
+          // Pass current map center for location change detection
+          currentLat: params.currentLat || "0",
+          currentLng: params.currentLng || "0",
         },
       });
     } catch (error: any) {

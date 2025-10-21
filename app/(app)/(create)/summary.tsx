@@ -8,6 +8,9 @@ import EventSummaryCard from "~/src/components/createpost/EventSummaryCard";
 import { DeviceEventEmitter } from "react-native";
 import InviteUsers from "~/src/components/createpost/InviteUsers";
 import { haptics } from "~/src/lib/haptics";
+import { LocationChangeModal } from "~/src/components/map/LocationChangeModal";
+import { isLocationOutsideRadius } from "~/src/lib/distance";
+import { useAuth } from "~/src/lib/auth";
 
 
 
@@ -28,8 +31,17 @@ export default function EventSummary() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
+  const { session } = useAuth();
   const [isInviteOpen, setIsInviteOpen] = useState<Boolean>(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [showLocationChangeModal, setShowLocationChangeModal] = useState(false);
+  const [eventLocation, setEventLocation] = useState<{
+    latitude: number;
+    longitude: number;
+    name?: string;
+    address?: string;
+  } | null>(null);
+  const [distance, setDistance] = useState(0);
 
   // Trigger confetti and celebration haptics when component mounts (event creation success)
   useEffect(() => {
@@ -63,6 +75,53 @@ console.log("params>>",params);
   };
 
   const handleConfirm = () => {
+    // Check if the event is outside the currently loaded data area
+    const currentCenter = {
+      latitude: parseFloat(params.currentLat as string) || 0,
+      longitude: parseFloat(params.currentLng as string) || 0,
+    };
+    
+    const eventLocation = {
+      latitude: eventData.eventLocation.lat,
+      longitude: eventData.eventLocation.lng,
+      name: eventData.name,
+      address: eventData.locationDetails?.address1 || "",
+    };
+
+    // Check if event is outside the loaded data radius (100km)
+    const { isOutside, distance } = isLocationOutsideRadius(
+      eventLocation,
+      currentCenter,
+      100 // 100km radius
+    );
+
+    console.log("🔍 [Summary] Location check:", {
+      currentCenter,
+      eventLocation,
+      isOutside,
+      distance,
+      currentLat: params.currentLat,
+      currentLng: params.currentLng
+    });
+
+    // TEMPORARY: Always show popup for testing
+    if (true) {
+      console.log("🔍 [Summary] Showing popup for testing");
+      setEventLocation(eventLocation);
+      setDistance(distance);
+      setShowLocationChangeModal(true);
+    } else if (isOutside && currentCenter.latitude !== 0 && currentCenter.longitude !== 0) {
+      // Show location change modal
+      setEventLocation(eventLocation);
+      setDistance(distance);
+      setShowLocationChangeModal(true);
+    } else {
+      // Navigate directly to map
+      navigateToMap();
+    }
+  };
+
+  const navigateToMap = () => {
     // Navigate to the map view centered on the event location
     router.push({
       pathname: "/(app)/(map)",
@@ -71,7 +130,35 @@ console.log("params>>",params);
         lng: eventData.eventLocation.lng,
         zoom: 15,
         showEventCard: "true",
-        eventId: params.eventId as string, // Pass the event ID if available
+        eventId: params.eventId as string,
+        // Add a timestamp to force map reload
+        reload: Date.now().toString(),
+      },
+    });
+
+    // Emit event to reload map and show event card
+    DeviceEventEmitter.emit("mapReload", true);
+    DeviceEventEmitter.emit("showEventCard", {
+      eventId: params.eventId as string,
+      lat: eventData.eventLocation.lat,
+      lng: eventData.eventLocation.lng,
+    });
+  };
+
+  const handleLocationChangeConfirm = () => {
+    // Navigate to map with location change flag
+    router.push({
+      pathname: "/(app)/(map)",
+      params: {
+        lat: eventData.eventLocation.lat,
+        lng: eventData.eventLocation.lng,
+        zoom: 15,
+        showEventCard: "true",
+        eventId: params.eventId as string,
+        // Add a timestamp to force map reload
+        reload: Date.now().toString(),
+        // Flag to indicate location change
+        changeLocation: "true",
       },
     });
 
@@ -90,8 +177,15 @@ console.log("params>>",params);
      DeviceEventEmitter.emit("editEvent", {
       eventId: params.eventId,
     });
-    // Go back to the create event screen
-    router.back();
+    // Navigate to create screen with from parameter
+    router.push({
+      pathname: "/(app)/(create)",
+      params: {
+        eventId: params.eventId,
+        editMode: "true",
+        from: "map", // Indicate we're coming from map
+      },
+    });
   };
 
 const handleInviteUser = () => {
@@ -164,6 +258,21 @@ const handleInviteUser = () => {
             handleConfirm()
           }}
          
+        />
+      )}
+
+      {/* Location Change Modal */}
+      {eventLocation && (
+        <LocationChangeModal
+          isOpen={showLocationChangeModal}
+          onClose={() => setShowLocationChangeModal(false)}
+          onConfirm={handleLocationChangeConfirm}
+          eventLocation={eventLocation}
+          currentCenter={{
+            latitude: parseFloat(params.currentLat as string) || 0,
+            longitude: parseFloat(params.currentLng as string) || 0,
+          }}
+          distance={distance}
         />
       )}
     </View>

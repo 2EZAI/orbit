@@ -99,7 +99,7 @@ interface MapboxMarkersProps {
   followerList: any[];
 
   // Selection state
-  selectedEvent: MapEvent | null;
+  selectedEvent: (MapEvent | MapLocation) | null;
   selectedTimeFrame: "Today" | "Week" | "Weekend";
 
   // Map state
