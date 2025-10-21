@@ -1,32 +1,27 @@
-import { haptics } from "~/src/lib/haptics";
-import { UnifiedData } from "./UnifiedDetailsSheet";
-import { Share, Text, TouchableOpacity, View, Dimensions, ScrollView } from "react-native";
-import { useTheme } from "../ThemeProvider";
-import { MotiView } from "moti";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { 
-  MessageCircle, 
-  Plus, 
-  Share2, 
-  Sparkles,
-  Users,
-  Calendar,
-  Zap,
-  ClipboardList
-} from "lucide-react-native";
-import React, { useState, useEffect } from "react";
-import { useChat } from "~/src/lib/chat";
-import { useAuth } from "~/src/lib/auth";
+import { LinearGradient } from "expo-linear-gradient";
+import { ClipboardList, Share2 } from "lucide-react-native";
+import { MotiView } from "moti";
+import React, { useEffect, useState } from "react";
+import {
+  Dimensions,
+  ScrollView,
+  Share,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "~/src/components/ui/avatar";
+import { useAuth } from "~/src/lib/auth";
+import { useChat } from "~/src/lib/chat";
+import { useTheme } from "../ThemeProvider";
+import { UnifiedData } from "./UnifiedDetailsSheet";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 interface IProps {
   onClose: () => void;
   data: UnifiedData | undefined;
@@ -44,7 +39,7 @@ const ShareContent: React.FC<IProps> = ({
   const [isSharing, setIsSharing] = useState(false);
   const [recentChats, setRecentChats] = useState<any[]>([]);
   const [loadingChats, setLoadingChats] = useState(true);
-  
+
   const { client } = useChat();
   const { session } = useAuth();
 
@@ -58,29 +53,33 @@ const ShareContent: React.FC<IProps> = ({
 
       try {
         setLoadingChats(true);
-        
+
         // Get recent channels (last 3)
-        const channels = await client.queryChannels({
-          type: 'messaging',
-          members: { $in: [session.user.id] },
-        }, {
-          last_message_at: -1,
-        }, {
-          limit: 3,
-        });
+        const channels = await client.queryChannels(
+          {
+            type: "messaging",
+            members: { $in: [session.user.id] },
+          },
+          {
+            last_message_at: -1,
+          },
+          {
+            limit: 3,
+          }
+        );
 
         // Extract user info from channels
         const recentUsers = channels
-          .map(channel => {
+          .map((channel) => {
             // Access members as object values (not membersArray)
             const members = Object.values(channel.state.members || {});
             const otherMembers = members
               .filter((member: any) => member.user?.id !== session.user?.id)
               .map((member: any) => ({
                 id: member.user?.id,
-                name: member.user?.name || member.user?.username || 'Unknown',
+                name: member.user?.name || member.user?.username || "Unknown",
                 avatar: member.user?.image || null,
-                lastMessage: channel.state.messages?.[0]?.text || '',
+                lastMessage: channel.state.messages?.[0]?.text || "",
                 isOnline: member.user?.online || false,
                 channelId: channel.id,
               }));
@@ -90,7 +89,7 @@ const ShareContent: React.FC<IProps> = ({
 
         setRecentChats(recentUsers);
       } catch (error) {
-        console.error('Error fetching recent chats:', error);
+        console.error("Error fetching recent chats:", error);
         setRecentChats([]);
       } finally {
         setLoadingChats(false);
@@ -102,18 +101,28 @@ const ShareContent: React.FC<IProps> = ({
 
   const handleShareToChat = async (chatUser: any) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
+
     try {
       if (!client || !session?.user?.id) return;
 
       // Check if we already have a channel with this user
       if (chatUser.channelId) {
         // Use existing channel
-        const channel = client.channel('messaging', chatUser.channelId);
-        
+        const channel = client.channel("messaging", chatUser.channelId);
+        console.log(data?.source);
         // Send the share message
         await channel.sendMessage({
-          text: `Check out ${data?.name} on Orbit! ${data?.description} https://orbit-redirects.vercel.app/?action=share&eventId=${data?.id || ""}`,
+          text: `Check out ${data?.name} on Orbit! ${
+            data?.description
+          } https://orbit-redirects.vercel.app/?action=share&eventId=${
+            data?.id || ""
+          }`,
+          // Keep custom data tiny to stay under Stream's 5KB custom data limit
+          data: {
+            type: "event/share",
+            eventId: data?.id || null,
+            source: data?.source || "event",
+          },
         });
       } else {
         // Create new channel with this user (following your existing pattern)
@@ -121,21 +130,29 @@ const ShareContent: React.FC<IProps> = ({
         const randomStr = Math.random().toString(36).substring(7);
         const uniqueChannelId = `${timestamp}-${randomStr}`;
 
-        const channel = client.channel('messaging', uniqueChannelId, {
+        const channel = client.channel("messaging", uniqueChannelId, {
           members: [session.user.id, chatUser.id],
         });
 
         await channel.watch();
-
         // Send the share message
         await channel.sendMessage({
-          text: `Check out ${data?.name} on Orbit! ${data?.description} https://orbit-redirects.vercel.app/?action=share&eventId=${data?.id || ""}`,
+          text: `Check out ${data?.name} on Orbit! ${
+            data?.description
+          } https://orbit-redirects.vercel.app/?action=share&eventId=${
+            data?.id || ""
+          }`,
+          data: {
+            type: "event/share",
+            eventId: data?.id || null,
+            source: data?.source || "event",
+          },
         });
       }
 
       onClose();
     } catch (error) {
-      console.error('Error sharing to chat:', error);
+      console.error("Error sharing to chat:", error);
     }
   };
 
@@ -172,7 +189,9 @@ const ShareContent: React.FC<IProps> = ({
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    >
       {/* Header */}
       <MotiView
         from={{ opacity: 0, translateY: -20 }}
@@ -199,8 +218,8 @@ const ShareContent: React.FC<IProps> = ({
             </Text>
           </View>
         ) : recentChats.length > 0 ? (
-          <ScrollView 
-            horizontal 
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.recentContactsScroll}
           >
@@ -209,29 +228,52 @@ const ShareContent: React.FC<IProps> = ({
                 key={chatUser.id}
                 from={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: "timing", duration: 200, delay: 150 + index * 50 }}
+                transition={{
+                  type: "timing",
+                  duration: 200,
+                  delay: 150 + index * 50,
+                }}
               >
                 <TouchableOpacity
                   style={styles.contactItem}
                   activeOpacity={0.7}
                   onPress={() => handleShareToChat(chatUser)}
                 >
-                  <View style={[styles.contactAvatar, { 
-                    borderColor: chatUser.isOnline ? "#10B981" : theme.colors.border,
-                  }]}>
-                    <Avatar style={styles.avatarComponent}>
+                  <View
+                    style={[
+                      styles.contactAvatar,
+                      {
+                        borderColor: chatUser.isOnline
+                          ? "#10B981"
+                          : theme.colors.border,
+                      },
+                    ]}
+                  >
+                    <Avatar
+                      alt={chatUser.name || "Avatar"}
+                      style={styles.avatarComponent}
+                    >
                       {chatUser.avatar ? (
                         <AvatarImage source={{ uri: chatUser.avatar }} />
                       ) : null}
-                      <AvatarFallback style={[styles.avatarFallback, { backgroundColor: theme.colors.card }]}>
+                      <AvatarFallback
+                        style={[
+                          styles.avatarFallback,
+                          { backgroundColor: theme.colors.card },
+                        ]}
+                      >
                         <Text style={styles.avatarInitial}>
                           {chatUser.name.charAt(0).toUpperCase()}
                         </Text>
                       </AvatarFallback>
                     </Avatar>
-                    {chatUser.isOnline && <View style={styles.onlineIndicator} />}
+                    {chatUser.isOnline && (
+                      <View style={styles.onlineIndicator} />
+                    )}
                   </View>
-                  <Text style={[styles.contactName, { color: theme.colors.text }]}>
+                  <Text
+                    style={[styles.contactName, { color: theme.colors.text }]}
+                  >
                     {chatUser.name}
                   </Text>
                 </TouchableOpacity>
@@ -269,10 +311,13 @@ const ShareContent: React.FC<IProps> = ({
           transition={{ type: "timing", duration: 300, delay: 600 }}
         >
           <TouchableOpacity
-            style={[styles.actionButton, { 
-              backgroundColor: theme.colors.card,
-              borderColor: theme.colors.border,
-            }]}
+            style={[
+              styles.actionButton,
+              {
+                backgroundColor: theme.colors.card,
+                borderColor: theme.colors.border,
+              },
+            ]}
             activeOpacity={0.7}
             onPress={handleCreateProposal}
           >
@@ -285,10 +330,17 @@ const ShareContent: React.FC<IProps> = ({
               <ClipboardList size={20} color="white" />
             </LinearGradient>
             <View style={styles.actionButtonContent}>
-              <Text style={[styles.actionButtonTitle, { color: theme.colors.text }]}>
+              <Text
+                style={[styles.actionButtonTitle, { color: theme.colors.text }]}
+              >
                 Create Proposal
               </Text>
-              <Text style={[styles.actionButtonSubtitle, { color: theme.colors.text + "70" }]}>
+              <Text
+                style={[
+                  styles.actionButtonSubtitle,
+                  { color: theme.colors.text + "70" },
+                ]}
+              >
                 Plan together
               </Text>
             </View>
@@ -303,28 +355,47 @@ const ShareContent: React.FC<IProps> = ({
           transition={{ type: "timing", duration: 300, delay: 700 }}
         >
           <TouchableOpacity
-            style={[styles.actionButton, { 
-              backgroundColor: theme.colors.card,
-              borderColor: theme.colors.border,
-            }]}
+            style={[
+              styles.actionButton,
+              {
+                backgroundColor: theme.colors.card,
+                borderColor: theme.colors.border,
+              },
+            ]}
             activeOpacity={0.7}
             onPress={handleNativeShare}
             disabled={isSharing}
           >
-            <View style={[styles.actionButtonIcon, { backgroundColor: theme.colors.primary }]}>
+            <View
+              style={[
+                styles.actionButtonIcon,
+                { backgroundColor: theme.colors.primary },
+              ]}
+            >
               <Share2 size={20} color="white" />
             </View>
             <View style={styles.actionButtonContent}>
-              <Text style={[styles.actionButtonTitle, { color: theme.colors.text }]}>
+              <Text
+                style={[styles.actionButtonTitle, { color: theme.colors.text }]}
+              >
                 {isSharing ? "Sharing..." : "Share"}
               </Text>
-              <Text style={[styles.actionButtonSubtitle, { color: theme.colors.text + "70" }]}>
+              <Text
+                style={[
+                  styles.actionButtonSubtitle,
+                  { color: theme.colors.text + "70" },
+                ]}
+              >
                 External apps
               </Text>
             </View>
             {isSharing ? (
               <View style={styles.loadingSpinner}>
-                <Text style={[styles.loadingDots, { color: theme.colors.text }]}>⋯</Text>
+                <Text
+                  style={[styles.loadingDots, { color: theme.colors.text }]}
+                >
+                  ⋯
+                </Text>
               </View>
             ) : (
               <Share2 size={20} color={theme.colors.text + "40"} />
@@ -343,7 +414,7 @@ const styles = {
     flex: 1,
     paddingTop: 20,
   },
-  
+
   // Header
   header: {
     alignItems: "center" as const,
@@ -355,7 +426,7 @@ const styles = {
     fontWeight: "600" as const,
     textAlign: "center" as const,
   },
-  
+
   // Recent Contacts Section
   recentContactsContainer: {
     paddingBottom: 20,
@@ -429,14 +500,14 @@ const styles = {
     fontWeight: "500" as const,
     opacity: 0.7,
   },
-  
+
   // Divider
   divider: {
     height: 1,
     marginHorizontal: 20,
     marginBottom: 20,
   },
-  
+
   // Action Buttons
   actionsContainer: {
     paddingHorizontal: 20,
