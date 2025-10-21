@@ -220,6 +220,11 @@ export default function CreateEvent() {
     loadDraft().finally(() => setLoading(false));
   }, [params.eventId, params.locationId, params.draftId]); // Re-run when params change
 
+  // Debug: Log all params on mount
+  useEffect(() => {
+    console.log("🔍 [CreateEvent] All params received:", params);
+  }, []);
+
   const loadDraft = async () => {
     try {
       setDraftLoaded(true);
@@ -1240,7 +1245,39 @@ export default function CreateEvent() {
     if (hasUnsavedChanges && (name.trim() || description.trim())) {
       await saveDraft(false);
     }
-    router.back();
+    
+    console.log("🔍 [CreateEvent] Back button pressed, params.from:", params.from);
+    
+    // Check if we came from a specific screen
+    if (params.from === 'map') {
+      console.log("🔍 [CreateEvent] Going back to map");
+      // Came from map, go back to map
+      router.push("/(app)/(map)");
+    } else if (params.from === 'home') {
+      console.log("🔍 [CreateEvent] Going back to home");
+      // Came from home, go back to home
+      router.push("/(app)/(home)");
+    } else if (params.from === 'social') {
+      console.log("🔍 [CreateEvent] Going back to social");
+      // Came from social, go back to social
+      router.push("/(app)/(social)");
+    } else if (params.from === 'chat') {
+      console.log("🔍 [CreateEvent] Going back to chat");
+      // Came from chat, go back to chat
+      router.push("/(app)/(chat)");
+    } else if (params.from === 'details') {
+      console.log("🔍 [CreateEvent] Going back to details sheet");
+      // Came from details sheet, use normal back navigation to return to the sheet
+      router.back();
+    } else if (params.from === 'tab') {
+      console.log("🔍 [CreateEvent] Going back to previous tab");
+      // Came from bottom tab, use normal back navigation
+      router.back();
+    } else {
+      console.log("🔍 [CreateEvent] Using normal back navigation (no from param)");
+      // No from parameter, use normal back navigation
+      router.back();
+    }
   };
   if (loading) {
     return (
