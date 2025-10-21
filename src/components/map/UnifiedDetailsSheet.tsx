@@ -303,7 +303,10 @@ export const UnifiedDetailsSheet = React.memo(
 
       router.push({
         pathname: "/(app)/(create)",
-        params,
+        params: {
+          ...params,
+          from: "details",
+        },
       });
     };
 
@@ -317,6 +320,7 @@ export const UnifiedDetailsSheet = React.memo(
         params: {
           eventId: data.id,
           editMode: "true",
+          from: "details",
         },
       });
     };
