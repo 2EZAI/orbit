@@ -27,11 +27,7 @@ interface Event {
   city?: string;
   state?: string;
   image_urls?: string[];
-  is_private: boolean;
   type: string;
-  location_id?: string;
-  category_id?: string;
-  is_ticketmaster?: boolean;
   external_url?: string;
   distance?: number; // Add missing distance property
   location?: {
@@ -112,24 +108,46 @@ export default function UnifiedEventsTab({
       return;
     }
 
+    console.log('🔍 [UnifiedEventsTab] Loading created events for userId:', userId);
+    console.log('🔍 [UnifiedEventsTab] Current session user ID:', session?.user?.id);
+
     try {
       // First try using the API
       try {
+        console.log('🔍 [UnifiedEventsTab] Trying API call for created events...');
         const events = await (fetchCreatedEvents as any)(
           "created",
           1,
           50,
           userId
         );
-        if (Array.isArray(events)) {
+        console.log('🔍 [UnifiedEventsTab] API response:', events);
+        if (Array.isArray(events) && events.length > 0) {
           setCreatedEvents(events as Event[]);
+          console.log('✅ [UnifiedEventsTab] API success, found', events.length, 'created events');
           return;
+        } else {
+          console.log('⚠️ [UnifiedEventsTab] API returned empty array, trying Supabase query...');
         }
       } catch (apiError) {
-        console.log("API fallback, using direct Supabase query");
+        console.log("❌ [UnifiedEventsTab] API failed, using direct Supabase query:", apiError);
       }
 
+      // Force fallback to Supabase query to debug
+      console.log("🔍 [UnifiedEventsTab] Forcing Supabase query for debugging...");
+
+      // First, let's check if there are any events in the database at all
+      console.log('🔍 [UnifiedEventsTab] Checking total events in database...');
+      const { data: allEvents, error: allEventsError } = await supabase
+        .from("events")
+        .select("id, name, created_by")
+        .limit(5);
+      
+      console.log('🔍 [UnifiedEventsTab] Sample events in database:', allEvents);
+      console.log('🔍 [UnifiedEventsTab] Events with created_by = userId:', allEvents?.filter(e => e.created_by === userId));
+
       // Fallback to direct Supabase query
+      console.log('🔍 [UnifiedEventsTab] Using direct Supabase query for created events...');
       const { data: eventsData, error } = await supabase
         .from("events")
         .select(
@@ -144,11 +162,7 @@ export default function UnifiedEventsTab({
           city,
           state,
           image_urls,
-          is_private,
           type,
-          location_id,
-          category_id,
-          is_ticketmaster,
           external_url,
           location,
           created_by,
@@ -181,6 +195,7 @@ export default function UnifiedEventsTab({
         .eq("created_by", userId)
         .order("start_datetime", { ascending: false });
 
+      console.log('🔍 [UnifiedEventsTab] Supabase query result:', { eventsData, error });
       if (error) throw error;
 
       const transformedEvents: Event[] = (eventsData || []).map(
@@ -224,9 +239,10 @@ export default function UnifiedEventsTab({
         })
       );
 
+      console.log('✅ [UnifiedEventsTab] Supabase success, found', transformedEvents.length, 'created events');
       setCreatedEvents(transformedEvents);
     } catch (error) {
-      console.error("Error loading created events:", error);
+      console.error("❌ [UnifiedEventsTab] Error loading created events:", error);
       setCreatedEvents([]);
     }
   };
@@ -272,11 +288,7 @@ export default function UnifiedEventsTab({
             city,
             state,
             image_urls,
-            is_private,
             type,
-            location_id,
-            category_id,
-            is_ticketmaster,
             external_url,
             location,
             created_by,
