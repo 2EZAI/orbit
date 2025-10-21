@@ -557,6 +557,7 @@ export const UnifiedCard = React.memo(
             (locationData as any).location?.coordinates?.[1]?.toString() || "",
           longitude:
             (locationData as any).location?.coordinates?.[0]?.toString() || "",
+          from: "map",
           address: (locationData as any).address || "",
           categoryId: simplifiedCategory.id,
           categoryName: simplifiedCategory.name,
@@ -670,7 +671,7 @@ export const UnifiedCard = React.memo(
                 source={{ uri: displayValues.imageUrl }}
                 className="absolute w-full h-full"
                 resizeMode="cover"
-                blurRadius={isEvent(data) ? 8 : 10}
+                blurRadius={isEvent(data) ? 3 : 4}
               />
             )}
 
