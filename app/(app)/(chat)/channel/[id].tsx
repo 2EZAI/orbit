@@ -1,42 +1,36 @@
-import {
-  Channel,
-  MessageList,
-  MessageInput,
-  Thread,
-  MessageSimple,
-  useChannelContext,
-  Message,
-} from "stream-chat-expo";
-import { useAuth } from "~/src/lib/auth";
-import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { useChat } from "~/src/lib/chat";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { Info } from "lucide-react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  View,
-  TouchableOpacity,
   Alert,
   StyleSheet,
-  Image,
+  TouchableOpacity,
+  View
 } from "react-native";
-import { Text } from "~/src/components/ui/text";
+import type {
+  Channel as ChannelType
+} from "stream-chat";
+import {
+  Channel,
+  Message,
+  MessageInput,
+  MessageList,
+  Thread,
+  useChannelContext
+} from "stream-chat-expo";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "~/src/components/ui/avatar";
-import { Info } from "lucide-react-native";
-import { Icon } from "react-native-elements";
-import type {
-  Channel as ChannelType,
-  DefaultGenerics,
-  Attachment as StreamAttachment,
-} from "stream-chat";
+import { Text } from "~/src/components/ui/text";
+import { useAuth } from "~/src/lib/auth";
+import { useChat } from "~/src/lib/chat";
 
+import { ArrowLeft } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
-import { ArrowLeft, Phone, Video } from "lucide-react-native";
 import { useVideo } from "~/src/lib/video";
-import ActiveCallBanner from "~/src/components/chat/ActiveCallBanner";
 
 
 // BULLETPROOF Message Component - ONLY renders polls, returns NULL for everything else
