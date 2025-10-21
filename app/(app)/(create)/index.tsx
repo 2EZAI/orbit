@@ -863,6 +863,7 @@ export default function CreateEvent() {
     try {
       const results = await ImagePickerService.pickImage({
         allowsMultipleSelection: true,
+        selectionLimit: 5, // Allow up to 5 images per selection
         quality: 0.8,
         allowsEditing: false,
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
