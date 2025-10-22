@@ -1,5 +1,5 @@
 import React , {useState, useEffect} from "react";
-import { View, StatusBar } from "react-native";
+import { View, StatusBar, TouchableOpacity, Text } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -114,6 +114,7 @@ console.log("params>>",params);
       navigateToMap();
     }
   };
+
 
   const navigateToMap = () => {
     // Navigate to the map view centered on the event location
@@ -239,6 +240,7 @@ const handleInviteUser = () => {
           onEdit={handleEdit}
           onInviteUsers={handleInviteUser}
         />
+
       </View>
       {isInviteOpen && (
         <InviteUsers

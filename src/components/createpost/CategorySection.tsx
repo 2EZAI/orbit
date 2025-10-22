@@ -47,7 +47,7 @@ export default function CategorySection({
             marginBottom: 8,
           }}
         >
-          Event Category
+          Activity Category
         </Text>
         <Text
           style={{
@@ -56,7 +56,7 @@ export default function CategorySection({
             lineHeight: 22,
           }}
         >
-          Choose a category for your event
+          Choose a category for your activity
         </Text>
       </View>
 

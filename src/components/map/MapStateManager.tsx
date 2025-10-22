@@ -5,6 +5,7 @@ import * as Location from "expo-location";
 import { supabase } from "~/src/lib/supabase";
 import { useAuth } from "~/src/lib/auth";
 import { useUser } from "~/src/lib/UserProvider";
+import { setCurrentMapCenter } from "~/src/lib/mapCenter";
 import {
   useUnifiedMapData,
   type MapEvent,
@@ -227,6 +228,16 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
     location?.latitude,
     location?.longitude,
   ]);
+
+  // Update global map center when calculatedCenter changes
+  useEffect(() => {
+    if (calculatedCenter && calculatedCenter[0] !== 0 && calculatedCenter[1] !== 0) {
+      setCurrentMapCenter({
+        latitude: calculatedCenter[1], // Convert from [lng, lat] to {lat, lng}
+        longitude: calculatedCenter[0]
+      });
+    }
+  }, [calculatedCenter]);
 
   // Use the unified map data hook - always load 'today' data initially
   const {

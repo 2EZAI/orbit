@@ -29,6 +29,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { draftService } from "~/src/services/draftService";
 import { EventDraft } from "~/src/types/draftTypes";
 import { haptics } from "~/src/lib/haptics";
+import { getCurrentMapCenter } from "~/src/lib/mapCenter";
 
 // Import modular components
 import BasicInfoSection from "~/src/components/createpost/BasicInfoSection";
@@ -1242,8 +1243,14 @@ export default function CreateEvent() {
           lng: event.location.longitude,
           eventId: event.id, // Pass the event ID
           // Pass current map center for location change detection
-          currentLat: params.currentLat || "0",
-          currentLng: params.currentLng || "0",
+          currentLat: (() => {
+            const mapCenter = getCurrentMapCenter();
+            return mapCenter ? mapCenter.latitude.toString() : "0";
+          })(),
+          currentLng: (() => {
+            const mapCenter = getCurrentMapCenter();
+            return mapCenter ? mapCenter.longitude.toString() : "0";
+          })(),
         },
       });
     } catch (error: any) {
