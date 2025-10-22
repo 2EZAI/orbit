@@ -28,11 +28,15 @@ import {
 } from "lucide-react-native";
 import { router } from "expo-router";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
-import { UnifiedDetailsSheet } from "~/src/components/map/UnifiedDetailsSheet";
+import {
+  UnifiedData,
+  UnifiedDetailsSheet,
+} from "~/src/components/map/UnifiedDetailsSheet";
 import { SocialEventCard } from "~/src/components/social/SocialEventCard";
 import { ScreenHeader } from "~/src/components/ui/screen-header";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useNotificationsApi } from "~/hooks/useNotificationsApi";
+import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
 
 interface Post {
   id: string;
@@ -118,6 +122,10 @@ export default function SocialFeed() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [shareData, setShareData] = useState<{
+    data: UnifiedData;
+    isEventType: boolean;
+  } | null>(null);
   const [isSelectedItemLocation, setIsSelectedItemLocation] = useState(false);
   const [showUnifiedCard, setShowUnifiedCard] = useState(false);
 
@@ -162,7 +170,7 @@ export default function SocialFeed() {
 
       const response_ = await response.json();
       const postsData = response_?.data;
-// console.log("postsData>",postsData);
+      // console.log("postsData>",postsData);
       const transformedPosts =
         postsData?.map((post: any) => ({
           id: post.id,
@@ -343,7 +351,7 @@ export default function SocialFeed() {
             </View>
           </TouchableOpacity>
 
-         {/*  <TouchableOpacity className="p-2">
+          {/*  <TouchableOpacity className="p-2">
             <MoreHorizontal
               size={20}
               color={isDarkMode ? "#9CA3AF" : "#6B7280"}
@@ -511,13 +519,12 @@ export default function SocialFeed() {
           actions={[
             {
               icon: <Bell size={18} color="white" strokeWidth={2.5} />,
-              onPress: () =>{
-               
+              onPress: () => {
                 router.push({
-        pathname:`/(app)/(notification)`,
-        params: { from: "social"},
-      });
-                },
+                  pathname: `/(app)/(notification)`,
+                  params: { from: "social" },
+                });
+              },
               backgroundColor: theme.colors.primary,
               badge: !!(unReadCount && unReadCount > 0) ? (
                 <View
@@ -594,10 +601,10 @@ export default function SocialFeed() {
           {
             icon: <Bell size={18} color="white" strokeWidth={2.5} />,
             onPress: () => {
-                router.push({
-        pathname:`/(app)/(notification)`,
-        params: { from: "social"},
-      });
+              router.push({
+                pathname: `/(app)/(notification)`,
+                params: { from: "social" },
+              });
             },
             backgroundColor: theme.colors.primary,
             badge: !!(unReadCount && unReadCount > 0) ? (
@@ -707,11 +714,22 @@ export default function SocialFeed() {
             setSelectedEvent(data as any);
             setIsSelectedItemLocation(false);
           }}
+          onShare={(data, isEvent) => {
+            setSelectedEvent(null);
+            setShareData({ data, isEventType: isEvent });
+          }}
           onShowControler={() => {}}
           isEvent={!isSelectedItemLocation}
         />
       )}
-
+      {shareData && (
+        <UnifiedShareSheet
+          isOpen={!!shareData}
+          onClose={() => setShareData(null)}
+          data={shareData?.data}
+          isEventType={shareData?.isEventType}
+        />
+      )}
       {/* Floating Action Button */}
       <TouchableOpacity
         onPress={() => router.push("/(app)/post/create")}

@@ -12,6 +12,7 @@ import {
   Shield,
   Trash2,
   User,
+  ClipboardList,
 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
@@ -35,6 +36,7 @@ import { PersonalInfoModal } from "~/src/components/settings/PersonalInfoModal";
 import { UsernameModal } from "~/src/components/settings/UsernameModal";
 
 import { SafeAreaView } from "react-native-safe-area-context";
+import UnifiedProposalSheet from "~/src/components/map/UnifiedProposalSheet";
 import { DeleteAccountModal } from "~/src/components/settings/DeleteAccountModal";
 import { EmailModal } from "~/src/components/settings/EmailModal";
 import { InterestsModal } from "~/src/components/settings/InterestsModal";
@@ -177,7 +179,7 @@ export default function SettingsScreen() {
   const [loadingDrafts, setLoadingDrafts] = useState(false);
   const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
   const [clearingAllDrafts, setClearingAllDrafts] = useState(false);
-
+  const [showProposals, setShowProposals] = useState(false);
   const handleBack = () => {
     router.back();
   };
@@ -234,7 +236,9 @@ export default function SettingsScreen() {
     loadDrafts();
     setShowDrafts(true);
   };
-
+  const handleProposalsPress = () => {
+    setShowProposals(true);
+  };
   const handleDeleteDraft = async (draftId: string, draftName: string) => {
     Alert.alert(
       "Delete Draft",
@@ -419,6 +423,12 @@ export default function SettingsScreen() {
           title="My Drafts"
           onPress={handleDraftsPress}
           loading={loadingDrafts}
+        />
+        <SectionHeader title="Proposals" />
+        <SettingItem
+          icon={<ClipboardList size={20} color={theme.colors.primary} />}
+          title="Proposals"
+          onPress={handleProposalsPress}
         />
         {/* Privacy & more */}
         <SectionHeader title="Privacy & more" />
@@ -683,6 +693,10 @@ export default function SettingsScreen() {
           </View>
         </View>
       )}
+      <UnifiedProposalSheet
+        show={showProposals}
+        onClose={() => setShowProposals(false)}
+      />
     </SafeAreaView>
   );
 }

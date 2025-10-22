@@ -39,7 +39,10 @@ import { FeaturedSection } from "~/src/components/feed/FeaturedSection";
 import { FeedSection } from "~/src/components/feed/FeedSection";
 import { HomeLoadingScreen } from "~/src/components/feed/HomeLoadingScreen";
 import { MarkerFilter } from "~/src/components/map/MarkerFilter";
-import { UnifiedDetailsSheet } from "~/src/components/map/UnifiedDetailsSheet";
+import {
+  UnifiedData,
+  UnifiedDetailsSheet,
+} from "~/src/components/map/UnifiedDetailsSheet";
 import { SearchSheet } from "~/src/components/search/SearchSheet";
 import { SectionViewSheet } from "~/src/components/SectionViewSheet";
 import { ScreenHeader } from "~/src/components/ui/screen-header";
@@ -49,8 +52,10 @@ import {
   FilterState,
   generateDefaultFilters,
 } from "~/src/components/map/MarkerFilter";
+import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
 import { useAuth } from "~/src/lib/auth";
 import { handleSectionViewMore } from "~/src/lib/utils/sectionViewMore";
+import { useEventDetails } from "~/hooks/useEventDetails";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const STORY_CARD_WIDTH = screenWidth * 0.8;
@@ -362,10 +367,13 @@ export default function Home() {
     eventType: string;
   }>();
   const { fetchAllNoifications, unReadCount } = useNotificationsApi();
-
+  const { getEventDetails } = useEventDetails();
   // Home feed data
   const { data, loading, error, refetch } = useHomeFeed();
-
+  const [shareData, setShareData] = useState<{
+    data: UnifiedData;
+    isEventType: boolean;
+  } | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const [isSelectedItemLocation, setIsSelectedItemLocation] = useState(false);
   const [currentFeaturedIndex, setCurrentFeaturedIndex] = useState(0);
@@ -410,32 +418,12 @@ export default function Home() {
     console.log("handling deep link event>", eventId, eventType);
     if (!session) return;
     if (eventId && eventType) {
-      const response = await fetch(
-        `${process.env.BACKEND_MAP_URL}/api/events/${eventId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            // source: isTicketmaster ? "ticketmaster" : "supabase",
-            source: eventType,
-          }),
-        }
-      );
-      console.log("deep link response>", response);
-      if (!response.ok) {
-        return;
-      }
-      const data = await response.json();
-      handleEventSelect(data);
+      const result = await getEventDetails(eventId, eventType);
+      handleEventSelect(result);
     }
   };
   // Initialize filters when data changes
   useEffect(() => {
-    if (eventId) {
-    }
     if (data.allContent.length > 0 && Object.keys(filters).length === 0) {
       console.log(data.allContent[0]);
       if (eventId) {
@@ -1622,6 +1610,10 @@ export default function Home() {
               handleEventSelect(data);
             }
           }}
+          onShare={(data, isEvent) => {
+            setSelectedEvent(null);
+            setShareData({ data, isEventType: isEvent });
+          }}
           onShowControler={() => {}}
           isEvent={!isSelectedItemLocation}
         />
@@ -1635,6 +1627,19 @@ export default function Home() {
         locationsList={[]}
         onShowControler={() => {}}
       />
+      {console.log(
+        "🔗 [Home] Rendered with selectedEvent:",
+        selectedEvent,
+        shareData
+      )}
+      {shareData && (
+        <UnifiedShareSheet
+          isOpen={!!shareData}
+          onClose={() => setShareData(null)}
+          data={shareData?.data}
+          isEventType={shareData?.isEventType}
+        />
+      )}
     </View>
   );
 }

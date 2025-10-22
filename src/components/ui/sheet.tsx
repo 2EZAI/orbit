@@ -17,6 +17,7 @@ interface SheetProps {
   children: React.ReactNode;
   fullScreen?: boolean;
   expanded?: boolean;
+  isScrollable?: boolean;
 }
 
 export const Sheet: React.FC<SheetProps> = ({
@@ -25,6 +26,7 @@ export const Sheet: React.FC<SheetProps> = ({
   children,
   fullScreen = false,
   expanded = false,
+  isScrollable = true,
 }) => {
   const { theme, isDarkMode } = useTheme();
   const [modalVisible, setModalVisible] = React.useState(false);
@@ -103,7 +105,7 @@ export const Sheet: React.FC<SheetProps> = ({
           {!fullScreen && (
             <View style={[styles.handle, dynamicStyles.handle]} />
           )}
-          <ScrollView
+          {isScrollable?<ScrollView
             style={[
               styles.scrollView,
               { backgroundColor: theme.colors.background },
@@ -113,7 +115,7 @@ export const Sheet: React.FC<SheetProps> = ({
             contentContainerStyle={{ backgroundColor: theme.colors.background }}
           >
             {children}
-          </ScrollView>
+          </ScrollView>:children}
         </Animated.View>
       </View>
     </Modal>

@@ -6,18 +6,16 @@ import {
   Alert,
   StyleSheet,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
-import type {
-  Channel as ChannelType
-} from "stream-chat";
+import type { Channel as ChannelType } from "stream-chat";
 import {
   Channel,
   Message,
   MessageInput,
   MessageList,
   Thread,
-  useChannelContext
+  useChannelContext,
 } from "stream-chat-expo";
 import {
   Avatar,
@@ -29,36 +27,17 @@ import { useAuth } from "~/src/lib/auth";
 import { useChat } from "~/src/lib/chat";
 
 import { ArrowLeft } from "lucide-react-native";
+import ChatEventComponent from "~/src/components/chat/ChatEventComponent";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useVideo } from "~/src/lib/video";
-
+import {
+  UnifiedData,
+  UnifiedDetailsSheet,
+} from "~/src/components/map/UnifiedDetailsSheet";
+import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
 
 // BULLETPROOF Message Component - ONLY renders polls, returns NULL for everything else
 // This forces Stream to use its default components for all non-poll messages
-const BulletproofMessage = (props: any) => {
-  const message = props.message;
-
-  // ONLY handle actual poll messages
-  const isActualPoll =
-    message &&
-    message.poll &&
-    message.poll.id &&
-    typeof message.poll.id === "string" &&
-    message.poll.id.length > 0;
-
-  if (isActualPoll) {
-    console.log(
-      "BulletproofMessage: Rendering custom poll for message:",
-      message.id
-    );
-    // Return ONLY our custom poll - no MessageSimple wrapper
-    return <CustomPollComponent key={`poll-${message.id}`} message={message} />;
-  }
-
-  // For ALL other messages: use Stream's default Message component (NOT MessageSimple)
-  // This avoids the MessageSimple crash while showing all messages
-  return <Message {...props} />;
-};
 
 // Custom Poll Component - Uses Stream's proper Poll component prop
 const CustomPollComponent = ({ message }: { message: any }) => {
@@ -408,14 +387,17 @@ const CustomPollComponent = ({ message }: { message: any }) => {
   );
 };
 
-
-
 export default function ChannelScreen() {
   const { session } = useAuth();
   const { id } = useLocalSearchParams();
-  const {from} =  useLocalSearchParams();
+  const { from } = useLocalSearchParams();
   const { client } = useChat();
   const router = useRouter();
+  const [shareData, setShareData] = useState<{
+    data: UnifiedData;
+    isEventType: boolean;
+  } | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const [channel, setChannel] = useState<ChannelType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -425,7 +407,46 @@ export default function ChannelScreen() {
   const { theme } = useTheme();
   const [orbitMsg, setorbitMsg] = useState<any>(null);
   const { videoClient } = useVideo();
+  const BulletproofMessage = (props: any) => {
+    const eventId = props.message?.data?.eventId;
+    const eventSource = props.message?.data?.source;
+    const message = props.message;
 
+    // ONLY handle actual poll messages
+    const isActualPoll =
+      message &&
+      message.poll &&
+      message.poll.id &&
+      typeof message.poll.id === "string" &&
+      message.poll.id.length > 0;
+
+    if (isActualPoll) {
+      console.log(
+        "BulletproofMessage: Rendering custom poll for message:",
+        message.id
+      );
+      // Return ONLY our custom poll - no MessageSimple wrapper
+      return (
+        <CustomPollComponent key={`poll-${message.id}`} message={message} />
+      );
+    }
+    if (eventId && eventSource) {
+      return (
+        <ChatEventComponent
+          key={`event-${message.id}`}
+          message={message}
+          eventId={eventId}
+          source={eventSource}
+          handleEventPress={(data: UnifiedData) => {
+            setSelectedEvent(data);
+          }}
+        />
+      );
+    }
+    // For ALL other messages: use Stream's default Message component (NOT MessageSimple)
+    // This avoids the MessageSimple crash while showing all messages
+    return <Message {...props} />;
+  };
   const handleInfoPress = useCallback(() => {
     if (!channel) return;
 
@@ -495,19 +516,19 @@ export default function ChannelScreen() {
           watch: true,
         });
 
-        console.log("[ChatChannel] Channel loaded with query:", {
-          id: newChannel.id,
-          type: newChannel.type,
-          memberCount: Object.keys(newChannel.state.members || {}).length,
-          messageCount: messages.messages?.length || 0,
-          messages: messages.messages
-            ?.filter((m) => m)
-            .map((m) => ({
-              id: m?.id || "unknown",
-              text: m?.text || "",
-              user: m?.user?.id || "unknown",
-            })),
-        });
+        // console.log("[ChatChannel] Channel loaded with query:", {
+        //   id: newChannel.id,
+        //   type: newChannel.type,
+        //   memberCount: Object.keys(newChannel.state.members || {}).length,
+        //   messageCount: messages.messages?.length || 0,
+        //   messages: messages.messages
+        //     ?.filter((m) => m)
+        //     .map((m) => ({
+        //       id: m?.id || "unknown",
+        //       text: m?.text || "",
+        //       user: m?.user?.id || "unknown",
+        //     })),
+        // });
 
         if (mounted) {
           channelRef.current = newChannel;
@@ -557,9 +578,9 @@ export default function ChannelScreen() {
       );
 
       if (channel?.data?.name === "Orbit Social App") {
-    // console.log("messages???", channel?.state?.messages);
-    setorbitMsg(channel?.state?.messages[0]);
-  }
+        // console.log("messages???", channel?.state?.messages);
+        setorbitMsg(channel?.state?.messages[0]);
+      }
 
       return () => {
         unsubscribePromises.forEach((promise) => {
@@ -570,7 +591,6 @@ export default function ChannelScreen() {
       };
     }
   }, [channel]);
-
 
   const hitNoificationApi = async (
     typee: string,
@@ -588,24 +608,24 @@ export default function ChannelScreen() {
           group_name: name,
         },
       };
-    ///send notification
-        const response = await fetch(
-          `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session.user.id}`,
-            },
-            body: JSON.stringify(reuestData),
-          }
-        );
-        // console.log("requestData", reuestData);
-
-        if (!response.ok) {
-          // console.log("error>",response);
-          throw new Error(await response.text());
+      ///send notification
+      const response = await fetch(
+        `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.user.id}`,
+          },
+          body: JSON.stringify(reuestData),
         }
+      );
+      // console.log("requestData", reuestData);
+
+      if (!response.ok) {
+        // console.log("error>",response);
+        throw new Error(await response.text());
+      }
 
       const data_ = await response.json();
       console.log("response>", data_);
@@ -660,21 +680,18 @@ export default function ChannelScreen() {
                 paddingLeft: 8,
               }}
               onPress={() => {
-                 if(from === 'home' || from === 'social' 
-                 || from === 'map') {
-                 router.push({
-                  pathname: `/(app)/(notification)`,
-                  params: { from:from },
-                });
+                if (from === "home" || from === "social" || from === "map") {
+                  router.push({
+                    pathname: `/(app)/(notification)`,
+                    params: { from: from },
+                  });
+                } else {
+                  router.back();
                 }
-               
-               else{
-                router.back()
-               }
               }}
             >
               <ArrowLeft size={22} color={theme.colors.text} strokeWidth={2} />
-           {/*<Text
+              {/*<Text
                 style={{
                   fontSize: 17,
                   color: theme.colors.text,
@@ -683,7 +700,7 @@ export default function ChannelScreen() {
               >
                 Messages
               </Text>
-               */}  
+               */}
             </TouchableOpacity>
           ),
           headerRight: () =>
@@ -792,6 +809,33 @@ export default function ChannelScreen() {
           )}
         </Channel>
       ) : null}
+      {selectedEvent && (
+        <UnifiedDetailsSheet
+          data={selectedEvent}
+          isOpen={!!selectedEvent}
+          onClose={() => {
+            setSelectedEvent(null);
+            // Don't reset isSelectedItemLocation - it should keep its current state
+          }}
+          nearbyData={[]}
+          onDataSelect={(data) => {
+            setSelectedEvent(data);
+          }}
+          onShare={(data, isEvent) => {
+            setSelectedEvent(null);
+            setShareData({ data, isEventType: isEvent });
+          }}
+          onShowControler={() => {}}
+        />
+      )}
+      {shareData && (
+        <UnifiedShareSheet
+          isOpen={!!shareData}
+          onClose={() => setShareData(null)}
+          data={shareData?.data}
+          isEventType={shareData?.isEventType}
+        />
+      )}
     </View>
   );
 }

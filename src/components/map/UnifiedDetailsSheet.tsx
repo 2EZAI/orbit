@@ -9,7 +9,6 @@ import {
   Modal,
   PanResponder,
   ScrollView,
-  Share,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -33,7 +32,7 @@ export interface Category {
   icon?: string;
 }
 
-type UnifiedData = (MapEvent | MapLocation) & {
+export type UnifiedData = (MapEvent | MapLocation) & {
   created_by?: {
     id: string;
     name: string;
@@ -58,6 +57,7 @@ type UnifiedData = (MapEvent | MapLocation) & {
   phone?: string;
   type?: string;
   is_ticketmaster?: boolean;
+  source?: string;
 };
 
 interface UnifiedDetailsSheetProps {
@@ -68,6 +68,7 @@ interface UnifiedDetailsSheetProps {
   onDataSelect: (data: UnifiedData) => void;
   onShowControler: () => void;
   isEvent?: boolean;
+  onShare: (data: UnifiedData, isEventType: boolean) => void;
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -103,6 +104,7 @@ export const UnifiedDetailsSheet = React.memo(
     onDataSelect,
     onShowControler,
     isEvent,
+    onShare,
   }: UnifiedDetailsSheetProps) => {
     const [loading, setLoading] = useState(false);
     const [detailData, setDetailData] = useState<UnifiedData | undefined>(
@@ -202,20 +204,20 @@ export const UnifiedDetailsSheet = React.memo(
 
     const handleShare = async () => {
       const currentData = detailData || data;
+      onShare(currentData, isEventType);
+      // try {
+      //   haptics.selection(); // Light haptic on share action
+      //   await Share.share({
+      //     message: `Check out ${currentData?.name} on Orbit!
+      //     ${currentData?.description}
 
-      try {
-        haptics.selection(); // Light haptic on share action
-        await Share.share({
-          message: `Check out ${currentData?.name} on Orbit!
-          ${currentData?.description}
-
-          https://orbit-redirects.vercel.app/?action=share&eventId=${currentData.id}
-          `,
-          title: isEventType ? "Activity on Orbit" : "Location on Orbit",
-        });
-      } catch (error) {
-        console.error("Error sharing:", error);
-      }
+      //     https://orbit-redirects.vercel.app/?action=share&eventId=${currentData.id}
+      //     `,
+      //     title: isEventType ? "Activity on Orbit" : "Location on Orbit",
+      //   });
+      // } catch (error) {
+      //   console.error("Error sharing:", error);
+      // }
     };
 
     const handleTicketPurchase = () => {
@@ -880,7 +882,6 @@ export const UnifiedDetailsSheet = React.memo(
               // Close viewer and guard against late momentum events
               isViewerOpenRef.current = false;
               setSelectedImage(null);
-              
             }}
             statusBarTranslucent={true}
             presentationStyle="overFullScreen"
@@ -904,7 +905,6 @@ export const UnifiedDetailsSheet = React.memo(
                     console.log("Closing image viewer");
                     isViewerOpenRef.current = false;
                     setSelectedImage(null);
-                    
                   }}
                 >
                   <X size={24} color="white" />
@@ -1001,7 +1001,8 @@ export const UnifiedDetailsSheet = React.memo(
               nearbyData={nearbyData}
               onDataSelect={onDataSelect}
               onShowControler={onShowControler}
-              isEvent={true} // Always treat location events as events
+              isEvent={true}
+              onShare={onShare} // Always treat location events as events
             />
           )}
         </View>
