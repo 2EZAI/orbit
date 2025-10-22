@@ -270,9 +270,18 @@ const ModernChannelPreview = (
             <View className="relative">
               <ChannelAvatar channel={channel} size={52} />
               {/* Online indicator for 1-on-1 chats */}
-              {Object.keys(channel.state.members).length === 2 && (
-                <View className="absolute right-0 bottom-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
-              )}
+              {Object.keys(channel.state.members).length === 2 && (() => {
+                // Get the other member (not current user)
+                const otherMembers = Object.values(channel.state.members).filter(
+                  (member: any) => member.user?.id !== channel._client.userID
+                );
+                const otherMember = otherMembers[0];
+                const isOnline = otherMember?.user?.online;
+                
+                return isOnline ? (
+                  <View className="absolute right-0 bottom-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
+                ) : null;
+              })()}
             </View>
 
             {/* Content */}

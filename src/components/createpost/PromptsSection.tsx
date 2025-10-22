@@ -68,7 +68,7 @@ if (typeof prompts === 'string') {
             marginBottom: 8,
           }}
         >
-          Event Prompts
+          Activity Prompts
         </Text>
         <Text
           style={{
@@ -77,7 +77,7 @@ if (typeof prompts === 'string') {
             lineHeight: 22,
           }}
         >
-          Choose prompts to guide your event
+          Choose prompts to guide your activity
         </Text>
       </View>
 

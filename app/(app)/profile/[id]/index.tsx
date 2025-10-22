@@ -3,7 +3,7 @@ import { useLocalSearchParams } from "expo-router";
 import { UnifiedProfilePage } from "~/src/components/profile/UnifiedProfilePage";
 
 export default function ProfileScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
 
-  return <UnifiedProfilePage userId={id} showBackButton={true} />;
+  return <UnifiedProfilePage userId={id} showBackButton={true} from={from} />;
 }

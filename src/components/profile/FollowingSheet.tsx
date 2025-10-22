@@ -12,6 +12,7 @@ import { ChatUser, useFollow } from "~/hooks/useFollow";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { UserAvatar } from "../ui/user-avatar";
+import { useUserData } from "~/hooks/useUserData";
 interface IProps {
   isOpen: boolean;
   onClose: () => void;
@@ -19,14 +20,23 @@ interface IProps {
 }
 const FollowingSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
   const { theme, isDarkMode } = useTheme();
+  const { user } = useUserData();
   const [followingUsers, setFollowingUsers] = useState<ChatUser[]>([]);
+  const [followingIds, setFollowingIds] = useState<string[]>([]);
   const insets = useSafeAreaInsets();
-  const { getFollowingUsers, followUser, unfollowUser, loading } = useFollow();
+  const { getFollowingUsers, followUser, unfollowUser, loading, getFollowing } =
+    useFollow();
   const [localLoadingIds, setLocalLoadingIds] = useState<string[]>([]);
   useEffect(() => {
     if (isOpen && userId) {
       getFollowingUsers(userId).then((following) => {
         setFollowingUsers(following);
+      });
+      if (!user) {
+        return;
+      }
+      getFollowing(user?.id).then((following) => {
+        setFollowingIds(following);
       });
     }
   }, [isOpen, userId, getFollowingUsers]);
@@ -36,42 +46,34 @@ const FollowingSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
       if (localLoadingIds.includes(target.id)) return;
       setLocalLoadingIds((prev) => [...prev, target.id]);
       // Optimistic update
-      setFollowingUsers((prev) =>
-        prev.map((u) =>
-          u.id === target.id
-            ? {
-                ...u,
-                is_following: !u.is_following,
-                relationship_type: !u.is_following
-                  ? u.is_follower
-                    ? "mutual"
-                    : "following"
-                  : u.is_follower
-                  ? "follower"
-                  : "none",
-              }
-            : u
-        )
-      );
+      // setFollowingUsers((prev) =>
+      //   prev.map((u) =>
+      //     u.id === target.id
+      //       ? {
+      //           ...u,
+      //           is_following: !u.is_following,
+      //           relationship_type: !u.is_following
+      //             ? u.is_follower
+      //               ? "mutual"
+      //               : "following"
+      //             : u.is_follower
+      //             ? "follower"
+      //             : "none",
+      //         }
+      //       : u
+      //   )
+      // );
+      const isFollowing = followingIds.includes(target.id);
       try {
-        if (target.is_following) {
+        if (isFollowing) {
           await unfollowUser(target.id);
+          setFollowingIds((prev) => prev.filter((id) => id !== target.id));
         } else {
           await followUser(target.id);
+          setFollowingIds((prev) => [...prev, target.id]);
         }
       } catch (e) {
         // Revert on failure
-        setFollowingUsers((prev) =>
-          prev.map((u) =>
-            u.id === target.id
-              ? {
-                  ...u,
-                  is_following: target.is_following,
-                  relationship_type: target.relationship_type,
-                }
-              : u
-          )
-        );
       } finally {
         setLocalLoadingIds((prev) => prev.filter((id) => id !== target.id));
       }
@@ -125,6 +127,8 @@ const FollowingSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
     const displayName = item.username || item.first_name || "Unknown User";
 
     const isProcessing = localLoadingIds.includes(item.id);
+    const isFollowing = followingIds.includes(item.id);
+
     return (
       <View
         style={{
@@ -182,9 +186,9 @@ const FollowingSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
             borderRadius: 17,
             alignItems: "center",
             justifyContent: "center",
-            borderWidth: item.is_following ? 1 : 0,
+            borderWidth: isFollowing ? 1 : 0,
             borderColor: theme.colors.primary,
-            backgroundColor: item.is_following
+            backgroundColor: isFollowing
               ? theme.colors.primary + "20"
               : theme.colors.primary,
             opacity: isProcessing ? 0.6 : 1,
@@ -195,12 +199,12 @@ const FollowingSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
               fontSize: 14,
               fontWeight: "500",
 
-              color: item.is_following
+              color: isFollowing
                 ? theme.colors.primary
                 : theme.colors.background,
             }}
           >
-            {item.is_following ? "Unfollow" : "Follow"}
+            {isFollowing ? "Unfollow" : "Follow"}
           </Text>
         </TouchableOpacity>
       </View>

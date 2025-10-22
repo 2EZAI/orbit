@@ -89,7 +89,7 @@ export default function EventSummaryCard({
               textAlign: "center",
             }}
           >
-            Event Created! ✨
+            Activity Created! ✨
           </Text>
           <Text
             style={{
@@ -99,11 +99,11 @@ export default function EventSummaryCard({
               lineHeight: 22,
             }}
           >
-            Your event has been successfully created and is now live
+            Your activity has been successfully created and is now live
           </Text>
         </View>
 
-        {/* Event Card */}
+        {/* Activity Card */}
         <View
           style={{
             backgroundColor: theme.dark
@@ -123,7 +123,7 @@ export default function EventSummaryCard({
             marginBottom: 24,
           }}
         >
-          {/* Event Header */}
+          {/* Activity Header */}
           <View style={{ marginBottom: 24 }}>
             <View
               style={{
@@ -171,7 +171,7 @@ export default function EventSummaryCard({
                   marginBottom: 12,
                 }}
               >
-                Event Images
+                Activity Images
               </Text>
               <ScrollView
                 horizontal
@@ -361,7 +361,7 @@ export default function EventSummaryCard({
                 color: "#8B5CF6",
               }}
             >
-              Edit Event
+              Edit Activity
             </Text>
           </TouchableOpacity>
 

@@ -5,6 +5,7 @@ import * as Location from "expo-location";
 import { supabase } from "~/src/lib/supabase";
 import { useAuth } from "~/src/lib/auth";
 import { useUser } from "~/src/lib/UserProvider";
+import { setCurrentMapCenter } from "~/src/lib/mapCenter";
 import {
   useUnifiedMapData,
   type MapEvent,
@@ -26,7 +27,7 @@ interface MapStateManagerProps {
 interface MapState {
   // Core state
   selectedTimeFrame: TimeFrame;
-  selectedEvent: MapEvent | null;
+  selectedEvent: (MapEvent | MapLocation) | null;
   selectedCluster: (MapEvent | MapLocation)[] | null;
   showDetails: boolean;
   isEvent: boolean;
@@ -49,6 +50,7 @@ interface MapState {
   followerList: any[];
   filters: FilterState;
   mapCenter: [number, number] | null;
+  calculatedCenter: [number, number];
 
   // Map data from useUnifiedMapData hook
   events: MapEvent[];
@@ -129,7 +131,7 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
   // Core state
   const [selectedTimeFrame, setSelectedTimeFrame] =
     useState<TimeFrame>("Today");
-  const [selectedEvent, setSelectedEvent] = useState<MapEvent | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<(MapEvent | MapLocation) | null>(null);
   const [selectedCluster, setSelectedCluster] = useState<
     (MapEvent | MapLocation)[] | null
   >(null);
@@ -156,6 +158,7 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
   const [followerList, setFollowerList] = useState<any[]>([]);
   const [filters, setFilters] = useState<FilterState>({ "show-all": true }); // Default to showing everything
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
+  const [locationChangeCenter, setLocationChangeCenter] = useState<[number, number] | null>(null);
 
   // Performance monitoring
   const [loadStartTime, setLoadStartTime] = useState<number | null>(null);
@@ -165,6 +168,12 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
 
   // Calculate center based on user preferences - FIXED COORDINATE ORDER
   const calculatedCenter = useMemo(() => {
+    // LOCATION CHANGE MODE: Use the new location center
+    if (locationChangeCenter) {
+      console.log("🗺️ [Map] Using location change center for data fetching:", locationChangeCenter);
+      return locationChangeCenter;
+    }
+
     // ORBIT MODE: Use orbit coordinates
     if (
       user?.event_location_preference === 1 &&
@@ -212,12 +221,23 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
     console.log("🗺️ [Map] No center available, using [0, 0]");
     return [0, 0] as [number, number];
   }, [
+    locationChangeCenter,
     user?.event_location_preference,
     userlocation?.latitude,
     userlocation?.longitude,
     location?.latitude,
     location?.longitude,
   ]);
+
+  // Update global map center when calculatedCenter changes
+  useEffect(() => {
+    if (calculatedCenter && calculatedCenter[0] !== 0 && calculatedCenter[1] !== 0) {
+      setCurrentMapCenter({
+        latitude: calculatedCenter[1], // Convert from [lng, lat] to {lat, lng}
+        longitude: calculatedCenter[0]
+      });
+    }
+  }, [calculatedCenter]);
 
   // Use the unified map data hook - always load 'today' data initially
   const {
@@ -522,6 +542,18 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
         eventsToday.find((e: MapEvent) => e.id === params.eventId) ||
         eventsTomorrow.find((e: MapEvent) => e.id === params.eventId);
 
+      // If event not found in existing data, check if we have eventData from params
+      if (!event && params.eventData) {
+        try {
+          console.log("🗺️ [MapStateManager] Event not found in data, using provided eventData");
+          const eventData = JSON.parse(params.eventData as string);
+          event = eventData as MapEvent;
+          console.log("🗺️ [MapStateManager] Using provided event data:", event.name);
+        } catch (error) {
+          console.error("🗺️ [MapStateManager] Error parsing eventData:", error);
+        }
+      }
+
       console.log("🗺️ [MapStateManager] Event found:", event ? event.name : "NOT FOUND");
       
       // If not found, create event object from params (for external events or events not in current timeframe)
@@ -556,6 +588,15 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
         setIsEvent(true);
         setSelectedEvent(event);
         setShowDetails(false); // Show card first, not details sheet
+        
+        // Focus the map on the newly created event
+        if (params.eventData && event.location) {
+          console.log("🗺️ [MapStateManager] Focusing map on newly created event");
+          const coords = getLocationCoordinates(event.location);
+          if (coords) {
+            setMapCenter([coords.longitude, coords.latitude]);
+          }
+        }
       }
     }
 
@@ -620,6 +661,25 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
     eventsTomorrow,
     locations,
   ]);
+
+  // Handle location change when user confirms to load data for new area
+  useEffect(() => {
+    if (params.changeLocation === "true" && params.lat && params.lng) {
+      console.log("🗺️ [MapStateManager] Location change requested, updating map center");
+      
+      const newLat = parseFloat(params.lat as string);
+      const newLng = parseFloat(params.lng as string);
+      
+      // Update location change center to trigger data reload
+      const newCenter = [newLng, newLat] as [number, number];
+      setLocationChangeCenter(newCenter);
+      
+      console.log("🗺️ [MapStateManager] Location change center set to:", newCenter);
+      
+      // Also update map center for camera positioning
+      setMapCenter(newCenter);
+    }
+  }, [params.changeLocation, params.lat, params.lng]);
 
   // Event handlers
   const handleEventClick = useCallback((event: MapEvent) => {
@@ -1001,6 +1061,17 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
       }
     );
 
+    // Add map reload listener
+    const mapReloadListener = DeviceEventEmitter.addListener(
+      "mapReload",
+      (shouldReload: boolean) => {
+        if (shouldReload && forceRefresh) {
+          console.log("🔄 [MapStateManager] Map reload requested, refreshing data...");
+          forceRefresh();
+        }
+      }
+    );
+
     const locationPreferenceListener = DeviceEventEmitter.addListener(
       "locationPreferenceUpdated",
       (eventPayload: {
@@ -1082,6 +1153,7 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
     return () => {
       eventListener.remove();
       showEventCardListener.remove();
+      mapReloadListener.remove();
       locationPreferenceListener.remove();
     };
   }, [
@@ -1115,6 +1187,7 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
     followerList,
     filters,
     mapCenter,
+    calculatedCenter,
 
     // Map data from useUnifiedMapData hook
     events,

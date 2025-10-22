@@ -323,7 +323,29 @@ export default function TabBar() {
                   return;
                 }
 
-                router.replace(tab.path);
+                // Special handling for create tab - determine where user is coming from
+                if (tab.segment === "(create)") {
+                  let fromParam = "tab";
+                  
+                  // Determine the source based on current location
+                  if (segments.includes("(home)")) {
+                    fromParam = "home";
+                  } else if (segments.includes("(social)")) {
+                    fromParam = "social";
+                  } else if (segments.includes("(map)")) {
+                    fromParam = "map";
+                  } else if (segments.includes("(chat)")) {
+                    fromParam = "chat";
+                  }
+                  
+                  console.log("🔍 [TabBar] Navigating to create from:", fromParam);
+                  router.push({
+                    pathname: tab.path,
+                    params: { from: fromParam }
+                  });
+                } else {
+                  router.replace(tab.path);
+                }
               }}
             >
               {Platform.OS === "ios" ? (

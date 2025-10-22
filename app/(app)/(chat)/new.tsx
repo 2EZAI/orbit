@@ -855,6 +855,8 @@ export default function NewChatScreen() {
                 data={filteredUsers}
                 keyExtractor={(item) => item.id}
                 showsVerticalScrollIndicator={false}
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingBottom: 20 }}
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     onPress={() => toggleUserSelection(item)}

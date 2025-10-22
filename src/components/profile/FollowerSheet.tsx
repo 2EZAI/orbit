@@ -13,6 +13,7 @@ import { useFollow, ChatUser } from "~/hooks/useFollow";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { UserAvatar } from "../ui/user-avatar";
+import { useUserData } from "~/hooks/useUserData";
 interface IProps {
   isOpen: boolean;
   onClose: () => void;
@@ -20,11 +21,12 @@ interface IProps {
 }
 const FollowerSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
   const { theme, isDarkMode } = useTheme();
+  const { user } = useUserData();
   const insets = useSafeAreaInsets();
   const { getFollowerUsers, followUser, unfollowUser, getFollowing, loading } =
     useFollow();
   const [followerUsers, setFollowerUsers] = useState<ChatUser[]>([]);
-  const [localLoadingIds, setLocalLoadingIds] = useState<string[]>([]);
+
   const [followingIds, setFollowingIds] = useState<string[]>([]);
   const [followLoadingIds, setFollowLoadingIds] = useState<string[]>([]);
   useEffect(() => {
@@ -33,7 +35,10 @@ const FollowerSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
         setFollowerUsers(followers);
         console.log("Fetched followers:", followers);
       });
-      getFollowing(userId).then((following) => {
+      if (!user) {
+        return;
+      }
+      getFollowing(user?.id).then((following) => {
         setFollowingIds(following);
       });
     }
@@ -41,7 +46,7 @@ const FollowerSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
 
   const toggleFollow = async (target: ChatUser) => {
     setFollowLoadingIds((prev) => [...prev, target.id]);
-    
+
     try {
       const isFollowing = followingIds.includes(target.id);
       if (isFollowing) {
@@ -88,7 +93,7 @@ const FollowerSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
         </View>
       );
     }
-    if (user.relationship_type === "follower") {
+    if (user.relationship_type === "follower" && userId === user?.id) {
       return (
         <View
           style={{
@@ -116,7 +121,7 @@ const FollowerSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
 
     const isFollowing = followingIds.includes(item.id);
     const isLoading = followLoadingIds.includes(item.id);
-    
+
     return (
       <View
         style={{
@@ -132,7 +137,12 @@ const FollowerSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
             onClose();
             router.push(`/(app)/profile/${item.id}`);
           }}
-          style={{ flexDirection: "row", flex: 1, alignItems: "center", gap: 12 }}
+          style={{
+            flexDirection: "row",
+            flex: 1,
+            alignItems: "center",
+            gap: 12,
+          }}
         >
           <UserAvatar
             size={48}
@@ -175,7 +185,7 @@ const FollowerSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
             </Text>
           </View>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           onPress={() => !isLoading && toggleFollow(item)}
           disabled={isLoading}
@@ -194,9 +204,11 @@ const FollowerSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
           }}
         >
           {isLoading ? (
-            <ActivityIndicator 
-              size="small" 
-              color={isFollowing ? theme.colors.primary : theme.colors.background} 
+            <ActivityIndicator
+              size="small"
+              color={
+                isFollowing ? theme.colors.primary : theme.colors.background
+              }
             />
           ) : (
             <Text

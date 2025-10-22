@@ -280,6 +280,16 @@ export function useUpdateEvents(): UseUserReturn {
         type: type_,
         user_id: userid,
       };
+      
+      console.log('🔍 [useUpdateEvents] fetchCreatedEvents called with:', {
+        type_,
+        pagee,
+        pageSize,
+        userid,
+        sessionUserId: session.user.id,
+        eventData
+      });
+
       const response = await fetch(
         `${process.env.BACKEND_MAP_URL}/api/events/my-events?page=${pagee}&limit=${pageSize}`,
         {
@@ -292,17 +302,19 @@ export function useUpdateEvents(): UseUserReturn {
         }
       );
 
+      console.log('🔍 [useUpdateEvents] API response status:', response.status);
+
       if (!response.ok) {
-        throw new Error(await response.text());
+        const errorText = await response.text();
+        console.log('❌ [useUpdateEvents] API error response:', errorText);
+        throw new Error(errorText);
       }
 
       const data = await response.json();
-      // Toast.show({
-      //   type: "success",
-      //   text1: "Event fetched"
-      // });
+      console.log('✅ [useUpdateEvents] API success, returning:', data.events?.length || 0, 'events');
       return data.events;
     } catch (e) {
+      console.log('❌ [useUpdateEvents] fetchCreatedEvents error:', e);
       setError(e instanceof Error ? e : new Error("An error occurred"));
       throw e;
     }

@@ -832,28 +832,19 @@ export default function CreatePost() {
               </View>
             )}
 
-            {/* Action Buttons */}
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-around",
-                paddingTop: 16,
-                borderTopWidth: 1,
-                borderTopColor: theme.colors.border,
-              }}
-            >
+            {/* Photos Section */}
+            <View style={{ marginBottom: 16 }}>
               <TouchableOpacity
                 onPress={pickImage}
                 disabled={mediaFiles.length >= 4}
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  padding: 12,
-                  backgroundColor:
-                    mediaFiles.length >= 4
-                      ? theme.colors.border
-                      : theme.colors.card,
+                  padding: 16,
+                  backgroundColor: theme.colors.card,
                   borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: theme.colors.border,
                   opacity: mediaFiles.length >= 4 ? 0.5 : 1,
                 }}
               >
@@ -867,15 +858,15 @@ export default function CreatePost() {
                 />
                 <Text
                   style={{
-                    marginLeft: 8,
+                    marginLeft: 12,
                     color:
                       mediaFiles.length >= 4
                         ? theme.colors.text + "60"
                         : theme.colors.text,
-                    fontSize: 14,
+                    fontSize: 16,
                   }}
                 >
-                  Photos ({mediaFiles.length}/4)
+                  {mediaFiles.length > 0 ? `Photos (${mediaFiles.length}/4)` : "Add Photos (optional)"}
                 </Text>
               </TouchableOpacity>
             </View>

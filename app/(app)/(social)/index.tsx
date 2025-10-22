@@ -308,7 +308,10 @@ export default function SocialFeed() {
           <TouchableOpacity
             onPress={() => {
               if (post.user?.id) {
-                router.push(`/(app)/profile/${post.user.id}`);
+                router.push({
+                  pathname: `/(app)/profile/${post.user.id}`,
+                  params: { from: 'social' }
+                });
               }
             }}
             className="flex-row flex-1 items-center"

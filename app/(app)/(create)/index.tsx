@@ -29,6 +29,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { draftService } from "~/src/services/draftService";
 import { EventDraft } from "~/src/types/draftTypes";
 import { haptics } from "~/src/lib/haptics";
+import { getCurrentMapCenter } from "~/src/lib/mapCenter";
 
 // Import modular components
 import BasicInfoSection from "~/src/components/createpost/BasicInfoSection";
@@ -219,6 +220,11 @@ export default function CreateEvent() {
     setLoading(true);
     loadDraft().finally(() => setLoading(false));
   }, [params.eventId, params.locationId, params.draftId]); // Re-run when params change
+
+  // Debug: Log all params on mount
+  useEffect(() => {
+    console.log("🔍 [CreateEvent] All params received:", params);
+  }, []);
 
   const loadDraft = async () => {
     try {
@@ -632,7 +638,8 @@ export default function CreateEvent() {
       () => images.length > 0, // Step 3: Images
       () => {
         if (locationType === "static" || locationType === "googleApi") {
-          return true;
+          // For static/googleApi locations, check if address1 is filled
+          return address1.trim() !== "" && locationDetails.address1.trim() !== "";
         }
         return locationDetails.city !== "" && locationDetails.state !== "";
       }, // Step 4: Location
@@ -657,25 +664,40 @@ export default function CreateEvent() {
     return validations.every((validate) => validate());
   };
 
+  const getValidationError = () => {
+    if (name.trim() === "" || description.trim() === "") {
+      return "Please fill in the event name and description";
+    }
+    if (selectedTopics === "") {
+      return "Please select a category for your event";
+    }
+    if (images.length === 0) {
+      return "Please add at least one image to your event";
+    }
+    if (locationType === "static" || locationType === "googleApi") {
+      if (address1.trim() === "" || locationDetails.address1.trim() === "") {
+        return "Please select a location for your event";
+      }
+    } else {
+      if (locationDetails.city === "" || locationDetails.state === "") {
+        return "Please fill in the city and state for your event";
+      }
+    }
+    if (endDate.getTime() <= startDate.getTime()) {
+      return "End date must be after start date";
+    }
+    return "Please complete all required fields";
+  };
+
   const handleEventCreation = () => {
     if (!validateCheck()) {
-      if (endDate.getTime() <= startDate.getTime()) {
-        console.log("ffff");
-        Toast.show({
-          type: "error",
-          text1: "End Date-Time Start Date-Time error",
-          text2:
-            "End Date-Time cannot be the same or earlier than Start Date-Time",
-        });
-        return;
-      } else {
-        Toast.show({
-          type: "error",
-          text1: "Please complete all required fields",
-          text2: "Fill in the missing information to continue",
-        });
-        return;
-      }
+      const errorMessage = getValidationError();
+      Toast.show({
+        type: "error",
+        text1: "Missing Information",
+        text2: errorMessage,
+      });
+      return;
     }
 
     handleCreateEvent();
@@ -863,6 +885,7 @@ export default function CreateEvent() {
     try {
       const results = await ImagePickerService.pickImage({
         allowsMultipleSelection: true,
+        selectionLimit: 5, // Allow up to 5 images per selection
         quality: 0.8,
         allowsEditing: false,
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -1219,6 +1242,15 @@ export default function CreateEvent() {
           lat: event.location.latitude,
           lng: event.location.longitude,
           eventId: event.id, // Pass the event ID
+          // Pass current map center for location change detection
+          currentLat: (() => {
+            const mapCenter = getCurrentMapCenter();
+            return mapCenter ? mapCenter.latitude.toString() : "0";
+          })(),
+          currentLng: (() => {
+            const mapCenter = getCurrentMapCenter();
+            return mapCenter ? mapCenter.longitude.toString() : "0";
+          })(),
         },
       });
     } catch (error: any) {
@@ -1239,7 +1271,39 @@ export default function CreateEvent() {
     if (hasUnsavedChanges && (name.trim() || description.trim())) {
       await saveDraft(false);
     }
-    router.back();
+    
+    console.log("🔍 [CreateEvent] Back button pressed, params.from:", params.from);
+    
+    // Check if we came from a specific screen
+    if (params.from === 'map') {
+      console.log("🔍 [CreateEvent] Going back to map");
+      // Came from map, go back to map
+      router.push("/(app)/(map)");
+    } else if (params.from === 'home') {
+      console.log("🔍 [CreateEvent] Going back to home");
+      // Came from home, go back to home
+      router.push("/(app)/(home)");
+    } else if (params.from === 'social') {
+      console.log("🔍 [CreateEvent] Going back to social");
+      // Came from social, go back to social
+      router.push("/(app)/(social)");
+    } else if (params.from === 'chat') {
+      console.log("🔍 [CreateEvent] Going back to chat");
+      // Came from chat, go back to chat
+      router.push("/(app)/(chat)");
+    } else if (params.from === 'details') {
+      console.log("🔍 [CreateEvent] Going back to details sheet");
+      // Came from details sheet, use normal back navigation to return to the sheet
+      router.back();
+    } else if (params.from === 'tab') {
+      console.log("🔍 [CreateEvent] Going back to previous tab");
+      // Came from bottom tab, use normal back navigation
+      router.back();
+    } else {
+      console.log("🔍 [CreateEvent] Using normal back navigation (no from param)");
+      // No from parameter, use normal back navigation
+      router.back();
+    }
   };
   if (loading) {
     return (

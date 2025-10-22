@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
   KeyboardAvoidingView,
+  Alert,
 } from "react-native";
 import { router } from "expo-router";
 import { supabase } from "~/src/lib/supabase";
