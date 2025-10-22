@@ -637,7 +637,8 @@ export default function CreateEvent() {
       () => images.length > 0, // Step 3: Images
       () => {
         if (locationType === "static" || locationType === "googleApi") {
-          return true;
+          // For static/googleApi locations, check if address1 is filled
+          return address1.trim() !== "" && locationDetails.address1.trim() !== "";
         }
         return locationDetails.city !== "" && locationDetails.state !== "";
       }, // Step 4: Location
@@ -662,25 +663,40 @@ export default function CreateEvent() {
     return validations.every((validate) => validate());
   };
 
+  const getValidationError = () => {
+    if (name.trim() === "" || description.trim() === "") {
+      return "Please fill in the event name and description";
+    }
+    if (selectedTopics === "") {
+      return "Please select a category for your event";
+    }
+    if (images.length === 0) {
+      return "Please add at least one image to your event";
+    }
+    if (locationType === "static" || locationType === "googleApi") {
+      if (address1.trim() === "" || locationDetails.address1.trim() === "") {
+        return "Please select a location for your event";
+      }
+    } else {
+      if (locationDetails.city === "" || locationDetails.state === "") {
+        return "Please fill in the city and state for your event";
+      }
+    }
+    if (endDate.getTime() <= startDate.getTime()) {
+      return "End date must be after start date";
+    }
+    return "Please complete all required fields";
+  };
+
   const handleEventCreation = () => {
     if (!validateCheck()) {
-      if (endDate.getTime() <= startDate.getTime()) {
-        console.log("ffff");
-        Toast.show({
-          type: "error",
-          text1: "End Date-Time Start Date-Time error",
-          text2:
-            "End Date-Time cannot be the same or earlier than Start Date-Time",
-        });
-        return;
-      } else {
-        Toast.show({
-          type: "error",
-          text1: "Please complete all required fields",
-          text2: "Fill in the missing information to continue",
-        });
-        return;
-      }
+      const errorMessage = getValidationError();
+      Toast.show({
+        type: "error",
+        text1: "Missing Information",
+        text2: errorMessage,
+      });
+      return;
     }
 
     handleCreateEvent();

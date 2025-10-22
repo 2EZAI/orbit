@@ -1,17 +1,14 @@
 import React from "react";
 import {
-  Modal,
   View,
+  Text,
   TouchableOpacity,
+  Modal,
+  StyleSheet,
   Dimensions,
-  Alert,
 } from "react-native";
-import { MapPin, Navigation, X } from "lucide-react-native";
-import { Text } from "~/src/components/ui/text";
 import { useTheme } from "~/src/components/ThemeProvider";
-import { haptics } from "~/src/lib/haptics";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+import { MapPin, Navigation } from "lucide-react-native";
 
 interface LocationChangeModalProps {
   isOpen: boolean;
@@ -27,7 +24,7 @@ interface LocationChangeModalProps {
     latitude: number;
     longitude: number;
   };
-  distance: number; // Distance in kilometers
+  distance: number;
 }
 
 export function LocationChangeModal({
@@ -38,219 +35,129 @@ export function LocationChangeModal({
   currentCenter,
   distance,
 }: LocationChangeModalProps) {
-  const { theme, isDarkMode } = useTheme();
-
-  const handleConfirm = () => {
-    haptics.impact();
-    onConfirm();
-    onClose();
-  };
-
-  const handleCancel = () => {
-    haptics.light();
-    onClose();
-  };
-
-  if (!isOpen) return null;
+  const { theme } = useTheme();
 
   return (
     <Modal
       visible={isOpen}
-      transparent={true}
+      transparent
       animationType="fade"
       onRequestClose={onClose}
-      statusBarTranslucent={true}
-      presentationStyle="overFullScreen"
     >
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,0.5)",
-          justifyContent: "center",
-          alignItems: "center",
-          paddingHorizontal: 20,
-        }}
-      >
+      <View style={styles.overlay}>
         <View
-          style={{
-            backgroundColor: theme.colors.card,
-            borderRadius: 20,
-            padding: 24,
-            width: SCREEN_WIDTH - 40,
-            maxWidth: 400,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.25,
-            shadowRadius: 12,
-            elevation: 8,
-          }}
+          style={[
+            styles.modal,
+            {
+              backgroundColor: theme.colors.background,
+              borderColor: theme.colors.border,
+            },
+          ]}
         >
           {/* Header */}
-          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: theme.colors.primary + "20",
-                justifyContent: "center",
-                alignItems: "center",
-                marginRight: 12,
-              }}
-            >
-              <Navigation size={20} color={theme.colors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontWeight: "700",
+          <View style={styles.header}>
+            <MapPin size={24} color={theme.colors.primary} />
+            <Text
+              style={[
+                styles.title,
+                {
                   color: theme.colors.text,
-                  marginBottom: 2,
-                }}
-              >
-                Change Map Location
-              </Text>
-              <Text
-                style={{
-                  fontSize: 14,
-                  color: theme.colors.text + "80",
-                }}
-              >
-                Load data for this area
-              </Text>
-            </View>
-            <TouchableOpacity
-              onPress={handleCancel}
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                backgroundColor: theme.colors.border,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
+                },
+              ]}
             >
-              <X size={16} color={theme.colors.text} />
-            </TouchableOpacity>
+              Event in Different Area
+            </Text>
           </View>
 
           {/* Content */}
-          <View style={{ marginBottom: 24 }}>
+          <View style={styles.content}>
             <Text
-              style={{
-                fontSize: 16,
-                color: theme.colors.text,
-                marginBottom: 12,
-                lineHeight: 22,
-              }}
+              style={[
+                styles.description,
+                {
+                  color: theme.colors.text,
+                },
+              ]}
             >
-              The activity you created is{" "}
-              <Text style={{ fontWeight: "600", color: theme.colors.primary }}>
-                {distance.toFixed(1)} km
-              </Text>{" "}
-              away from your current map view.
+              This event is {distance} km away from your current location. Would you like to change the map view to load data for this area?
             </Text>
 
+            {/* Event Details */}
             <View
-              style={{
-                backgroundColor: theme.colors.border + "40",
-                borderRadius: 12,
-                padding: 16,
-                marginBottom: 16,
-              }}
+              style={[
+                styles.eventDetails,
+                {
+                  backgroundColor: theme.colors.border,
+                },
+              ]}
             >
-              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
-                <MapPin size={16} color={theme.colors.primary} />
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "600",
-                    color: theme.colors.text,
-                    marginLeft: 8,
-                  }}
-                >
-                  Activity Location
-                </Text>
-              </View>
               <Text
-                style={{
-                  fontSize: 14,
-                  color: theme.colors.text + "80",
-                  marginLeft: 24,
-                }}
+                style={[
+                  styles.eventName,
+                  {
+                    color: theme.colors.text,
+                  },
+                ]}
               >
-                {eventLocation.name || "New Activity"}
+                {eventLocation.name || "Event"}
               </Text>
               {eventLocation.address && (
                 <Text
-                  style={{
-                    fontSize: 12,
-                    color: theme.colors.text + "60",
-                    marginLeft: 24,
-                    marginTop: 2,
-                  }}
+                  style={[
+                    styles.eventAddress,
+                    {
+                      color: theme.colors.text + "80",
+                    },
+                  ]}
                 >
                   {eventLocation.address}
                 </Text>
               )}
             </View>
-
-            <Text
-              style={{
-                fontSize: 14,
-                color: theme.colors.text + "80",
-                lineHeight: 20,
-              }}
-            >
-              Would you like to load events and locations for this area instead?
-            </Text>
           </View>
 
           {/* Actions */}
-          <View style={{ flexDirection: "row", gap: 12 }}>
+          <View style={styles.actions}>
             <TouchableOpacity
-              onPress={handleCancel}
-              style={{
-                flex: 1,
-                paddingVertical: 14,
-                paddingHorizontal: 20,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-                alignItems: "center",
-              }}
+              style={[
+                styles.button,
+                styles.cancelButton,
+                {
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              onPress={onClose}
             >
               <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: "600",
-                  color: theme.colors.text,
-                }}
+                style={[
+                  styles.buttonText,
+                  {
+                    color: theme.colors.text,
+                  },
+                ]}
               >
-                Cancel
+                Stay Here
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={handleConfirm}
-              style={{
-                flex: 1,
-                paddingVertical: 14,
-                paddingHorizontal: 20,
-                borderRadius: 12,
-                backgroundColor: theme.colors.primary,
-                alignItems: "center",
-              }}
+              style={[
+                styles.button,
+                styles.confirmButton,
+                {
+                  backgroundColor: theme.colors.primary,
+                },
+              ]}
+              onPress={onConfirm}
             >
+              <Navigation size={16} color="white" />
               <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: "600",
-                  color: "white",
-                }}
+                style={[
+                  styles.buttonText,
+                  styles.confirmButtonText,
+                ]}
               >
-                Load Data
+                Go to Event
               </Text>
             </TouchableOpacity>
           </View>
@@ -259,3 +166,90 @@ export function LocationChangeModal({
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modal: {
+    width: "100%",
+    maxWidth: 400,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0, 0, 0, 0.1)",
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginLeft: 12,
+  },
+  content: {
+    padding: 20,
+  },
+  description: {
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 16,
+  },
+  eventDetails: {
+    padding: 16,
+    borderRadius: 12,
+  },
+  eventName: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  eventAddress: {
+    fontSize: 14,
+  },
+  actions: {
+    flexDirection: "row",
+    padding: 20,
+    paddingTop: 16,
+    gap: 12,
+  },
+  button: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  cancelButton: {
+    backgroundColor: "transparent",
+  },
+  confirmButton: {
+    borderWidth: 0,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  confirmButtonText: {
+    color: "white",
+    marginLeft: 8,
+  },
+});

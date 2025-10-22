@@ -8,9 +8,9 @@ import EventSummaryCard from "~/src/components/createpost/EventSummaryCard";
 import { DeviceEventEmitter } from "react-native";
 import InviteUsers from "~/src/components/createpost/InviteUsers";
 import { haptics } from "~/src/lib/haptics";
+import { useAuth } from "~/src/lib/auth";
 import { LocationChangeModal } from "~/src/components/map/LocationChangeModal";
 import { isLocationOutsideRadius } from "~/src/lib/distance";
-import { useAuth } from "~/src/lib/auth";
 
 
 
@@ -104,13 +104,7 @@ console.log("params>>",params);
       currentLng: params.currentLng
     });
 
-    // TEMPORARY: Always show popup for testing
-    if (true) {
-      console.log("🔍 [Summary] Showing popup for testing");
-      setEventLocation(eventLocation);
-      setDistance(distance);
-      setShowLocationChangeModal(true);
-    } else if (isOutside && currentCenter.latitude !== 0 && currentCenter.longitude !== 0) {
+    if (isOutside && currentCenter.latitude !== 0 && currentCenter.longitude !== 0) {
       // Show location change modal
       setEventLocation(eventLocation);
       setDistance(distance);

@@ -115,7 +115,6 @@ export default function Map() {
                       state.setShowControler(false);
                       state.setShowDetails(true);
                     }}
-                    mapCenter={state.calculatedCenter}
                   />
                 </>
               )}
