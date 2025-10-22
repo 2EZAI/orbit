@@ -29,6 +29,7 @@ import {
   LogOut,
   Volume2,
   VolumeX,
+  Camera,
 } from "lucide-react-native";
 import { Button } from "~/src/components/ui/button";
 import { Card, CardContent } from "~/src/components/ui/card";
@@ -38,6 +39,8 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "~/src/components/ui/avatar";
+import { ImagePickerService } from "~/src/lib/imagePicker";
+import * as ImagePicker from "expo-image-picker";
 
 export default function ChatSettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -52,6 +55,7 @@ export default function ChatSettingsScreen() {
   const [showNameModal, setShowNameModal] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [newChannelName, setNewChannelName] = useState("");
+  const [channelImage, setChannelImage] = useState<string | null>(null);
 
   const loadChannelData = async () => {
     if (!client || !id) return;
@@ -99,6 +103,43 @@ export default function ChatSettingsScreen() {
     } catch (error) {
       console.error("Error updating channel name:", error);
       Alert.alert("Error", "Failed to update channel name");
+    }
+  };
+
+  const handleChangeChannelImage = async () => {
+    if (!isCurrentUserAdmin()) {
+      Alert.alert("Permission Denied", "Only admins can change the group photo");
+      return;
+    }
+
+    try {
+      const results = await ImagePickerService.pickImage({
+        allowsMultipleSelection: false,
+        quality: 0.8,
+        allowsEditing: true,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      });
+
+      if (results && results.length > 0) {
+        const selectedImage = results[0];
+        if (selectedImage.uri) {
+          // Update the channel with the new image
+          await channel.update({ 
+            image: selectedImage.uri,
+            // Also update the channel data for display
+            data: {
+              ...channel.data,
+              image: selectedImage.uri
+            }
+          });
+          
+          setChannelImage(selectedImage.uri);
+          Alert.alert("Success", "Group photo updated successfully");
+        }
+      }
+    } catch (error) {
+      console.error("Error changing channel image:", error);
+      Alert.alert("Error", "Failed to update group photo");
     }
   };
 
@@ -361,6 +402,74 @@ export default function ChatSettingsScreen() {
                   )}
                 </TouchableOpacity>
               </View>
+
+              {/* Channel Image - Only show for group chats */}
+              {members.length > 2 && (
+                <View style={{ marginBottom: 16 }}>
+                  <TouchableOpacity
+                    onPress={handleChangeChannelImage}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: 12,
+                      backgroundColor: theme.colors.border,
+                      borderRadius: 8,
+                    }}
+                  >
+                    <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+                      <View style={{ marginRight: 12 }}>
+                        {channelImage || channel?.data?.image ? (
+                          <Image
+                            source={{ uri: channelImage || channel?.data?.image }}
+                            style={{
+                              width: 40,
+                              height: 40,
+                              borderRadius: 20,
+                            }}
+                          />
+                        ) : (
+                          <View
+                            style={{
+                              width: 40,
+                              height: 40,
+                              borderRadius: 20,
+                              backgroundColor: theme.colors.primary,
+                              justifyContent: "center",
+                              alignItems: "center",
+                            }}
+                          >
+                            <Camera size={20} color="white" />
+                          </View>
+                        )}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            color: theme.colors.text + "80",
+                            marginBottom: 4,
+                          }}
+                        >
+                          Group Photo
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 16,
+                            color: theme.colors.text,
+                            fontWeight: "500",
+                          }}
+                        >
+                          {channelImage || channel?.data?.image ? "Tap to change" : "Tap to add photo"}
+                        </Text>
+                      </View>
+                    </View>
+                    {isCurrentUserAdmin() && (
+                      <Camera size={20} color={theme.colors.text + "80"} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
 
               {/* Members Count */}
               <TouchableOpacity
