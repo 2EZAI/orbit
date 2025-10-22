@@ -6,6 +6,9 @@ import { Globe, Lock, Sparkles } from "lucide-react-native";
 import { Icon } from "react-native-elements";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { AIDescriptionModal } from "./AIDescriptionModal";
+import { MotiView } from "moti";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
 
 interface BasicInfoSectionProps {
   name: string;
@@ -21,6 +24,7 @@ interface BasicInfoSectionProps {
   city?: string;
   state?: string;
   locationId?: string;
+  focusedField?: string | null;
 }
 
 export default function BasicInfoSection({
@@ -37,12 +41,16 @@ export default function BasicInfoSection({
   city,
   state,
   locationId,
+  focusedField,
 }: BasicInfoSectionProps) {
   const { theme } = useTheme();
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
 
   return (
-    <View
+    <MotiView
+      from={{ opacity: 0, translateY: 10 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={{ type: "timing", duration: 300 }}
       style={{
         backgroundColor: theme.dark
           ? "rgba(139, 92, 246, 0.1)"
@@ -94,17 +102,26 @@ export default function BasicInfoSection({
         >
           Event Name *
         </Text>
-        <View
-          style={{
-            height: 56,
-            backgroundColor: theme.dark
-              ? "rgba(255, 255, 255, 0.05)"
-              : "rgba(255, 255, 255, 0.7)",
-            borderRadius: 16,
-            borderWidth: 1,
-            borderColor: theme.dark
+        <MotiView
+          animate={{
+            borderColor: focusedField === "name" 
+              ? "#F59E0B" 
+              : theme.dark
               ? "rgba(139, 92, 246, 0.2)"
               : "rgba(139, 92, 246, 0.15)",
+            backgroundColor: focusedField === "name"
+              ? theme.dark
+                ? "rgba(245, 158, 11, 0.1)"
+                : "rgba(245, 158, 11, 0.05)"
+              : theme.dark
+              ? "rgba(255, 255, 255, 0.05)"
+              : "rgba(255, 255, 255, 0.7)",
+          }}
+          transition={{ type: "timing", duration: 300 }}
+          style={{
+            height: 56,
+            borderRadius: 16,
+            borderWidth: focusedField === "name" ? 2 : 1,
             paddingHorizontal: 16,
           }}
         >
@@ -122,7 +139,7 @@ export default function BasicInfoSection({
               color: theme.colors.text,
             }}
           />
-        </View>
+        </MotiView>
       </View>
 
       <View style={{ marginBottom: 24 }}>
@@ -138,7 +155,10 @@ export default function BasicInfoSection({
         </Text>
         <View style={{ flexDirection: "row", gap: 12 }}>
           <TouchableOpacity
-            onPress={() => setIsPrivate(false)}
+            onPress={async () => {
+              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setIsPrivate(false);
+            }}
             style={{
               flex: 1,
               padding: 16,
@@ -194,7 +214,10 @@ export default function BasicInfoSection({
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => setIsPrivate(true)}
+            onPress={async () => {
+              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setIsPrivate(true);
+            }}
             style={{
               flex: 1,
               padding: 16,
@@ -274,7 +297,10 @@ export default function BasicInfoSection({
             Description *
           </Text>
           <TouchableOpacity
-            onPress={() => setIsAIModalOpen(true)}
+            onPress={async () => {
+              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setIsAIModalOpen(true);
+            }}
             disabled={!name.trim()}
             style={{
               flexDirection: "row",
@@ -325,16 +351,25 @@ export default function BasicInfoSection({
             💡 Enter an event name first to enable AI description generation
           </Text>
         )}
-        <View
-          style={{
-            backgroundColor: theme.dark
-              ? "rgba(255, 255, 255, 0.05)"
-              : "rgba(255, 255, 255, 0.7)",
-            borderRadius: 16,
-            borderWidth: 1,
-            borderColor: theme.dark
+        <MotiView
+          animate={{
+            borderColor: focusedField === "description" 
+              ? "#F59E0B" 
+              : theme.dark
               ? "rgba(139, 92, 246, 0.2)"
               : "rgba(139, 92, 246, 0.15)",
+            backgroundColor: focusedField === "description"
+              ? theme.dark
+                ? "rgba(245, 158, 11, 0.1)"
+                : "rgba(245, 158, 11, 0.05)"
+              : theme.dark
+              ? "rgba(255, 255, 255, 0.05)"
+              : "rgba(255, 255, 255, 0.7)",
+          }}
+          transition={{ type: "timing", duration: 300 }}
+          style={{
+            borderRadius: 16,
+            borderWidth: focusedField === "description" ? 2 : 1,
             paddingHorizontal: 16,
             paddingVertical: 12,
             minHeight: 120,
@@ -358,7 +393,7 @@ export default function BasicInfoSection({
               textAlignVertical: "top",
             }}
           />
-        </View>
+        </MotiView>
       </View>
 
       {/* AI Description Modal */}
@@ -375,6 +410,6 @@ export default function BasicInfoSection({
         state={state}
         locationId={locationId}
       />
-    </View>
+    </MotiView>
   );
 }

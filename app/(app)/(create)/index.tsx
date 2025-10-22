@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   ScrollView,
@@ -30,6 +30,9 @@ import { draftService } from "~/src/services/draftService";
 import { EventDraft } from "~/src/types/draftTypes";
 import { haptics } from "~/src/lib/haptics";
 import { getCurrentMapCenter } from "~/src/lib/mapCenter";
+import { MotiView } from "moti";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
 
 // Import modular components
 import BasicInfoSection from "~/src/components/createpost/BasicInfoSection";
@@ -130,6 +133,11 @@ export default function CreateEvent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // Smart validation and focus management
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
   // Draft-related state
   const [currentDraft, setCurrentDraft] = useState<EventDraft | null>(null);
   const [isDraftSaving, setIsDraftSaving] = useState(false);
@@ -139,6 +147,21 @@ export default function CreateEvent() {
   // Edit mode state
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
+
+  // Step tracking for enhanced UI
+  const [currentStep, setCurrentStep] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+
+  // Define steps for the enhanced step indicator
+  const steps = [
+    { id: "basic", title: "Basic Info", description: "Name and description required" },
+    { id: "category", title: "Category", description: "Select activity category" },
+    { id: "prompts", title: "Prompts", description: "Add engaging prompts (optional)" },
+    { id: "images", title: "Images", description: "Add at least one photo" },
+    { id: "location", title: "Location", description: "Set your activity location" },
+    { id: "datetime", title: "Date & Time", description: "Schedule your activity" },
+    { id: "additional", title: "Additional", description: "Add extra details (optional)" },
+  ];
 
   // Auto-save draft functionality
   const saveDraft = async (isManual = false) => {
@@ -164,14 +187,14 @@ export default function CreateEvent() {
       const draftData = {
         name,
         description,
-        start_datetime: startDate ? startDate.toISOString() : null,
-        end_datetime: endDate ? endDate.toISOString() : null,
+        start_datetime: startDate ? startDate.toISOString() : undefined,
+        end_datetime: endDate ? endDate.toISOString() : undefined,
         venue_name: address1,
         address: address1,
         city: locationDetails?.city,
         state: locationDetails?.state,
         postal_code: locationDetails?.zip,
-        location_id: itemId, // This will be either event ID or location ID
+        location_id: Array.isArray(itemId) ? itemId[0] : itemId, // This will be either event ID or location ID
         category_id: selectedTopics,
         is_private: isPrivate,
         external_url: externalUrl,
@@ -368,9 +391,11 @@ export default function CreateEvent() {
       if (eventData.city || eventData.state || eventData.postal_code) {
         setLocationDetails({
           address1: eventData.address || "",
+          address2: "",
           city: eventData.city || "",
           state: eventData.state || "",
           zip: eventData.postal_code || "",
+          coordinates: [0, 0],
         });
       }
 
@@ -516,6 +541,93 @@ export default function CreateEvent() {
     draftLoaded,
   ]);
 
+  // Step completion tracking
+  useEffect(() => {
+    const newCompletedSteps: number[] = [];
+
+    // Step 0: Basic Info (name and description)
+    if (name.trim() !== "" && description.trim() !== "") {
+      newCompletedSteps.push(0);
+    }
+
+    // Step 1: Category
+    if (selectedTopics !== "") {
+      newCompletedSteps.push(1);
+    }
+
+    // Step 2: Prompts (optional, always complete)
+    newCompletedSteps.push(2);
+
+    // Step 3: Images
+    if (images.length > 0) {
+      newCompletedSteps.push(3);
+    }
+
+    // Step 4: Location
+    if (locationType === "static" || locationType === "googleApi") {
+      if (address1.trim() !== "" && locationDetails.address1.trim() !== "") {
+        newCompletedSteps.push(4);
+      }
+    } else {
+      if (locationDetails.city !== "" && locationDetails.state !== "") {
+        newCompletedSteps.push(4);
+      }
+    }
+
+    // Step 5: Date & Time
+    if (startDate && endDate && endDate.getTime() > startDate.getTime()) {
+      newCompletedSteps.push(5);
+    }
+
+    // Step 6: Additional (optional, always complete)
+    newCompletedSteps.push(6);
+
+    setCompletedSteps(newCompletedSteps);
+
+    // Determine current step based on what's missing
+    let currentStepIndex = 0;
+    
+    // Find the first incomplete required field
+    if (name.trim() === "" || description.trim() === "") {
+      currentStepIndex = 0; // Basic Info
+    } else if (selectedTopics === "") {
+      currentStepIndex = 1; // Category
+    } else if (images.length === 0) {
+      currentStepIndex = 3; // Images
+    } else if (locationType === "static" || locationType === "googleApi") {
+      if (address1.trim() === "" || locationDetails.address1.trim() === "") {
+        currentStepIndex = 4; // Location
+      } else if (startDate && endDate && endDate.getTime() <= startDate.getTime()) {
+        currentStepIndex = 5; // Date & Time
+      } else {
+        currentStepIndex = 6; // All required fields complete
+      }
+    } else {
+      if (locationDetails.city === "" || locationDetails.state === "") {
+        currentStepIndex = 4; // Location
+      } else if (startDate && endDate && endDate.getTime() <= startDate.getTime()) {
+        currentStepIndex = 5; // Date & Time
+      } else {
+        currentStepIndex = 6; // All required fields complete
+      }
+    }
+
+    setCurrentStep(currentStepIndex);
+    
+    // Debug logging
+    console.log("Step tracking:", {
+      currentStep: currentStepIndex,
+      stepTitle: steps[currentStepIndex]?.title,
+      completedSteps: newCompletedSteps,
+      name: name.trim(),
+      description: description.trim(),
+      selectedTopics,
+      images: images.length,
+      locationType,
+      address1: address1.trim(),
+    });
+  }, [name, description, selectedTopics, images, address1, locationDetails, startDate, endDate, locationType]);
+
   useEffect(() => {
     console.log("createevent_useEffect");
 
@@ -530,17 +642,17 @@ export default function CreateEvent() {
       };
       console.log("🔍 Router params category:", simpleCategory);
       setCategoryList(simpleCategory as Category);
-      setSelectedTopics(params.categoryId);
-      setSelectedTopicsName(params.categoryName);
+      setSelectedTopics(params.categoryId as string);
+      setSelectedTopicsName(params.categoryName as string);
       setshowPrompts(true);
       if (params.prompts) {
         try {
           const raw = params.prompts;
           console.log("params.prompts>", raw);
 
-          const parsedPrompts_: Prompt[] = raw;
+          const parsedPrompts_: Prompt[] = Array.isArray(raw) ? raw : JSON.parse(raw as string);
           console.log("parsedPrompts_", parsedPrompts_);
-          setPrompts(parsedPrompts_);
+          setPrompts(parsedPrompts_ as Partial<Prompt>);
         } catch (e) {
           console.error("Invalid prompts data", e);
         }
@@ -644,7 +756,7 @@ export default function CreateEvent() {
         return locationDetails.city !== "" && locationDetails.state !== "";
       }, // Step 4: Location
       () => {
-        const truncateToMinute = (date) =>
+        const truncateToMinute = (date: Date) =>
           new Date(
             date.getFullYear(),
             date.getMonth(),
@@ -664,42 +776,104 @@ export default function CreateEvent() {
     return validations.every((validate) => validate());
   };
 
-  const getValidationError = () => {
-    if (name.trim() === "" || description.trim() === "") {
-      return "Please fill in the event name and description";
+  // Smart validation that identifies specific missing fields
+  const getValidationErrors = () => {
+    const errors: string[] = [];
+    
+    if (name.trim() === "") {
+      errors.push("Event name is required");
+    }
+    if (description.trim() === "") {
+      errors.push("Event description is required");
     }
     if (selectedTopics === "") {
-      return "Please select a category for your event";
+      errors.push("Please select a category");
     }
     if (images.length === 0) {
-      return "Please add at least one image to your event";
+      errors.push("Please add at least one image");
     }
     if (locationType === "static" || locationType === "googleApi") {
       if (address1.trim() === "" || locationDetails.address1.trim() === "") {
-        return "Please select a location for your event";
+        errors.push("Please select a location");
       }
     } else {
       if (locationDetails.city === "" || locationDetails.state === "") {
-        return "Please fill in the city and state for your event";
+        errors.push("Please fill in the city and state");
       }
     }
     if (endDate.getTime() <= startDate.getTime()) {
-      return "End date must be after start date";
+      errors.push("End date must be after start date");
     }
-    return "Please complete all required fields";
+    
+    return errors;
+  };
+
+  // Get the first missing field to focus on
+  const getFirstMissingField = () => {
+    if (name.trim() === "") return "name";
+    if (description.trim() === "") return "description";
+    if (selectedTopics === "") return "category";
+    if (images.length === 0) return "images";
+    if (locationType === "static" || locationType === "googleApi") {
+      if (address1.trim() === "" || locationDetails.address1.trim() === "") return "location";
+    } else {
+      if (locationDetails.city === "" || locationDetails.state === "") return "location";
+    }
+    if (endDate.getTime() <= startDate.getTime()) return "datetime";
+    return null;
+  };
+
+  // Scroll to and focus on a specific field
+  const focusOnField = (fieldName: string) => {
+    setFocusedField(fieldName);
+    
+    // Scroll to the appropriate section based on field
+    const scrollPositions = {
+      name: 0,
+      description: 0,
+      category: 300,
+      images: 600,
+      location: 900,
+      datetime: 1200,
+    };
+    
+    const scrollPosition = scrollPositions[fieldName as keyof typeof scrollPositions] || 0;
+    
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({
+        y: scrollPosition,
+        animated: true,
+      });
+    }, 100);
+    
+    // Clear focus after 3 seconds
+    setTimeout(() => {
+      setFocusedField(null);
+    }, 3000);
   };
 
   const handleEventCreation = () => {
-    if (!validateCheck()) {
-      const errorMessage = getValidationError();
-      Toast.show({
-        type: "error",
-        text1: "Missing Information",
-        text2: errorMessage,
-      });
+    const errors = getValidationErrors();
+    
+    if (errors.length > 0) {
+      // Get the first missing field to focus on
+      const firstMissingField = getFirstMissingField();
+      
+      if (firstMissingField) {
+        // Focus on the missing field
+        focusOnField(firstMissingField);
+        
+        // Show helpful toast
+        Toast.show({
+          type: "error",
+          text1: "Complete Required Fields",
+          text2: `Please fill in: ${errors[0]}`,
+        });
+      }
       return;
     }
 
+    // All fields are complete, proceed with creation
     handleCreateEvent();
   };
 
@@ -1120,7 +1294,7 @@ export default function CreateEvent() {
         image_urls: imageUrls,
         is_private: isPrivate,
         topic_id: selectedTopics,
-        ...(eventID?.eventId && { event_id: eventID.eventId }),
+        ...(eventID && { event_id: eventID }),
       };
       //       if (eventID !== undefined) {
       //   eventData.event_id = eventID;
@@ -1156,7 +1330,7 @@ export default function CreateEvent() {
           image_urls: imageUrls,
           is_private: isPrivate,
           topic_id: selectedTopics,
-          ...(eventID?.eventId && { event_id: eventID.eventId }),
+          ...(eventID && { event_id: eventID }),
         };
 
         console.log("🔧 [CreateEvent] State values when building eventData:", {
@@ -1349,13 +1523,13 @@ export default function CreateEvent() {
       <View
         style={{
           flex: 1,
-          paddingTop: Math.max(insets.top + 10, 20),
-          paddingHorizontal: 20,
+          paddingTop: Math.max(insets.top + 5, 15),
+          paddingHorizontal: 16,
           paddingBottom: Math.max(insets.bottom + 20, 40),
         }}
       >
         {/* Compact Header */}
-        <View style={{ marginBottom: 20 }}>
+        <View style={{ marginBottom: 12 }}>
           <View
             style={{
               flexDirection: "row",
@@ -1420,12 +1594,24 @@ export default function CreateEvent() {
           </View>
         </View>
 
+        {/* Ultra-Compact Step Indicator */}
+        <StepIndicator
+          steps={steps}
+          currentStep={currentStep}
+          completedSteps={completedSteps}
+        />
+
         <ScrollView
+          ref={scrollViewRef}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 100 }}
           keyboardShouldPersistTaps="handled"
         >
-          <View>
+          <MotiView
+            from={{ opacity: 0, translateY: 20 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: "spring", damping: 15, stiffness: 300 }}
+          >
             <BasicInfoSection
               name={name}
               setName={setName}
@@ -1440,6 +1626,7 @@ export default function CreateEvent() {
               city={locationDetails.city}
               state={locationDetails.state}
               locationId={locationId}
+              focusedField={focusedField}
             />
 
             <CategorySection
@@ -1448,7 +1635,7 @@ export default function CreateEvent() {
               onSelectTopic={setSelectedTopics}
             />
 
-            {prompts?.length > 0 ? (
+            {Array.isArray(prompts) && prompts.length > 0 ? (
               <PromptsSection
                 prompts={prompts}
                 selectedPrompts={selectedPrompts}
@@ -1494,58 +1681,110 @@ export default function CreateEvent() {
               externalUrlTitle={externalTitle}
               setExternalUrlTitle={setExternalTitle}
             />
-          </View>
+          </MotiView>
         </ScrollView>
 
-        {/* Navigation Buttons */}
-        <View
+        {/* Enhanced Navigation Buttons */}
+        <MotiView
+          from={{ opacity: 0, translateY: 20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: "spring", damping: 15, stiffness: 300, delay: 200 }}
           style={{
             flexDirection: "row",
             justifyContent: "space-between",
             paddingTop: 16,
           }}
         >
-          <TouchableOpacity
-            onPress={handleEventCreation}
-            disabled={isLoading}
-            style={{
-              flex: 1,
-              height: 50,
-              backgroundColor: validateCheck() ? "#8B5CF6" : "transparent",
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: validateCheck()
-                ? "#8B5CF6"
-                : theme.colors.text + "20",
-              justifyContent: "center",
-              alignItems: "center",
-              shadowColor: "#8B5CF6",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 12,
-              elevation: 8,
-              opacity: isLoading ? 0.7 : 1,
-            }}
+          <MotiView
+            from={{ scale: 1 }}
+            animate={{ scale: validateCheck() ? 1 : 0.98 }}
+            transition={{ type: "spring", damping: 15, stiffness: 300 }}
+            style={{ flex: 1 }}
           >
-            {isLoading ? (
-              <ActivityIndicator color="white" size="small" />
-            ) : (
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontWeight: "700",
-                    color: validateCheck() ? "white" : theme.colors.text + "40",
-
-                    marginRight: 8,
-                  }}
+            <TouchableOpacity
+              onPress={async () => {
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                handleEventCreation();
+              }}
+              disabled={isLoading}
+              style={{
+                height: 56,
+                borderRadius: 20,
+                justifyContent: "center",
+                alignItems: "center",
+                shadowColor: "#8B5CF6",
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.4,
+                shadowRadius: 16,
+                elevation: 12,
+                opacity: isLoading ? 0.7 : 1,
+                overflow: "hidden",
+              }}
+            >
+              <LinearGradient
+                colors={validateCheck() ? ["#8B5CF6", "#A855F7"] : ["#F59E0B", "#F97316"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  borderRadius: 20,
+                }}
+              />
+              
+              {isLoading ? (
+                <MotiView
+                  from={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ type: "timing", duration: 200 }}
                 >
-                  {isEditMode ? "Update Activity" : "Create Event"}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
+                  <ActivityIndicator color="white" size="small" />
+                </MotiView>
+              ) : (
+                <MotiView
+                  from={{ opacity: 0, translateY: 10 }}
+                  animate={{ opacity: 1, translateY: 0 }}
+                  transition={{ type: "spring", damping: 15, stiffness: 300 }}
+                  style={{ flexDirection: "row", alignItems: "center" }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 18,
+                      fontWeight: "700",
+                      color: "white",
+                      marginRight: 8,
+                    }}
+                  >
+                    {validateCheck() 
+                      ? (isEditMode ? "Update Activity" : "Create Activity")
+                      : "Complete Required Fields"
+                    }
+                  </Text>
+                  {validateCheck() ? (
+                    <MotiView
+                      from={{ scale: 0, rotate: "180deg" }}
+                      animate={{ scale: 1, rotate: "0deg" }}
+                      transition={{ type: "spring", damping: 15, stiffness: 300 }}
+                    >
+                      <Text style={{ color: "white", fontSize: 16 }}>✨</Text>
+                    </MotiView>
+                  ) : (
+                    <MotiView
+                      from={{ scale: 0, rotate: "180deg" }}
+                      animate={{ scale: 1, rotate: "0deg" }}
+                      transition={{ type: "spring", damping: 15, stiffness: 300 }}
+                    >
+                      <Text style={{ color: "white", fontSize: 16 }}>👆</Text>
+                    </MotiView>
+                  )}
+                </MotiView>
+              )}
+            </TouchableOpacity>
+          </MotiView>
+        </MotiView>
       </View>
 
       {/* Toast Component */}
