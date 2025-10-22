@@ -54,7 +54,7 @@ export default function ImagesSection({
             marginBottom: 8,
           }}
         >
-          Event Images
+          Activity Images *
         </Text>
         <Text
           style={{
@@ -63,7 +63,7 @@ export default function ImagesSection({
             lineHeight: 22,
           }}
         >
-          Add up to 5 images to showcase your event
+          Add up to 5 images to showcase your activity
         </Text>
       </View>
 
