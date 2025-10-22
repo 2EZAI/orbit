@@ -58,12 +58,14 @@ interface UnifiedProfilePageProps {
   userId?: string;
   showBackButton?: boolean;
   onBack?: () => void;
+  from?: string;
 }
 
 export function UnifiedProfilePage({
   userId,
   showBackButton = false,
   onBack,
+  from,
 }: UnifiedProfilePageProps) {
   const { session } = useAuth();
   const { user: currentUser } = useUser();
@@ -424,7 +426,13 @@ export function UnifiedProfilePage({
       >
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <TouchableOpacity
-            onPress={onBack || (() => router.back())}
+            onPress={onBack || (() => {
+              if (from === 'social') {
+                router.push('/(app)/(social)');
+              } else {
+                router.back();
+              }
+            })}
             style={{
               marginRight: 12,
               padding: 8,
