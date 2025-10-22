@@ -13,6 +13,11 @@ import {
   Trash2,
   User,
   ClipboardList,
+  Sparkles,
+  Zap,
+  Calendar,
+  Clock,
+  Image as ImageIcon,
 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
@@ -29,6 +34,10 @@ import { Text } from "~/src/components/ui/text";
 import { supabase } from "~/src/lib/supabase";
 import { draftService } from "~/src/services/draftService";
 import { EventDraft } from "~/src/types/draftTypes";
+import { MotiView } from "moti";
+import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
+import * as Haptics from "expo-haptics";
 
 // Import modal components (we'll create these next)
 import { PasswordModal } from "~/src/components/settings/PasswordModal";
@@ -232,7 +241,8 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleDraftsPress = () => {
+  const handleDraftsPress = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     loadDrafts();
     setShowDrafts(true);
   };
@@ -240,6 +250,7 @@ export default function SettingsScreen() {
     setShowProposals(true);
   };
   const handleDeleteDraft = async (draftId: string, draftName: string) => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
       "Delete Draft",
       `Are you sure you want to delete "${
@@ -258,8 +269,10 @@ export default function SettingsScreen() {
               setDeletingDraftId(draftId);
               await draftService.deleteDraft(draftId);
               setDrafts(drafts.filter((draft) => draft.id !== draftId));
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } catch (error) {
               console.error("Error deleting draft:", error);
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
               Alert.alert("Error", "Failed to delete draft. Please try again.");
             } finally {
               setDeletingDraftId(null);
@@ -275,7 +288,8 @@ export default function SettingsScreen() {
       pathname: "/(app)/contacts",
     });
   };
-  const handleResumeDraft = (draft: EventDraft) => {
+  const handleResumeDraft = async (draft: EventDraft) => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setShowDrafts(false);
     // Close the settings modal after navigation
     router.back();
@@ -503,195 +517,379 @@ export default function SettingsScreen() {
         onClose={() => setShowDeleteAccount(false)}
       />
 
-      {/* Drafts Modal */}
+      {/* Premium Drafts Modal */}
       {showDrafts && (
-        <View
+        <MotiView
+          from={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ type: "timing", duration: 200 }}
           style={{
             position: "absolute",
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            justifyContent: "center",
-            alignItems: "center",
             zIndex: 1000,
           }}
         >
-          <View
+          <BlurView
+            intensity={20}
             style={{
-              backgroundColor: theme.colors.card,
-              borderRadius: 20,
-              padding: 20,
-              margin: 20,
-              maxHeight: "80%",
-              width: "90%",
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
             }}
           >
-            <View
+            <MotiView
+              from={{ opacity: 0, scale: 0.9, translateY: 50 }}
+              animate={{ opacity: 1, scale: 1, translateY: 0 }}
+              transition={{
+                type: "spring",
+                damping: 20,
+                stiffness: 300,
+              }}
               style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 20,
+                backgroundColor: theme.colors.card,
+                borderRadius: 24,
+                padding: 24,
+                margin: 20,
+                marginTop: 40, // Add more top margin to prevent cutoff
+                maxHeight: "80%", // Reduce height slightly to ensure it fits
+                width: "90%",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 20 },
+                shadowOpacity: 0.3,
+                shadowRadius: 30,
+                elevation: 20,
               }}
             >
-              <Text
+              {/* Premium Header */}
+              <MotiView
+                from={{ opacity: 0, translateY: -20 }}
+                animate={{ opacity: 1, translateY: 0 }}
+                transition={{
+                  type: "spring",
+                  damping: 15,
+                  stiffness: 300,
+                  delay: 100,
+                }}
                 style={{
-                  fontSize: 20,
-                  fontWeight: "bold",
-                  color: theme.colors.text,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 24,
+                  paddingTop: 8, // Add some top padding to the header
                 }}
               >
-                My Drafts ({drafts.length})
-              </Text>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                {drafts.length > 0 && (
-                  <TouchableOpacity
-                    onPress={handleClearAllDrafts}
-                    disabled={clearingAllDrafts}
+                <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+                  <LinearGradient
+                    colors={["#8B5CF6", "#A855F7"]}
                     style={{
-                      padding: 8,
-                      borderRadius: 16,
-                      backgroundColor: clearingAllDrafts
-                        ? "#9CA3AF"
-                        : "#EF4444",
-                      marginRight: 8,
-                      opacity: clearingAllDrafts ? 0.7 : 1,
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginRight: 12,
                     }}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
                   >
-                    {clearingAllDrafts ? (
-                      <ActivityIndicator size={12} color="white" />
-                    ) : (
-                      <Text style={{ color: "white", fontSize: 12 }}>
-                        Clear All
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity
-                  onPress={() => setShowDrafts(false)}
-                  style={{
-                    padding: 8,
-                    borderRadius: 16,
-                    backgroundColor: theme.colors.border,
-                  }}
-                >
-                  <Text style={{ color: theme.colors.text }}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {loadingDrafts ? (
-              <View style={{ alignItems: "center", padding: 20 }}>
-                <ActivityIndicator size="large" color={theme.colors.primary} />
-                <Text style={{ marginTop: 10, color: theme.colors.text }}>
-                  Loading drafts...
-                </Text>
-              </View>
-            ) : drafts.length === 0 ? (
-              <View style={{ alignItems: "center", padding: 20 }}>
-                <Text style={{ color: theme.colors.text, textAlign: "center" }}>
-                  No drafts found. Start creating an activity to see your drafts
-                  here.
-                </Text>
-              </View>
-            ) : (
-              <ScrollView style={{ maxHeight: 400 }}>
-                {drafts.map((draft) => (
-                  <View
-                    key={draft.id}
-                    style={{
-                      backgroundColor: theme.colors.background,
-                      borderRadius: 12,
-                      padding: 16,
-                      marginBottom: 12,
-                      borderWidth: 1,
-                      borderColor: theme.colors.border,
-                    }}
-                  >
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        marginBottom: 8,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 16,
-                          fontWeight: "600",
-                          color: theme.colors.text,
-                          flex: 1,
-                        }}
-                        numberOfLines={2}
-                      >
-                        {draft.name || "Untitled Activity"}
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => handleDeleteDraft(draft.id, draft.name)}
-                        disabled={deletingDraftId === draft.id}
-                        style={{
-                          padding: 4,
-                          marginLeft: 8,
-                          opacity: deletingDraftId === draft.id ? 0.5 : 1,
-                        }}
-                      >
-                        {deletingDraftId === draft.id ? (
-                          <ActivityIndicator size={16} color="#EF4444" />
-                        ) : (
-                          <Trash2 size={16} color="#EF4444" />
-                        )}
-                      </TouchableOpacity>
-                    </View>
-
-                    {draft.description && (
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          color: theme.colors.text,
-                          opacity: 0.7,
-                          marginBottom: 8,
-                        }}
-                        numberOfLines={2}
-                      >
-                        {draft.description}
-                      </Text>
-                    )}
-
+                    <FileText size={20} color="white" />
+                  </LinearGradient>
+                  <View>
                     <Text
                       style={{
-                        fontSize: 12,
+                        fontSize: 24,
+                        fontWeight: "700",
                         color: theme.colors.text,
-                        opacity: 0.5,
-                        marginBottom: 12,
+                        letterSpacing: -0.5,
+                        paddingTop: 20
                       }}
                     >
-                      Last updated:{" "}
-                      {new Date(draft.updated_at).toLocaleDateString()}
+                      My Drafts
                     </Text>
-
-                    <TouchableOpacity
-                      onPress={() => handleResumeDraft(draft)}
+                    <Text
                       style={{
-                        backgroundColor: theme.colors.primary,
-                        paddingHorizontal: 16,
-                        paddingVertical: 8,
-                        borderRadius: 8,
-                        alignSelf: "flex-start",
+                        fontSize: 14,
+                        color: theme.colors.text + "60",
+                        marginTop: 2,
                       }}
                     >
-                      <Text style={{ color: "white", fontWeight: "600" }}>
-                        Resume Draft
-                      </Text>
-                    </TouchableOpacity>
+                      {drafts.length} {drafts.length === 1 ? "draft" : "drafts"}
+                    </Text>
                   </View>
-                ))}
-              </ScrollView>
-            )}
-          </View>
-        </View>
+                </View>
+                
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  {drafts.length > 0 && (
+                    <MotiView
+                      from={{ scale: 0, rotate: "180deg" }}
+                      animate={{ scale: 1, rotate: "0deg" }}
+                      transition={{
+                        type: "spring",
+                        damping: 15,
+                        stiffness: 300,
+                        delay: 200,
+                      }}
+                    >
+                      <TouchableOpacity
+                        onPress={handleClearAllDrafts}
+                        disabled={clearingAllDrafts}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: 16,
+                          backgroundColor: clearingAllDrafts
+                            ? "#9CA3AF"
+                            : "#EF4444",
+                          opacity: clearingAllDrafts ? 0.7 : 1,
+                        }}
+                      >
+                        {clearingAllDrafts ? (
+                          <ActivityIndicator size={12} color="white" />
+                        ) : (
+                          <Text style={{ color: "white", fontSize: 12, fontWeight: "600" }}>
+                            Clear All
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    </MotiView>
+                  )}
+                  
+                  <MotiView
+                    from={{ scale: 0, rotate: "180deg" }}
+                    animate={{ scale: 1, rotate: "0deg" }}
+                    transition={{
+                      type: "spring",
+                      damping: 15,
+                      stiffness: 300,
+                      delay: 300,
+                    }}
+                  >
+                    <TouchableOpacity
+                      onPress={async () => {
+                        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setShowDrafts(false);
+                      }}
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        backgroundColor: theme.colors.border,
+                        justifyContent: "center",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: "600" }}>✕</Text>
+                    </TouchableOpacity>
+                  </MotiView>
+                </View>
+              </MotiView>
+
+              {/* Content Area */}
+              {loadingDrafts ? (
+                <MotiView
+                  from={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{
+                    type: "spring",
+                    damping: 15,
+                    stiffness: 300,
+                    delay: 400,
+                  }}
+                  style={{ alignItems: "center", padding: 40 }}
+                >
+                  <ActivityIndicator size="large" color={theme.colors.primary} />
+                  <Text style={{ marginTop: 16, color: theme.colors.text, fontSize: 16, fontWeight: "500" }}>
+                    Loading drafts...
+                  </Text>
+                </MotiView>
+              ) : drafts.length === 0 ? (
+                <MotiView
+                  from={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{
+                    type: "spring",
+                    damping: 15,
+                    stiffness: 300,
+                    delay: 400,
+                  }}
+                  style={{ alignItems: "center", padding: 40 }}
+                >
+                  <LinearGradient
+                    colors={["rgba(139, 92, 246, 0.1)", "rgba(168, 85, 247, 0.05)"]}
+                    style={{
+                      padding: 32,
+                      borderRadius: 20,
+                      alignItems: "center",
+                      width: "100%",
+                    }}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <Sparkles size={48} color={theme.colors.primary} />
+                    <Text style={{ 
+                      color: theme.colors.text, 
+                      textAlign: "center", 
+                      fontSize: 18, 
+                      fontWeight: "600", 
+                      marginTop: 16,
+                      marginBottom: 8 
+                    }}>
+                      No Drafts Yet
+                    </Text>
+                    <Text style={{ 
+                      color: theme.colors.text + "60", 
+                      textAlign: "center", 
+                      fontSize: 14,
+                      lineHeight: 20 
+                    }}>
+                      Start creating an activity to see your drafts here
+                    </Text>
+                  </LinearGradient>
+                </MotiView>
+              ) : (
+                <ScrollView 
+                  style={{ maxHeight: 400 }} 
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingBottom: 8 }}
+                >
+                  {drafts.map((draft, index) => (
+                    <MotiView
+                      key={draft.id}
+                      from={{ opacity: 0, translateY: 30, scale: 0.9 }}
+                      animate={{ opacity: 1, translateY: 0, scale: 1 }}
+                      transition={{
+                        type: "spring",
+                        damping: 15,
+                        stiffness: 300,
+                        delay: 400 + (index * 100),
+                      }}
+                      style={{ marginBottom: 16 }}
+                    >
+                      <View
+                        style={{
+                          backgroundColor: theme.colors.background,
+                          borderRadius: 20,
+                          padding: 20,
+                          borderWidth: 1,
+                          borderColor: theme.colors.border,
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 4 },
+                          shadowOpacity: 0.1,
+                          shadowRadius: 12,
+                          elevation: 4,
+                        }}
+                      >
+                        {/* Header */}
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                            marginBottom: 12,
+                          }}
+                        >
+                          <View style={{ flex: 1, marginRight: 12 }}>
+                            <Text
+                              style={{
+                                fontSize: 18,
+                                fontWeight: "700",
+                                color: theme.colors.text,
+                                lineHeight: 24,
+                                marginBottom: 4,
+                              }}
+                              numberOfLines={2}
+                            >
+                              {draft.name || "Untitled Activity"}
+                            </Text>
+                            {draft.description && (
+                              <Text
+                                style={{
+                                  fontSize: 14,
+                                  color: theme.colors.text + "70",
+                                  lineHeight: 20,
+                                }}
+                                numberOfLines={2}
+                              >
+                                {draft.description}
+                              </Text>
+                            )}
+                          </View>
+                          
+                          <TouchableOpacity
+                            onPress={() => handleDeleteDraft(draft.id, draft.name)}
+                            disabled={deletingDraftId === draft.id}
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 16,
+                              backgroundColor: "rgba(239, 68, 68, 0.1)",
+                              justifyContent: "center",
+                              alignItems: "center",
+                              opacity: deletingDraftId === draft.id ? 0.5 : 1,
+                            }}
+                          >
+                            {deletingDraftId === draft.id ? (
+                              <ActivityIndicator size={16} color="#EF4444" />
+                            ) : (
+                              <Trash2 size={16} color="#EF4444" />
+                            )}
+                          </TouchableOpacity>
+                        </View>
+
+                        {/* Metadata */}
+                        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16, gap: 16 }}>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                            <Calendar size={14} color={theme.colors.text + "60"} />
+                            <Text style={{ fontSize: 12, color: theme.colors.text + "60", fontWeight: "500" }}>
+                              {draft.start_datetime ? new Date(draft.start_datetime).toLocaleDateString() : "No date"}
+                            </Text>
+                          </View>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                            <Clock size={14} color={theme.colors.text + "60"} />
+                            <Text style={{ fontSize: 12, color: theme.colors.text + "60", fontWeight: "500" }}>
+                              {new Date(draft.updated_at).toLocaleDateString()}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* Resume Button */}
+                        <TouchableOpacity
+                          onPress={() => handleResumeDraft(draft)}
+                          style={{
+                            borderRadius: 12,
+                            overflow: "hidden",
+                            alignSelf: "flex-start",
+                          }}
+                        >
+                          <LinearGradient
+                            colors={["#8B5CF6", "#A855F7"]}
+                            style={{
+                              paddingHorizontal: 20,
+                              paddingVertical: 12,
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 8,
+                            }}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                          >
+                            <Zap size={16} color="white" />
+                            <Text style={{ color: "white", fontWeight: "700", fontSize: 14 }}>
+                              Resume Draft
+                            </Text>
+                          </LinearGradient>
+                        </TouchableOpacity>
+                      </View>
+                    </MotiView>
+                  ))}
+                </ScrollView>
+              )}
+            </MotiView>
+          </BlurView>
+        </MotiView>
       )}
       <UnifiedProposalSheet
         show={showProposals}
