@@ -1635,7 +1635,10 @@ export default function Home() {
       {shareData && (
         <UnifiedShareSheet
           isOpen={!!shareData}
-          onClose={() => setShareData(null)}
+          onClose={() => {
+            setSelectedEvent(shareData.data);
+            setShareData(null);
+          }}
           data={shareData?.data}
           isEventType={shareData?.isEventType}
         />
