@@ -1,14 +1,14 @@
-import { 
-  ArrowLeft, 
-  CheckCircle2, 
-  PlusCircle, 
-  Calendar, 
-  Clock, 
-  Users, 
+import {
+  ArrowLeft,
+  CheckCircle2,
+  PlusCircle,
+  Calendar,
+  Clock,
+  Users,
   Sparkles,
   ChevronRight,
   Star,
-  Zap
+  Zap,
 } from "lucide-react-native";
 import {
   ActivityIndicator,
@@ -65,7 +65,7 @@ const ProposalSelectList: React.FC<IProps> = ({
 
     const handlePress = async () => {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      
+
       if (data && !isEventAlreadyAdded) {
         // Toggle selection - if already selected, deselect it
         if (selectedProposals === item.id) {
@@ -98,7 +98,7 @@ const ProposalSelectList: React.FC<IProps> = ({
         }}
         onDidAnimate={(key, finished) => {
           if (key === "opacity" && finished && !isVisible) {
-            setVisibleItems(prev => new Set(prev).add(item.id));
+            setVisibleItems((prev) => new Set(prev).add(item.id));
           }
         }}
         style={styles.itemContainer}
@@ -127,7 +127,9 @@ const ProposalSelectList: React.FC<IProps> = ({
                   ? theme.colors.text + "20"
                   : theme.colors.border,
                 backgroundColor: isSelected
-                  ? isDarkMode ? "rgba(139, 92, 246, 0.1)" : "rgba(139, 92, 246, 0.05)"
+                  ? isDarkMode
+                    ? "rgba(139, 92, 246, 0.1)"
+                    : "rgba(139, 92, 246, 0.05)"
                   : isEventAlreadyAdded
                   ? theme.colors.text + "05"
                   : theme.colors.card,
@@ -169,21 +171,33 @@ const ProposalSelectList: React.FC<IProps> = ({
                     <Sparkles size={16} color="white" />
                   </LinearGradient>
                 </MotiView>
-                
+
                 <View style={styles.titleContainer}>
-                  <Text style={[styles.premiumTitle, { color: theme.colors.text }]}>
+                  <Text
+                    style={[styles.premiumTitle, { color: theme.colors.text }]}
+                  >
                     {item.title}
                   </Text>
                   <View style={styles.metaContainer}>
                     <View style={styles.metaItem}>
                       <Calendar size={12} color={theme.colors.text + "60"} />
-                      <Text style={[styles.metaText, { color: theme.colors.text + "60" }]}>
+                      <Text
+                        style={[
+                          styles.metaText,
+                          { color: theme.colors.text + "60" },
+                        ]}
+                      >
                         {new Date(item.start_datetime).toLocaleDateString()}
                       </Text>
                     </View>
                     <View style={styles.metaItem}>
                       <Users size={12} color={theme.colors.text + "60"} />
-                      <Text style={[styles.metaText, { color: theme.colors.text + "60" }]}>
+                      <Text
+                        style={[
+                          styles.metaText,
+                          { color: theme.colors.text + "60" },
+                        ]}
+                      >
                         {item.events_attached.length} events
                       </Text>
                     </View>
@@ -208,11 +222,11 @@ const ProposalSelectList: React.FC<IProps> = ({
                     <Text style={styles.alreadyAddedText}>Already Added</Text>
                   </MotiView>
                 )}
-                
+
                 {data && !isEventAlreadyAdded && (
-                  <ChevronRight 
-                    size={20} 
-                    color={isSelected ? "#8B5CF6" : theme.colors.text + "40"} 
+                  <ChevronRight
+                    size={20}
+                    color={isSelected ? "#8B5CF6" : theme.colors.text + "40"}
                   />
                 )}
               </View>
@@ -249,28 +263,36 @@ const ProposalSelectList: React.FC<IProps> = ({
   };
   const handleSubmit = async () => {
     if (!data || !selectedProposals) return;
-    
+
     setIsLoading(true);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
+console.log("Adding event to proposal:", selectedProposals, {
+  id: data.id,
+  name: data.name,
+  type: data.source || "database",
+});
     try {
       const updated = await addEventToProposal(selectedProposals, {
         id: data.id,
         name: data.name,
-        type: data.type || "event",
+        type: data.source || "database",
       });
-      
+
       console.log("Event added to Proposal:", updated);
-      
+
       if (updated) {
         // Success animation and haptic feedback
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        await Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success
+        );
         setShowSuccess(true);
-        
+
         // Wait for success animation, then navigate to proposal details
         setTimeout(() => {
           // Find the proposal that was just updated
-          const updatedProposal = proposals.find(p => p.id === selectedProposals);
+          const updatedProposal = proposals.find(
+            (p) => p.id === selectedProposals
+          );
           if (updatedProposal && onShowProposalDetail) {
             onShowProposalDetail(updatedProposal);
           } else {
@@ -313,7 +335,11 @@ const ProposalSelectList: React.FC<IProps> = ({
         style={styles.headerContainer}
       >
         <LinearGradient
-          colors={isDarkMode ? ["rgba(0,0,0,0.8)", "rgba(0,0,0,0.4)"] : ["rgba(255,255,255,0.9)", "rgba(255,255,255,0.6)"]}
+          colors={
+            isDarkMode
+              ? ["rgba(0,0,0,0.8)", "rgba(0,0,0,0.4)"]
+              : ["rgba(255,255,255,0.9)", "rgba(255,255,255,0.6)"]
+          }
           style={styles.headerGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
@@ -331,7 +357,7 @@ const ProposalSelectList: React.FC<IProps> = ({
                     delay: 100,
                   }}
                 >
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={handleBackPress}
                     style={styles.backButton}
                     activeOpacity={0.7}
@@ -339,7 +365,7 @@ const ProposalSelectList: React.FC<IProps> = ({
                     <ArrowLeft size={24} color={theme.colors.text} />
                   </TouchableOpacity>
                 </MotiView>
-                
+
                 <MotiView
                   from={{ opacity: 0, translateX: -10 }}
                   animate={{ opacity: 1, translateX: 0 }}
@@ -350,12 +376,14 @@ const ProposalSelectList: React.FC<IProps> = ({
                     delay: 200,
                   }}
                 >
-                  <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+                  <Text
+                    style={[styles.headerTitle, { color: theme.colors.text }]}
+                  >
                     {data ? "Select Proposals" : "Your Proposals"}
                   </Text>
                 </MotiView>
               </View>
-              
+
               {data && (
                 <MotiView
                   from={{ scale: 0, rotate: "180deg" }}
@@ -367,7 +395,7 @@ const ProposalSelectList: React.FC<IProps> = ({
                     delay: 300,
                   }}
                 >
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={handleAddPress}
                     style={styles.addButton}
                     activeOpacity={0.7}
@@ -412,7 +440,10 @@ const ProposalSelectList: React.FC<IProps> = ({
             stiffness: 300,
             delay: 400,
           }}
-          style={[styles.buttonContainer, { paddingBottom: insets.bottom + 20 }]}
+          style={[
+            styles.buttonContainer,
+            { paddingBottom: insets.bottom + 20 },
+          ]}
         >
           <TouchableOpacity
             onPress={handleSubmit}
@@ -432,7 +463,11 @@ const ProposalSelectList: React.FC<IProps> = ({
               }}
             >
               <LinearGradient
-                colors={validateCheck() ? ["#8B5CF6", "#A855F7"] : ["#6B7280", "#9CA3AF"]}
+                colors={
+                  validateCheck()
+                    ? ["#8B5CF6", "#A855F7"]
+                    : ["#6B7280", "#9CA3AF"]
+                }
                 style={styles.buttonGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -442,9 +477,7 @@ const ProposalSelectList: React.FC<IProps> = ({
                 ) : (
                   <View style={styles.buttonContent}>
                     <Zap size={20} color="white" />
-                    <Text style={styles.buttonText}>
-                      Add Event to Proposal
-                    </Text>
+                    <Text style={styles.buttonText}>Add Event to Proposal</Text>
                   </View>
                 )}
               </LinearGradient>
@@ -499,7 +532,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "transparent",
   },
-  
+
   // Header Styles
   headerContainer: {
     position: "relative",
@@ -546,7 +579,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  
+
   // Content Styles
   contentContainer: {
     flex: 1,
@@ -558,7 +591,7 @@ const styles = StyleSheet.create({
   separator: {
     height: 16,
   },
-  
+
   // Item Styles
   itemContainer: {
     marginBottom: 4,
@@ -654,7 +687,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  
+
   // Button Styles
   buttonContainer: {
     paddingHorizontal: 20,
@@ -686,7 +719,7 @@ const styles = StyleSheet.create({
     color: "white",
     letterSpacing: -0.2,
   },
-  
+
   // Success Overlay
   successOverlay: {
     position: "absolute",

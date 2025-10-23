@@ -257,6 +257,7 @@ export function SocialEventCard({
   onShowDetails,
   treatAsEvent = true,
 }: SocialEventCardProps) {
+
   const { UpdateEventStatus, fetchEventDetail, fetchLocationDetail } =
     useUpdateEvents();
   const router = useRouter();

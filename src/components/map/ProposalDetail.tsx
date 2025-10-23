@@ -1,8 +1,11 @@
-import { View, StyleSheet, TouchableOpacity, Text } from "react-native";
+import { ArrowLeft, Calendar } from "lucide-react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { IProposal } from "~/hooks/useProposals";
 import { useTheme } from "../ThemeProvider";
-import { ArrowLeft, Calendar } from "lucide-react-native";
-import { get } from "lodash";
+import { useEffect, useState } from "react";
+import { UnifiedData } from "./UnifiedDetailsSheet";
+import { useEventDetails } from "~/hooks/useEventDetails";
+import { SocialEventCard } from "../social/SocialEventCard";
 
 interface IProps {
   proposal: IProposal;
@@ -10,6 +13,8 @@ interface IProps {
 }
 const ProposalDetail: React.FC<IProps> = ({ proposal, onClose }) => {
   const { theme, isDarkMode } = useTheme();
+  const { getMultipleEventDetails } = useEventDetails();
+  const [events, setEvents] = useState<{ data: UnifiedData }[]>([]);
   const getProposalTime = () => {
     const startDate = new Date(proposal.start_datetime);
     const endDate = proposal.end_datetime
@@ -54,6 +59,24 @@ const ProposalDetail: React.FC<IProps> = ({ proposal, onClose }) => {
       return `${startDateStr} at ${startTimeStr} to ${endDateStr} at ${endTimeStr}`;
     }
   };
+  const getEvents = async () => {
+    if (proposal && proposal.events_attached.length > 0) {
+      const items = proposal.events_attached.map((event) => ({
+        id: event.id,
+        source: event.type,
+      }));
+      console.log("Fetching proposal event details for items:", items);
+      const result = await getMultipleEventDetails(items);
+      console.log("Fetched proposal event details:", result);
+      if (result) {
+        console.log(JSON.stringify(result.items, null, 2));
+        setEvents(result.items);
+      }
+    }
+  };
+  useEffect(() => {
+    getEvents();
+  }, [proposal]);
   const getBorderColor = (type: string) => {
     switch (type) {
       case "event":
@@ -115,21 +138,15 @@ const ProposalDetail: React.FC<IProps> = ({ proposal, onClose }) => {
             fontSize: 16,
             fontWeight: "700",
             color: theme.colors.text,
+            marginBottom: 12,
           }}
         >
           Events Added
         </Text>
         <View className="flex-1">
-          {proposal.events_attached.map((event, index) => (
-            <View
-              key={index}
-              style={[styles.item, { borderColor: getBorderColor(event.type) }]}
-            >
-              <Text style={[styles.itemText, { color: theme.colors.text }]}>
-                {event.name}
-              </Text>
-            </View>
-          ))}
+          {events.map((event, index) =>
+            event?.data ? <SocialEventCard data={event.data} /> : null
+          )}
         </View>
       </View>
     </View>
