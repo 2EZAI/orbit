@@ -37,8 +37,8 @@ export function LocationSimilarSection({
   }
   
   // Use userLocation if available, otherwise use location coordinates
-  const latitude = userLat || locationLat;
-  const longitude = userLng || locationLng;
+  const latitude =  locationLat || userLat;
+  const longitude = locationLng || userLng;
 
   const { locations: similarLocations, isLoading, error, hasResults } = useSimilarItems({
     itemType: 'location',
