@@ -18,6 +18,7 @@ import {
   Calendar,
   Clock,
   Image as ImageIcon,
+  ExternalLink,
 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
@@ -27,6 +28,7 @@ import {
   ScrollView,
   TouchableOpacity,
   View,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "~/src/components/ThemeProvider";
@@ -338,6 +340,15 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleOpenLink = async (url: string) => {
+    try {
+      await Linking.openURL(url);
+    } catch (error) {
+      console.error('Error opening link:', error);
+      Alert.alert('Error', 'Unable to open link. Please try again.');
+    }
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       {/* Header */}
@@ -459,17 +470,17 @@ export default function SettingsScreen() {
           destructive
         />
         <SettingItem
-          icon={<FileText size={20} color={theme.colors.primary} />}
+          icon={<ExternalLink size={20} color={theme.colors.primary} />}
           title="Terms & Conditions"
           onPress={() =>
-            openWebview("https://yourapp.com/terms", "Terms & Conditions")
+            handleOpenLink("https://orbit-app.framer.website/policies/terms-and-conditions")
           }
         />
         <SettingItem
-          icon={<FileText size={20} color={theme.colors.primary} />}
+          icon={<ExternalLink size={20} color={theme.colors.primary} />}
           title="Privacy Policy"
           onPress={() =>
-            openWebview("https://yourapp.com/privacy", "Privacy Policy")
+            handleOpenLink("https://orbit-app.framer.website/policies/privacy-and-policy")
           }
         />
         <SettingItem

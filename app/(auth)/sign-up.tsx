@@ -8,6 +8,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Linking,
 } from "react-native";
 import { supabase } from "../../src/lib/supabase";
 import { router } from "expo-router";
@@ -43,6 +44,15 @@ export default function SignUp(): JSX.Element {
 
   const handleBack = () => {
     router.back();
+  };
+
+  const handleOpenLink = async (url: string) => {
+    try {
+      await Linking.openURL(url);
+    } catch (error) {
+      console.error('Error opening link:', error);
+      Alert.alert('Error', 'Unable to open link. Please try again.');
+    }
   };
 
   async function signUp(): Promise<void> {
@@ -492,13 +502,23 @@ export default function SignUp(): JSX.Element {
                       }}
                     >
                       I agree to the{" "}
-                      <Text style={{ color: "#8B5CF6", fontWeight: "600" }}>
-                        Terms & Conditions
-                      </Text>{" "}
+                      <TouchableOpacity
+                        onPress={() => handleOpenLink("https://orbit-app.framer.website/policies/terms-and-conditions")}
+                        style={{ display: "inline" }}
+                      >
+                        <Text style={{ color: "#8B5CF6", fontWeight: "600" }}>
+                          Terms & Conditions
+                        </Text>
+                      </TouchableOpacity>{" "}
                       and{" "}
-                      <Text style={{ color: "#8B5CF6", fontWeight: "600" }}>
-                        Privacy Policy
-                      </Text>
+                      <TouchableOpacity
+                        onPress={() => handleOpenLink("https://orbit-app.framer.website/policies/privacy-and-policy")}
+                        style={{ display: "inline" }}
+                      >
+                        <Text style={{ color: "#8B5CF6", fontWeight: "600" }}>
+                          Privacy Policy
+                        </Text>
+                      </TouchableOpacity>
                     </Text>
                   </View>
                 </TouchableOpacity>
