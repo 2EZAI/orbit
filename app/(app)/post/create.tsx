@@ -420,11 +420,12 @@ export default function CreatePost() {
           style={{ flex: 1 }}
           contentContainerStyle={{
             paddingBottom: insets.bottom + 80,
+            paddingTop: 24,
           }}
         >
-          <View style={{ padding: 16 }}>
+          <View style={{ padding: 24 }}>
             {/* User Info */}
-            <View style={{ flexDirection: "row", marginBottom: 16 }}>
+            <View style={{ flexDirection: "row", marginBottom: 24 }}>
               <Image
                 source={
                   user?.avatar_url
@@ -432,18 +433,18 @@ export default function CreatePost() {
                     : require("~/assets/favicon.png")
                 }
                 style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
                   backgroundColor: theme.colors.border,
                 }}
               />
-              <View style={{ marginLeft: 12, flex: 1 }}>
+              <View style={{ marginLeft: 16, flex: 1 }}>
                 <Text
                   style={{
                     fontWeight: "600",
                     color: theme.colors.text,
-                    fontSize: 16,
+                    fontSize: 18,
                   }}
                 >
                   {user?.first_name} {user?.last_name}
@@ -451,7 +452,7 @@ export default function CreatePost() {
                 <Text
                   style={{
                     color: theme.colors.text + "80",
-                    fontSize: 14,
+                    fontSize: 16,
                   }}
                 >
                   @{user?.username}
@@ -462,19 +463,19 @@ export default function CreatePost() {
             {/* Big Text Input */}
             <TextInput
               style={{
-                fontSize: 18,
+                fontSize: 20,
                 color: theme.colors.text,
                 backgroundColor: theme.colors.background,
-                borderRadius: 12,
-                padding: 16,
-                minHeight: 120,
-                maxHeight: height * 0.3,
+                borderRadius: 16,
+                padding: 20,
+                minHeight: 160,
+                maxHeight: height * 0.4,
                 textAlignVertical: "top",
                 borderWidth: 1,
                 borderColor: theme.colors.border,
-                marginBottom: 16,
+                marginBottom: 32,
               }}
-              placeholder="What's happening? (add text, photos, event, or location)"
+              placeholder="What's happening?"
               placeholderTextColor={theme.colors.text + "60"}
               multiline
               value={content}
@@ -586,34 +587,6 @@ export default function CreatePost() {
               </View>
             )}
 
-            {/* Add Event Button */}
-            {!selectedEvent && (
-              <TouchableOpacity
-                onPress={() => setIsEventSheetOpen(true)}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  padding: 16,
-                  backgroundColor: theme.colors.card,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: theme.colors.border,
-                  marginBottom: 16,
-                }}
-              >
-                <Calendar size={20} color={theme.colors.primary} />
-                <Text
-                  style={{
-                    marginLeft: 12,
-                    color: theme.colors.text,
-                    fontSize: 16,
-                  }}
-                >
-                  Add Event (optional)
-                </Text>
-              </TouchableOpacity>
-            )}
-
             {/* Selected Location Display */}
             {locationDetails.address1 && (
               <View
@@ -670,35 +643,94 @@ export default function CreatePost() {
               </View>
             )}
 
-            {/* Add Location Button or Search */}
-            {!locationDetails.address1 && (
-              <View style={{ marginBottom: 16 }}>
-                {!isLocationSearch ? (
-                  <TouchableOpacity
-                    onPress={() => setIsLocationSearch(true)}
+            {/* Add Options Row */}
+            <View style={{ 
+              flexDirection: "row", 
+              alignItems: "center", 
+              marginBottom: 32,
+              gap: 32
+            }}>
+              {/* Add Photos Button */}
+              <TouchableOpacity
+                onPress={pickImage}
+                disabled={mediaFiles.length >= 4}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  opacity: mediaFiles.length >= 4 ? 0.5 : 1,
+                }}
+              >
+                <ImageIcon
+                  size={24}
+                  color={
+                    mediaFiles.length >= 4
+                      ? "#8B5CF6" + "60"
+                      : "#8B5CF6"
+                  }
+                />
+                <Text
+                  style={{
+                    marginLeft: 12,
+                    color: "#8B5CF6",
+                    fontSize: 18,
+                    fontWeight: "500",
+                  }}
+                >
+                  Photos
+                </Text>
+              </TouchableOpacity>
+
+              {/* Add Location Button */}
+              {!locationDetails.address1 && !isLocationSearch && (
+                <TouchableOpacity
+                  onPress={() => setIsLocationSearch(true)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                  }}
+                >
+                  <MapPin size={24} color="#8B5CF6" />
+                  <Text
                     style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      padding: 16,
-                      backgroundColor: theme.colors.card,
-                      borderRadius: 12,
-                      borderWidth: 1,
-                      borderColor: theme.colors.border,
+                      marginLeft: 12,
+                      color: "#8B5CF6",
+                      fontSize: 18,
+                      fontWeight: "500",
                     }}
                   >
-                    <MapPin size={20} color={theme.colors.primary} />
-                    <Text
-                      style={{
-                        marginLeft: 12,
-                        color: theme.colors.text,
-                        fontSize: 16,
-                      }}
-                    >
-                      Add Location (optional)
-                    </Text>
-                  </TouchableOpacity>
-                ) : (
-                  <View>
+                    Location
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Add Event Button */}
+              {!selectedEvent && (
+                <TouchableOpacity
+                  onPress={() => setIsEventSheetOpen(true)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                  }}
+                >
+                  <Calendar size={24} color="#8B5CF6" />
+                  <Text
+                    style={{
+                      marginLeft: 12,
+                      color: "#8B5CF6",
+                      fontSize: 18,
+                      fontWeight: "500",
+                    }}
+                  >
+                    Event
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Location Search */}
+            {isLocationSearch && (
+              <View style={{ marginBottom: 16 }}>
+                <View>
                     <View
                       style={{
                         flexDirection: "row",
@@ -832,44 +864,6 @@ export default function CreatePost() {
               </View>
             )}
 
-            {/* Photos Section */}
-            <View style={{ marginBottom: 16 }}>
-              <TouchableOpacity
-                onPress={pickImage}
-                disabled={mediaFiles.length >= 4}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  padding: 16,
-                  backgroundColor: theme.colors.card,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: theme.colors.border,
-                  opacity: mediaFiles.length >= 4 ? 0.5 : 1,
-                }}
-              >
-                <ImageIcon
-                  size={20}
-                  color={
-                    mediaFiles.length >= 4
-                      ? theme.colors.text + "60"
-                      : theme.colors.primary
-                  }
-                />
-                <Text
-                  style={{
-                    marginLeft: 12,
-                    color:
-                      mediaFiles.length >= 4
-                        ? theme.colors.text + "60"
-                        : theme.colors.text,
-                    fontSize: 16,
-                  }}
-                >
-                  {mediaFiles.length > 0 ? `Photos (${mediaFiles.length}/4)` : "Add Photos (optional)"}
-                </Text>
-              </TouchableOpacity>
-            </View>
 
             {loading && (
               <View

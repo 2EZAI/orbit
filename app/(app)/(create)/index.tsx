@@ -1722,7 +1722,7 @@ export default function CreateEvent() {
               }}
             >
               <LinearGradient
-                colors={validateCheck() ? ["#8B5CF6", "#A855F7"] : ["#F59E0B", "#F97316"]}
+                colors={validateCheck() ? ["#8B5CF6", "#A855F7"] : ["#8B5CF6", "#7C3AED"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
