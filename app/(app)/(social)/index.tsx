@@ -37,6 +37,8 @@ import { ScreenHeader } from "~/src/components/ui/screen-header";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
+import { useChat } from "~/src/lib/chat";
+import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
 
 interface Post {
   id: string;
@@ -116,6 +118,7 @@ export default function SocialFeed() {
   const { user } = useUser();
   const { theme, isDarkMode } = useTheme();
   const { fetchAllNoifications, unReadCount } = useNotificationsApi();
+  const { client } = useChat();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -128,6 +131,8 @@ export default function SocialFeed() {
   } | null>(null);
   const [isSelectedItemLocation, setIsSelectedItemLocation] = useState(false);
   const [showUnifiedCard, setShowUnifiedCard] = useState(false);
+  const [showChatSelection, setShowChatSelection] = useState(false);
+  const [selectedPostForShare, setSelectedPostForShare] = useState<Post | null>(null);
 
   const PAGE_SIZE = 20;
 
@@ -289,6 +294,51 @@ export default function SocialFeed() {
       }
     } catch (error) {
       console.error("Error toggling like:", error);
+    }
+  };
+
+  const handleSharePost = (post: Post) => {
+    if (!client || !session?.user?.id) {
+      console.log("Cannot share: No chat client or session");
+      return;
+    }
+
+    // Show chat selection modal
+    setSelectedPostForShare(post);
+    setShowChatSelection(true);
+  };
+
+  const handleSelectChat = async (channel: any) => {
+    if (!selectedPostForShare) return;
+
+    try {
+      // Ensure channel is watched before sending
+      await channel.watch();
+      
+      // Send the post as a custom message with attachment
+      const message = await channel.sendMessage({
+        text: "Check out this post!",
+        type: "regular",
+        attachments: [
+          {
+            type: "post_share",
+            post_data: selectedPostForShare,
+            post_id: selectedPostForShare.id,
+            post_url: `orbit://post/${selectedPostForShare.id}`,
+          },
+        ],
+      });
+      
+      console.log("Post shared successfully:", message);
+      
+      // Navigate to the chat
+      router.push(`/(app)/(chat)/channel/${channel.id}`);
+      
+    } catch (error) {
+      console.error("Error sharing post:", error);
+      // You could show a toast or alert here
+    } finally {
+      setSelectedPostForShare(null);
     }
   };
 
@@ -487,7 +537,10 @@ export default function SocialFeed() {
                 </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity className="flex-row items-center">
+              <TouchableOpacity 
+                className="flex-row items-center"
+                onPress={() => handleSharePost(post)}
+              >
                 <Send size={20} color={isDarkMode ? "#9CA3AF" : "#6B7280"} />
               </TouchableOpacity>
             </View>
@@ -715,7 +768,6 @@ export default function SocialFeed() {
             setIsSelectedItemLocation(false);
           }}
           onShare={(data, isEvent) => {
-            setSelectedEvent(null);
             setShareData({ data, isEventType: isEvent });
           }}
           onShowControler={() => {}}
@@ -756,6 +808,17 @@ export default function SocialFeed() {
       >
         <Plus size={24} color="white" strokeWidth={2.5} />
       </TouchableOpacity>
+
+      {/* Chat Selection Modal */}
+      <ChatSelectionModal
+        isOpen={showChatSelection}
+        onClose={() => {
+          setShowChatSelection(false);
+          setSelectedPostForShare(null);
+        }}
+        onSelectChat={handleSelectChat}
+        postId={selectedPostForShare?.id || ""}
+      />
     </SafeAreaView>
   );
 }

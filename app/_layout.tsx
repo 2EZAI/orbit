@@ -63,6 +63,23 @@ function RootLayoutContent() {
       return true;
     }
 
+    // Handle post deep links
+    if (parsed.hostname === "post") {
+      console.log("Handling post deep link:", parsed);
+      const rawId = parsed.path || "";
+      const postId = rawId.split("/")[0];
+
+      if (postId) {
+        router.navigate({
+          pathname: "/(app)/post/[id]",
+          params: {
+            id: postId,
+          },
+        });
+      }
+      return true;
+    }
+
     // Fallback for path-based style (if someone used orbit:///event/123)
     if (parsed.path?.startsWith("event/")) {
       const eventId = parsed.path.split("/")[1];
@@ -75,6 +92,20 @@ function RootLayoutContent() {
             // lng: eventData.eventLocation.lng,
 
             eventId: eventId, // Pass the event ID if available
+          },
+        });
+        return true;
+      }
+    }
+
+    // Fallback for path-based style (if someone used orbit:///post/123)
+    if (parsed.path?.startsWith("post/")) {
+      const postId = parsed.path.split("/")[1];
+      if (postId) {
+        router.navigate({
+          pathname: "/(app)/post/[id]",
+          params: {
+            id: postId,
           },
         });
         return true;

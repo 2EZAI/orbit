@@ -28,6 +28,7 @@ import { useChat } from "~/src/lib/chat";
 
 import { ArrowLeft } from "lucide-react-native";
 import ChatEventComponent from "~/src/components/chat/ChatEventComponent";
+import { SharedPostMessage } from "~/src/components/chat/SharedPostMessage";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useVideo } from "~/src/lib/video";
 import {
@@ -38,6 +39,41 @@ import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
 
 // BULLETPROOF Message Component - ONLY renders polls, returns NULL for everything else
 // This forces Stream to use its default components for all non-poll messages
+
+// Custom Post Share Component
+const CustomPostShareComponent = ({ message }: { message: any }) => {
+  const router = useRouter();
+  
+  console.log("CustomPostShareComponent: Checking message:", message?.id, "attachments:", message?.attachments);
+  
+  // Check if this message has post share attachments
+  if (!message || !message.id || !message.attachments || message.attachments.length === 0) {
+    console.log("CustomPostShareComponent: No attachments found");
+    return null;
+  }
+
+  const postShareAttachment = message.attachments.find(
+    (attachment: any) => attachment.type === "post_share"
+  );
+
+  console.log("CustomPostShareComponent: Post share attachment:", postShareAttachment);
+
+  if (!postShareAttachment || !postShareAttachment.post_data) {
+    console.log("CustomPostShareComponent: No post share attachment or post data");
+    return null;
+  }
+
+  console.log("CustomPostShareComponent: Rendering SharedPostMessage");
+  return (
+    <SharedPostMessage
+      postData={postShareAttachment.post_data}
+      onPress={() => {
+        // Navigate to the post
+        router.push(`/(app)/post/${postShareAttachment.post_id}`);
+      }}
+    />
+  );
+};
 
 // Custom Poll Component - Uses Stream's proper Poll component prop
 const CustomPollComponent = ({ message }: { message: any }) => {
@@ -412,6 +448,13 @@ export default function ChannelScreen() {
     const eventSource = props.message?.data?.source;
     const message = props.message;
 
+    // Check for post share attachments
+    const hasPostShare = message?.attachments?.some(
+      (attachment: any) => attachment.type === "post_share"
+    );
+    
+    console.log("BulletproofMessage: Message", message?.id, "hasPostShare:", hasPostShare, "attachments:", message?.attachments);
+
     // ONLY handle actual poll messages
     const isActualPoll =
       message &&
@@ -428,6 +471,16 @@ export default function ChannelScreen() {
       // Return ONLY our custom poll - no MessageSimple wrapper
       return (
         <CustomPollComponent key={`poll-${message.id}`} message={message} />
+      );
+    }
+    if (hasPostShare) {
+      console.log(
+        "BulletproofMessage: Rendering custom post share for message:",
+        message.id
+      );
+      // Return ONLY our custom post share - no MessageSimple wrapper
+      return (
+        <CustomPostShareComponent key={`post-${message.id}`} message={message} />
       );
     }
     if (eventId && eventSource) {
