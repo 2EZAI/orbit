@@ -25,5 +25,31 @@ export function useEventDetails() {
     const data = await response.json();
     return data;
   };
-  return { getEventDetails };
+  const getMultipleEventDetails = async (
+    items: { id: string; source: string }[]
+  ) => {
+    if (!session) {
+      return;
+    }
+    const response = await fetch(
+      `${process.env.VITE_BACKEND_API}/api/details`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          items,
+        }),
+      }
+    );
+    console.log("Response from getMultipleEventDetails:", response);
+    if (!response.ok) {
+      return;
+    }
+    const data = await response.json();
+    return data;
+  };
+  return { getEventDetails, getMultipleEventDetails };
 }
