@@ -1641,6 +1641,7 @@ export default function Home() {
           }}
           data={shareData?.data}
           isEventType={shareData?.isEventType}
+          onProposalShare={() => {}}
         />
       )}
     </View>

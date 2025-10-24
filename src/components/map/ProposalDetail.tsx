@@ -1,4 +1,4 @@
-import { ArrowLeft, Calendar } from "lucide-react-native";
+import { ArrowLeft, Calendar, Share2 } from "lucide-react-native";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { IProposal } from "~/hooks/useProposals";
 import { useTheme } from "../ThemeProvider";
@@ -10,8 +10,13 @@ import { SocialEventCard } from "../social/SocialEventCard";
 interface IProps {
   proposal: IProposal;
   onClose: () => void;
+  onProposalShare: (proposal: IProposal) => void;
 }
-const ProposalDetail: React.FC<IProps> = ({ proposal, onClose }) => {
+const ProposalDetail: React.FC<IProps> = ({
+  proposal,
+  onClose,
+  onProposalShare,
+}) => {
   const { theme, isDarkMode } = useTheme();
   const { getMultipleEventDetails } = useEventDetails();
   const [events, setEvents] = useState<{ data: UnifiedData }[]>([]);
@@ -77,31 +82,32 @@ const ProposalDetail: React.FC<IProps> = ({ proposal, onClose }) => {
   useEffect(() => {
     getEvents();
   }, [proposal]);
-  const getBorderColor = (type: string) => {
-    switch (type) {
-      case "event":
-        return "#22C55E";
-      case "ticketmaster":
-        return "#EF4444";
-      default:
-        return "#8B5CF6";
-    }
-  };
+
   return (
     <View style={styles.container}>
-      <View className="flex-row items-center">
-        <TouchableOpacity onPress={() => onClose()} className="mr-3">
-          <ArrowLeft size={24} color={theme.colors.text} />
-        </TouchableOpacity>
-        <Text
-          style={{
-            fontSize: 20,
-            fontWeight: "700",
-            color: theme.colors.text,
+      <View className="flex-row items-center justify-between">
+        <View className="flex-row items-center">
+          <TouchableOpacity onPress={() => onClose()} className="mr-3">
+            <ArrowLeft size={24} color={theme.colors.text} />
+          </TouchableOpacity>
+          <Text
+            style={{
+              fontSize: 20,
+              fontWeight: "700",
+              color: theme.colors.text,
+            }}
+          >
+            Details
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.icon, { backgroundColor: theme.colors.primary }]}
+          onPress={() => {
+            onProposalShare(proposal);
           }}
         >
-          Details
-        </Text>
+          <Share2 size={20} color={theme.colors.background} />
+        </TouchableOpacity>
       </View>
       <View className="pt-6">
         <Text
@@ -172,5 +178,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     lineHeight: 22,
     width: "80%",
+  },
+  icon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

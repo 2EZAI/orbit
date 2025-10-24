@@ -12,6 +12,7 @@ interface IProps {
   isOpen: boolean;
   data: UnifiedData | undefined;
   isEventType?: boolean;
+  onProposalShare: (proposal: IProposal) => void;
 }
 type UIType = "share" | "add-proposal" | "view-proposals" | "proposal-detail";
 const UnifiedShareSheet: React.FC<IProps> = ({
@@ -19,11 +20,14 @@ const UnifiedShareSheet: React.FC<IProps> = ({
   isOpen,
   data,
   isEventType,
+  onProposalShare,
 }) => {
   const { proposals, getAllProposals } = useProposals();
   const [uiType, setUiType] = useState<UIType>("share");
-  const [selectedProposal, setSelectedProposal] = useState<IProposal | null>(null);
-  
+  const [selectedProposal, setSelectedProposal] = useState<IProposal | null>(
+    null
+  );
+
   useEffect(() => {
     getAllProposals();
   }, [uiType]);
@@ -66,6 +70,7 @@ const UnifiedShareSheet: React.FC<IProps> = ({
             setSelectedProposal(null);
             setUiType("share");
           }}
+          onProposalShare={onProposalShare}
         />
       ) : (
         <ProposalSelectList
