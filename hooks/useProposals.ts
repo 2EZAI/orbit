@@ -40,7 +40,7 @@ export function useProposals() {
         .from("proposals")
         .select("*")
         .eq("user_id", userId)
-        .order("last_modified_at", { ascending: false });
+        .order("last_modified_at", { ascending: true });
 
       if (error) {
         console.log("Error fetching proposals:", error);

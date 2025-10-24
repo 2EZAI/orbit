@@ -1,5 +1,12 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { ArrowLeft, Calendar, Clock, Sparkles, Plus, Zap } from "lucide-react-native";
+import {
+  ArrowLeft,
+  Calendar,
+  Clock,
+  Sparkles,
+  Plus,
+  Zap,
+} from "lucide-react-native";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -48,21 +55,23 @@ const AddProposalContent: React.FC<IProps> = ({ onBack, data }) => {
 
   const handleCreateProposal = async () => {
     if (!validateCheck() || !data) return;
-    
+
     setIsCreating(true);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
+
     try {
       const newProposal = await addProposal({
         title: title.trim(),
         start_datetime: startDate.toISOString(),
         events_attached: [
-          { id: data.id, name: data.name, type: data.source || "event" },
+          { id: data.id, name: data.name, type: data.source || "database" },
         ],
       });
-      
+
       if (newProposal) {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        await Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success
+        );
         onBack();
       }
     } catch (error) {
@@ -93,7 +102,11 @@ const AddProposalContent: React.FC<IProps> = ({ onBack, data }) => {
         style={styles.headerContainer}
       >
         <LinearGradient
-          colors={isDarkMode ? ["rgba(0,0,0,0.8)", "rgba(0,0,0,0.4)"] : ["rgba(255,255,255,0.9)", "rgba(255,255,255,0.6)"]}
+          colors={
+            isDarkMode
+              ? ["rgba(0,0,0,0.8)", "rgba(0,0,0,0.4)"]
+              : ["rgba(255,255,255,0.9)", "rgba(255,255,255,0.6)"]
+          }
           style={styles.headerGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
@@ -103,9 +116,14 @@ const AddProposalContent: React.FC<IProps> = ({ onBack, data }) => {
               <MotiView
                 from={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                transition={{ type: "spring", damping: 15, stiffness: 300, delay: 100 }}
+                transition={{
+                  type: "spring",
+                  damping: 15,
+                  stiffness: 300,
+                  delay: 100,
+                }}
               >
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={handleBackPress}
                   style={styles.backButton}
                   activeOpacity={0.7}
@@ -113,17 +131,29 @@ const AddProposalContent: React.FC<IProps> = ({ onBack, data }) => {
                   <ArrowLeft size={24} color={theme.colors.text} />
                 </TouchableOpacity>
               </MotiView>
-              
+
               <MotiView
                 from={{ opacity: 0, translateX: -10 }}
                 animate={{ opacity: 1, translateX: 0 }}
-                transition={{ type: "spring", damping: 15, stiffness: 300, delay: 200 }}
+                transition={{
+                  type: "spring",
+                  damping: 15,
+                  stiffness: 300,
+                  delay: 200,
+                }}
               >
                 <View style={styles.headerTextContainer}>
-                  <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+                  <Text
+                    style={[styles.headerTitle, { color: theme.colors.text }]}
+                  >
                     Create Proposal
                   </Text>
-                  <Text style={[styles.headerSubtitle, { color: theme.colors.text + "70" }]}>
+                  <Text
+                    style={[
+                      styles.headerSubtitle,
+                      { color: theme.colors.text + "70" },
+                    ]}
+                  >
                     Plan your activity
                   </Text>
                 </View>
@@ -134,7 +164,9 @@ const AddProposalContent: React.FC<IProps> = ({ onBack, data }) => {
       </MotiView>
 
       {/* Content */}
-      <View style={[styles.contentContainer, { paddingBottom: insets.bottom + 20 }]}>
+      <View
+        style={[styles.contentContainer, { paddingBottom: insets.bottom + 20 }]}
+      >
         {/* Title Input */}
         <MotiView
           from={{ opacity: 0, translateY: 30 }}
@@ -145,10 +177,15 @@ const AddProposalContent: React.FC<IProps> = ({ onBack, data }) => {
           <Text style={[styles.inputLabel, { color: theme.colors.text }]}>
             Proposal Title
           </Text>
-          <View style={[styles.inputWrapper, { 
-            backgroundColor: theme.colors.card,
-            borderColor: theme.colors.border,
-          }]}>
+          <View
+            style={[
+              styles.inputWrapper,
+              {
+                backgroundColor: theme.colors.card,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
             <Input
               value={title}
               onChangeText={setTitle}
@@ -169,15 +206,18 @@ const AddProposalContent: React.FC<IProps> = ({ onBack, data }) => {
           <Text style={[styles.inputLabel, { color: theme.colors.text }]}>
             Date & Time
           </Text>
-          
+
           <View style={styles.pickerRow}>
             {/* Date Picker */}
             <TouchableOpacity
               onPress={onOpenDatePicker}
-              style={[styles.pickerButton, {
-                backgroundColor: theme.colors.card,
-                borderColor: theme.colors.border,
-              }]}
+              style={[
+                styles.pickerButton,
+                {
+                  backgroundColor: theme.colors.card,
+                  borderColor: theme.colors.border,
+                },
+              ]}
               activeOpacity={0.7}
             >
               <LinearGradient
@@ -189,10 +229,17 @@ const AddProposalContent: React.FC<IProps> = ({ onBack, data }) => {
                 <Calendar size={18} color="white" />
               </LinearGradient>
               <View style={styles.pickerTextContainer}>
-                <Text style={[styles.pickerLabel, { color: theme.colors.text + "70" }]}>
+                <Text
+                  style={[
+                    styles.pickerLabel,
+                    { color: theme.colors.text + "70" },
+                  ]}
+                >
                   Date
                 </Text>
-                <Text style={[styles.pickerValue, { color: theme.colors.text }]}>
+                <Text
+                  style={[styles.pickerValue, { color: theme.colors.text }]}
+                >
                   {startDate.toLocaleDateString()}
                 </Text>
               </View>
@@ -201,10 +248,13 @@ const AddProposalContent: React.FC<IProps> = ({ onBack, data }) => {
             {/* Time Picker */}
             <TouchableOpacity
               onPress={onOpenTimePicker}
-              style={[styles.pickerButton, {
-                backgroundColor: theme.colors.card,
-                borderColor: theme.colors.border,
-              }]}
+              style={[
+                styles.pickerButton,
+                {
+                  backgroundColor: theme.colors.card,
+                  borderColor: theme.colors.border,
+                },
+              ]}
               activeOpacity={0.7}
             >
               <LinearGradient
@@ -216,11 +266,21 @@ const AddProposalContent: React.FC<IProps> = ({ onBack, data }) => {
                 <Clock size={18} color="white" />
               </LinearGradient>
               <View style={styles.pickerTextContainer}>
-                <Text style={[styles.pickerLabel, { color: theme.colors.text + "70" }]}>
+                <Text
+                  style={[
+                    styles.pickerLabel,
+                    { color: theme.colors.text + "70" },
+                  ]}
+                >
                   Time
                 </Text>
-                <Text style={[styles.pickerValue, { color: theme.colors.text }]}>
-                  {startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <Text
+                  style={[styles.pickerValue, { color: theme.colors.text }]}
+                >
+                  {startDate.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -248,7 +308,11 @@ const AddProposalContent: React.FC<IProps> = ({ onBack, data }) => {
               transition={{ type: "timing", duration: 200 }}
             >
               <LinearGradient
-                colors={validateCheck() ? ["#8B5CF6", "#A855F7"] : ["#6B7280", "#9CA3AF"]}
+                colors={
+                  validateCheck()
+                    ? ["#8B5CF6", "#A855F7"]
+                    : ["#6B7280", "#9CA3AF"]
+                }
                 style={styles.buttonGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -258,9 +322,7 @@ const AddProposalContent: React.FC<IProps> = ({ onBack, data }) => {
                 ) : (
                   <View style={styles.buttonContent}>
                     <Plus size={20} color="white" />
-                    <Text style={styles.buttonText}>
-                      Create Proposal
-                    </Text>
+                    <Text style={styles.buttonText}>Create Proposal</Text>
                   </View>
                 )}
               </LinearGradient>
@@ -307,7 +369,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "transparent",
   },
-  
+
   // Header Styles
   headerContainer: {
     position: "relative",
@@ -346,7 +408,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
   },
-  
+
   // Content Styles
   contentContainer: {
     flex: 1,
@@ -354,7 +416,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     gap: 24,
   },
-  
+
   // Input Styles
   inputContainer: {
     marginBottom: 8,
@@ -376,7 +438,7 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     borderWidth: 0,
   },
-  
+
   // Picker Styles
   pickerContainer: {
     marginBottom: 8,
@@ -413,7 +475,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  
+
   // Button Styles
   buttonContainer: {
     marginTop: 20,

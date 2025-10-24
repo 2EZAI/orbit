@@ -266,11 +266,7 @@ const ProposalSelectList: React.FC<IProps> = ({
 
     setIsLoading(true);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-console.log("Adding event to proposal:", selectedProposals, {
-  id: data.id,
-  name: data.name,
-  type: data.source || "database",
-});
+
     try {
       const updated = await addEventToProposal(selectedProposals, {
         id: data.id,

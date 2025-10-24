@@ -63,7 +63,7 @@ const ProposalDetail: React.FC<IProps> = ({ proposal, onClose }) => {
     if (proposal && proposal.events_attached.length > 0) {
       const items = proposal.events_attached.map((event) => ({
         id: event.id,
-        source: event.type,
+        source: event.type === "event" ? "database" : event.type,
       }));
       console.log("Fetching proposal event details for items:", items);
       const result = await getMultipleEventDetails(items);
