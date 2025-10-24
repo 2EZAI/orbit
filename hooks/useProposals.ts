@@ -39,7 +39,8 @@ export function useProposals() {
       const { data, error } = await supabase
         .from("proposals")
         .select("*")
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .order("last_modified_at", { ascending: false });
 
       if (error) {
         console.log("Error fetching proposals:", error);
@@ -72,6 +73,7 @@ export function useProposals() {
           start_datetime: data.start_datetime,
           events_attached: data.events_attached ?? [],
           created_at: new Date().toISOString(),
+          last_modified_at: new Date().toISOString(),
         };
 
         const { data: inserted, error } = await supabase
@@ -128,7 +130,10 @@ export function useProposals() {
 
         const { data: updated, error: updateError } = await supabase
           .from("proposals")
-          .update({ events_attached: updatedEvents })
+          .update({
+            events_attached: updatedEvents,
+            last_modified_at: new Date().toISOString(),
+          })
           .eq("id", proposalId)
           .eq("user_id", userId)
           .select("*")
