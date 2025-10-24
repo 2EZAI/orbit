@@ -362,10 +362,7 @@ export default function Home() {
   const { user } = useUser();
   const { session } = useAuth();
   const router = useRouter();
-  const { eventId = null, eventType = null } = useLocalSearchParams<{
-    eventId: string;
-    eventType: string;
-  }>();
+  // Deep link parameters removed - now handled by main layout
   const { fetchAllNoifications, unReadCount } = useNotificationsApi();
   const { getEventDetails } = useEventDetails();
   // Home feed data
@@ -374,8 +371,7 @@ export default function Home() {
     data: UnifiedData;
     isEventType: boolean;
   } | null>(null);
-  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
-  const [isSelectedItemLocation, setIsSelectedItemLocation] = useState(false);
+  // selectedEvent state removed - now using screen navigation
   const [currentFeaturedIndex, setCurrentFeaturedIndex] = useState(0);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [activeQuickFilter, setActiveQuickFilter] = useState("All");
@@ -414,39 +410,10 @@ export default function Home() {
   useEffect(() => {
     fetchAllNoifications(1, 20);
   }, []);
-  const handleDeepLinkEvent = async () => {
-    console.log("handling deep link event>", eventId, eventType);
-    if (!session) return;
-    if (eventId && eventType) {
-      const result = await getEventDetails(eventId, eventType);
-      handleEventSelect(result);
-    }
-  };
   // Initialize filters when data changes
   useEffect(() => {
     if (data.allContent.length > 0 && Object.keys(filters).length === 0) {
       console.log(data.allContent[0]);
-      if (eventId) {
-        console.log("🔗 [Home] Deep link eventId:", eventId);
-        console.log(
-          "🔗 [Home] Searching in allContent:",
-          data.allContent.length,
-          "items"
-        );
-        const found = data.allContent.find((val) => val.id === eventId);
-        console.log(
-          "🔗 [Home] Found event:",
-          found ? "YES" : "NO",
-          found?.name
-        );
-        if (found) {
-          console.log("🔗 [Home] Opening UnifiedDetailsSheet for:", found.name);
-          handleEventSelect(found);
-        } else {
-          console.log("🔗 [Home] Event not found in feed data calling api");
-          handleDeepLinkEvent();
-        }
-      }
       const defaultFilters = generateDefaultFilters(
         data.allContent.filter((item: any) => !item.isLocation),
         data.allContent.filter((item: any) => item.isLocation)
@@ -1064,14 +1031,26 @@ export default function Home() {
       event?.name,
       event?.id
     );
-    setSelectedEvent(event);
-    setIsSelectedItemLocation(false);
-    console.log("🔗 [Home] selectedEvent set, UnifiedDetailsSheet should show");
+    // Navigate to details screen with ID and type
+    router.push({
+      pathname: "/(app)/details/[id]",
+      params: {
+        id: event.id,
+        type: "event",
+        eventType: event.source || "database",
+      },
+    });
   };
 
   const handleLocationSelect = (location: any) => {
-    setSelectedEvent(location);
-    setIsSelectedItemLocation(true);
+    // Navigate to details screen with ID and type
+    router.push({
+      pathname: "/(app)/details/[id]",
+      params: {
+        id: location.id,
+        type: "location",
+      },
+    });
   };
 
   const renderItem = ({ item }: { item: any }) => {
@@ -1573,51 +1552,36 @@ export default function Home() {
           section={sectionViewSheet.section}
           data={sectionViewSheet.allSectionData}
           isLoading={sectionViewSheet.isLoading}
-          onClose={() =>
+          onClose={() => {
             setSectionViewSheet({
               isOpen: false,
               section: null,
               allSectionData: [],
               isLoading: false,
-            })
-          }
+            });
+          }}
           onItemSelect={(item: any) => {
-            setSelectedEvent(item);
-            setIsSelectedItemLocation(!!item.isLocation);
             setSectionViewSheet({
               isOpen: false,
               section: null,
               allSectionData: [],
+              isLoading: false,
+            });
+            // Navigate to details screen instead of setting selectedEvent
+            router.push({
+              pathname: "/(app)/details/[id]",
+              params: {
+                id: item.id,
+                type: item.isLocation ? "location" : "event",
+                eventType: item.source || "supabase",
+              },
             });
           }}
           theme={theme}
         />
       )}
 
-      {selectedEvent && (
-        <UnifiedDetailsSheet
-          data={selectedEvent}
-          isOpen={!!selectedEvent}
-          onClose={() => {
-            setSelectedEvent(null);
-            // Don't reset isSelectedItemLocation - it should keep its current state
-          }}
-          nearbyData={[]}
-          onDataSelect={(data) => {
-            if (isSelectedItemLocation) {
-              handleLocationSelect(data);
-            } else {
-              handleEventSelect(data);
-            }
-          }}
-          onShare={(data, isEvent) => {
-            setSelectedEvent(null);
-            setShareData({ data, isEventType: isEvent });
-          }}
-          onShowControler={() => {}}
-          isEvent={!isSelectedItemLocation}
-        />
-      )}
+      {/* UnifiedDetailsSheet removed - now using screen navigation */}
 
       {/* Search Sheet */}
       <SearchSheet
@@ -1627,16 +1591,11 @@ export default function Home() {
         locationsList={[]}
         onShowControler={() => {}}
       />
-      {console.log(
-        "🔗 [Home] Rendered with selectedEvent:",
-        selectedEvent,
-        shareData
-      )}
+      {/* Debug logging removed */}
       {shareData && (
         <UnifiedShareSheet
           isOpen={!!shareData}
           onClose={() => {
-            setSelectedEvent(shareData.data);
             setShareData(null);
           }}
           data={shareData?.data}

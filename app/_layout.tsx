@@ -53,10 +53,11 @@ function RootLayoutContent() {
 
       if (eventId) {
         router.navigate({
-          pathname: "/(app)/(home)",
+          pathname: "/(app)/details/[id]",
           params: {
-            eventId: eventId,
-            eventType: parsed.queryParams?.type || "supabase", // Pass the event ID if available
+            id: eventId,
+            type: "event",
+            eventType: parsed.queryParams?.type || "supabase",
           },
         });
       }
@@ -84,14 +85,11 @@ function RootLayoutContent() {
     if (parsed.path?.startsWith("event/")) {
       const eventId = parsed.path.split("/")[1];
       if (eventId) {
-        // router.push(`/event/${eventId}`);
         router.replace({
-          pathname: "/(app)/(home)",
+          pathname: "/(app)/details/[id]",
           params: {
-            // lat: eventData.eventLocation.lat,
-            // lng: eventData.eventLocation.lng,
-
-            eventId: eventId, // Pass the event ID if available
+            id: eventId,
+            type: "event",
           },
         });
         return true;
