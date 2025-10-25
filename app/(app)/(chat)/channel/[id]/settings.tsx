@@ -99,6 +99,10 @@ export default function ChatSettingsScreen() {
     try {
       await channel.update({ name: newChannelName.trim() });
       setShowNameModal(false);
+      
+      // Reload channel data to get the latest state
+      await loadChannelData();
+      
       Alert.alert("Success", "Channel name updated successfully");
     } catch (error) {
       console.error("Error updating channel name:", error);
@@ -124,16 +128,11 @@ export default function ChatSettingsScreen() {
         const selectedImage = results[0];
         if (selectedImage.uri) {
           // Update the channel with the new image
-          await channel.update({ 
-            image: selectedImage.uri,
-            // Also update the channel data for display
-            data: {
-              ...channel.data,
-              image: selectedImage.uri
-            }
-          });
+          await channel.update({ image: selectedImage.uri });
           
-          setChannelImage(selectedImage.uri);
+          // Reload channel data to get the latest state
+          await loadChannelData();
+          
           Alert.alert("Success", "Group photo updated successfully");
         }
       }
