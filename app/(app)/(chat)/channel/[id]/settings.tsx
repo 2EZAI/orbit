@@ -757,7 +757,10 @@ export default function ChatSettingsScreen() {
               <Button
                 onPress={() => setShowNameModal(false)}
                 variant="outline"
-                style={{ flex: 1 }}
+                style={{ 
+                  flex: 1,
+                  backgroundColor: theme.colors.card,
+                }}
               >
                 <Text>Cancel</Text>
               </Button>
