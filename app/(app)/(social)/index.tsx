@@ -580,16 +580,16 @@ export default function SocialFeed() {
                 });
               },
               backgroundColor: theme.colors.primary,
-              badge: !!(unReadCount && unReadCount > 0) ? (
+              badge: true ? (
                 <View
                   style={{
                     position: "absolute",
                     top: -4,
-                    right: -4,
+                    right: -6,
                     backgroundColor: "#ff3b30",
-                    borderRadius: 10,
-                    minWidth: 20,
-                    height: 20,
+                    width: 18,
+                    height: 18,
+                    borderRadius: 9,
                     justifyContent: "center",
                     alignItems: "center",
                     borderWidth: 2,
@@ -597,9 +597,16 @@ export default function SocialFeed() {
                   }}
                 >
                   <Text
-                    style={{ color: "white", fontSize: 12, fontWeight: "bold" }}
+                    style={{ 
+                      color: "white", 
+                      fontSize: 10, 
+                      fontWeight: "800",
+                      textAlign: "center",
+                      includeFontPadding: false,
+                      lineHeight: 10,
+                    }}
                   >
-                    {unReadCount > 99 ? "99+" : String(unReadCount)}
+                    {unReadCount > 99 ? "9" : String(unReadCount || 5)[0]}
                   </Text>
                 </View>
               ) : undefined,
@@ -661,16 +668,16 @@ export default function SocialFeed() {
               });
             },
             backgroundColor: theme.colors.primary,
-            badge: !!(unReadCount && unReadCount > 0) ? (
+            badge: true ? (
               <View
                 style={{
                   position: "absolute",
                   top: -4,
-                  right: -4,
+                  right: -6,
                   backgroundColor: "#ff3b30",
-                  borderRadius: 10,
-                  minWidth: 20,
-                  height: 20,
+                  width: 18,
+                  height: 18,
+                  borderRadius: 9,
                   justifyContent: "center",
                   alignItems: "center",
                   borderWidth: 2,
@@ -678,9 +685,16 @@ export default function SocialFeed() {
                 }}
               >
                 <Text
-                  style={{ color: "white", fontSize: 12, fontWeight: "bold" }}
+                  style={{ 
+                    color: "white", 
+                    fontSize: 10, 
+                    fontWeight: "800",
+                    textAlign: "center",
+                    includeFontPadding: false,
+                    lineHeight: 10,
+                  }}
                 >
-                  {unReadCount > 99 ? "99+" : String(unReadCount)}
+                  {unReadCount > 99 ? "9" : String(unReadCount || 5)[0]}
                 </Text>
               </View>
             ) : undefined,
