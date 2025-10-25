@@ -3,7 +3,7 @@ import {
   View,
   TouchableOpacity,
   ActivityIndicator,
-  FlatList,
+  ScrollView,
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { Sheet } from "~/src/components/ui/sheet";
@@ -197,52 +197,51 @@ export function TopicSingleSelectDropdown({
               <ActivityIndicator size="small" color={theme.colors.primary} />
             </View>
           ) : (
-            <FlatList
-              data={filteredTopics}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => {
-                const isSelected = item.id === selectedId;
-                return (
-                  <TouchableOpacity
-                    onPress={() => handleSelect(item.id)}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      paddingVertical: 12,
-                      paddingHorizontal: 8,
-                      borderBottomWidth: 1,
-                      borderBottomColor: theme.colors.border,
-                    }}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          color: theme.colors.text,
-                          fontSize: 16,
-                          fontWeight: isSelected ? "700" : "500",
-                        }}
-                      >
-                        {item.name}
-                      </Text>
-                    </View>
-                    {isSelected ? (
-                      <Check
-                        size={18}
-                        color={theme.colors.primary || "#8B5CF6"}
-                      />
-                    ) : null}
-                  </TouchableOpacity>
-                );
-              }}
-              ListEmptyComponent={() => (
+            <ScrollView style={{ maxHeight: 400 }}>
+              {filteredTopics.length === 0 ? (
                 <View style={{ paddingVertical: 24, alignItems: "center" }}>
                   <Text style={{ color: theme.colors.text + "99" }}>
                     No categories found
                   </Text>
                 </View>
+              ) : (
+                filteredTopics.map((item) => {
+                  const isSelected = item.id === selectedId;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      onPress={() => handleSelect(item.id)}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        paddingVertical: 12,
+                        paddingHorizontal: 8,
+                        borderBottomWidth: 1,
+                        borderBottomColor: theme.colors.border,
+                      }}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={{
+                            color: theme.colors.text,
+                            fontSize: 16,
+                            fontWeight: isSelected ? "700" : "500",
+                          }}
+                        >
+                          {item.name}
+                        </Text>
+                      </View>
+                      {isSelected ? (
+                        <Check
+                          size={18}
+                          color={theme.colors.primary || "#8B5CF6"}
+                        />
+                      ) : null}
+                    </TouchableOpacity>
+                  );
+                })
               )}
-              style={{ maxHeight: 400 }}
-            />
+            </ScrollView>
           )}
         </View>
       </Sheet>
