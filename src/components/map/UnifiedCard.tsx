@@ -200,7 +200,8 @@ const getContextActions = (
   data: UnifiedData,
   detailData?: any,
   treatAsEvent?: boolean,
-  isJoined?: boolean
+  isJoined?: boolean,
+  isCreator?: boolean
 ) => {
   if (treatAsEvent) {
     const categories =
@@ -227,16 +228,23 @@ const getContextActions = (
         eventSource.includes("google") ||
         eventSource.includes("api"));
 
-    // For user events: Join Activity -> Create Orbit
+    // For user events: Edit for creators, Join/Leave for others
     if (isUserEvent) {
-      return [
-        { label: "View Details", action: "details", icon: "ℹ️" },
-        {
-          label: joinStatus ? "Create Orbit" : "Join Activity",
-          action: joinStatus ? "create" : "join",
-          icon: joinStatus ? "💬" : "✨",
-        },
-      ];
+      if (isCreator) {
+        return [
+          { label: "View Details", action: "details", icon: "ℹ️" },
+          { label: "Edit Event", action: "edit", icon: "✏️" },
+        ];
+      } else {
+        return [
+          { label: "View Details", action: "details", icon: "ℹ️" },
+          {
+            label: joinStatus ? "Create Orbit" : "Join Activity",
+            action: joinStatus ? "create" : "join",
+            icon: joinStatus ? "💬" : "✨",
+          },
+        ];
+      }
     }
 
     // For Ticketmaster events: Buy Tickets
@@ -251,8 +259,32 @@ const getContextActions = (
       ];
     }
 
-    // For Google API events: Create Activity Here
+    // For Google API events: Edit for creators, Join/Leave for others
     if (isGoogleApiEvent) {
+      if (isCreator) {
+        return [
+          { label: "View Details", action: "details", icon: "ℹ️" },
+          { label: "Edit Event", action: "edit", icon: "✏️" },
+        ];
+      } else {
+        return [
+          { label: "View Details", action: "details", icon: "ℹ️" },
+          {
+            label: joinStatus ? "Create Orbit" : "Join Activity",
+            action: joinStatus ? "create" : "join",
+            icon: joinStatus ? "💬" : "✨",
+          },
+        ];
+      }
+    }
+
+    // Fallback for other event types: Edit for creators, Join/Leave for others
+    if (isCreator) {
+      return [
+        { label: "View Details", action: "details", icon: "ℹ️" },
+        { label: "Edit Event", action: "edit", icon: "✏️" },
+      ];
+    } else {
       return [
         { label: "View Details", action: "details", icon: "ℹ️" },
         {
@@ -262,16 +294,6 @@ const getContextActions = (
         },
       ];
     }
-
-    // Fallback for other event types
-    return [
-      { label: "View Details", action: "details", icon: "ℹ️" },
-      {
-        label: joinStatus ? "Create Orbit" : "Join Activity",
-        action: joinStatus ? "create" : "join",
-        icon: joinStatus ? "💬" : "✨",
-      },
-    ];
   } else {
     // For ALL locations, show simple consistent actions like LocationDetailsSheet
     return [
@@ -385,8 +407,8 @@ export const UnifiedCard = React.memo(
       [detailData?.id, data.id] // Only depend on IDs, not full objects
     );
     const contextActions = useMemo(
-      () => getContextActions(data, detailData, treatAsEvent, isJoinedFromDB),
-      [data.id, treatAsEvent, detailData, isJoinedFromDB] // Include isJoinedFromDB
+      () => getContextActions(data, detailData, treatAsEvent, isJoinedFromDB, isCreator),
+      [data.id, treatAsEvent, detailData, isJoinedFromDB, isCreator] // Include isCreator
     );
 
     useEffect(() => {
@@ -465,6 +487,19 @@ export const UnifiedCard = React.memo(
           } else {
             // For LOCATIONS: "Create Activity" -> goes to create activity page
             handleCreateEvent();
+          }
+          break;
+        case "edit":
+          // For EVENTS: "Edit Event" -> goes to edit event page
+          if (treatAsEvent) {
+            router.push({
+              pathname: "/(app)/(create)",
+              params: {
+                eventId: detailData?.id || data.id,
+                editMode: "true",
+                from: "map",
+              },
+            });
           }
           break;
         case "weather":
@@ -831,6 +866,7 @@ export const UnifiedCard = React.memo(
             onDataSelect={onDataSelect as any}
             onShowControler={() => {}}
             isEvent={treatAsEvent}
+            onShare={() => {}} // Add empty onShare handler
           />
         )}
       </>

@@ -130,27 +130,40 @@ export function UnifiedSheetButtons({
           }}
         >
           <View className="flex-col gap-3">
-            {/* Primary Action Row */}
+            {/* Primary Action Row - Edit for creators, Join/Leave for others */}
             {session ? (
               <View className="flex-row gap-3">
-                {isJoined ? (
+                {isCreator ? (
+                  // CREATOR: Show Edit button
                   <TouchableOpacity
-                    onPress={onCreateOrbit}
+                    onPress={onEdit}
                     className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
                   >
                     <Text className="text-lg font-semibold text-white">
-                      Create Orbit
+                      Edit Event
                     </Text>
                   </TouchableOpacity>
                 ) : (
-                  <TouchableOpacity
-                    onPress={onJoinEvent}
-                    className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
-                  >
-                    <Text className="text-lg font-semibold text-white">
-                      Join Event
-                    </Text>
-                  </TouchableOpacity>
+                  // NON-CREATOR: Show Join/Leave button
+                  isJoined ? (
+                    <TouchableOpacity
+                      onPress={onCreateOrbit}
+                      className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
+                    >
+                      <Text className="text-lg font-semibold text-white">
+                        Create Orbit
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={onJoinEvent}
+                      className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
+                    >
+                      <Text className="text-lg font-semibold text-white">
+                        Join Event
+                      </Text>
+                    </TouchableOpacity>
+                  )
                 )}
               </View>
             ) : null}
@@ -166,18 +179,6 @@ export function UnifiedSheetButtons({
                 </Text>
               </TouchableOpacity>
             </View>
-
-            {/* Creator Actions Row - Only show if user is creator */}
-            {isCreator && (
-              <View className="flex-row gap-3">
-                <TouchableOpacity
-                  onPress={onEdit}
-                  className="flex-1 items-center py-4 bg-gray-600 rounded-2xl"
-                >
-                  <Text className="text-lg font-semibold text-white">Edit</Text>
-                </TouchableOpacity>
-              </View>
-            )}
           </View>
         </View>
       );
