@@ -27,8 +27,8 @@ export function EventSimilarSection({
   const userLng = userlocation?.longitude ? parseFloat(userlocation.longitude) : null;
   
   // Use event's location coordinates as fallback if user location is not available
-  const latitude = userLat || (data.location?.coordinates?.[1] ? parseFloat(data.location.coordinates[1]) : null);
-  const longitude = userLng || (data.location?.coordinates?.[0] ? parseFloat(data.location.coordinates[0]) : null);
+  const latitude = (data.location?.coordinates?.[1] ? parseFloat(data.location.coordinates[1]) : null) || userLat;
+  const longitude = (data.location?.coordinates?.[0] ? parseFloat(data.location.coordinates[0]) : null) || userLng;
 
   const { events: similarEvents, isLoading, error, hasResults } = useSimilarItems({
     itemType: 'event',
