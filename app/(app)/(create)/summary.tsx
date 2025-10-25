@@ -141,6 +141,9 @@ console.log("params>>",params);
   };
 
   const handleLocationChangeConfirm = () => {
+    // Close the modal first
+    setShowLocationChangeModal(false);
+    
     // Navigate to map with location change flag
     router.push({
       pathname: "/(app)/(map)",
