@@ -20,6 +20,9 @@ import {
   Image as ImageIcon,
   ExternalLink,
 } from "lucide-react-native";
+import { IProposal } from "../../../hooks/useProposals";
+import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
+import type { Channel } from "stream-chat";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -159,6 +162,13 @@ export default function SettingsScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const [chatShareSelection, setChatShareSelection] = useState<{
+    proposal: IProposal | null;
+    show: boolean;
+  }>({
+    proposal: null,
+    show: false,
+  });
   // Modal states
   const [showPersonalInfo, setShowPersonalInfo] = useState(false);
   const [showUsername, setShowUsername] = useState(false);
@@ -221,7 +231,30 @@ export default function SettingsScreen() {
       setIsLoggingOut(false); // Reset on error
     }
   };
+  const handleChatSelect = async (channel: Channel) => {
+    if (!channel) return;
+    try {
+      // Ensure channel is watched before sending
+      await channel.watch();
+      if (chatShareSelection.proposal) {
+        const message = await channel.sendMessage({
+          text: "Check out this proposal!",
+          type: "regular",
+          data: {
+            proposal: chatShareSelection.proposal,
+            type: "proposal/share",
+          },
+        });
+        // router.push(`/(app)/(chat)/channel/${channel.id}`);
+      }
+      // Send the post as a custom message with attachment
 
+      // Navigate to the chat
+    } catch (error) {
+      console.error("Error sharing post:", error);
+      // You could show a toast or alert here
+    }
+  };
   const openWebview = (external_url: string, title: string) => {
     router.back();
     router.push({
@@ -271,10 +304,14 @@ export default function SettingsScreen() {
               setDeletingDraftId(draftId);
               await draftService.deleteDraft(draftId);
               setDrafts(drafts.filter((draft) => draft.id !== draftId));
-              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              await Haptics.notificationAsync(
+                Haptics.NotificationFeedbackType.Success
+              );
             } catch (error) {
               console.error("Error deleting draft:", error);
-              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+              await Haptics.notificationAsync(
+                Haptics.NotificationFeedbackType.Error
+              );
               Alert.alert("Error", "Failed to delete draft. Please try again.");
             } finally {
               setDeletingDraftId(null);
@@ -344,8 +381,8 @@ export default function SettingsScreen() {
     try {
       await Linking.openURL(url);
     } catch (error) {
-      console.error('Error opening link:', error);
-      Alert.alert('Error', 'Unable to open link. Please try again.');
+      console.error("Error opening link:", error);
+      Alert.alert("Error", "Unable to open link. Please try again.");
     }
   };
 
@@ -473,14 +510,18 @@ export default function SettingsScreen() {
           icon={<ExternalLink size={20} color={theme.colors.primary} />}
           title="Terms & Conditions"
           onPress={() =>
-            handleOpenLink("https://orbit-app.framer.website/policies/terms-and-conditions")
+            handleOpenLink(
+              "https://orbit-app.framer.website/policies/terms-and-conditions"
+            )
           }
         />
         <SettingItem
           icon={<ExternalLink size={20} color={theme.colors.primary} />}
           title="Privacy Policy"
           onPress={() =>
-            handleOpenLink("https://orbit-app.framer.website/policies/privacy-and-policy")
+            handleOpenLink(
+              "https://orbit-app.framer.website/policies/privacy-and-policy"
+            )
           }
         />
         <SettingItem
@@ -592,7 +633,13 @@ export default function SettingsScreen() {
                   paddingTop: 8, // Add some top padding to the header
                 }}
               >
-                <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    flex: 1,
+                  }}
+                >
                   <LinearGradient
                     colors={["#8B5CF6", "#A855F7"]}
                     style={{
@@ -615,7 +662,7 @@ export default function SettingsScreen() {
                         fontWeight: "700",
                         color: theme.colors.text,
                         letterSpacing: -0.5,
-                        paddingTop: 20
+                        paddingTop: 20,
                       }}
                     >
                       My Drafts
@@ -631,8 +678,10 @@ export default function SettingsScreen() {
                     </Text>
                   </View>
                 </View>
-                
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+                >
                   {drafts.length > 0 && (
                     <MotiView
                       from={{ scale: 0, rotate: "180deg" }}
@@ -660,14 +709,20 @@ export default function SettingsScreen() {
                         {clearingAllDrafts ? (
                           <ActivityIndicator size={12} color="white" />
                         ) : (
-                          <Text style={{ color: "white", fontSize: 12, fontWeight: "600" }}>
+                          <Text
+                            style={{
+                              color: "white",
+                              fontSize: 12,
+                              fontWeight: "600",
+                            }}
+                          >
                             Clear All
                           </Text>
                         )}
                       </TouchableOpacity>
                     </MotiView>
                   )}
-                  
+
                   <MotiView
                     from={{ scale: 0, rotate: "180deg" }}
                     animate={{ scale: 1, rotate: "0deg" }}
@@ -680,7 +735,9 @@ export default function SettingsScreen() {
                   >
                     <TouchableOpacity
                       onPress={async () => {
-                        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        await Haptics.impactAsync(
+                          Haptics.ImpactFeedbackStyle.Light
+                        );
                         setShowDrafts(false);
                       }}
                       style={{
@@ -692,7 +749,15 @@ export default function SettingsScreen() {
                         alignItems: "center",
                       }}
                     >
-                      <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: "600" }}>✕</Text>
+                      <Text
+                        style={{
+                          color: theme.colors.text,
+                          fontSize: 16,
+                          fontWeight: "600",
+                        }}
+                      >
+                        ✕
+                      </Text>
                     </TouchableOpacity>
                   </MotiView>
                 </View>
@@ -711,8 +776,18 @@ export default function SettingsScreen() {
                   }}
                   style={{ alignItems: "center", padding: 40 }}
                 >
-                  <ActivityIndicator size="large" color={theme.colors.primary} />
-                  <Text style={{ marginTop: 16, color: theme.colors.text, fontSize: 16, fontWeight: "500" }}>
+                  <ActivityIndicator
+                    size="large"
+                    color={theme.colors.primary}
+                  />
+                  <Text
+                    style={{
+                      marginTop: 16,
+                      color: theme.colors.text,
+                      fontSize: 16,
+                      fontWeight: "500",
+                    }}
+                  >
                     Loading drafts...
                   </Text>
                 </MotiView>
@@ -729,7 +804,10 @@ export default function SettingsScreen() {
                   style={{ alignItems: "center", padding: 40 }}
                 >
                   <LinearGradient
-                    colors={["rgba(139, 92, 246, 0.1)", "rgba(168, 85, 247, 0.05)"]}
+                    colors={[
+                      "rgba(139, 92, 246, 0.1)",
+                      "rgba(168, 85, 247, 0.05)",
+                    ]}
                     style={{
                       padding: 32,
                       borderRadius: 20,
@@ -740,29 +818,33 @@ export default function SettingsScreen() {
                     end={{ x: 1, y: 1 }}
                   >
                     <Sparkles size={48} color={theme.colors.primary} />
-                    <Text style={{ 
-                      color: theme.colors.text, 
-                      textAlign: "center", 
-                      fontSize: 18, 
-                      fontWeight: "600", 
-                      marginTop: 16,
-                      marginBottom: 8 
-                    }}>
+                    <Text
+                      style={{
+                        color: theme.colors.text,
+                        textAlign: "center",
+                        fontSize: 18,
+                        fontWeight: "600",
+                        marginTop: 16,
+                        marginBottom: 8,
+                      }}
+                    >
                       No Drafts Yet
                     </Text>
-                    <Text style={{ 
-                      color: theme.colors.text + "60", 
-                      textAlign: "center", 
-                      fontSize: 14,
-                      lineHeight: 20 
-                    }}>
+                    <Text
+                      style={{
+                        color: theme.colors.text + "60",
+                        textAlign: "center",
+                        fontSize: 14,
+                        lineHeight: 20,
+                      }}
+                    >
                       Start creating an activity to see your drafts here
                     </Text>
                   </LinearGradient>
                 </MotiView>
               ) : (
-                <ScrollView 
-                  style={{ maxHeight: 400 }} 
+                <ScrollView
+                  style={{ maxHeight: 400 }}
                   showsVerticalScrollIndicator={false}
                   contentContainerStyle={{ paddingBottom: 8 }}
                 >
@@ -775,7 +857,7 @@ export default function SettingsScreen() {
                         type: "spring",
                         damping: 15,
                         stiffness: 300,
-                        delay: 400 + (index * 100),
+                        delay: 400 + index * 100,
                       }}
                       style={{ marginBottom: 16 }}
                     >
@@ -828,9 +910,11 @@ export default function SettingsScreen() {
                               </Text>
                             )}
                           </View>
-                          
+
                           <TouchableOpacity
-                            onPress={() => handleDeleteDraft(draft.id, draft.name)}
+                            onPress={() =>
+                              handleDeleteDraft(draft.id, draft.name)
+                            }
                             disabled={deletingDraftId === draft.id}
                             style={{
                               width: 32,
@@ -851,16 +935,54 @@ export default function SettingsScreen() {
                         </View>
 
                         {/* Metadata */}
-                        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16, gap: 16 }}>
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                            <Calendar size={14} color={theme.colors.text + "60"} />
-                            <Text style={{ fontSize: 12, color: theme.colors.text + "60", fontWeight: "500" }}>
-                              {draft.start_datetime ? new Date(draft.start_datetime).toLocaleDateString() : "No date"}
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            marginBottom: 16,
+                            gap: 16,
+                          }}
+                        >
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 4,
+                            }}
+                          >
+                            <Calendar
+                              size={14}
+                              color={theme.colors.text + "60"}
+                            />
+                            <Text
+                              style={{
+                                fontSize: 12,
+                                color: theme.colors.text + "60",
+                                fontWeight: "500",
+                              }}
+                            >
+                              {draft.start_datetime
+                                ? new Date(
+                                    draft.start_datetime
+                                  ).toLocaleDateString()
+                                : "No date"}
                             </Text>
                           </View>
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 4,
+                            }}
+                          >
                             <Clock size={14} color={theme.colors.text + "60"} />
-                            <Text style={{ fontSize: 12, color: theme.colors.text + "60", fontWeight: "500" }}>
+                            <Text
+                              style={{
+                                fontSize: 12,
+                                color: theme.colors.text + "60",
+                                fontWeight: "500",
+                              }}
+                            >
                               {new Date(draft.updated_at).toLocaleDateString()}
                             </Text>
                           </View>
@@ -888,7 +1010,13 @@ export default function SettingsScreen() {
                             end={{ x: 1, y: 1 }}
                           >
                             <Zap size={16} color="white" />
-                            <Text style={{ color: "white", fontWeight: "700", fontSize: 14 }}>
+                            <Text
+                              style={{
+                                color: "white",
+                                fontWeight: "700",
+                                fontSize: 14,
+                              }}
+                            >
                               Resume Draft
                             </Text>
                           </LinearGradient>
@@ -905,6 +1033,22 @@ export default function SettingsScreen() {
       <UnifiedProposalSheet
         show={showProposals}
         onClose={() => setShowProposals(false)}
+        onProposalShare={(proposal: IProposal) => {
+          setShowProposals(false);
+          setTimeout(() => {
+            setChatShareSelection({
+              show: true,
+              proposal: proposal || null,
+            });
+          }, 1500);
+        }}
+      />
+      <ChatSelectionModal
+        isOpen={chatShareSelection.show}
+        onClose={() => {
+          setChatShareSelection({ show: false, proposal: null });
+        }}
+        onSelectChat={handleChatSelect}
       />
     </SafeAreaView>
   );

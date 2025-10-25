@@ -24,6 +24,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import type { Channel } from "stream-chat";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useHomeFeed } from "~/hooks/useHomeFeed";
 import { useNotificationsApi } from "~/hooks/useNotificationsApi";
@@ -56,6 +57,8 @@ import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
 import { useAuth } from "~/src/lib/auth";
 import { handleSectionViewMore } from "~/src/lib/utils/sectionViewMore";
 import { useEventDetails } from "~/hooks/useEventDetails";
+import { IProposal } from "../../../hooks/useProposals";
+import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const STORY_CARD_WIDTH = screenWidth * 0.8;
@@ -69,7 +72,7 @@ interface StoryCardProps {
 
 const StoryCard = ({ item, onPress }: StoryCardProps) => {
   const { theme } = useTheme();
-  const [liked, setLiked] = useState(false);
+
   const [saved, setSaved] = useState(false);
 
   const isEvent = item.start_datetime || item.type === "event";
@@ -375,6 +378,13 @@ export default function Home() {
     isEventType: boolean;
   } | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [chatShareSelection, setChatShareSelection] = useState<{
+    proposal: IProposal | null;
+    show: boolean;
+  }>({
+    proposal: null,
+    show: false,
+  });
   const [isSelectedItemLocation, setIsSelectedItemLocation] = useState(false);
   const [currentFeaturedIndex, setCurrentFeaturedIndex] = useState(0);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
@@ -408,6 +418,30 @@ export default function Home() {
     isLoading: false,
   });
 
+  const handleChatSelect = async (channel: Channel) => {
+    if (!channel) return;
+    try {
+      // Ensure channel is watched before sending
+      await channel.watch();
+      if (chatShareSelection.proposal) {
+        const message = await channel.sendMessage({
+          text: "Check out this proposal!",
+          type: "regular",
+          data: {
+            proposal: chatShareSelection.proposal,
+            type: "proposal/share",
+          },
+        });
+        // router.push(`/(app)/(chat)/channel/${channel.id}`);
+      }
+      // Send the post as a custom message with attachment
+
+      // Navigate to the chat
+    } catch (error) {
+      console.error("Error sharing post:", error);
+      // You could show a toast or alert here
+    }
+  };
   // Animation
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -1641,9 +1675,22 @@ export default function Home() {
           }}
           data={shareData?.data}
           isEventType={shareData?.isEventType}
-          onProposalShare={() => {}}
+          onProposalShare={(proposal: IProposal) => {
+            setShareData(null);
+            setChatShareSelection({
+              show: true,
+              proposal: proposal || null,
+            });
+          }}
         />
       )}
+      <ChatSelectionModal
+        isOpen={chatShareSelection.show}
+        onClose={() => {
+          setChatShareSelection({ show: false, proposal: null });
+        }}
+        onSelectChat={handleChatSelect}
+      />
     </View>
   );
 }

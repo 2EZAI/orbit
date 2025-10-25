@@ -132,7 +132,9 @@ export default function SocialFeed() {
   const [isSelectedItemLocation, setIsSelectedItemLocation] = useState(false);
   const [showUnifiedCard, setShowUnifiedCard] = useState(false);
   const [showChatSelection, setShowChatSelection] = useState(false);
-  const [selectedPostForShare, setSelectedPostForShare] = useState<Post | null>(null);
+  const [selectedPostForShare, setSelectedPostForShare] = useState<Post | null>(
+    null
+  );
 
   const PAGE_SIZE = 20;
 
@@ -314,7 +316,7 @@ export default function SocialFeed() {
     try {
       // Ensure channel is watched before sending
       await channel.watch();
-      
+
       // Send the post as a custom message with attachment
       const message = await channel.sendMessage({
         text: "Check out this post!",
@@ -328,12 +330,11 @@ export default function SocialFeed() {
           },
         ],
       });
-      
+
       console.log("Post shared successfully:", message);
-      
+
       // Navigate to the chat
       router.push(`/(app)/(chat)/channel/${channel.id}`);
-      
     } catch (error) {
       console.error("Error sharing post:", error);
       // You could show a toast or alert here
@@ -360,7 +361,7 @@ export default function SocialFeed() {
               if (post.user?.id) {
                 router.push({
                   pathname: `/(app)/profile/${post.user.id}`,
-                  params: { from: 'social' }
+                  params: { from: "social" },
                 });
               }
             }}
@@ -537,7 +538,7 @@ export default function SocialFeed() {
                 </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 className="flex-row items-center"
                 onPress={() => handleSharePost(post)}
               >
@@ -780,6 +781,7 @@ export default function SocialFeed() {
           onClose={() => setShareData(null)}
           data={shareData?.data}
           isEventType={shareData?.isEventType}
+          
         />
       )}
       {/* Floating Action Button */}
@@ -817,7 +819,7 @@ export default function SocialFeed() {
           setSelectedPostForShare(null);
         }}
         onSelectChat={handleSelectChat}
-        postId={selectedPostForShare?.id || ""}
+        // postId={selectedPostForShare?.id || ""}
       />
     </SafeAreaView>
   );

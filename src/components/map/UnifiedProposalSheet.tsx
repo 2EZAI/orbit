@@ -8,8 +8,13 @@ import ProposalDetail from "./ProposalDetail";
 interface IProps {
   show: boolean;
   onClose: () => void;
+  onProposalShare: (proposal: IProposal) => void;
 }
-const UnifiedProposalSheet: React.FC<IProps> = ({ show, onClose }) => {
+const UnifiedProposalSheet: React.FC<IProps> = ({
+  show,
+  onClose,
+  onProposalShare,
+}) => {
   const { theme } = useTheme();
   const { proposals, getAllProposals, loading } = useProposals();
   const [selectedProposals, setSelectedProposals] = useState<IProposal | null>(
@@ -37,6 +42,7 @@ const UnifiedProposalSheet: React.FC<IProps> = ({ show, onClose }) => {
         <ProposalDetail
           proposal={selectedProposals}
           onClose={() => setSelectedProposals(null)}
+          onProposalShare={onProposalShare}
         />
       )}
     </Sheet>

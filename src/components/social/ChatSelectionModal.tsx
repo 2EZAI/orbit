@@ -20,14 +20,12 @@ interface ChatSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectChat: (channel: Channel) => void;
-  postId: string;
 }
 
 export function ChatSelectionModal({
   isOpen,
   onClose,
   onSelectChat,
-  postId,
 }: ChatSelectionModalProps) {
   const { theme, isDarkMode } = useTheme();
   const { client } = useChat();
@@ -47,16 +45,20 @@ export function ChatSelectionModal({
 
     try {
       setLoading(true);
-      
+
       // Query channels where the user is a member
-      const response = await client.queryChannels({
-        type: "messaging",
-        members: { $in: [client.userID] },
-      }, {
-        last_message_at: -1,
-      }, {
-        limit: 50,
-      });
+      const response = await client.queryChannels(
+        {
+          type: "messaging",
+          members: { $in: [client.userID] },
+        },
+        {
+          last_message_at: -1,
+        },
+        {
+          limit: 50,
+        }
+      );
 
       setChannels(response);
     } catch (error) {
@@ -71,7 +73,7 @@ export function ChatSelectionModal({
     const memberNames = Object.values(channel.state.members || {})
       .map((member: any) => member.user?.name || member.user?.username || "")
       .join(" ");
-    
+
     const searchLower = searchText.toLowerCase();
     return (
       channelName.toLowerCase().includes(searchLower) ||
@@ -83,18 +85,18 @@ export function ChatSelectionModal({
     if (channel.data?.name) {
       return channel.data.name;
     }
-    
+
     // For direct messages, show the other person's name
     const members = Object.values(channel.state.members || {});
     const otherMembers = members.filter(
       (member: any) => member.user?.id !== client?.userID
     );
-    
+
     if (otherMembers.length === 1) {
       const otherMember = otherMembers[0];
       return otherMember.user?.name || otherMember.user?.username || "Unknown";
     }
-    
+
     return "Group Chat";
   };
 
@@ -102,18 +104,18 @@ export function ChatSelectionModal({
     if (channel.data?.image) {
       return channel.data.image;
     }
-    
+
     // For direct messages, show the other person's avatar
     const members = Object.values(channel.state.members || {});
     const otherMembers = members.filter(
       (member: any) => member.user?.id !== client?.userID
     );
-    
+
     if (otherMembers.length === 1) {
       const otherMember = otherMembers[0];
       return otherMember.user?.image;
     }
-    
+
     return null;
   };
 
@@ -125,7 +127,8 @@ export function ChatSelectionModal({
   const renderChannel = ({ item: channel }: { item: Channel }) => {
     const displayName = getChannelDisplayName(channel);
     const avatar = getChannelAvatar(channel);
-    const lastMessage = channel.state.messages?.[channel.state.messages.length - 1];
+    const lastMessage =
+      channel.state.messages?.[channel.state.messages.length - 1];
     const unreadCount = channel.state.unreadCount || 0;
 
     return (
@@ -142,7 +145,7 @@ export function ChatSelectionModal({
             image: avatar,
           }}
         />
-        
+
         <View className="flex-1 ml-3">
           <View className="flex-row items-center justify-between">
             <Text
@@ -163,7 +166,7 @@ export function ChatSelectionModal({
               </View>
             )}
           </View>
-          
+
           {lastMessage && (
             <Text
               className="text-sm mt-1"
@@ -239,7 +242,10 @@ export function ChatSelectionModal({
           </View>
         ) : filteredChannels.length === 0 ? (
           <View className="flex-1 items-center justify-center px-4">
-            <MessageCircle size={48} color={isDarkMode ? "#9CA3AF" : "#6B7280"} />
+            <MessageCircle
+              size={48}
+              color={isDarkMode ? "#9CA3AF" : "#6B7280"}
+            />
             <Text
               className="mt-4 text-lg font-semibold text-center"
               style={{ color: theme.colors.text }}
@@ -250,7 +256,9 @@ export function ChatSelectionModal({
               className="mt-2 text-center"
               style={{ color: isDarkMode ? "#9CA3AF" : "#6B7280" }}
             >
-              {searchText ? "Try a different search term" : "Start a conversation to share posts"}
+              {searchText
+                ? "Try a different search term"
+                : "Start a conversation to share posts"}
             </Text>
           </View>
         ) : (
