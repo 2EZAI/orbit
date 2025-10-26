@@ -1045,19 +1045,22 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
     const showEventCardListener = DeviceEventEmitter.addListener(
       "showEventCard",
       (data: { eventId: string; lat: number; lng: number }) => {
+        console.log("🗺️ [MapStateManager] showEventCard received:", data);
         setMapCenter([data.lat, data.lng]);
 
-        setTimeout(() => {
-          const event =
-            eventsNow.find((e: MapEvent) => e.id === data.eventId) ||
-            eventsToday.find((e: MapEvent) => e.id === data.eventId) ||
-            eventsTomorrow.find((e: MapEvent) => e.id === data.eventId);
+        // Try to find the event in existing data
+        const event =
+          eventsNow.find((e: MapEvent) => e.id === data.eventId) ||
+          eventsToday.find((e: MapEvent) => e.id === data.eventId) ||
+          eventsTomorrow.find((e: MapEvent) => e.id === data.eventId);
 
-          if (event) {
-            setIsEvent(true);
-            handleEventClick(event as MapEvent);
-          }
-        }, 2000);
+        if (event) {
+          console.log("🗺️ [MapStateManager] Found event for showEventCard:", event.name);
+          setIsEvent(true);
+          handleEventClick(event as MapEvent);
+        } else {
+          console.log("🗺️ [MapStateManager] Event not found in current data");
+        }
       }
     );
 

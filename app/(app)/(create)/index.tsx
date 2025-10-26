@@ -33,6 +33,7 @@ import { getCurrentMapCenter } from "~/src/lib/mapCenter";
 import { MotiView } from "moti";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import { useEventDetails } from "~/hooks/useEventDetails";
 
 // Import modular components
 import BasicInfoSection from "~/src/components/createpost/BasicInfoSection";
@@ -88,6 +89,7 @@ export default function CreateEvent() {
   const params = useLocalSearchParams();
   const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
+  const { getItemDetails } = useEventDetails();
   const [input, setInput] = useState("");
   const [isStartDate, setIsStartDate] = useState(true);
   const [showDateModal, setShowDateModal] = useState(false);
@@ -341,13 +343,9 @@ export default function CreateEvent() {
     try {
       console.log("✏️ [CreateEvent] Fetching event for edit:", eventId);
 
-      const { data: eventData, error } = await supabase
-        .from("events")
-        .select("*")
-        .eq("id", eventId)
-        .single();
-
-      if (error) throw error;
+      // Use the generic getItemDetails function from useEventDetails hook
+      const eventData = await getItemDetails(eventId, "database");
+      
       if (!eventData) {
         console.error("❌ [CreateEvent] Event not found");
         return;
@@ -371,7 +369,41 @@ export default function CreateEvent() {
         eventData.end_datetime ? new Date(eventData.end_datetime) : new Date()
       );
       setAddress1(eventData.address || eventData.venue_name || "");
-      setSelectedTopics(eventData.category_id || "");
+      
+      // Get category from categories array (API response format)
+      const categoryId = eventData.categories?.[0]?.id || eventData.category_id;
+      const categoryName = eventData.categories?.[0]?.name;
+      
+      console.log("🔍 [CreateEvent] Category ID from event:", categoryId);
+      console.log("🔍 [CreateEvent] Category name from event:", categoryName);
+      console.log("🔍 [CreateEvent] Full categories array:", eventData.categories);
+      
+      setSelectedTopics(categoryId || "");
+      
+      if (categoryName) {
+        // We got the category name from the API response
+        setSelectedTopicsName(categoryName);
+        console.log("✅ [CreateEvent] Set category name from API:", categoryName);
+      } else if (categoryId) {
+        // Fallback: fetch manually if not in API response
+        console.log("⚠️ [CreateEvent] No category name from API, fetching manually...");
+        const { data: categoryData, error: categoryError } = await supabase
+          .from("location_categories")
+          .select("name")
+          .eq("id", categoryId)
+          .single();
+        
+        console.log("🔍 [CreateEvent] Category fetch result:", categoryData, "Error:", categoryError);
+        
+        if (categoryData) {
+          setSelectedTopicsName(categoryData.name);
+          console.log("✅ [CreateEvent] Set category name from manual fetch:", categoryData.name);
+        } else {
+          console.log("❌ [CreateEvent] Could not find category name for ID:", categoryId);
+        }
+      } else {
+        console.log("⚠️ [CreateEvent] No category_id found in event data");
+      }
       setIsPrivate(eventData.is_private || false);
       setExternalUrl(eventData.external_url || "");
 
@@ -681,7 +713,14 @@ export default function CreateEvent() {
       );
       setlongitude(parsedLng);
     }
-    if (params.address) setAddress1(params.address as string);
+    if (params.address) {
+      setAddress1(params.address as string);
+      // Also set locationDetails.address1 for consistency
+      setLocationDetails(prev => ({
+        ...prev,
+        address1: params.address as string
+      }));
+    }
 
     //removed as this functionality creates all states undefined
     // DeviceEventEmitter.addListener(
@@ -751,7 +790,8 @@ export default function CreateEvent() {
       () => {
         if (locationType === "static" || locationType === "googleApi") {
           // For static/googleApi locations, check if address1 is filled
-          return address1.trim() !== "" && locationDetails.address1.trim() !== "";
+          // If coming from a location (params.address), address1 should be sufficient
+          return address1.trim() !== "";
         }
         return locationDetails.city !== "" && locationDetails.state !== "";
       }, // Step 4: Location
