@@ -205,7 +205,6 @@ interface TikTokLocationCardProps {
 
 const TikTokLocationCard = ({ item, onPress }: TikTokLocationCardProps) => {
   const { theme } = useTheme();
-  const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
 
   const imageUrl = item.image_urls?.[0] || item.image;
