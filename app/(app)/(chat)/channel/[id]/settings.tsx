@@ -57,20 +57,27 @@ export default function ChatSettingsScreen() {
   const [newChannelName, setNewChannelName] = useState("");
   const [channelImage, setChannelImage] = useState<string | null>(null);
 
+  const [channelInstance, setChannelInstance] = useState<any>(null);
+
   const loadChannelData = async () => {
     if (!client || !id) return;
 
     try {
       setLoading(true);
       // Get the channel instance and refresh its data
-      const channelInstance = client.channel("messaging", id);
+      const newChannelInstance = client.channel("messaging", id);
+      
+      // Watch the channel to get all data
+      await newChannelInstance.watch();
       
       // Query fresh member data to get updated count
-      const membersResponse = await channelInstance.queryMembers({});
+      const membersResponse = await newChannelInstance.queryMembers({});
       
-      setChannel(channelInstance);
-      setNewChannelName(channelInstance.data?.name || "");
-      setIsMuted(channelInstance.muteStatus().muted);
+      setChannelInstance(newChannelInstance);
+      setChannel(newChannelInstance.data || {});
+      setNewChannelName(newChannelInstance.data?.name || "");
+      setChannelImage(newChannelInstance.data?.image ? String(newChannelInstance.data.image) : null);
+      setIsMuted(newChannelInstance.muteStatus().muted);
       
       // Use fresh member data from the query
       setMembers(membersResponse.members);
@@ -94,15 +101,25 @@ export default function ChatSettingsScreen() {
   );
 
   const handleUpdateChannelName = async () => {
-    if (!channel || !newChannelName.trim()) return;
+    if (!channelInstance || !newChannelName.trim()) return;
 
     try {
-      await channel.update({ name: newChannelName.trim() });
+      // Get current image to preserve it
+      const currentImage = channel?.image || channelInstance.data?.image;
+      
+      // Update the channel with both name and image to preserve image
+      await channelInstance.update({ 
+        name: newChannelName.trim(),
+        ...(currentImage && { image: currentImage })
+      });
+      
+      // Update the UI immediately with the new data
+      setChannel((prev: any) => ({
+        ...prev,
+        name: newChannelName.trim()
+      }));
+      
       setShowNameModal(false);
-      
-      // Reload channel data to get the latest state
-      await loadChannelData();
-      
       Alert.alert("Success", "Channel name updated successfully");
     } catch (error) {
       console.error("Error updating channel name:", error);
@@ -113,6 +130,11 @@ export default function ChatSettingsScreen() {
   const handleChangeChannelImage = async () => {
     if (!isCurrentUserAdmin()) {
       Alert.alert("Permission Denied", "Only admins can change the group photo");
+      return;
+    }
+
+    if (!channelInstance) {
+      Alert.alert("Error", "Channel not loaded");
       return;
     }
 
@@ -127,11 +149,24 @@ export default function ChatSettingsScreen() {
       if (results && results.length > 0) {
         const selectedImage = results[0];
         if (selectedImage.uri) {
-          // Update the channel with the new image
-          await channel.update({ image: selectedImage.uri });
+          // Store image URL in both local state and channel update
+          const imageUrl = selectedImage.uri;
+          setChannelImage(imageUrl);
           
-          // Reload channel data to get the latest state
-          await loadChannelData();
+          // Get current name to preserve it
+          const currentName = channel?.name || channelInstance.data?.name;
+          
+          // Update the channel with both image and name to preserve name
+          await channelInstance.update({ 
+            image: imageUrl,
+            ...(currentName && { name: currentName })
+          });
+          
+          // Update local state - preserve all existing data
+          setChannel((prev: any) => ({
+            ...prev,
+            image: imageUrl
+          }));
           
           Alert.alert("Success", "Group photo updated successfully");
         }
@@ -393,7 +428,7 @@ export default function ChatSettingsScreen() {
                         fontWeight: "500",
                       }}
                     >
-                      {channel?.data?.name || "Unnamed Chat"}
+{channel?.name || "Unnamed Chat"}
                     </Text>
                   </View>
                   {isCurrentUserAdmin() && (
@@ -418,9 +453,9 @@ export default function ChatSettingsScreen() {
                   >
                     <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
                       <View style={{ marginRight: 12 }}>
-                        {channelImage || channel?.data?.image ? (
+                        {channelImage || channel?.image ? (
                           <Image
-                            source={{ uri: channelImage || channel?.data?.image }}
+                            source={{ uri: channelImage || channel?.image }}
                             style={{
                               width: 40,
                               height: 40,
@@ -459,7 +494,7 @@ export default function ChatSettingsScreen() {
                             fontWeight: "500",
                           }}
                         >
-                          {channelImage || channel?.data?.image ? "Tap to change" : "Tap to add photo"}
+{channelImage || channel?.image ? "Tap to change" : "Tap to add photo"}
                         </Text>
                       </View>
                     </View>
