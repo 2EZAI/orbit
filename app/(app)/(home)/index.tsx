@@ -209,7 +209,7 @@ const TikTokLocationCard = ({ item, onPress }: TikTokLocationCardProps) => {
   const [saved, setSaved] = useState(false);
 
   const imageUrl = item.image_urls?.[0] || item.image;
-  const visitCount = Math.floor(Math.random() * 200) + 50;
+  // const visitCount = Math.floor(Math.random() * 200) + 50;
 
   return (
     <TouchableOpacity
@@ -260,12 +260,12 @@ const TikTokLocationCard = ({ item, onPress }: TikTokLocationCardProps) => {
       </View>
 
       {/* Side Actions */}
-      <View style={styles.tiktokSideActions}>
+      {/* <View style={styles.tiktokSideActions}>
         <TouchableOpacity style={styles.tiktokSideButton}>
           <Users size={26} color="#fff" />
           <Text style={styles.tiktokSideText}>{visitCount}</Text>
         </TouchableOpacity>
-      </View>
+      </View> */}
 
       {/* Bottom Content */}
       <View style={styles.tiktokBottomContent}>
