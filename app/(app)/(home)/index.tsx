@@ -205,11 +205,10 @@ interface TikTokLocationCardProps {
 
 const TikTokLocationCard = ({ item, onPress }: TikTokLocationCardProps) => {
   const { theme } = useTheme();
-  const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
 
   const imageUrl = item.image_urls?.[0] || item.image;
-  const visitCount = Math.floor(Math.random() * 200) + 50;
+  // const visitCount = Math.floor(Math.random() * 200) + 50;
 
   return (
     <TouchableOpacity
@@ -260,12 +259,12 @@ const TikTokLocationCard = ({ item, onPress }: TikTokLocationCardProps) => {
       </View>
 
       {/* Side Actions */}
-      <View style={styles.tiktokSideActions}>
+      {/* <View style={styles.tiktokSideActions}>
         <TouchableOpacity style={styles.tiktokSideButton}>
           <Users size={26} color="#fff" />
           <Text style={styles.tiktokSideText}>{visitCount}</Text>
         </TouchableOpacity>
-      </View>
+      </View> */}
 
       {/* Bottom Content */}
       <View style={styles.tiktokBottomContent}>
@@ -391,10 +390,7 @@ export default function Home() {
   const [currentFeaturedIndex, setCurrentFeaturedIndex] = useState(0);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [activeQuickFilter, setActiveQuickFilter] = useState("All");
-  const [isQuickFiltering, setIsQuickFiltering] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    new Set()
-  );
+
   const [loadingMoreSections, setLoadingMoreSections] = useState<Set<string>>(
     new Set()
   );
@@ -728,12 +724,10 @@ export default function Home() {
 
   // Quick filter functionality
   const applyQuickFilter = (filterType: string) => {
-    setIsQuickFiltering(true);
     setActiveQuickFilter(filterType);
 
     if (filterType === "All") {
       setFilteredData([]);
-      setIsQuickFiltering(false);
       return;
     }
 
@@ -862,7 +856,6 @@ export default function Home() {
       });
 
     setFilteredData(quickFilteredSections);
-    setIsQuickFiltering(false);
   };
 
   // Handle loading more content for infinite scroll
@@ -873,7 +866,6 @@ export default function Home() {
 
     // Simulate loading delay (in real app, this would be an API call)
     setTimeout(() => {
-      setExpandedSections((prev) => new Set([...prev, sectionKey]));
       setLoadingMoreSections((prev) => {
         const newSet = new Set(prev);
         newSet.delete(sectionKey);
@@ -1634,6 +1626,7 @@ export default function Home() {
               isOpen: false,
               section: null,
               allSectionData: [],
+              isLoading: false,
             });
           }}
           theme={theme}
