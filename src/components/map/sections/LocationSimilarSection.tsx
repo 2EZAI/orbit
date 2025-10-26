@@ -15,30 +15,24 @@ interface LocationSimilarSectionProps {
 
 export function LocationSimilarSection({ 
   data, 
-  nearbyData, 
   onDataSelect 
 }: LocationSimilarSectionProps) {
   const { theme, isDarkMode } = useTheme();
   const { userlocation } = useUser();
 
-  // Use the similar items API like web app
-  // Get coordinates from userlocation or fallback to location coordinates
-  const userLat = userlocation?.latitude ? parseFloat(userlocation.latitude) : null;
-  const userLng = userlocation?.longitude ? parseFloat(userlocation.longitude) : null;
-  
-  // Use location's own coordinates as fallback if user location is not available
+console.log('🔍 [LocationSimilarSection] Data:', data);
+
   let locationLat = null;
   let locationLng = null;
   
-  if (data.coordinates) {
-    // Direct coordinates object: {latitude, longitude}
-    locationLat = data.coordinates.latitude;
-    locationLng = data.coordinates.longitude;
-  }
+  // Use the similar items API like web app
+  // Get coordinates from userlocation or fallback to event location coordinates
+  const userLat = userlocation?.latitude ? parseFloat(userlocation.latitude) : null;
+  const userLng = userlocation?.longitude ? parseFloat(userlocation.longitude) : null;
   
-  // Use userLocation if available, otherwise use location coordinates
-  const latitude =  locationLat || userLat;
-  const longitude = locationLng || userLng;
+  // Use event's location coordinates as fallback if user location is not available
+  const latitude = (data.location?.coordinates?.[1] ? parseFloat(data.location.coordinates[1]) : null) || userLat;
+  const longitude = (data.location?.coordinates?.[0] ? parseFloat(data.location.coordinates[0]) : null) || userLng;
 
   const { locations: similarLocations, isLoading, error, hasResults } = useSimilarItems({
     itemType: 'location',
@@ -59,8 +53,6 @@ export function LocationSimilarSection({
     dataCategory: data.category,
     dataType: data.type,
     userlocation,
-    userLat,
-    userLng,
     locationLat,
     locationLng,
     finalLatitude: latitude,
