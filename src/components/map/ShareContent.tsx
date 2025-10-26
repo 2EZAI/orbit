@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import { ClipboardList, Share2 } from "lucide-react-native";
+import { ClipboardList, Share2, Users } from "lucide-react-native";
 import { MotiView } from "moti";
 import React, { useEffect, useState } from "react";
 import {
@@ -27,12 +27,14 @@ interface IProps {
   data: UnifiedData | undefined;
   isEventType?: boolean;
   onChangeType: (type: "share" | "add-proposal") => void;
+  onEventShare: (event: UnifiedData) => void;
 }
 const ShareContent: React.FC<IProps> = ({
   onClose,
   data,
   isEventType,
   onChangeType,
+  onEventShare,
 }) => {
   const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
@@ -279,6 +281,44 @@ const ShareContent: React.FC<IProps> = ({
                 </TouchableOpacity>
               </MotiView>
             ))}
+            <MotiView
+              from={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{
+                type: "timing",
+                duration: 200,
+                delay: 150 + 3 * 50,
+              }}
+            >
+              <TouchableOpacity
+                style={styles.contactItem}
+                activeOpacity={0.7}
+                onPress={() => onEventShare(data!)}
+              >
+                <View
+                  style={[
+                    styles.contactAvatar,
+                    {
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.avatarComponent,
+                      { alignItems: "center", justifyContent: "center" },
+                    ]}
+                  >
+                    <Users size={24} color={theme.colors.text} />
+                  </View>
+                </View>
+                <Text
+                  style={[styles.contactName, { color: theme.colors.text }]}
+                >
+                  More
+                </Text>
+              </TouchableOpacity>
+            </MotiView>
           </ScrollView>
         ) : (
           <View style={styles.emptyContainer}>

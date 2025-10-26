@@ -2,7 +2,7 @@ import { useAuth } from "~/src/lib/auth";
 
 export function useEventDetails() {
   const { session } = useAuth();
-  
+
   const getEventDetails = async (eventId: string, source: string) => {
     if (!session) {
       return;
@@ -20,18 +20,21 @@ export function useEventDetails() {
         }),
       }
     );
+
     if (!response.ok) {
+      console.log(response);
       return;
     }
     const data = await response.json();
+    console.log("Fetched event details:", data);
     return data;
   };
-  
+
   const getItemDetails = async (id: string, source: string) => {
     if (!session) {
       return null;
     }
-    
+
     const response = await fetch(
       `${process.env.VITE_BACKEND_API}/api/details`,
       {
@@ -46,17 +49,17 @@ export function useEventDetails() {
         }),
       }
     );
-    
+
     if (!response.ok) {
       throw new Error("Failed to fetch item details");
     }
-    
+
     const result = await response.json();
-    
+
     if (!result.success || !result.items[0]?.found) {
       throw new Error(result.items[0]?.error || "Item not found");
     }
-    
+
     return result.items[0].data;
   };
 
@@ -79,14 +82,15 @@ export function useEventDetails() {
         }),
       }
     );
-    
+
     if (!response.ok) {
       return;
     }
-    
+
     const data = await response.json();
+
     return data;
   };
-  
+
   return { getEventDetails, getMultipleEventDetails, getItemDetails };
 }

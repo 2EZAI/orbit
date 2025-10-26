@@ -20,23 +20,33 @@ const ChatEventComponent = ({
 }: ChatEventComponentProps) => {
   const { theme } = useTheme();
   const { user } = useUserData();
-  
+
   const { getEventDetails } = useEventDetails();
   const [data, setData] = useState<UnifiedData>();
-
+  console.log(
+    "ChatEventComponent message in ChatEventComponent>",
+    eventId,
+    source
+  );
   useEffect(() => {
     const fetchData = async () => {
       const result = await getEventDetails(eventId, source);
       setData(result);
     };
     fetchData();
-  }, [eventId, source]);
+  }, [eventId, source, user]);
   return data ? (
-    <View style={[styles.container,user?.id===message?.user?.id?{alignSelf:'flex-end'}:{}]}>
+    <View
+      style={[
+        styles.container,
+        user?.id === message?.user?.id ? { alignSelf: "flex-end" } : {},
+      ]}
+    >
       <SocialEventCard
         data={data as any}
         onDataSelect={handleEventPress}
         onShowDetails={() => handleEventPress(data)}
+        treatAsEvent={false}
       />
     </View>
   ) : (
@@ -53,5 +63,4 @@ const styles = StyleSheet.create({
   container: {
     width: "70%",
   },
-
 });

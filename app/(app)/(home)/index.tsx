@@ -381,9 +381,11 @@ export default function Home() {
   const [chatShareSelection, setChatShareSelection] = useState<{
     proposal: IProposal | null;
     show: boolean;
+    event: UnifiedData | null;
   }>({
     proposal: null,
     show: false,
+    event: null,
   });
   const [isSelectedItemLocation, setIsSelectedItemLocation] = useState(false);
   const [currentFeaturedIndex, setCurrentFeaturedIndex] = useState(0);
@@ -433,6 +435,16 @@ export default function Home() {
           },
         });
         // router.push(`/(app)/(chat)/channel/${channel.id}`);
+      }
+      if (chatShareSelection.event) {
+        await channel.sendMessage({
+          text: `Check out ${chatShareSelection.event?.name} on Orbit! ${chatShareSelection.event?.description}`,
+          data: {
+            type: "event/share",
+            eventId: chatShareSelection.event?.id || null,
+            source: chatShareSelection.event?.source || "event",
+          },
+        });
       }
       // Send the post as a custom message with attachment
 
@@ -1661,11 +1673,7 @@ export default function Home() {
         locationsList={[]}
         onShowControler={() => {}}
       />
-      {console.log(
-        "🔗 [Home] Rendered with selectedEvent:",
-        selectedEvent,
-        shareData
-      )}
+
       {shareData && (
         <UnifiedShareSheet
           isOpen={!!shareData}
@@ -1680,6 +1688,15 @@ export default function Home() {
             setChatShareSelection({
               show: true,
               proposal: proposal || null,
+              event: null,
+            });
+          }}
+          onEventShare={(event) => {
+            setShareData(null);
+            setChatShareSelection({
+              show: true,
+              proposal: null,
+              event: event || null,
             });
           }}
         />
@@ -1687,7 +1704,7 @@ export default function Home() {
       <ChatSelectionModal
         isOpen={chatShareSelection.show}
         onClose={() => {
-          setChatShareSelection({ show: false, proposal: null });
+          setChatShareSelection({ show: false, proposal: null, event: null });
         }}
         onSelectChat={handleChatSelect}
       />

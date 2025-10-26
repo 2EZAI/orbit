@@ -30,7 +30,9 @@ import {
   UnifiedCluster,
 } from "~/hooks/useUnifiedMapData";
 import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
-
+import { IProposal } from "~/hooks/useProposals";
+import type { Channel } from "stream-chat";
+import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
 type TimeFrame = "Today" | "Week" | "Weekend";
 
 export default function Map() {
@@ -50,6 +52,15 @@ export default function Map() {
     data: UnifiedData;
     isEventType: boolean;
   } | null>(null);
+  const [chatShareSelection, setChatShareSelection] = useState<{
+    proposal: IProposal | null;
+    show: boolean;
+    event: UnifiedData | null;
+  }>({
+    proposal: null,
+    show: false,
+    event: null,
+  });
   // Get loading text based on the current loading reason
   const getLoadingText = useCallback(
     (loadingReason: "initial" | "timeframe" | "filters" | "data") => {
@@ -83,7 +94,40 @@ export default function Map() {
     },
     []
   );
+  const handleChatSelect = async (channel: Channel) => {
+    if (!channel) return;
+    try {
+      // Ensure channel is watched before sending
+      await channel.watch();
+      if (chatShareSelection.proposal) {
+        const message = await channel.sendMessage({
+          text: "Check out this proposal!",
+          type: "regular",
+          data: {
+            proposal: chatShareSelection.proposal,
+            type: "proposal/share",
+          },
+        });
+        // router.push(`/(app)/(chat)/channel/${channel.id}`);
+      }
+      if (chatShareSelection.event) {
+        await channel.sendMessage({
+          text: `Check out ${chatShareSelection.event?.name} on Orbit! ${chatShareSelection.event?.description}`,
+          data: {
+            type: "event/share",
+            eventId: chatShareSelection.event?.id || null,
+            source: chatShareSelection.event?.source || "event",
+          },
+        });
+      }
+      // Send the post as a custom message with attachment
 
+      // Navigate to the chat
+    } catch (error) {
+      console.error("Error sharing post:", error);
+      // You could show a toast or alert here
+    }
+  };
   // Mount heavy map tree only when this screen is focused.
   if (!isFocused) {
     return <View className="flex-1" />;
@@ -379,9 +423,35 @@ export default function Map() {
                           }}
                           data={shareData?.data}
                           isEventType={shareData?.isEventType}
-                          onProposalShare={() => {}}
+                          onProposalShare={(proposal: IProposal) => {
+                            setShareData(null);
+                            setChatShareSelection({
+                              show: true,
+                              proposal: proposal || null,
+                              event: null,
+                            });
+                          }}
+                          onEventShare={(event) => {
+                            setShareData(null);
+                            setChatShareSelection({
+                              show: true,
+                              proposal: null,
+                              event: event || null,
+                            });
+                          }}
                         />
                       )}
+                      <ChatSelectionModal
+                        isOpen={chatShareSelection.show}
+                        onClose={() => {
+                          setChatShareSelection({
+                            show: false,
+                            proposal: null,
+                            event: null,
+                          });
+                        }}
+                        onSelectChat={handleChatSelect}
+                      />
                       {/* Loading Screen */}
                       <MapLoadingScreen
                         isVisible={!state.isMapFullyLoaded}

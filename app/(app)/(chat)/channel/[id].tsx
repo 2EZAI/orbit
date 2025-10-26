@@ -556,18 +556,41 @@ export default function ChannelScreen() {
   const handleChatSelect = async (channel: any) => {
     if (!channel) return;
     try {
+      console.log("handleChatSelect", chatShareSelection.event);
       // Ensure channel is watched before sending
       await channel.watch();
       if (chatShareSelection.proposal) {
         const message = await channel.sendMessage({
           text: "Check out this proposal!",
-          type: "regular",
+
           data: {
             proposal: chatShareSelection.proposal,
             type: "proposal/share",
           },
         });
         // router.push(`/(app)/(chat)/channel/${channel.id}`);
+      }
+      if (chatShareSelection.event) {
+        console.log(
+          "Sharing event to chat:",
+          chatShareSelection.event.id,
+          chatShareSelection.event?.source || "event"
+        );
+        const message = await channel.sendMessage({
+          text: `Check out ${chatShareSelection.event.name} on Orbit! ${
+            chatShareSelection.event?.description || ""
+          }`,
+
+          data: {
+            eventId: chatShareSelection.event?.id || null,
+            source:
+              chatShareSelection.event?.source ||
+              (chatShareSelection.event?.is_ticketmaster
+                ? "ticketmaster"
+                : "event"),
+            type: "event/share",
+          },
+        });
       }
       // Send the post as a custom message with attachment
 
@@ -970,6 +993,14 @@ export default function ChannelScreen() {
               show: true,
               proposal: proposal || null,
               event: null,
+            });
+          }}
+          onEventShare={(event) => {
+            setShareData(null);
+            setChatShareSelection({
+              show: true,
+              proposal: null,
+              event: event || null,
             });
           }}
         />
