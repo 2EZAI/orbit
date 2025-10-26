@@ -21,11 +21,18 @@ import {
   Users,
   ArrowLeft,
 } from "lucide-react-native";
+import type { Channel } from "stream-chat";
 import { router } from "expo-router";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
-import { UnifiedDetailsSheet } from "~/src/components/map/UnifiedDetailsSheet";
+import {
+  UnifiedData,
+  UnifiedDetailsSheet,
+} from "~/src/components/map/UnifiedDetailsSheet";
 import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 import { supabase } from "~/src/lib/supabase";
+import { IProposal } from "~/hooks/useProposals";
+import UnifiedShareSheet from "../map/UnifiedShareSheet";
+import { ChatSelectionModal } from "./ChatSelectionModal";
 
 interface Post {
   id: string;
@@ -79,17 +86,65 @@ export function PostDetailCard({
   const [isSelectedItemLocation, setIsSelectedItemLocation] = useState(false);
   const [eventDetailData, setEventDetailData] = useState<any | null>(null);
   const [loadingEventDetail, setLoadingEventDetail] = useState(false);
-  
+  const [shareData, setShareData] = useState<{
+    data: UnifiedData;
+    isEventType: boolean;
+  } | null>(null);
+  const [chatShareSelection, setChatShareSelection] = useState<{
+    proposal: IProposal | null;
+    show: boolean;
+    event: UnifiedData | null;
+  }>({
+    proposal: null,
+    show: false,
+    event: null,
+  });
+  const handleChatSelect = async (channel: Channel) => {
+    if (!channel) return;
+    try {
+      // Ensure channel is watched before sending
+      await channel.watch();
+      if (chatShareSelection.proposal) {
+        const message = await channel.sendMessage({
+          text: "Check out this proposal!",
+          type: "regular",
+          data: {
+            proposal: chatShareSelection.proposal,
+            type: "proposal/share",
+          },
+        });
+        // router.push(`/(app)/(chat)/channel/${channel.id}`);
+      }
+      if (chatShareSelection.event) {
+        await channel.sendMessage({
+          text: `Check out ${chatShareSelection.event?.name} on Orbit! ${chatShareSelection.event?.description}`,
+          data: {
+            type: "event/share",
+            eventId: chatShareSelection.event?.id || null,
+            source: chatShareSelection.event?.source || "event",
+          },
+        });
+      }
+      // Send the post as a custom message with attachment
+
+      // Navigate to the chat
+    } catch (error) {
+      console.error("Error sharing post:", error);
+      // You could show a toast or alert here
+    }
+  };
   const { fetchEventDetail } = useUpdateEvents();
 
   // Fetch complete event details when an event is selected
   const fetchCompleteEventDetails = async (event: any) => {
     if (!event?.id) return;
-    
+
     setLoadingEventDetail(true);
     try {
       // Always fetch from API directly to get complete data
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session?.access_token) {
         const response = await fetch(
           `${process.env.BACKEND_MAP_URL}/api/events/${event.id}`,
@@ -104,7 +159,7 @@ export function PostDetailCard({
             }),
           }
         );
-        
+
         if (response.ok) {
           const completeData = await response.json();
           console.log("✅ Fetched complete event data:", {
@@ -113,7 +168,7 @@ export function PostDetailCard({
             created_by: completeData.created_by,
             type: completeData.type,
             attendees: completeData.attendees,
-            categories: completeData.categories
+            categories: completeData.categories,
           });
           setEventDetailData(completeData);
           return completeData;
@@ -121,7 +176,7 @@ export function PostDetailCard({
           console.error("❌ Failed to fetch event details:", response.status);
         }
       }
-      
+
       // Fallback: try the update events hook
       const detailData = await fetchEventDetail(event);
       if (detailData) {
@@ -129,12 +184,12 @@ export function PostDetailCard({
           id: detailData.id,
           name: detailData.name,
           created_by: detailData.created_by,
-          type: detailData.type
+          type: detailData.type,
         });
         setEventDetailData(detailData);
         return detailData;
       }
-      
+
       // Final fallback: use original event data
       console.log("⚠️ Using original event data as fallback");
       setEventDetailData(event);
@@ -433,11 +488,49 @@ export function PostDetailCard({
               setSelectedEvent(data as any);
               setIsSelectedItemLocation(false);
             }}
+            onShare={(data, isEvent) => {
+              setSelectedEvent(null);
+              setShareData({ data, isEventType: isEvent });
+            }}
             onShowControler={() => {}}
             isEvent={!isSelectedItemLocation}
           />
         </>
       )}
+      {shareData && (
+        <UnifiedShareSheet
+          isOpen={!!shareData}
+          onClose={() => {
+            setSelectedEvent(shareData.data);
+            setShareData(null);
+          }}
+          data={shareData?.data}
+          isEventType={shareData?.isEventType}
+          onProposalShare={(proposal: IProposal) => {
+            setShareData(null);
+            setChatShareSelection({
+              show: true,
+              proposal: proposal || null,
+              event: null,
+            });
+          }}
+          onEventShare={(event) => {
+            setShareData(null);
+            setChatShareSelection({
+              show: true,
+              proposal: null,
+              event: event || null,
+            });
+          }}
+        />
+      )}
+      <ChatSelectionModal
+        isOpen={chatShareSelection.show}
+        onClose={() => {
+          setChatShareSelection({ show: false, proposal: null, event: null });
+        }}
+        onSelectChat={handleChatSelect}
+      />
     </SafeAreaView>
   );
 }

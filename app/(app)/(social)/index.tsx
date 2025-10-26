@@ -1,44 +1,44 @@
-import React, { useState, useEffect } from "react";
+import { format } from "date-fns";
+import { router } from "expo-router";
 import {
-  View,
-  FlatList,
-  TouchableOpacity,
-  Image,
+  Bell,
+  Heart,
+  MapPin,
+  MessageCircle,
+  Plus,
+  Send,
+} from "lucide-react-native";
+import React, { useEffect, useState } from "react";
+import {
   ActivityIndicator,
-  RefreshControl,
-  StatusBar,
   Dimensions,
+  FlatList,
+  Image,
+  RefreshControl,
   ScrollView,
+  StatusBar,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Text } from "~/src/components/ui/text";
-import { supabase } from "~/src/lib/supabase";
-import { useAuth } from "~/src/lib/auth";
-import { useUser } from "~/src/lib/UserProvider";
-import { format } from "date-fns";
-import { Icon } from "react-native-elements";
-import {
-  Heart,
-  MessageCircle,
-  Send,
-  MapPin,
-  MoreHorizontal,
-  Bell,
-  Plus,
-} from "lucide-react-native";
-import { router } from "expo-router";
-import { UserAvatar } from "~/src/components/ui/user-avatar";
+import type { Channel } from "stream-chat";
+import { useNotificationsApi } from "~/hooks/useNotificationsApi";
+import { IProposal } from "~/hooks/useProposals";
 import {
   UnifiedData,
   UnifiedDetailsSheet,
 } from "~/src/components/map/UnifiedDetailsSheet";
-import { SocialEventCard } from "~/src/components/social/SocialEventCard";
-import { ScreenHeader } from "~/src/components/ui/screen-header";
-import { useTheme } from "~/src/components/ThemeProvider";
-import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
-import { useChat } from "~/src/lib/chat";
 import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
+import { SocialEventCard } from "~/src/components/social/SocialEventCard";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { ScreenHeader } from "~/src/components/ui/screen-header";
+import { Text } from "~/src/components/ui/text";
+import { UserAvatar } from "~/src/components/ui/user-avatar";
+import { useAuth } from "~/src/lib/auth";
+import { useChat } from "~/src/lib/chat";
+import { supabase } from "~/src/lib/supabase";
+import { useUser } from "~/src/lib/UserProvider";
 
 interface Post {
   id: string;
@@ -129,6 +129,15 @@ export default function SocialFeed() {
     data: UnifiedData;
     isEventType: boolean;
   } | null>(null);
+  const [chatShareSelection, setChatShareSelection] = useState<{
+    proposal: IProposal | null;
+    show: boolean;
+    event: UnifiedData | null;
+  }>({
+    proposal: null,
+    show: false,
+    event: null,
+  });
   const [isSelectedItemLocation, setIsSelectedItemLocation] = useState(false);
   const [showUnifiedCard, setShowUnifiedCard] = useState(false);
   const [showChatSelection, setShowChatSelection] = useState(false);
@@ -556,7 +565,40 @@ export default function SocialFeed() {
       </View>
     );
   };
+  const handleChatSelect = async (channel: Channel) => {
+    if (!channel) return;
+    try {
+      // Ensure channel is watched before sending
+      await channel.watch();
+      if (chatShareSelection.proposal) {
+        const message = await channel.sendMessage({
+          text: "Check out this proposal!",
+          type: "regular",
+          data: {
+            proposal: chatShareSelection.proposal,
+            type: "proposal/share",
+          },
+        });
+        // router.push(`/(app)/(chat)/channel/${channel.id}`);
+      }
+      if (chatShareSelection.event) {
+        await channel.sendMessage({
+          text: `Check out ${chatShareSelection.event?.name} on Orbit! ${chatShareSelection.event?.description}`,
+          data: {
+            type: "event/share",
+            eventId: chatShareSelection.event?.id || null,
+            source: chatShareSelection.event?.source || "event",
+          },
+        });
+      }
+      // Send the post as a custom message with attachment
 
+      // Navigate to the chat
+    } catch (error) {
+      console.error("Error sharing post:", error);
+      // You could show a toast or alert here
+    }
+  };
   if (loading && posts.length === 0) {
     return (
       <SafeAreaView
@@ -597,9 +639,9 @@ export default function SocialFeed() {
                   }}
                 >
                   <Text
-                    style={{ 
-                      color: "white", 
-                      fontSize: 10, 
+                    style={{
+                      color: "white",
+                      fontSize: 10,
                       fontWeight: "800",
                       textAlign: "center",
                       includeFontPadding: false,
@@ -685,9 +727,9 @@ export default function SocialFeed() {
                 }}
               >
                 <Text
-                  style={{ 
-                    color: "white", 
-                    fontSize: 10, 
+                  style={{
+                    color: "white",
+                    fontSize: 10,
                     fontWeight: "800",
                     textAlign: "center",
                     includeFontPadding: false,
@@ -783,6 +825,7 @@ export default function SocialFeed() {
             setIsSelectedItemLocation(false);
           }}
           onShare={(data, isEvent) => {
+            setSelectedEvent(null);
             setShareData({ data, isEventType: isEvent });
           }}
           onShowControler={() => {}}
@@ -795,9 +838,31 @@ export default function SocialFeed() {
           onClose={() => setShareData(null)}
           data={shareData?.data}
           isEventType={shareData?.isEventType}
-          
+          onProposalShare={(proposal: IProposal) => {
+            setShareData(null);
+            setChatShareSelection({
+              show: true,
+              proposal: proposal || null,
+              event: null,
+            });
+          }}
+          onEventShare={(event) => {
+            setShareData(null);
+            setChatShareSelection({
+              show: true,
+              proposal: null,
+              event: event || null,
+            });
+          }}
         />
       )}
+      <ChatSelectionModal
+        isOpen={chatShareSelection.show}
+        onClose={() => {
+          setChatShareSelection({ show: false, proposal: null, event: null });
+        }}
+        onSelectChat={handleChatSelect}
+      />
       {/* Floating Action Button */}
       <TouchableOpacity
         onPress={() => router.push("/(app)/post/create")}
