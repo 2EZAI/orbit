@@ -9,17 +9,24 @@ interface IProps {
   show: boolean;
   onClose: () => void;
   onProposalShare: (proposal: IProposal) => void;
+  proposal?: IProposal;
 }
 const UnifiedProposalSheet: React.FC<IProps> = ({
   show,
   onClose,
   onProposalShare,
+  proposal,
 }) => {
   const { theme } = useTheme();
   const { proposals, getAllProposals, loading } = useProposals();
   const [selectedProposals, setSelectedProposals] = useState<IProposal | null>(
     null
   );
+  useEffect(() => {
+    if (proposal) {
+      setSelectedProposals(proposal);
+    }
+  }, [proposal]);
   useEffect(() => {
     if (show) {
       getAllProposals();
@@ -41,7 +48,7 @@ const UnifiedProposalSheet: React.FC<IProps> = ({
       ) : (
         <ProposalDetail
           proposal={selectedProposals}
-          onClose={() => setSelectedProposals(null)}
+          onClose={() => (!proposal ? setSelectedProposals(null) : onClose())}
           onProposalShare={onProposalShare}
         />
       )}

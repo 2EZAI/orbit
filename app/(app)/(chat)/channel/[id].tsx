@@ -36,6 +36,10 @@ import {
   UnifiedDetailsSheet,
 } from "~/src/components/map/UnifiedDetailsSheet";
 import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
+import ChatProposalComponent from "~/src/components/chat/ChatProposalComponent";
+import { IProposal } from "~/hooks/useProposals";
+import UnifiedProposalSheet from "~/src/components/map/UnifiedProposalSheet";
+import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
 
 // BULLETPROOF Message Component - ONLY renders polls, returns NULL for everything else
 // This forces Stream to use its default components for all non-poll messages
@@ -43,11 +47,21 @@ import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
 // Custom Post Share Component
 const CustomPostShareComponent = ({ message }: { message: any }) => {
   const router = useRouter();
-  
-  console.log("CustomPostShareComponent: Checking message:", message?.id, "attachments:", message?.attachments);
-  
+
+  console.log(
+    "CustomPostShareComponent: Checking message:",
+    message?.id,
+    "attachments:",
+    message?.attachments
+  );
+
   // Check if this message has post share attachments
-  if (!message || !message.id || !message.attachments || message.attachments.length === 0) {
+  if (
+    !message ||
+    !message.id ||
+    !message.attachments ||
+    message.attachments.length === 0
+  ) {
     console.log("CustomPostShareComponent: No attachments found");
     return null;
   }
@@ -56,10 +70,15 @@ const CustomPostShareComponent = ({ message }: { message: any }) => {
     (attachment: any) => attachment.type === "post_share"
   );
 
-  console.log("CustomPostShareComponent: Post share attachment:", postShareAttachment);
+  console.log(
+    "CustomPostShareComponent: Post share attachment:",
+    postShareAttachment
+  );
 
   if (!postShareAttachment || !postShareAttachment.post_data) {
-    console.log("CustomPostShareComponent: No post share attachment or post data");
+    console.log(
+      "CustomPostShareComponent: No post share attachment or post data"
+    );
     return null;
   }
 
@@ -434,6 +453,9 @@ export default function ChannelScreen() {
     isEventType: boolean;
   } | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [selectedProposal, setSelectedProposal] = useState<IProposal | null>(
+    null
+  );
   const [channel, setChannel] = useState<ChannelType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -443,17 +465,34 @@ export default function ChannelScreen() {
   const { theme } = useTheme();
   const [orbitMsg, setorbitMsg] = useState<any>(null);
   const { videoClient } = useVideo();
+  const [chatShareSelection, setChatShareSelection] = useState<{
+    proposal: IProposal | null;
+    event: UnifiedData | null;
+    show: boolean;
+  }>({
+    proposal: null,
+    event: null,
+    show: false,
+  });
   const BulletproofMessage = (props: any) => {
     const eventId = props.message?.data?.eventId;
+    const proposal = props.message?.data?.proposal;
     const eventSource = props.message?.data?.source;
     const message = props.message;
-
+    console.log(proposal);
     // Check for post share attachments
     const hasPostShare = message?.attachments?.some(
       (attachment: any) => attachment.type === "post_share"
     );
-    
-    console.log("BulletproofMessage: Message", message?.id, "hasPostShare:", hasPostShare, "attachments:", message?.attachments);
+
+    console.log(
+      "BulletproofMessage: Message",
+      message?.id,
+      "hasPostShare:",
+      hasPostShare,
+      "attachments:",
+      message?.attachments
+    );
 
     // ONLY handle actual poll messages
     const isActualPoll =
@@ -480,7 +519,21 @@ export default function ChannelScreen() {
       );
       // Return ONLY our custom post share - no MessageSimple wrapper
       return (
-        <CustomPostShareComponent key={`post-${message.id}`} message={message} />
+        <CustomPostShareComponent
+          key={`post-${message.id}`}
+          message={message}
+        />
+      );
+    }
+    if (proposal) {
+      return (
+        <ChatProposalComponent
+          proposal={proposal}
+          message={message}
+          handleProposalPress={(proposalData) =>
+            setSelectedProposal(proposalData)
+          }
+        />
       );
     }
     if (eventId && eventSource) {
@@ -499,6 +552,30 @@ export default function ChannelScreen() {
     // For ALL other messages: use Stream's default Message component (NOT MessageSimple)
     // This avoids the MessageSimple crash while showing all messages
     return <Message {...props} />;
+  };
+  const handleChatSelect = async (channel: any) => {
+    if (!channel) return;
+    try {
+      // Ensure channel is watched before sending
+      await channel.watch();
+      if (chatShareSelection.proposal) {
+        const message = await channel.sendMessage({
+          text: "Check out this proposal!",
+          type: "regular",
+          data: {
+            proposal: chatShareSelection.proposal,
+            type: "proposal/share",
+          },
+        });
+        // router.push(`/(app)/(chat)/channel/${channel.id}`);
+      }
+      // Send the post as a custom message with attachment
+
+      // Navigate to the chat
+    } catch (error) {
+      console.error("Error sharing post:", error);
+      // You could show a toast or alert here
+    }
   };
   const handleInfoPress = useCallback(() => {
     if (!channel) return;
@@ -887,8 +964,38 @@ export default function ChannelScreen() {
           onClose={() => setShareData(null)}
           data={shareData?.data}
           isEventType={shareData?.isEventType}
+          onProposalShare={(proposal: IProposal) => {
+            setShareData(null);
+            setChatShareSelection({
+              show: true,
+              proposal: proposal || null,
+              event: null,
+            });
+          }}
         />
       )}
+      {selectedProposal && (
+        <UnifiedProposalSheet
+          show={!!selectedProposal}
+          onClose={() => setSelectedProposal(null)}
+          onProposalShare={(proposal: IProposal) => {
+            setSelectedProposal(null);
+            setChatShareSelection({
+              show: true,
+              proposal: proposal || null,
+              event: null,
+            });
+          }}
+          proposal={selectedProposal}
+        />
+      )}
+      <ChatSelectionModal
+        isOpen={chatShareSelection.show}
+        onClose={() => {
+          setChatShareSelection({ show: false, proposal: null, event: null });
+        }}
+        onSelectChat={handleChatSelect}
+      />
     </View>
   );
 }
