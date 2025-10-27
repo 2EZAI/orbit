@@ -1,7 +1,6 @@
 import React from "react";
 import { View } from "react-native";
 import { Text } from "~/src/components/ui/text";
-// import { TopicListSingleSelection } from "~/src/components/topics/TopicListSingleSelection";
 import TopicSingleSelectDropdown from "~/src/components/topics/TopicSingleSelectDropdown";
 import { useTheme } from "~/src/components/ThemeProvider";
 
@@ -25,7 +24,7 @@ export default function CategorySection({
           ? "rgba(139, 92, 246, 0.1)"
           : "rgba(255, 255, 255, 0.8)",
         borderRadius: 32,
-        padding: 42,
+        padding: 20,
         borderWidth: 1,
         borderColor: theme.dark
           ? "rgba(139, 92, 246, 0.2)"

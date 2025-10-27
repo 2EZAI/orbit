@@ -1,14 +1,13 @@
-import React, { useState } from "react";
-import { View, TouchableOpacity,ScrollView, Platform } from "react-native";
-import { Text } from "~/src/components/ui/text";
-import { Input } from "~/src/components/ui/input";
+import * as Haptics from "expo-haptics";
 import { Globe, Lock, Sparkles } from "lucide-react-native";
+import { MotiView } from "moti";
+import React, { useState } from "react";
+import { Platform, TouchableOpacity, View } from "react-native";
 import { Icon } from "react-native-elements";
 import { useTheme } from "~/src/components/ThemeProvider";
+import { Input } from "~/src/components/ui/input";
+import { Text } from "~/src/components/ui/text";
 import { AIDescriptionModal } from "./AIDescriptionModal";
-import { MotiView } from "moti";
-import { LinearGradient } from "expo-linear-gradient";
-import * as Haptics from "expo-haptics";
 
 interface BasicInfoSectionProps {
   name: string;
@@ -56,7 +55,7 @@ export default function BasicInfoSection({
           ? "rgba(139, 92, 246, 0.1)"
           : "rgba(255, 255, 255, 0.8)",
         borderRadius: 32,
-        padding: 42,
+        padding: 20,
         borderWidth: 1,
         borderColor: theme.dark
           ? "rgba(139, 92, 246, 0.2)"
@@ -104,18 +103,20 @@ export default function BasicInfoSection({
         </Text>
         <MotiView
           animate={{
-            borderColor: focusedField === "name" 
-              ? "#F59E0B" 
-              : theme.dark
-              ? "rgba(139, 92, 246, 0.2)"
-              : "rgba(139, 92, 246, 0.15)",
-            backgroundColor: focusedField === "name"
-              ? theme.dark
-                ? "rgba(245, 158, 11, 0.1)"
-                : "rgba(245, 158, 11, 0.05)"
-              : theme.dark
-              ? "rgba(255, 255, 255, 0.05)"
-              : "rgba(255, 255, 255, 0.7)",
+            borderColor:
+              focusedField === "name"
+                ? "#F59E0B"
+                : theme.dark
+                ? "rgba(139, 92, 246, 0.2)"
+                : "rgba(139, 92, 246, 0.15)",
+            backgroundColor:
+              focusedField === "name"
+                ? theme.dark
+                  ? "rgba(245, 158, 11, 0.1)"
+                  : "rgba(245, 158, 11, 0.05)"
+                : theme.dark
+                ? "rgba(255, 255, 255, 0.05)"
+                : "rgba(255, 255, 255, 0.7)",
           }}
           transition={{ type: "timing", duration: 300 }}
           style={{
@@ -286,7 +287,14 @@ export default function BasicInfoSection({
       </View>
 
       <View>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 12,
+          }}
+        >
           <Text
             style={{
               fontSize: 16,
@@ -326,7 +334,10 @@ export default function BasicInfoSection({
               opacity: !name.trim() ? 0.5 : 1,
             }}
           >
-            <Sparkles size={16} color={!name.trim() ? theme.colors.text + "66" : "#A855F7"} />
+            <Sparkles
+              size={16}
+              color={!name.trim() ? theme.colors.text + "66" : "#A855F7"}
+            />
             <Text
               style={{
                 color: !name.trim() ? theme.colors.text + "66" : "#A855F7",
@@ -353,18 +364,20 @@ export default function BasicInfoSection({
         )}
         <MotiView
           animate={{
-            borderColor: focusedField === "description" 
-              ? "#F59E0B" 
-              : theme.dark
-              ? "rgba(139, 92, 246, 0.2)"
-              : "rgba(139, 92, 246, 0.15)",
-            backgroundColor: focusedField === "description"
-              ? theme.dark
-                ? "rgba(245, 158, 11, 0.1)"
-                : "rgba(245, 158, 11, 0.05)"
-              : theme.dark
-              ? "rgba(255, 255, 255, 0.05)"
-              : "rgba(255, 255, 255, 0.7)",
+            borderColor:
+              focusedField === "description"
+                ? "#F59E0B"
+                : theme.dark
+                ? "rgba(139, 92, 246, 0.2)"
+                : "rgba(139, 92, 246, 0.15)",
+            backgroundColor:
+              focusedField === "description"
+                ? theme.dark
+                  ? "rgba(245, 158, 11, 0.1)"
+                  : "rgba(245, 158, 11, 0.05)"
+                : theme.dark
+                ? "rgba(255, 255, 255, 0.05)"
+                : "rgba(255, 255, 255, 0.7)",
           }}
           transition={{ type: "timing", duration: 300 }}
           style={{

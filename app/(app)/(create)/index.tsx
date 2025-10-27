@@ -134,6 +134,7 @@ export default function CreateEvent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
 
   // Smart validation and focus management
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -448,7 +449,7 @@ export default function CreateEvent() {
       }
       setIsPrivate(eventData.is_private || false);
       setExternalUrl(eventData.external_url || "");
-
+      setShowAdditionalInfo(!!eventData.external_url);
       // Load images if they exist
       if (eventData.image_urls && eventData.image_urls.length > 0) {
         const loadedImages = eventData.image_urls.map(
@@ -1752,11 +1753,12 @@ export default function CreateEvent() {
                 setSelectedPrompts={setSelectedPrompts}
               />
             ) : (
-              <View style={{ alignItems: "center", padding: 40 }}>
-                <Text style={{ fontSize: 16, color: theme.colors.text + "CC" }}>
-                  No prompts available for this category
-                </Text>
-              </View>
+              <></>
+              // <View style={{ alignItems: "center", padding: 20 }}>
+              //   <Text style={{ fontSize: 16, color: theme.colors.text + "CC" }}>
+              //     No prompts available for this category
+              //   </Text>
+              // </View>
             )}
 
             <ImagesSection
@@ -1784,13 +1786,42 @@ export default function CreateEvent() {
               onShowDatePicker={showDatePicker}
               onShowTimePicker={showTimePicker}
             />
-
-            <AdditionalInfoSection
-              externalUrl={externalUrl}
-              setExternalUrl={setExternalUrl}
-              externalUrlTitle={externalTitle}
-              setExternalUrlTitle={setExternalTitle}
-            />
+            <TouchableOpacity
+              style={{
+                borderRadius: 24,
+                padding: 6,
+                marginLeft: 20,
+                borderWidth: 1,
+                alignSelf: "flex-start",
+                borderColor: theme.colors.primary + "88",
+                marginBottom: 24,
+                backgroundColor: showAdditionalInfo
+                  ? theme.colors.primary
+                  : "transparent",
+              }}
+              onPress={() => setShowAdditionalInfo(!showAdditionalInfo)}
+            >
+              <Text
+                style={{
+                  color: showAdditionalInfo
+                    ? theme.colors.background
+                    : theme.colors.text,
+                  fontSize: 14,
+                  lineHeight: 16,
+                  fontWeight: "500",
+                }}
+              >
+                Additional Info
+              </Text>
+            </TouchableOpacity>
+            {showAdditionalInfo && (
+              <AdditionalInfoSection
+                externalUrl={externalUrl}
+                setExternalUrl={setExternalUrl}
+                externalUrlTitle={externalTitle}
+                setExternalUrlTitle={setExternalTitle}
+              />
+            )}
           </MotiView>
         </ScrollView>
 
