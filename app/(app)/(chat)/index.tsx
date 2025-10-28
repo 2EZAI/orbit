@@ -270,18 +270,21 @@ const ModernChannelPreview = (
             <View className="relative">
               <ChannelAvatar channel={channel} size={52} />
               {/* Online indicator for 1-on-1 chats */}
-              {Object.keys(channel.state.members).length === 2 && (() => {
-                // Get the other member (not current user)
-                const otherMembers = Object.values(channel.state.members).filter(
-                  (member: any) => member.user?.id !== channel._client.userID
-                );
-                const otherMember = otherMembers[0];
-                const isOnline = otherMember?.user?.online;
-                
-                return isOnline ? (
-                  <View className="absolute right-0 bottom-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
-                ) : null;
-              })()}
+              {Object.keys(channel.state.members).length === 2 &&
+                (() => {
+                  // Get the other member (not current user)
+                  const otherMembers = Object.values(
+                    channel.state.members
+                  ).filter(
+                    (member: any) => member.user?.id !== channel._client.userID
+                  );
+                  const otherMember = otherMembers[0];
+                  const isOnline = otherMember?.user?.online;
+
+                  return isOnline ? (
+                    <View className="absolute right-0 bottom-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
+                  ) : null;
+                })()}
             </View>
 
             {/* Content */}
@@ -396,6 +399,24 @@ export default function ChatListScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { theme, isDarkMode } = useTheme();
 
+  // Real-time channel updates: refresh when membership or channel changes
+  useEffect(() => {
+    if (!client?.userID) return;
+    const reload = () => setRefreshKey((prev: number) => prev + 1);
+
+    const subs = [
+      client.on("channel.created", reload),
+      client.on("channel.updated", reload),
+      client.on("notification.added_to_channel", reload),
+      client.on("member.added", reload),
+      client.on("member.removed", reload),
+    ];
+
+    return () => {
+      subs.forEach((sub) => sub?.unsubscribe?.());
+    };
+  }, [client?.userID]);
+
   // Memoize filters
   const filters = useMemo<ChannelFilters>(() => {
     // console.log("[ChatList] Creating filters:", {
@@ -445,13 +466,23 @@ export default function ChatListScreen() {
         return;
       }
 
-      // Detailed logging before navigation
-      // console.log("[ChatList] Channel select triggered:", {
-      //   channelId: channel.id,
-      //   channelType: channel.type,
-      //   memberCount: channel.state.members?.length,
-      //   channelData: channel.data,
-      // });
+      // Ensure current user is a member (DMs may be reused after both left)
+      (async () => {
+        try {
+          await channel.watch();
+          const members = Object.values(channel.state.members || {});
+          const currentMemberIds = members.map((m: any) => m.user?.id);
+          const myId = client.userID as string;
+          if (myId && !currentMemberIds.includes(myId)) {
+            await channel.addMembers([myId]);
+          }
+        } catch (e) {
+          console.log(
+            "[ChatList] Membership ensure failed (safe to ignore):",
+            e
+          );
+        }
+      })();
 
       const route = {
         pathname: "/(app)/(chat)/channel/[id]",

@@ -318,6 +318,23 @@ export default function NewChatScreen() {
       // This both creates the channel and subscribes to it
       console.log("[NewChat] Watching channel...");
       await channel.watch();
+
+      // Ensure all selected members (and creator) are members — handles reused DM channels
+      try {
+        const currentMembers = Object.values(channel.state.members || {});
+        const currentMemberIds = currentMembers.map((m: any) => m.user?.id);
+        const requiredMembers = memberIds;
+        const missingMembers = requiredMembers.filter(
+          (id) => !currentMemberIds.includes(id)
+        );
+        if (missingMembers.length > 0) {
+          console.log("[NewChat] Re-adding missing members:", missingMembers);
+          await channel.addMembers(missingMembers as string[]);
+        }
+      } catch (e) {
+        console.log("[NewChat] Member ensure failed (continuing):", e);
+      }
+
       console.log("[NewChat] Channel created and watching:", {
         channelId: channel.id,
         channelType: channel.type,

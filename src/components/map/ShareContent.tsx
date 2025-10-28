@@ -111,7 +111,22 @@ const ShareContent: React.FC<IProps> = ({
       if (chatUser.channelId) {
         // Use existing channel
         const channel = client.channel("messaging", chatUser.channelId);
-        console.log(data?.source);
+
+        // Ensure both users are members (handles reused DM after leaving)
+        try {
+          await channel.watch();
+          const members = Object.values(channel.state.members || {});
+          const memberIds = members.map((m: any) => m.user?.id).filter(Boolean);
+          const needed = [session.user.id, chatUser.id].filter(
+            (id) => id && !memberIds.includes(id)
+          ) as string[];
+          if (needed.length > 0) {
+            await channel.addMembers(needed);
+          }
+        } catch (e) {
+          // non-fatal
+        }
+
         // Send the share message
         await channel.sendMessage({
           text: `Check out ${data?.name} on Orbit! ${
