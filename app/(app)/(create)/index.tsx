@@ -1,48 +1,47 @@
-import React, { useState, useEffect, useRef } from "react";
-import {
-  View,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  StatusBar,
-  Platform,
-  DeviceEventEmitter,
-  ActivityIndicator,
-  Modal,
-  TextInput,
-  Button,
-} from "react-native";
-import { Category, Prompt } from "~/hooks/useMapEvents";
-import { Text } from "~/src/components/ui/text";
-import { ArrowLeft, ArrowRight, Check } from "lucide-react-native";
 import { useActionSheet } from "@expo/react-native-action-sheet";
-import { ImagePickerService } from "~/src/lib/imagePicker";
-import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
-import { useUser } from "~/src/lib/UserProvider";
-import { supabase } from "~/src/lib/supabase";
-import { router } from "expo-router";
-import Toast from "react-native-toast-message";
-import { useLocalSearchParams } from "expo-router";
-import { useTheme } from "~/src/components/ThemeProvider";
+import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
+import { LinearGradient } from "expo-linear-gradient";
+import { router, useLocalSearchParams } from "expo-router";
+import { ArrowLeft } from "lucide-react-native";
+import { MotiView } from "moti";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Button,
+  DeviceEventEmitter,
+  Modal,
+  Platform,
+  ScrollView,
+  StatusBar,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
+import { useEventDetails } from "~/hooks/useEventDetails";
+import { Category, Prompt } from "~/hooks/useMapEvents";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { Text } from "~/src/components/ui/text";
+import { useUser } from "~/src/lib/UserProvider";
+import { haptics } from "~/src/lib/haptics";
+import { ImagePickerService } from "~/src/lib/imagePicker";
+import { getCurrentMapCenter } from "~/src/lib/mapCenter";
+import { supabase } from "~/src/lib/supabase";
 import { draftService } from "~/src/services/draftService";
 import { EventDraft } from "~/src/types/draftTypes";
-import { haptics } from "~/src/lib/haptics";
-import { getCurrentMapCenter } from "~/src/lib/mapCenter";
-import { MotiView } from "moti";
-import { LinearGradient } from "expo-linear-gradient";
-import * as Haptics from "expo-haptics";
-import { useEventDetails } from "~/hooks/useEventDetails";
 
 // Import modular components
+import AdditionalInfoSection from "~/src/components/createpost/AdditionalInfoSection";
 import BasicInfoSection from "~/src/components/createpost/BasicInfoSection";
-import PromptsSection from "~/src/components/createpost/PromptsSection";
 import CategorySection from "~/src/components/createpost/CategorySection";
+import DateTimeSection from "~/src/components/createpost/DateTimeSection";
 import ImagesSection from "~/src/components/createpost/ImagesSection";
 import LocationSection from "~/src/components/createpost/LocationSection";
-import DateTimeSection from "~/src/components/createpost/DateTimeSection";
-import AdditionalInfoSection from "~/src/components/createpost/AdditionalInfoSection";
+import PromptsSection from "~/src/components/createpost/PromptsSection";
 import StepIndicator from "~/src/components/createpost/StepIndicator";
 
 interface EventImage {
@@ -135,7 +134,8 @@ export default function CreateEvent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
   const [loading, setLoading] = useState(false);
-  
+  const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
+
   // Smart validation and focus management
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [focusedField, setFocusedField] = useState<string | null>(null);
@@ -157,13 +157,37 @@ export default function CreateEvent() {
 
   // Define steps for the enhanced step indicator
   const steps = [
-    { id: "basic", title: "Basic Info", description: "Name and description required" },
-    { id: "category", title: "Category", description: "Select activity category" },
-    { id: "prompts", title: "Prompts", description: "Add engaging prompts (optional)" },
+    {
+      id: "basic",
+      title: "Basic Info",
+      description: "Name and description required",
+    },
+    {
+      id: "category",
+      title: "Category",
+      description: "Select activity category",
+    },
+    {
+      id: "prompts",
+      title: "Prompts",
+      description: "Add engaging prompts (optional)",
+    },
     { id: "images", title: "Images", description: "Add at least one photo" },
-    { id: "location", title: "Location", description: "Set your activity location" },
-    { id: "datetime", title: "Date & Time", description: "Schedule your activity" },
-    { id: "additional", title: "Additional", description: "Add extra details (optional)" },
+    {
+      id: "location",
+      title: "Location",
+      description: "Set your activity location",
+    },
+    {
+      id: "datetime",
+      title: "Date & Time",
+      description: "Schedule your activity",
+    },
+    {
+      id: "additional",
+      title: "Additional",
+      description: "Add extra details (optional)",
+    },
   ];
 
   // Function to compare current state with original draft data
@@ -411,7 +435,7 @@ export default function CreateEvent() {
 
       // Use the generic getItemDetails function from useEventDetails hook
       const eventData = await getItemDetails(eventId, "database");
-      
+
       if (!eventData) {
         console.error("❌ [CreateEvent] Event not found");
         return;
@@ -435,44 +459,63 @@ export default function CreateEvent() {
         eventData.end_datetime ? new Date(eventData.end_datetime) : new Date()
       );
       setAddress1(eventData.address || eventData.venue_name || "");
-      
+
       // Get category from categories array (API response format)
       const categoryId = eventData.categories?.[0]?.id || eventData.category_id;
       const categoryName = eventData.categories?.[0]?.name;
-      
+
       console.log("🔍 [CreateEvent] Category ID from event:", categoryId);
       console.log("🔍 [CreateEvent] Category name from event:", categoryName);
-      console.log("🔍 [CreateEvent] Full categories array:", eventData.categories);
-      
+      console.log(
+        "🔍 [CreateEvent] Full categories array:",
+        eventData.categories
+      );
+
       setSelectedTopics(categoryId || "");
-      
+
       if (categoryName) {
         // We got the category name from the API response
         setSelectedTopicsName(categoryName);
-        console.log("✅ [CreateEvent] Set category name from API:", categoryName);
+        console.log(
+          "✅ [CreateEvent] Set category name from API:",
+          categoryName
+        );
       } else if (categoryId) {
         // Fallback: fetch manually if not in API response
-        console.log("⚠️ [CreateEvent] No category name from API, fetching manually...");
+        console.log(
+          "⚠️ [CreateEvent] No category name from API, fetching manually..."
+        );
         const { data: categoryData, error: categoryError } = await supabase
           .from("location_categories")
           .select("name")
           .eq("id", categoryId)
           .single();
-        
-        console.log("🔍 [CreateEvent] Category fetch result:", categoryData, "Error:", categoryError);
-        
+
+        console.log(
+          "🔍 [CreateEvent] Category fetch result:",
+          categoryData,
+          "Error:",
+          categoryError
+        );
+
         if (categoryData) {
           setSelectedTopicsName(categoryData.name);
-          console.log("✅ [CreateEvent] Set category name from manual fetch:", categoryData.name);
+          console.log(
+            "✅ [CreateEvent] Set category name from manual fetch:",
+            categoryData.name
+          );
         } else {
-          console.log("❌ [CreateEvent] Could not find category name for ID:", categoryId);
+          console.log(
+            "❌ [CreateEvent] Could not find category name for ID:",
+            categoryId
+          );
         }
       } else {
         console.log("⚠️ [CreateEvent] No category_id found in event data");
       }
       setIsPrivate(eventData.is_private || false);
       setExternalUrl(eventData.external_url || "");
-
+      setShowAdditionalInfo(!!eventData.external_url);
       // Load images if they exist
       if (eventData.image_urls && eventData.image_urls.length > 0) {
         const loadedImages = eventData.image_urls.map(
@@ -686,7 +729,7 @@ export default function CreateEvent() {
 
     // Determine current step based on what's missing
     let currentStepIndex = 0;
-    
+
     // Find the first incomplete required field
     if (name.trim() === "" || description.trim() === "") {
       currentStepIndex = 0; // Basic Info
@@ -697,7 +740,11 @@ export default function CreateEvent() {
     } else if (locationType === "static" || locationType === "googleApi") {
       if (address1.trim() === "" || locationDetails.address1.trim() === "") {
         currentStepIndex = 4; // Location
-      } else if (startDate && endDate && endDate.getTime() <= startDate.getTime()) {
+      } else if (
+        startDate &&
+        endDate &&
+        endDate.getTime() <= startDate.getTime()
+      ) {
         currentStepIndex = 5; // Date & Time
       } else {
         currentStepIndex = 6; // All required fields complete
@@ -705,7 +752,11 @@ export default function CreateEvent() {
     } else {
       if (locationDetails.city === "" || locationDetails.state === "") {
         currentStepIndex = 4; // Location
-      } else if (startDate && endDate && endDate.getTime() <= startDate.getTime()) {
+      } else if (
+        startDate &&
+        endDate &&
+        endDate.getTime() <= startDate.getTime()
+      ) {
         currentStepIndex = 5; // Date & Time
       } else {
         currentStepIndex = 6; // All required fields complete
@@ -713,7 +764,7 @@ export default function CreateEvent() {
     }
 
     setCurrentStep(currentStepIndex);
-    
+
     // Debug logging
     console.log("Step tracking:", {
       currentStep: currentStepIndex,
@@ -726,7 +777,17 @@ export default function CreateEvent() {
       locationType,
       address1: address1.trim(),
     });
-  }, [name, description, selectedTopics, images, address1, locationDetails, startDate, endDate, locationType]);
+  }, [
+    name,
+    description,
+    selectedTopics,
+    images,
+    address1,
+    locationDetails,
+    startDate,
+    endDate,
+    locationType,
+  ]);
 
   useEffect(() => {
     console.log("createevent_useEffect");
@@ -750,7 +811,9 @@ export default function CreateEvent() {
           const raw = params.prompts;
           console.log("params.prompts>", raw);
 
-          const parsedPrompts_: Prompt[] = Array.isArray(raw) ? raw : JSON.parse(raw as string);
+          const parsedPrompts_: Prompt[] = Array.isArray(raw)
+            ? raw
+            : JSON.parse(raw as string);
           console.log("parsedPrompts_", parsedPrompts_);
           setPrompts(parsedPrompts_ as Partial<Prompt>);
         } catch (e) {
@@ -784,9 +847,9 @@ export default function CreateEvent() {
     if (params.address) {
       setAddress1(params.address as string);
       // Also set locationDetails.address1 for consistency
-      setLocationDetails(prev => ({
+      setLocationDetails((prev) => ({
         ...prev,
-        address1: params.address as string
+        address1: params.address as string,
       }));
     }
 
@@ -887,7 +950,7 @@ export default function CreateEvent() {
   // Smart validation that identifies specific missing fields
   const getValidationErrors = () => {
     const errors: string[] = [];
-    
+
     if (name.trim() === "") {
       errors.push("Event name is required");
     }
@@ -912,7 +975,7 @@ export default function CreateEvent() {
     if (endDate.getTime() <= startDate.getTime()) {
       errors.push("End date must be after start date");
     }
-    
+
     return errors;
   };
 
@@ -923,9 +986,11 @@ export default function CreateEvent() {
     if (selectedTopics === "") return "category";
     if (images.length === 0) return "images";
     if (locationType === "static" || locationType === "googleApi") {
-      if (address1.trim() === "" || locationDetails.address1.trim() === "") return "location";
+      if (address1.trim() === "" || locationDetails.address1.trim() === "")
+        return "location";
     } else {
-      if (locationDetails.city === "" || locationDetails.state === "") return "location";
+      if (locationDetails.city === "" || locationDetails.state === "")
+        return "location";
     }
     if (endDate.getTime() <= startDate.getTime()) return "datetime";
     return null;
@@ -934,7 +999,7 @@ export default function CreateEvent() {
   // Scroll to and focus on a specific field
   const focusOnField = (fieldName: string) => {
     setFocusedField(fieldName);
-    
+
     // Scroll to the appropriate section based on field
     const scrollPositions = {
       name: 0,
@@ -944,16 +1009,17 @@ export default function CreateEvent() {
       location: 900,
       datetime: 1200,
     };
-    
-    const scrollPosition = scrollPositions[fieldName as keyof typeof scrollPositions] || 0;
-    
+
+    const scrollPosition =
+      scrollPositions[fieldName as keyof typeof scrollPositions] || 0;
+
     setTimeout(() => {
       scrollViewRef.current?.scrollTo({
         y: scrollPosition,
         animated: true,
       });
     }, 100);
-    
+
     // Clear focus after 3 seconds
     setTimeout(() => {
       setFocusedField(null);
@@ -962,15 +1028,15 @@ export default function CreateEvent() {
 
   const handleEventCreation = () => {
     const errors = getValidationErrors();
-    
+
     if (errors.length > 0) {
       // Get the first missing field to focus on
       const firstMissingField = getFirstMissingField();
-      
+
       if (firstMissingField) {
         // Focus on the missing field
         focusOnField(firstMissingField);
-        
+
         // Show helpful toast
         Toast.show({
           type: "error",
@@ -1553,36 +1619,41 @@ export default function CreateEvent() {
     if (hasStateChanged() && (name.trim() || description.trim())) {
       await saveDraft(false);
     }
-    
-    console.log("🔍 [CreateEvent] Back button pressed, params.from:", params.from);
-    
+
+    console.log(
+      "🔍 [CreateEvent] Back button pressed, params.from:",
+      params.from
+    );
+
     // Check if we came from a specific screen
-    if (params.from === 'map') {
+    if (params.from === "map") {
       console.log("🔍 [CreateEvent] Going back to map");
       // Came from map, go back to map
       router.push("/(app)/(map)");
-    } else if (params.from === 'home') {
+    } else if (params.from === "home") {
       console.log("🔍 [CreateEvent] Going back to home");
       // Came from home, go back to home
       router.push("/(app)/(home)");
-    } else if (params.from === 'social') {
+    } else if (params.from === "social") {
       console.log("🔍 [CreateEvent] Going back to social");
       // Came from social, go back to social
       router.push("/(app)/(social)");
-    } else if (params.from === 'chat') {
+    } else if (params.from === "chat") {
       console.log("🔍 [CreateEvent] Going back to chat");
       // Came from chat, go back to chat
       router.push("/(app)/(chat)");
-    } else if (params.from === 'details') {
+    } else if (params.from === "details") {
       console.log("🔍 [CreateEvent] Going back to details sheet");
       // Came from details sheet, use normal back navigation to return to the sheet
       router.back();
-    } else if (params.from === 'tab') {
+    } else if (params.from === "tab") {
       console.log("🔍 [CreateEvent] Going back to previous tab");
       // Came from bottom tab, use normal back navigation
       router.back();
     } else {
-      console.log("🔍 [CreateEvent] Using normal back navigation (no from param)");
+      console.log(
+        "🔍 [CreateEvent] Using normal back navigation (no from param)"
+      );
       // No from parameter, use normal back navigation
       router.back();
     }
@@ -1750,11 +1821,12 @@ export default function CreateEvent() {
                 setSelectedPrompts={setSelectedPrompts}
               />
             ) : (
-              <View style={{ alignItems: "center", padding: 40 }}>
-                <Text style={{ fontSize: 16, color: theme.colors.text + "CC" }}>
-                  No prompts available for this category
-                </Text>
-              </View>
+              <></>
+              // <View style={{ alignItems: "center", padding: 20 }}>
+              //   <Text style={{ fontSize: 16, color: theme.colors.text + "CC" }}>
+              //     No prompts available for this category
+              //   </Text>
+              // </View>
             )}
 
             <ImagesSection
@@ -1782,13 +1854,42 @@ export default function CreateEvent() {
               onShowDatePicker={showDatePicker}
               onShowTimePicker={showTimePicker}
             />
-
-            <AdditionalInfoSection
-              externalUrl={externalUrl}
-              setExternalUrl={setExternalUrl}
-              externalUrlTitle={externalTitle}
-              setExternalUrlTitle={setExternalTitle}
-            />
+            <TouchableOpacity
+              style={{
+                borderRadius: 24,
+                padding: 6,
+                marginLeft: 20,
+                borderWidth: 1,
+                alignSelf: "flex-start",
+                borderColor: theme.colors.primary + "88",
+                marginBottom: 24,
+                backgroundColor: showAdditionalInfo
+                  ? theme.colors.primary
+                  : "transparent",
+              }}
+              onPress={() => setShowAdditionalInfo(!showAdditionalInfo)}
+            >
+              <Text
+                style={{
+                  color: showAdditionalInfo
+                    ? theme.colors.background
+                    : theme.colors.text,
+                  fontSize: 14,
+                  lineHeight: 16,
+                  fontWeight: "500",
+                }}
+              >
+                Additional Info
+              </Text>
+            </TouchableOpacity>
+            {showAdditionalInfo && (
+              <AdditionalInfoSection
+                externalUrl={externalUrl}
+                setExternalUrl={setExternalUrl}
+                externalUrlTitle={externalTitle}
+                setExternalUrlTitle={setExternalTitle}
+              />
+            )}
           </MotiView>
         </ScrollView>
 
@@ -1796,7 +1897,12 @@ export default function CreateEvent() {
         <MotiView
           from={{ opacity: 0, translateY: 20 }}
           animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: "spring", damping: 15, stiffness: 300, delay: 200 }}
+          transition={{
+            type: "spring",
+            damping: 15,
+            stiffness: 300,
+            delay: 200,
+          }}
           style={{
             flexDirection: "row",
             justifyContent: "space-between",
@@ -1830,7 +1936,11 @@ export default function CreateEvent() {
               }}
             >
               <LinearGradient
-                colors={validateCheck() ? ["#8B5CF6", "#A855F7"] : ["#8B5CF6", "#7C3AED"]}
+                colors={
+                  validateCheck()
+                    ? ["#8B5CF6", "#A855F7"]
+                    : ["#8B5CF6", "#7C3AED"]
+                }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
@@ -1842,7 +1952,7 @@ export default function CreateEvent() {
                   borderRadius: 20,
                 }}
               />
-              
+
               {isLoading ? (
                 <MotiView
                   from={{ opacity: 0 }}
@@ -1866,16 +1976,21 @@ export default function CreateEvent() {
                       marginRight: 8,
                     }}
                   >
-                    {validateCheck() 
-                      ? (isEditMode ? "Update Activity" : "Create Activity")
-                      : "Complete Required Fields"
-                    }
+                    {validateCheck()
+                      ? isEditMode
+                        ? "Update Activity"
+                        : "Create Activity"
+                      : "Complete Required Fields"}
                   </Text>
                   {validateCheck() ? (
                     <MotiView
                       from={{ scale: 0, rotate: "180deg" }}
                       animate={{ scale: 1, rotate: "0deg" }}
-                      transition={{ type: "spring", damping: 15, stiffness: 300 }}
+                      transition={{
+                        type: "spring",
+                        damping: 15,
+                        stiffness: 300,
+                      }}
                     >
                       <Text style={{ color: "white", fontSize: 16 }}>✨</Text>
                     </MotiView>
@@ -1883,7 +1998,11 @@ export default function CreateEvent() {
                     <MotiView
                       from={{ scale: 0, rotate: "180deg" }}
                       animate={{ scale: 1, rotate: "0deg" }}
-                      transition={{ type: "spring", damping: 15, stiffness: 300 }}
+                      transition={{
+                        type: "spring",
+                        damping: 15,
+                        stiffness: 300,
+                      }}
                     >
                       <Text style={{ color: "white", fontSize: 16 }}>👆</Text>
                     </MotiView>

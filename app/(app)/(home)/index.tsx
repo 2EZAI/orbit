@@ -280,9 +280,15 @@ const TikTokLocationCard = ({ item, onPress }: TikTokLocationCardProps) => {
 
         <View style={styles.tiktokMetaInfo}>
           {item.address && (
-            <View style={styles.tiktokMetaItem}>
+            <View style={[styles.tiktokMetaItem]}>
               <MapPin size={16} color="#fff" />
-              <Text style={styles.tiktokMetaText} numberOfLines={1}>
+              <Text
+                style={[
+                  styles.tiktokMetaText,
+                  item.operation_hours && { maxWidth: screenWidth - 180 },
+                ]}
+                numberOfLines={1}
+              >
                 {item.address}
               </Text>
             </View>
@@ -1924,7 +1930,8 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   tiktokCard: {
-    width: screenWidth,
+    width: screenWidth - 40,
+    marginHorizontal: 20,
     height: 400, // Fixed height that works well on most devices
     position: "relative",
     borderRadius: 20,
@@ -2039,6 +2046,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    width: screenWidth - 80,
   },
   tiktokMetaItem: {
     flexDirection: "row",
