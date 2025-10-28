@@ -41,6 +41,7 @@ export default function SignUp(): JSX.Element {
   const [showConfirmPassword, setShowConfirmPassword] =
     useState<boolean>(false);
   const [agreedToTerms, setAgreedToTerms] = useState<boolean>(false);
+  const [isAgeConfirmed, setIsAgeConfirmed] = useState<boolean>(false);
 
   const handleBack = () => {
     router.back();
@@ -78,11 +79,11 @@ export default function SignUp(): JSX.Element {
 
     if (!agreedToTerms) {
       setError("Please agree to the Terms & Conditions and Privacy Policy.");
-      // Toast.show({
-      //   type: "error",
-      //   text1: "Error",
-      //   text2: "Please agree to the Terms & Conditions and Privacy Policy",
-      // });
+      return;
+    }
+
+    if (!isAgeConfirmed) {
+      setError("Please confirm that you are 13 years or older.");
       return;
     }
 
@@ -471,8 +472,8 @@ export default function SignUp(): JSX.Element {
                   onPress={() => setAgreedToTerms(!agreedToTerms)}
                   style={{
                     flexDirection: "row",
-                    alignItems: "center",
-                    marginBottom: 32,
+                    alignItems: "flex-start",
+                    marginBottom: 16,
                     paddingVertical: 8,
                   }}
                 >
@@ -489,6 +490,7 @@ export default function SignUp(): JSX.Element {
                       justifyContent: "center",
                       alignItems: "center",
                       marginRight: 12,
+                      marginTop: 2,
                     }}
                   >
                     {agreedToTerms && <Check size={12} color="white" />}
@@ -502,23 +504,60 @@ export default function SignUp(): JSX.Element {
                       }}
                     >
                       I agree to the{" "}
-                      <TouchableOpacity
+                      <Text
+                        style={{ color: "#8B5CF6", fontWeight: "600" }}
                         onPress={() => handleOpenLink("https://orbit-app.framer.website/policies/terms-and-conditions")}
-                        style={{ display: "inline" }}
                       >
-                        <Text style={{ color: "#8B5CF6", fontWeight: "600" }}>
-                          Terms & Conditions
-                        </Text>
-                      </TouchableOpacity>{" "}
+                        Terms & Conditions
+                      </Text>{" "}
                       and{" "}
-                      <TouchableOpacity
+                      <Text
+                        style={{ color: "#8B5CF6", fontWeight: "600" }}
                         onPress={() => handleOpenLink("https://orbit-app.framer.website/policies/privacy-and-policy")}
-                        style={{ display: "inline" }}
                       >
-                        <Text style={{ color: "#8B5CF6", fontWeight: "600" }}>
-                          Privacy Policy
-                        </Text>
-                      </TouchableOpacity>
+                        Privacy Policy
+                      </Text>
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Age Confirmation Checkbox */}
+                <TouchableOpacity
+                  onPress={() => setIsAgeConfirmed(!isAgeConfirmed)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    marginBottom: 32,
+                    paddingVertical: 8,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 4,
+                      borderWidth: 2,
+                      borderColor: "#8B5CF6",
+                      backgroundColor: isAgeConfirmed
+                        ? "#8B5CF6"
+                        : "transparent",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginRight: 12,
+                      marginTop: 2,
+                    }}
+                  >
+                    {isAgeConfirmed && <Check size={12} color="white" />}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        color: theme.colors.text + "CC",
+                        lineHeight: 20,
+                      }}
+                    >
+                      I confirm that I am 13 years or older
                     </Text>
                   </View>
                 </TouchableOpacity>
