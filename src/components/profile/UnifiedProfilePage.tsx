@@ -27,6 +27,7 @@ import { useTheme } from "~/src/components/ThemeProvider";
 import { RichText } from "~/src/components/ui/rich-text";
 import { Text } from "~/src/components/ui/text";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
+import { SocialMediaLinks } from "~/src/components/profile/SocialMediaLinks";
 import { useAuth } from "~/src/lib/auth";
 import { useChat } from "~/src/lib/chat";
 import { supabase } from "~/src/lib/supabase";
@@ -104,6 +105,7 @@ export function UnifiedProfilePage({
       let userData;
       if (isCurrentUser && currentUser) {
         userData = {
+          ...currentUser,
           id: currentUser.id,
           username: currentUser.username,
           first_name: currentUser.first_name,
@@ -155,7 +157,6 @@ export function UnifiedProfilePage({
           .select("*", { count: "exact" })
           .eq("created_by", userData.id),
       ]);
-
       setProfile({
         ...userData,
         followers_count: followersCount || 0,
@@ -611,6 +612,18 @@ export function UnifiedProfilePage({
               </RichText>
             </View>
           )}
+
+          {/* Social Media Links */}
+          <View style={{ alignItems: "center", marginBottom: 20 }}>
+            <SocialMediaLinks
+              instagram={profile.instagram}
+              twitter={profile.twitter}
+              facebook={profile.facebook}
+              linkedin={profile.linkedin}
+              tiktok={profile.tiktok}
+              customLink={profile.customLink}
+            />
+          </View>
 
           {/* Stats Row */}
           <View

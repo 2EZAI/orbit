@@ -20,6 +20,13 @@ export interface User {
   education: string;
   gender: string;
   occupation_id: string;
+  // Social media fields
+  instagram: string | null;
+  twitter: string | null;
+  facebook: string | null;
+  linkedin: string | null;
+  tiktok: string | null;
+  customLink: string | null;
 }
 
 export interface UserLoation {
@@ -62,6 +69,7 @@ export interface UseUserReturn {
   fetchOtherUser: (userId: string) => Promise<void>;
   fetchUserLocation: () => Promise<void>;
   refreshUserTopics: () => Promise<void>;
+  getUserData: (key: string) => Promise<any>;
 }
 
 export function useUserData(): UseUserReturn {

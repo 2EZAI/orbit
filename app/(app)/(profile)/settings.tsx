@@ -56,6 +56,7 @@ import { EmailModal } from "~/src/components/settings/EmailModal";
 import { InterestsModal } from "~/src/components/settings/InterestsModal";
 import { LocationPreferencesModal } from "~/src/components/settings/LocationPreferencesModal";
 import { PrivacyModal } from "~/src/components/settings/PrivacyModal";
+import { SocialMediaSettings } from "~/src/components/settings/SocialMediaSettings";
 
 interface SettingItemProps {
   icon: React.ReactNode;
@@ -178,6 +179,7 @@ export default function SettingsScreen() {
   const [showInterests, setShowInterests] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [showSocialMedia, setShowSocialMedia] = useState(false);
 
   // Log user ID on mount
   React.useEffect(() => {
@@ -453,6 +455,11 @@ export default function SettingsScreen() {
           icon={<Mail size={20} color={theme.colors.primary} />}
           title="Update Email"
           onPress={() => setShowEmail(true)}
+        />
+        <SettingItem
+          icon={<ExternalLink size={20} color={theme.colors.primary} />}
+          title="Social Media Links"
+          onPress={() => setShowSocialMedia(true)}
         />
         <SettingItem
           icon={<Lock size={20} color={theme.colors.primary} />}
@@ -1049,6 +1056,12 @@ export default function SettingsScreen() {
           setChatShareSelection({ show: false, proposal: null });
         }}
         onSelectChat={handleChatSelect}
+      />
+      
+      {/* Social Media Settings Modal */}
+      <SocialMediaSettings
+        isOpen={showSocialMedia}
+        onClose={() => setShowSocialMedia(false)}
       />
     </SafeAreaView>
   );
