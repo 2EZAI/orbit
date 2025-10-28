@@ -145,6 +145,7 @@ export default function CreateEvent() {
   const [isDraftSaving, setIsDraftSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
+  const [originalDraftData, setOriginalDraftData] = useState<EventDraft | null>(null);
 
   // Edit mode state
   const [isEditMode, setIsEditMode] = useState(false);
@@ -165,6 +166,56 @@ export default function CreateEvent() {
     { id: "additional", title: "Additional", description: "Add extra details (optional)" },
   ];
 
+  // Function to compare current state with original draft data
+  const hasStateChanged = (): boolean => {
+    if (!originalDraftData) {
+      // If no original data, check if there's any meaningful content
+      return name.trim().length > 0 || description.trim().length > 0 || images.length > 0;
+    }
+
+    // Compare all relevant fields
+    const currentState = {
+      name: name.trim(),
+      description: description.trim(),
+      start_datetime: startDate.toISOString(),
+      end_datetime: endDate.toISOString(),
+      venue_name: address1.trim(),
+      address: address1.trim(),
+      city: locationDetails.city.trim(),
+      state: locationDetails.state.trim(),
+      postal_code: locationDetails.zip.trim(),
+      latitude: latitude || 0,
+      longitude: longitude || 0,
+      category_id: selectedTopics,
+      category_name: selectedTopicsName,
+      is_private: isPrivate,
+      external_url: externalUrl.trim(),
+      image_urls: images.map(img => img.uri),
+    };
+
+    const originalState = {
+      name: originalDraftData.name?.trim() || '',
+      description: originalDraftData.description?.trim() || '',
+      start_datetime: originalDraftData.start_datetime || '',
+      end_datetime: originalDraftData.end_datetime || '',
+      venue_name: originalDraftData.venue_name?.trim() || '',
+      address: originalDraftData.address?.trim() || '',
+      city: originalDraftData.city?.trim() || '',
+      state: originalDraftData.state?.trim() || '',
+      postal_code: originalDraftData.postal_code?.trim() || '',
+      latitude: 0, // EventDraft doesn't have latitude/longitude
+      longitude: 0,
+      category_id: originalDraftData.category_id || '',
+      category_name: '', // EventDraft doesn't have category_name
+      is_private: originalDraftData.is_private || false,
+      external_url: originalDraftData.external_url?.trim() || '',
+      image_urls: originalDraftData.image_urls || [],
+    };
+
+    // Deep comparison
+    return JSON.stringify(currentState) !== JSON.stringify(originalState);
+  };
+
   // Auto-save draft functionality
   const saveDraft = async (isManual = false) => {
     if (isDraftSaving) return;
@@ -172,6 +223,19 @@ export default function CreateEvent() {
     // Don't save drafts in edit mode
     if (isEditMode) {
       console.log("✏️ [CreateEvent] Edit mode - skipping draft save");
+      return;
+    }
+
+    // Check if there are actual changes before saving
+    if (!hasStateChanged()) {
+      console.log("📝 [CreateEvent] No changes detected - skipping draft save");
+      if (isManual) {
+        Toast.show({
+          type: "info",
+          text1: "No Changes",
+          text2: "No changes to save",
+        });
+      }
       return;
     }
 
@@ -279,6 +343,7 @@ export default function CreateEvent() {
         if (specificDraft) {
           console.log("✅ [CreateEvent] Draft found, restoring data");
           setCurrentDraft(specificDraft);
+          setOriginalDraftData(specificDraft); // Store original data for comparison
           restoreDraftData(specificDraft);
           return;
         } else {
@@ -315,6 +380,7 @@ export default function CreateEvent() {
             matchingDraft.id
           );
           setCurrentDraft(matchingDraft);
+          setOriginalDraftData(matchingDraft); // Store original data for comparison
           restoreDraftData(matchingDraft);
         } else {
           console.log(
@@ -524,6 +590,7 @@ export default function CreateEvent() {
       try {
         await draftService.deleteDraft(currentDraft.id);
         setCurrentDraft(null);
+        setOriginalDraftData(null);
         setHasUnsavedChanges(false);
       } catch (error) {
         console.error("Error clearing draft:", error);
@@ -549,12 +616,10 @@ export default function CreateEvent() {
 
   // Track changes for save draft button state (NO AUTO-SAVE)
   useEffect(() => {
-    // Only track if user has made changes (for button state) - NO AUTO-SAVE
-    if (
-      draftLoaded &&
-      (name.trim().length > 0 || description.trim().length > 0)
-    ) {
-      setHasUnsavedChanges(true);
+    // Use the new comparison function to determine if there are changes
+    if (draftLoaded) {
+      const hasChanges = hasStateChanged();
+      setHasUnsavedChanges(hasChanges);
     } else {
       setHasUnsavedChanges(false);
     }
@@ -570,7 +635,10 @@ export default function CreateEvent() {
     isPrivate,
     externalUrl,
     images,
+    locationDetails,
+    selectedTopicsName,
     draftLoaded,
+    originalDraftData, // Add this dependency
   ]);
 
   // Step completion tracking
@@ -1481,8 +1549,8 @@ export default function CreateEvent() {
   };
 
   const handleBack = async () => {
-    // Save draft before navigating away
-    if (hasUnsavedChanges && (name.trim() || description.trim())) {
+    // Save draft before navigating away only if there are actual changes
+    if (hasStateChanged() && (name.trim() || description.trim())) {
       await saveDraft(false);
     }
     
