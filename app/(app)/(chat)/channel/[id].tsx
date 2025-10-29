@@ -604,6 +604,7 @@ export default function ChannelScreen() {
             handleEventPress={(data: UnifiedData) => {
               setSelectedEvent(data);
             }}
+            userId={user?.id || ""}
           />
         );
       }
@@ -619,6 +620,7 @@ export default function ChannelScreen() {
           handleEventPress={(data: UnifiedData) => {
             setSelectedEvent(data);
           }}
+          userId={user?.id || ""}
         />
       );
     }

@@ -13,6 +13,7 @@ interface ChatEventComponentProps {
   handleEventPress: (event: UnifiedData) => void;
   // Optional: Pass data directly for locations (from attachment)
   directData?: UnifiedData;
+  userId: string;
 }
 const ChatEventComponent = ({
   eventId,
@@ -20,9 +21,9 @@ const ChatEventComponent = ({
   handleEventPress,
   message,
   directData,
+  userId,
 }: ChatEventComponentProps) => {
   const { theme } = useTheme();
-  const { user } = useUserData();
 
   const { getEventDetails } = useEventDetails();
   const [data, setData] = useState<UnifiedData>();
@@ -48,20 +49,19 @@ const ChatEventComponent = ({
       }
     };
     fetchData();
-  }, [eventId, source, user, directData]);
+  }, [eventId, source, directData]);
   return data ? (
     <View
       style={[
         styles.container,
-        user?.id === message?.user?.id ? { alignSelf: "flex-end" } : {},
+        userId === message?.user?.id ? { alignSelf: "flex-end" } : {},
       ]}
     >
       <SocialEventCard
         data={data as any}
         onDataSelect={handleEventPress}
         onShowDetails={() => handleEventPress(data)}
-        treatAsEvent={source !== "location"}
-        isLocation={source === "location"}
+        treatAsEvent={source === "location"}
       />
     </View>
   ) : (
