@@ -127,14 +127,32 @@ const ShareContent: React.FC<IProps> = ({
           // non-fatal
         }
 
-        // Send the share message
+        // Determine attachment type based on data source
+        const attachmentType = data?.source === "ticketmaster" 
+          ? "ticketmaster_share"
+          : isEventType 
+            ? "event_share" 
+            : "location_share";
+        
+        const attachmentId = data?.source === "ticketmaster" || isEventType
+          ? "event_id"
+          : "location_id";
+
+        // Send the share message with attachment (for web compatibility)
         await channel.sendMessage({
           text: `Check out ${data?.name} on Orbit! ${
-            data?.description
-          } https://orbit-redirects.vercel.app/?action=share&eventId=${
-            data?.id || ""
+            data?.description || ""
           }`,
-          // Keep custom data tiny to stay under Stream's 5KB custom data limit
+          // Send attachment (like web app) for cross-platform compatibility
+          attachments: [
+            {
+              type: attachmentType,
+              [attachmentId]: data?.id || null,
+              event_data: isEventType || data?.source === "ticketmaster" ? data : undefined,
+              location_data: !isEventType && data?.source !== "ticketmaster" ? data : undefined,
+            },
+          ],
+          // Also keep data for backwards compatibility with mobile
           data: {
             type: "event/share",
             eventId: data?.id || null,
@@ -152,13 +170,33 @@ const ShareContent: React.FC<IProps> = ({
         });
 
         await channel.watch();
-        // Send the share message
+        
+        // Determine attachment type based on data source
+        const attachmentType = data?.source === "ticketmaster" 
+          ? "ticketmaster_share"
+          : isEventType 
+            ? "event_share" 
+            : "location_share";
+        
+        const attachmentId = data?.source === "ticketmaster" || isEventType
+          ? "event_id"
+          : "location_id";
+
+        // Send the share message with attachment (for web compatibility)
         await channel.sendMessage({
           text: `Check out ${data?.name} on Orbit! ${
-            data?.description
-          } https://orbit-redirects.vercel.app/?action=share&eventId=${
-            data?.id || ""
+            data?.description || ""
           }`,
+          // Send attachment (like web app) for cross-platform compatibility
+          attachments: [
+            {
+              type: attachmentType,
+              [attachmentId]: data?.id || null,
+              event_data: isEventType || data?.source === "ticketmaster" ? data : undefined,
+              location_data: !isEventType && data?.source !== "ticketmaster" ? data : undefined,
+            },
+          ],
+          // Also keep data for backwards compatibility with mobile
           data: {
             type: "event/share",
             eventId: data?.id || null,

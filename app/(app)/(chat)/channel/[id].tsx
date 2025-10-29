@@ -30,6 +30,7 @@ import { ArrowLeft } from "lucide-react-native";
 import ChatEventComponent from "~/src/components/chat/ChatEventComponent";
 import { SharedPostMessage } from "~/src/components/chat/SharedPostMessage";
 import { useTheme } from "~/src/components/ThemeProvider";
+import { useUserData } from "~/hooks/useUserData";
 import { useVideo } from "~/src/lib/video";
 import {
   UnifiedData,
@@ -463,6 +464,7 @@ export default function ChannelScreen() {
   const [memberCount, setMemberCount] = useState<number>(0);
   const channelRef = useRef<ChannelType | null>(null);
   const { theme } = useTheme();
+  const { user } = useUserData();
   const [orbitMsg, setorbitMsg] = useState<any>(null);
   const { videoClient } = useVideo();
   const [chatShareSelection, setChatShareSelection] = useState<{
@@ -485,11 +487,21 @@ export default function ChannelScreen() {
       (attachment: any) => attachment.type === "post_share"
     );
 
+    // Check for event/location/ticketmaster share attachments (from web app)
+    const eventShareAttachment = message?.attachments?.find(
+      (attachment: any) => 
+        attachment.type === "event_share" || 
+        attachment.type === "location_share" || 
+        attachment.type === "ticketmaster_share"
+    );
+
     console.log(
       "BulletproofMessage: Message",
       message?.id,
       "hasPostShare:",
       hasPostShare,
+      "eventShareAttachment:",
+      eventShareAttachment,
       "attachments:",
       message?.attachments
     );
@@ -525,6 +537,96 @@ export default function ChannelScreen() {
         />
       );
     }
+    
+    // Handle event/location/ticketmaster share attachments (from web app)
+    if (eventShareAttachment) {
+      const attachmentEventId = eventShareAttachment.event_id || eventShareAttachment.location_id;
+      const attachmentSource = eventShareAttachment.type === "ticketmaster_share"
+        ? "ticketmaster"
+        : eventShareAttachment.type === "location_share"
+          ? "location"
+          : "event";
+      
+      console.log(
+        "BulletproofMessage: Rendering event from attachment for message:",
+        message.id,
+        "eventId:",
+        attachmentEventId,
+        "source:",
+        attachmentSource,
+        "attachment:",
+        eventShareAttachment
+      );
+      
+      // For ALL attachment types, use data directly (like web app) - no API calls
+      let unifiedData: UnifiedData;
+      
+      if (eventShareAttachment.type === "location_share" && eventShareAttachment.location_data) {
+        // Transform location data to match UnifiedData format
+        const locationData = eventShareAttachment.location_data;
+        unifiedData = {
+          id: locationData.id,
+          name: locationData.name,
+          description: locationData.description,
+          image_urls: locationData.image_urls || [],
+          start_datetime: new Date().toISOString(), // Locations don't have start time
+          address: locationData.address,
+          venue_name: locationData.name,
+          city: locationData.city,
+          state: locationData.state,
+          latitude: locationData.latitude,
+          longitude: locationData.longitude,
+          source: "location",
+          is_ticketmaster: false,
+        };
+      } else if (eventShareAttachment.event_data) {
+        // Use event_data directly for events and ticketmaster
+        const eventData = eventShareAttachment.event_data;
+        unifiedData = {
+          id: eventData.id,
+          name: eventData.name,
+          description: eventData.description,
+          image_urls: eventData.image_urls || [],
+          start_datetime: eventData.start_datetime || new Date().toISOString(),
+          address: eventData.address,
+          venue_name: eventData.venue_name || eventData.name,
+          city: eventData.city,
+          state: eventData.state,
+          latitude: eventData.latitude,
+          longitude: eventData.longitude,
+          source: attachmentSource,
+          is_ticketmaster: attachmentSource === "ticketmaster",
+        };
+      } else {
+        // Fallback: use ChatEventComponent with API call (for backwards compatibility)
+        return (
+          <ChatEventComponent
+            key={`event-attachment-${message.id}`}
+            message={message}
+            eventId={attachmentEventId}
+            source={attachmentSource}
+            handleEventPress={(data: UnifiedData) => {
+              setSelectedEvent(data);
+            }}
+          />
+        );
+      }
+      
+      // Use ChatEventComponent with direct data (no API call)
+      return (
+        <ChatEventComponent
+          key={`attachment-${message.id}`}
+          message={message}
+          eventId={attachmentEventId}
+          source={attachmentSource}
+          directData={unifiedData}
+          handleEventPress={(data: UnifiedData) => {
+            setSelectedEvent(data);
+          }}
+        />
+      );
+    }
+    
     if (proposal) {
       return (
         <ChatProposalComponent
@@ -536,6 +638,8 @@ export default function ChannelScreen() {
         />
       );
     }
+    
+    // Handle legacy message.data format (for backwards compatibility)
     if (eventId && eventSource) {
       return (
         <ChatEventComponent
@@ -576,18 +680,40 @@ export default function ChannelScreen() {
           chatShareSelection.event.id,
           chatShareSelection.event?.source || "event"
         );
+        
+        // Determine attachment type based on event source
+        const eventSource = chatShareSelection.event?.source ||
+          (chatShareSelection.event?.is_ticketmaster
+            ? "ticketmaster"
+            : "event");
+        
+        const attachmentType = eventSource === "ticketmaster" 
+          ? "ticketmaster_share"
+          : eventSource === "location"
+            ? "location_share"
+            : "event_share";
+        
+        const attachmentId = eventSource === "location"
+          ? "location_id"
+          : "event_id";
+
         const message = await channel.sendMessage({
           text: `Check out ${chatShareSelection.event.name} on Orbit! ${
             chatShareSelection.event?.description || ""
           }`,
-
+          // Send attachment (like web app) for cross-platform compatibility
+          attachments: [
+            {
+              type: attachmentType,
+              [attachmentId]: chatShareSelection.event?.id || null,
+              event_data: eventSource !== "location" ? chatShareSelection.event : undefined,
+              location_data: eventSource === "location" ? chatShareSelection.event : undefined,
+            },
+          ],
+          // Also keep data for backwards compatibility with mobile
           data: {
             eventId: chatShareSelection.event?.id || null,
-            source:
-              chatShareSelection.event?.source ||
-              (chatShareSelection.event?.is_ticketmaster
-                ? "ticketmaster"
-                : "event"),
+            source: eventSource,
             type: "event/share",
           },
         });
@@ -1195,5 +1321,9 @@ const styles = StyleSheet.create({
   pollFooterSubtext: {
     fontSize: 12,
     opacity: 0.7,
+  },
+
+  container: {
+    width: "70%",
   },
 });

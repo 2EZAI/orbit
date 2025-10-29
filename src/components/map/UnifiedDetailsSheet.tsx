@@ -79,6 +79,11 @@ const isEventData = (data: UnifiedData, isEvent?: boolean): boolean => {
     return isEvent;
   }
 
+  // Check source field first - if it's explicitly "location", it's a location
+  if (data.source === "location") {
+    return false;
+  }
+
   // Use explicit type field first, then fall back to field detection
   if (data.type) {
     return data.type === "user_created" || data.type === "event";

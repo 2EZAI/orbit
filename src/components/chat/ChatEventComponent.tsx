@@ -11,12 +11,15 @@ interface ChatEventComponentProps {
   source: string;
   message: any;
   handleEventPress: (event: UnifiedData) => void;
+  // Optional: Pass data directly for locations (from attachment)
+  directData?: UnifiedData;
 }
 const ChatEventComponent = ({
   eventId,
   source,
   handleEventPress,
   message,
+  directData,
 }: ChatEventComponentProps) => {
   const { theme } = useTheme();
   const { user } = useUserData();
@@ -26,15 +29,27 @@ const ChatEventComponent = ({
   console.log(
     "ChatEventComponent message in ChatEventComponent>",
     eventId,
-    source
+    source,
+    "directData:",
+    directData
   );
+  
   useEffect(() => {
+    // If we have direct data (from attachment), use it instead of fetching
+    if (directData) {
+      console.log("ChatEventComponent: Using direct data, no API call needed");
+      setData(directData);
+      return;
+    }
+    
+    // Only fetch if we don't have direct data
+    console.log("ChatEventComponent: No direct data, fetching from API");
     const fetchData = async () => {
       const result = await getEventDetails(eventId, source);
       setData(result);
     };
     fetchData();
-  }, [eventId, source, user]);
+  }, [eventId, source, user, directData]);
   return data ? (
     <View
       style={[
@@ -47,6 +62,7 @@ const ChatEventComponent = ({
         onDataSelect={handleEventPress}
         onShowDetails={() => handleEventPress(data)}
         treatAsEvent={false}
+        isLocation={source === "location"}
       />
     </View>
   ) : (

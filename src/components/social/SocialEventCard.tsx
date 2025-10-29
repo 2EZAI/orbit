@@ -26,6 +26,7 @@ interface SocialEventCardProps {
   onDataSelect?: (data: UnifiedData) => void;
   onShowDetails?: () => void;
   treatAsEvent?: boolean;
+  isLocation?: boolean;
 }
 
 // Type guards
@@ -256,6 +257,7 @@ export function SocialEventCard({
   onDataSelect,
   onShowDetails,
   treatAsEvent = true,
+  isLocation = false,
 }: SocialEventCardProps) {
 
   const { UpdateEventStatus, fetchEventDetail, fetchLocationDetail } =
@@ -575,7 +577,7 @@ export function SocialEventCard({
           onPress={() => handleContextAction("details")}
         >
           <Text className="text-sm font-semibold text-center text-white">
-            View Event
+            {isLocation ? "View Location" : "View Event"}
           </Text>
         </TouchableOpacity>
       </View>
