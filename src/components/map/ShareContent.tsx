@@ -3,14 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { ClipboardList, Share2, Users } from "lucide-react-native";
 import { MotiView } from "moti";
 import React, { useEffect, useState } from "react";
-import {
-  Dimensions,
-  ScrollView,
-  Share,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ScrollView, Share, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Avatar,
@@ -103,11 +96,52 @@ const ShareContent: React.FC<IProps> = ({
 
   const handleShareToChat = async (chatUser: any) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
+    const attachmentType =
+      data?.source === "ticketmaster"
+        ? "ticketmaster"
+        : isEventType
+        ? "event"
+        : "location";
+    const createPostShareAttachment = (
+      type: "event" | "location" | "ticketmaster"
+    ) => {
+      switch (type) {
+        case "event":
+          const eventData = data;
+          return {
+            type: "event_share",
+            event_id: eventData?.id || "",
+            event_data: {
+              id: eventData?.id,
+              name: eventData?.name,
+              description: eventData?.description,
+            },
+          };
+        case "location":
+          const locationData = data;
+          return {
+            type: "location_share",
+            location_id: locationData?.id || "",
+            location_data: locationData,
+          };
+        case "ticketmaster":
+          const ticketmasterData = data;
+          return {
+            type: "ticketmaster_share",
+            event_id: ticketmasterData?.id || "",
+            event_data: ticketmasterData,
+          };
+        default:
+          return null;
+      }
+    };
+    // Send the share message with attachment (for web compatibility)
+    const attachment = createPostShareAttachment(attachmentType);
     try {
       if (!client || !session?.user?.id) return;
 
       // Check if we already have a channel with this user
+
       if (chatUser.channelId) {
         // Use existing channel
         const channel = client.channel("messaging", chatUser.channelId);
@@ -127,37 +161,11 @@ const ShareContent: React.FC<IProps> = ({
           // non-fatal
         }
 
-        // Determine attachment type based on data source
-        const attachmentType = data?.source === "ticketmaster" 
-          ? "ticketmaster_share"
-          : isEventType 
-            ? "event_share" 
-            : "location_share";
-        
-        const attachmentId = data?.source === "ticketmaster" || isEventType
-          ? "event_id"
-          : "location_id";
-
-        // Send the share message with attachment (for web compatibility)
         await channel.sendMessage({
-          text: `Check out ${data?.name} on Orbit! ${
-            data?.description || ""
-          }`,
+          text: `Check out ${data?.name} on Orbit!`,
+          type: "regular",
           // Send attachment (like web app) for cross-platform compatibility
-          attachments: [
-            {
-              type: attachmentType,
-              [attachmentId]: data?.id || null,
-              event_data: isEventType || data?.source === "ticketmaster" ? data : undefined,
-              location_data: !isEventType && data?.source !== "ticketmaster" ? data : undefined,
-            },
-          ],
-          // Also keep data for backwards compatibility with mobile
-          data: {
-            type: "event/share",
-            eventId: data?.id || null,
-            source: data?.source || "event",
-          },
+          attachments: attachment ? [attachment] : [],
         });
       } else {
         // Create new channel with this user (following your existing pattern)
@@ -170,38 +178,12 @@ const ShareContent: React.FC<IProps> = ({
         });
 
         await channel.watch();
-        
-        // Determine attachment type based on data source
-        const attachmentType = data?.source === "ticketmaster" 
-          ? "ticketmaster_share"
-          : isEventType 
-            ? "event_share" 
-            : "location_share";
-        
-        const attachmentId = data?.source === "ticketmaster" || isEventType
-          ? "event_id"
-          : "location_id";
-
         // Send the share message with attachment (for web compatibility)
         await channel.sendMessage({
-          text: `Check out ${data?.name} on Orbit! ${
-            data?.description || ""
-          }`,
+          text: `Check out ${data?.name} on Orbit!`,
+          type: "regular",
           // Send attachment (like web app) for cross-platform compatibility
-          attachments: [
-            {
-              type: attachmentType,
-              [attachmentId]: data?.id || null,
-              event_data: isEventType || data?.source === "ticketmaster" ? data : undefined,
-              location_data: !isEventType && data?.source !== "ticketmaster" ? data : undefined,
-            },
-          ],
-          // Also keep data for backwards compatibility with mobile
-          data: {
-            type: "event/share",
-            eventId: data?.id || null,
-            source: data?.source || "event",
-          },
+          attachments: attachment ? [attachment] : [],
         });
       }
 

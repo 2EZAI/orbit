@@ -259,7 +259,7 @@ export function SocialEventCard({
   treatAsEvent = true,
   isLocation = false,
 }: SocialEventCardProps) {
-
+  console.log("SocialEventCard data:", data);
   const { UpdateEventStatus, fetchEventDetail, fetchLocationDetail } =
     useUpdateEvents();
   const router = useRouter();
@@ -474,7 +474,7 @@ export function SocialEventCard({
         stats: [
           {
             icon: <MapPin size={12} color="white" />,
-            label: "Location",
+            label: locationDetail.address || "No address",
           },
           // Only show rating if it actually exists
           ...((locationDetail as any).rating
@@ -529,17 +529,20 @@ export function SocialEventCard({
       <View className="flex-1 justify-between p-3">
         {/* Header with Icon and Category */}
         <View className="flex-row justify-between items-center">
-          <View className="flex-row items-center">
-            <Text className="mr-2 text-lg">{itemIcon}</Text>
-            <View
-              style={{ backgroundColor: themeColors.primary }}
-              className="px-2 py-1 rounded-full"
-            >
-              <Text className="text-xs font-semibold text-white">
-                {displayValues.categoryName}
-              </Text>
+          {!isLocation && (
+            <View className="flex-row items-center">
+              <Text className="mr-2 text-lg">{itemIcon}</Text>
+
+              <View
+                style={{ backgroundColor: themeColors.primary }}
+                className="px-2 py-1 rounded-full"
+              >
+                <Text className="text-xs font-semibold text-white">
+                  {displayValues.categoryName}
+                </Text>
+              </View>
             </View>
-          </View>
+          )}
         </View>
 
         {/* Main Content */}

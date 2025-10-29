@@ -33,20 +33,19 @@ const ChatEventComponent = ({
     "directData:",
     directData
   );
-  
+
   useEffect(() => {
     // If we have direct data (from attachment), use it instead of fetching
-    if (directData) {
-      console.log("ChatEventComponent: Using direct data, no API call needed");
-      setData(directData);
-      return;
-    }
-    
+
     // Only fetch if we don't have direct data
     console.log("ChatEventComponent: No direct data, fetching from API");
     const fetchData = async () => {
-      const result = await getEventDetails(eventId, source);
-      setData(result);
+      if (source === "ticketmaster") {
+        const result = await getEventDetails(eventId, source);
+        setData(result);
+      } else {
+        setData(directData);
+      }
     };
     fetchData();
   }, [eventId, source, user, directData]);
@@ -61,7 +60,7 @@ const ChatEventComponent = ({
         data={data as any}
         onDataSelect={handleEventPress}
         onShowDetails={() => handleEventPress(data)}
-        treatAsEvent={false}
+        treatAsEvent={source !== "location"}
         isLocation={source === "location"}
       />
     </View>

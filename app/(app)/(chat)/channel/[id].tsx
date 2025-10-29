@@ -471,10 +471,12 @@ export default function ChannelScreen() {
     proposal: IProposal | null;
     event: UnifiedData | null;
     show: boolean;
+    isEventType: boolean;
   }>({
     proposal: null,
     event: null,
     show: false,
+    isEventType: false,
   });
   const BulletproofMessage = (props: any) => {
     const eventId = props.message?.data?.eventId;
@@ -489,9 +491,9 @@ export default function ChannelScreen() {
 
     // Check for event/location/ticketmaster share attachments (from web app)
     const eventShareAttachment = message?.attachments?.find(
-      (attachment: any) => 
-        attachment.type === "event_share" || 
-        attachment.type === "location_share" || 
+      (attachment: any) =>
+        attachment.type === "event_share" ||
+        attachment.type === "location_share" ||
         attachment.type === "ticketmaster_share"
     );
 
@@ -537,31 +539,25 @@ export default function ChannelScreen() {
         />
       );
     }
-    
+
     // Handle event/location/ticketmaster share attachments (from web app)
     if (eventShareAttachment) {
-      const attachmentEventId = eventShareAttachment.event_id || eventShareAttachment.location_id;
-      const attachmentSource = eventShareAttachment.type === "ticketmaster_share"
-        ? "ticketmaster"
-        : eventShareAttachment.type === "location_share"
+      const attachmentEventId =
+        eventShareAttachment.event_id || eventShareAttachment.location_id;
+      const attachmentSource =
+        eventShareAttachment.type === "ticketmaster_share"
+          ? "ticketmaster"
+          : eventShareAttachment.type === "location_share"
           ? "location"
           : "event";
-      
-      console.log(
-        "BulletproofMessage: Rendering event from attachment for message:",
-        message.id,
-        "eventId:",
-        attachmentEventId,
-        "source:",
-        attachmentSource,
-        "attachment:",
-        eventShareAttachment
-      );
-      
+
       // For ALL attachment types, use data directly (like web app) - no API calls
       let unifiedData: UnifiedData;
-      
-      if (eventShareAttachment.type === "location_share" && eventShareAttachment.location_data) {
+
+      if (
+        eventShareAttachment.type === "location_share" &&
+        eventShareAttachment.location_data
+      ) {
         // Transform location data to match UnifiedData format
         const locationData = eventShareAttachment.location_data;
         unifiedData = {
@@ -611,7 +607,7 @@ export default function ChannelScreen() {
           />
         );
       }
-      
+
       // Use ChatEventComponent with direct data (no API call)
       return (
         <ChatEventComponent
@@ -626,7 +622,7 @@ export default function ChannelScreen() {
         />
       );
     }
-    
+
     if (proposal) {
       return (
         <ChatProposalComponent
@@ -638,7 +634,7 @@ export default function ChannelScreen() {
         />
       );
     }
-    
+
     // Handle legacy message.data format (for backwards compatibility)
     if (eventId && eventSource) {
       return (
@@ -675,47 +671,51 @@ export default function ChannelScreen() {
         // router.push(`/(app)/(chat)/channel/${channel.id}`);
       }
       if (chatShareSelection.event) {
-        console.log(
-          "Sharing event to chat:",
-          chatShareSelection.event.id,
-          chatShareSelection.event?.source || "event"
-        );
-        
-        // Determine attachment type based on event source
-        const eventSource = chatShareSelection.event?.source ||
-          (chatShareSelection.event?.is_ticketmaster
+        const attachmentType =
+          chatShareSelection.event?.source === "ticketmaster"
             ? "ticketmaster"
-            : "event");
-        
-        const attachmentType = eventSource === "ticketmaster" 
-          ? "ticketmaster_share"
-          : eventSource === "location"
-            ? "location_share"
-            : "event_share";
-        
-        const attachmentId = eventSource === "location"
-          ? "location_id"
-          : "event_id";
-
-        const message = await channel.sendMessage({
-          text: `Check out ${chatShareSelection.event.name} on Orbit! ${
-            chatShareSelection.event?.description || ""
-          }`,
+            : chatShareSelection.isEventType
+            ? "event"
+            : "location";
+        const createPostShareAttachment = (
+          type: "event" | "location" | "ticketmaster"
+        ) => {
+          switch (type) {
+            case "event":
+              const eventData = chatShareSelection.event;
+              return {
+                type: "event_share",
+                event_id: eventData?.id || "",
+                event_data: {
+                  id: eventData?.id,
+                  name: eventData?.name,
+                  description: eventData?.description,
+                },
+              };
+            case "location":
+              const locationData = chatShareSelection.event;
+              return {
+                type: "location_share",
+                location_id: locationData?.id || "",
+                location_data: locationData,
+              };
+            case "ticketmaster":
+              const ticketmasterData = chatShareSelection.event;
+              return {
+                type: "ticketmaster_share",
+                event_id: ticketmasterData?.id || "",
+                event_data: ticketmasterData,
+              };
+            default:
+              return null;
+          }
+        };
+        const attachment = createPostShareAttachment(attachmentType);
+        await channel.sendMessage({
+          text: `Check out ${chatShareSelection.event?.name} on Orbit!`,
+          type: "regular",
           // Send attachment (like web app) for cross-platform compatibility
-          attachments: [
-            {
-              type: attachmentType,
-              [attachmentId]: chatShareSelection.event?.id || null,
-              event_data: eventSource !== "location" ? chatShareSelection.event : undefined,
-              location_data: eventSource === "location" ? chatShareSelection.event : undefined,
-            },
-          ],
-          // Also keep data for backwards compatibility with mobile
-          data: {
-            eventId: chatShareSelection.event?.id || null,
-            source: eventSource,
-            type: "event/share",
-          },
+          attachments: attachment ? [attachment] : [],
         });
       }
       // Send the post as a custom message with attachment
@@ -1119,6 +1119,7 @@ export default function ChannelScreen() {
               show: true,
               proposal: proposal || null,
               event: null,
+              isEventType: false,
             });
           }}
           onEventShare={(event) => {
@@ -1127,6 +1128,7 @@ export default function ChannelScreen() {
               show: true,
               proposal: null,
               event: event || null,
+              isEventType: shareData?.isEventType,
             });
           }}
         />
@@ -1141,6 +1143,7 @@ export default function ChannelScreen() {
               show: true,
               proposal: proposal || null,
               event: null,
+              isEventType: false,
             });
           }}
           proposal={selectedProposal}
@@ -1149,7 +1152,12 @@ export default function ChannelScreen() {
       <ChatSelectionModal
         isOpen={chatShareSelection.show}
         onClose={() => {
-          setChatShareSelection({ show: false, proposal: null, event: null });
+          setChatShareSelection({
+            show: false,
+            proposal: null,
+            event: null,
+            isEventType: false,
+          });
         }}
         onSelectChat={handleChatSelect}
       />

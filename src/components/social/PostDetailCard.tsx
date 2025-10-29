@@ -94,10 +94,12 @@ export function PostDetailCard({
     proposal: IProposal | null;
     show: boolean;
     event: UnifiedData | null;
+    isEventType: boolean;
   }>({
     proposal: null,
     show: false,
     event: null,
+    isEventType: false,
   });
   const handleChatSelect = async (channel: Channel) => {
     if (!channel) return;
@@ -116,13 +118,51 @@ export function PostDetailCard({
         // router.push(`/(app)/(chat)/channel/${channel.id}`);
       }
       if (chatShareSelection.event) {
+        const attachmentType =
+          chatShareSelection.event?.source === "ticketmaster"
+            ? "ticketmaster"
+            : chatShareSelection.isEventType
+            ? "event"
+            : "location";
+        const createPostShareAttachment = (
+          type: "event" | "location" | "ticketmaster"
+        ) => {
+          switch (type) {
+            case "event":
+              const eventData = chatShareSelection.event;
+              return {
+                type: "event_share",
+                event_id: eventData?.id || "",
+                event_data: {
+                  id: eventData?.id,
+                  name: eventData?.name,
+                  description: eventData?.description,
+                },
+              };
+            case "location":
+              const locationData = chatShareSelection.event;
+              return {
+                type: "location_share",
+                location_id: locationData?.id || "",
+                location_data: locationData,
+              };
+            case "ticketmaster":
+              const ticketmasterData = chatShareSelection.event;
+              return {
+                type: "ticketmaster_share",
+                event_id: ticketmasterData?.id || "",
+                event_data: ticketmasterData,
+              };
+            default:
+              return null;
+          }
+        };
+        const attachment = createPostShareAttachment(attachmentType);
         await channel.sendMessage({
-          text: `Check out ${chatShareSelection.event?.name} on Orbit! ${chatShareSelection.event?.description}`,
-          data: {
-            type: "event/share",
-            eventId: chatShareSelection.event?.id || null,
-            source: chatShareSelection.event?.source || "event",
-          },
+          text: `Check out ${chatShareSelection.event?.name} on Orbit!`,
+          type: "regular",
+          // Send attachment (like web app) for cross-platform compatibility
+          attachments: attachment ? [attachment] : [],
         });
       }
       // Send the post as a custom message with attachment
@@ -512,6 +552,7 @@ export function PostDetailCard({
               show: true,
               proposal: proposal || null,
               event: null,
+              isEventType: false,
             });
           }}
           onEventShare={(event) => {
@@ -520,6 +561,7 @@ export function PostDetailCard({
               show: true,
               proposal: null,
               event: event || null,
+              isEventType: shareData?.isEventType || false,
             });
           }}
         />
@@ -527,7 +569,12 @@ export function PostDetailCard({
       <ChatSelectionModal
         isOpen={chatShareSelection.show}
         onClose={() => {
-          setChatShareSelection({ show: false, proposal: null, event: null });
+          setChatShareSelection({
+            show: false,
+            proposal: null,
+            event: null,
+            isEventType: false,
+          });
         }}
         onSelectChat={handleChatSelect}
       />
