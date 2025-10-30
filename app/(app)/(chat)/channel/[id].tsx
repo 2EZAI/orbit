@@ -7,6 +7,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   View,
+  Modal,
+  ScrollView,
 } from "react-native";
 import type { Channel as ChannelType } from "stream-chat";
 import {
@@ -28,6 +30,7 @@ import { useChat } from "~/src/lib/chat";
 
 import { ArrowLeft } from "lucide-react-native";
 import ChatEventComponent from "~/src/components/chat/ChatEventComponent";
+import { SocialEventCard } from "~/src/components/social/SocialEventCard";
 import { SharedPostMessage } from "~/src/components/chat/SharedPostMessage";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useUserData } from "~/hooks/useUserData";
@@ -41,6 +44,7 @@ import ChatProposalComponent from "~/src/components/chat/ChatProposalComponent";
 import { IProposal } from "~/hooks/useProposals";
 import UnifiedProposalSheet from "~/src/components/map/UnifiedProposalSheet";
 import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
+import * as Location from "expo-location";
 
 // BULLETPROOF Message Component - ONLY renders polls, returns NULL for everything else
 // This forces Stream to use its default components for all non-poll messages
@@ -49,12 +53,7 @@ import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
 const CustomPostShareComponent = ({ message }: { message: any }) => {
   const router = useRouter();
 
-  console.log(
-    "CustomPostShareComponent: Checking message:",
-    message?.id,
-    "attachments:",
-    message?.attachments
-  );
+  // Quiet verbose logs
 
   // Check if this message has post share attachments
   if (
@@ -71,15 +70,8 @@ const CustomPostShareComponent = ({ message }: { message: any }) => {
     (attachment: any) => attachment.type === "post_share"
   );
 
-  console.log(
-    "CustomPostShareComponent: Post share attachment:",
-    postShareAttachment
-  );
 
   if (!postShareAttachment || !postShareAttachment.post_data) {
-    console.log(
-      "CustomPostShareComponent: No post share attachment or post data"
-    );
     return null;
   }
 
@@ -478,12 +470,89 @@ export default function ChannelScreen() {
     show: false,
     isEventType: false,
   });
+
+  // Global modal state for multi-result '/event'
+  const [resultsModalOpen, setResultsModalOpen] = useState(false);
+  const [resultsItems, setResultsItems] = useState<UnifiedData[]>([]);
+  const [resultsQuery, setResultsQuery] = useState<string>("");
+  const loadMorePayloadRef = useRef<any>(null);
+  const modalChannelRef = useRef<any>(null);
+
+  // Patch channel.sendMessage to append lat/lng for /event commands (web parity)
+  const originalSendRef = useRef<any>(null);
+  useEffect(() => {
+    if (!channel) return;
+    if (!originalSendRef.current) {
+      const original = channel.sendMessage.bind(channel);
+      originalSendRef.current = original;
+      channel.sendMessage = async (msg: any) => {
+        try {
+          const text: string | undefined = msg?.text?.trim();
+          if (text && text.startsWith("/event")) {
+            let augmentedText = text; // keep original text without lat/lng tokens
+            let attachLat: number | undefined;
+            let attachLng: number | undefined;
+            try {
+              let lat: number | undefined;
+              let lng: number | undefined;
+
+              const lastKnown = await Location.getLastKnownPositionAsync();
+              lat = lastKnown?.coords?.latitude;
+              lng = lastKnown?.coords?.longitude;
+
+              if (typeof lat !== "number" || typeof lng !== "number") {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status === "granted") {
+                  const current = await Location.getCurrentPositionAsync({
+                    accuracy: Location.Accuracy.Balanced,
+                    maximumAge: 30000,
+                    timeout: 5000,
+                  });
+                  lat = current?.coords?.latitude;
+                  lng = current?.coords?.longitude;
+                }
+              }
+
+              if (typeof lat === "number" && typeof lng === "number") {
+                attachLat = Number(lat.toFixed(6));
+                attachLng = Number(lng.toFixed(6));
+                console.log("/event using coords:", attachLat, attachLng);
+              }
+            } catch {}
+            try {
+              return await original({
+                ...msg,
+                text: augmentedText,
+                ...(typeof attachLat === "number" && typeof attachLng === "number"
+                  ? { latitude: attachLat, longitude: attachLng }
+                  : {}),
+              });
+            } catch (err: any) {
+              console.error("/event send failed:", err?.message || err);
+              throw err;
+            }
+          }
+        } catch {}
+        try {
+          return await original(msg);
+        } catch (err) {
+          console.error("sendMessage failed:", err);
+          throw err;
+        }
+      };
+    }
+    return () => {
+      if (channel && originalSendRef.current) {
+        channel.sendMessage = originalSendRef.current;
+        originalSendRef.current = null;
+      }
+    };
+  }, [channel]);
   const BulletproofMessage = (props: any) => {
     const eventId = props.message?.data?.eventId;
     const proposal = props.message?.data?.proposal;
     const eventSource = props.message?.data?.source;
     const message = props.message;
-    console.log(proposal);
     // Check for post share attachments
     const hasPostShare = message?.attachments?.some(
       (attachment: any) => attachment.type === "post_share"
@@ -497,16 +566,7 @@ export default function ChannelScreen() {
         attachment.type === "ticketmaster_share"
     );
 
-    console.log(
-      "BulletproofMessage: Message",
-      message?.id,
-      "hasPostShare:",
-      hasPostShare,
-      "eventShareAttachment:",
-      eventShareAttachment,
-      "attachments:",
-      message?.attachments
-    );
+    // Quiet logs in production; keep UI clean
 
     // ONLY handle actual poll messages
     const isActualPoll =
@@ -517,20 +577,12 @@ export default function ChannelScreen() {
       message.poll.id.length > 0;
 
     if (isActualPoll) {
-      console.log(
-        "BulletproofMessage: Rendering custom poll for message:",
-        message.id
-      );
       // Return ONLY our custom poll - no MessageSimple wrapper
       return (
         <CustomPollComponent key={`poll-${message.id}`} message={message} />
       );
     }
     if (hasPostShare) {
-      console.log(
-        "BulletproofMessage: Rendering custom post share for message:",
-        message.id
-      );
       // Return ONLY our custom post share - no MessageSimple wrapper
       return (
         <CustomPostShareComponent
@@ -552,7 +604,7 @@ export default function ChannelScreen() {
           : "event";
 
       // For ALL attachment types, use data directly (like web app) - no API calls
-      let unifiedData: UnifiedData;
+      let unifiedData: any;
 
       if (
         eventShareAttachment.type === "location_share" &&
@@ -568,13 +620,9 @@ export default function ChannelScreen() {
           start_datetime: new Date().toISOString(), // Locations don't have start time
           address: locationData.address,
           venue_name: locationData.name,
-          city: locationData.city,
-          state: locationData.state,
-          latitude: locationData.latitude,
-          longitude: locationData.longitude,
           source: "location",
           is_ticketmaster: false,
-        };
+        } as any;
       } else if (eventShareAttachment.event_data) {
         // Use event_data directly for events and ticketmaster
         const eventData = eventShareAttachment.event_data;
@@ -586,13 +634,9 @@ export default function ChannelScreen() {
           start_datetime: eventData.start_datetime || new Date().toISOString(),
           address: eventData.address,
           venue_name: eventData.venue_name || eventData.name,
-          city: eventData.city,
-          state: eventData.state,
-          latitude: eventData.latitude,
-          longitude: eventData.longitude,
           source: attachmentSource,
           is_ticketmaster: attachmentSource === "ticketmaster",
-        };
+        } as any;
       } else {
         // Fallback: use ChatEventComponent with API call (for backwards compatibility)
         return (
@@ -625,6 +669,95 @@ export default function ChannelScreen() {
       );
     }
 
+    // Precompute card attachments and state for multi-result modal
+    const cardAttachments: any[] = (message?.attachments || []).filter(
+      (a: any) => a.type === "card"
+    );
+    const { channel } = useChannelContext();
+
+    if (cardAttachments.length > 0) {
+      // Build list of result items
+      const items: UnifiedData[] = cardAttachments
+        .filter((a: any) => a.event_data)
+        .map((a: any) => {
+          const ed = a.event_data;
+          const isTicketmaster = ed?.source === "ticketmaster";
+          const isLocation = ed?.source === "location";
+          return {
+            id: ed.id,
+            name: ed.name,
+            description: ed.description,
+            image_urls: ed.image_urls || (ed.image_url ? [ed.image_url] : []),
+            start_datetime: ed.start_datetime || ed.startDate || new Date().toISOString(),
+            venue_name: ed.venue_name || ed.location || ed.name,
+            address: ed.address,
+            city: ed.city,
+            state: ed.state,
+            source: isLocation ? "location" : isTicketmaster ? "ticketmaster" : "event",
+            is_ticketmaster: !!isTicketmaster,
+          } as any;
+        });
+
+      // Detect Load More action from any attachment
+      const loadMoreAction: any | undefined = cardAttachments
+        .find((att: any) => att.actions?.some((action: any) => typeof action.value === "string" && action.value.includes('"action":"load_more"')))
+        ?.actions?.find((action: any) => typeof action.value === "string" && action.value.includes('"action":"load_more"'));
+
+      const openResultsModal = () => {
+        setResultsItems(items);
+        setResultsQuery(message?.text || "");
+        try {
+          loadMorePayloadRef.current = loadMoreAction?.value
+            ? JSON.parse(loadMoreAction.value)
+            : null;
+        } catch {
+          loadMorePayloadRef.current = null;
+        }
+        modalChannelRef.current = channel;
+        setResultsModalOpen(true);
+      };
+
+      // If only one item, render card directly (existing behavior)
+      if (items.length === 1) {
+        const one = items[0];
+        return (
+          <ChatEventComponent
+            key={`card-${message.id}`}
+            message={message}
+            eventId={one.id}
+            source={one.source as any}
+            directData={one}
+            handleEventPress={(data: UnifiedData) => setSelectedEvent(data)}
+            userId={user?.id || ""}
+          />
+        );
+      }
+
+      // Multiple results: show compact trigger that opens global modal list
+      return (
+        <View style={{ width: "100%", paddingHorizontal: 12, paddingVertical: 6 }}>
+          <TouchableOpacity
+            onPress={openResultsModal}
+            activeOpacity={0.8}
+            style={{
+              alignSelf: "flex-start",
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderRadius: 16,
+              backgroundColor: theme.colors.primary + "20",
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+            }}
+          >
+            <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
+              View {items.length} Results{message?.text ? ` for "${message.text}"` : ""}
+            </Text>
+          </TouchableOpacity>
+
+        </View>
+      );
+    }
+
     if (proposal) {
       return (
         <ChatProposalComponent
@@ -648,6 +781,7 @@ export default function ChannelScreen() {
           handleEventPress={(data: UnifiedData) => {
             setSelectedEvent(data);
           }}
+          userId={user?.id || ""}
         />
       );
     }
@@ -1170,6 +1304,100 @@ export default function ChannelScreen() {
         }}
         onSelectChat={handleChatSelect}
       />
+
+      {/* Global Results Modal for '/event' multi-results */}
+      <Modal
+        visible={resultsModalOpen}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setResultsModalOpen(false)}
+        statusBarTranslucent={true}
+        presentationStyle="overFullScreen"
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}>
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setResultsModalOpen(false)} />
+          <View
+            style={{
+              maxHeight: 560,
+              backgroundColor: theme.colors.card,
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+            }}
+          >
+            <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
+              <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 16 }}>
+                Search Results
+              </Text>
+              {resultsQuery ? (
+                <Text style={{ color: theme.colors.text + "80", marginTop: 2 }}>
+                  {resultsQuery}
+                </Text>
+              ) : null}
+            </View>
+            <ScrollView style={{ paddingHorizontal: 16 }}>
+              <View style={{ paddingBottom: 16 }}>
+                {resultsItems.map((it: any, idx: number) => (
+                  <TouchableOpacity
+                    key={`global-res-${it.id}-${idx}`}
+                    activeOpacity={0.9}
+                    onPress={() => {
+                      setResultsModalOpen(false);
+                      setSelectedEvent(it);
+                    }}
+                    style={{ marginBottom: 12 }}
+                  >
+                    <SocialEventCard
+                      data={it}
+                      onDataSelect={(data: UnifiedData) => {
+                        setResultsModalOpen(false);
+                        setSelectedEvent(data);
+                      }}
+                      onShowDetails={() => {
+                        setResultsModalOpen(false);
+                        setSelectedEvent(it);
+                      }}
+                      treatAsEvent={it.source !== "location"}
+                      isCustomEvent={true}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+            {loadMorePayloadRef.current ? (
+              <View style={{ padding: 16, paddingTop: 8 }}>
+                <TouchableOpacity
+                  onPress={async () => {
+                    const payload = loadMorePayloadRef.current;
+                    const ch = modalChannelRef.current;
+                    if (!payload || !ch) return;
+                    try {
+                      const query = payload.query || "";
+                      const offset = payload.offset || 0;
+                      await ch.sendMessage({ text: `/event ${query} offset:${offset}` });
+                      setResultsModalOpen(false);
+                    } catch (e) {
+                      console.log("Load more failed:", e);
+                    }
+                  }}
+                  style={{
+                    alignSelf: "center",
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 12,
+                    backgroundColor: theme.colors.background,
+                    borderWidth: 1,
+                    borderColor: theme.colors.border,
+                  }}
+                >
+                  <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
+                    Load More Results
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
