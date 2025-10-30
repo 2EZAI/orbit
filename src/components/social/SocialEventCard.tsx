@@ -528,7 +528,7 @@ export function SocialEventCard({
       <View className="flex-1 justify-between p-3">
         {/* Header with Icon and Category */}
         <View className="flex-row justify-between items-center">
-          {!treatAsEvent && (
+          {treatAsEvent && (
             <View className="flex-row items-center">
               <Text className="mr-2 text-lg">{itemIcon}</Text>
 
@@ -579,7 +579,7 @@ export function SocialEventCard({
           onPress={() => handleContextAction("details")}
         >
           <Text className="text-sm font-semibold text-center text-white">
-            {treatAsEvent ? "View Location" : "View Event"}
+            {treatAsEvent ? "View Event" : "View Location"}
           </Text>
         </TouchableOpacity>
       </View>

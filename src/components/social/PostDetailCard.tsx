@@ -133,11 +133,7 @@ export function PostDetailCard({
               return {
                 type: "event_share",
                 event_id: eventData?.id || "",
-                event_data: {
-                  id: eventData?.id,
-                  name: eventData?.name,
-                  description: eventData?.description,
-                },
+                event_data: eventData,
               };
             case "location":
               const locationData = chatShareSelection.event;
@@ -151,7 +147,18 @@ export function PostDetailCard({
               return {
                 type: "ticketmaster_share",
                 event_id: ticketmasterData?.id || "",
-                event_data: ticketmasterData,
+                event_data: {
+                  id: ticketmasterData?.id,
+                  name: ticketmasterData?.name,
+                  description: ticketmasterData?.description,
+                  image_urls: ticketmasterData?.image_urls,
+                  start_datetime: ticketmasterData?.start_datetime,
+                  venue_name: ticketmasterData?.venue_name,
+                  address: ticketmasterData?.address,
+                  city: ticketmasterData?.city,
+                  state: ticketmasterData?.state,
+                  source: "ticketmaster",
+                },
               };
             default:
               return null;
