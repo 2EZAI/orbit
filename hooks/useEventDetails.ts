@@ -26,7 +26,6 @@ export function useEventDetails() {
       return;
     }
     const data = await response.json();
-    console.log("Fetched event details:", data);
     return data;
   };
 
