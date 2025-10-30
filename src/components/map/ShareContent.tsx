@@ -14,6 +14,7 @@ import { useAuth } from "~/src/lib/auth";
 import { useChat } from "~/src/lib/chat";
 import { useTheme } from "../ThemeProvider";
 import { UnifiedData } from "./UnifiedDetailsSheet";
+import SuccessMessageModal from "../SuccessMessageModal";
 
 interface IProps {
   onClose: () => void;
@@ -34,7 +35,7 @@ const ShareContent: React.FC<IProps> = ({
   const [isSharing, setIsSharing] = useState(false);
   const [recentChats, setRecentChats] = useState<any[]>([]);
   const [loadingChats, setLoadingChats] = useState(true);
-
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const { client } = useChat();
   const { session } = useAuth();
 
@@ -193,8 +194,10 @@ const ShareContent: React.FC<IProps> = ({
           attachments: attachment ? [attachment] : [],
         });
       }
-
-      onClose();
+      setShowSuccessModal(true);
+      setTimeout(() => {
+        onClose();
+      }, 1000);
     } catch (error) {
       console.error("Error sharing to chat:", error);
     }
@@ -485,7 +488,9 @@ const ShareContent: React.FC<IProps> = ({
           </TouchableOpacity>
         </MotiView>
       </MotiView>
-
+      {showSuccessModal && (
+        <SuccessMessageModal message="Message sent successfully!" />
+      )}
       {/* Bottom Padding */}
       <View style={{ height: insets.bottom + 20 }} />
     </View>

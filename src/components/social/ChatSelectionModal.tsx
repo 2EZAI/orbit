@@ -15,11 +15,13 @@ import { useAuth } from "~/src/lib/auth";
 import { X, Search, Users, MessageCircle } from "lucide-react-native";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
 import type { Channel } from "stream-chat";
+import SuccessMessageModal from "~/src/components/SuccessMessageModal";
+import { set } from "lodash";
 
 interface ChatSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectChat: (channel: Channel) => void;
+  onSelectChat: (channel: Channel) => Promise<void>;
 }
 
 export function ChatSelectionModal({
@@ -33,7 +35,7 @@ export function ChatSelectionModal({
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
-
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   useEffect(() => {
     if (isOpen && client) {
       loadChannels();
@@ -119,9 +121,12 @@ export function ChatSelectionModal({
     return null;
   };
 
-  const handleSelectChat = (channel: Channel) => {
-    onSelectChat(channel);
-    onClose();
+  const handleSelectChat = async (channel: Channel) => {
+    await onSelectChat(channel);
+    setShowSuccessModal(true);
+    setTimeout(() => {
+      onClose();
+    }, 1000);
   };
 
   const renderChannel = ({ item: channel }: { item: Channel }) => {
@@ -269,6 +274,9 @@ export function ChatSelectionModal({
             showsVerticalScrollIndicator={false}
             className="flex-1"
           />
+        )}
+        {showSuccessModal && (
+          <SuccessMessageModal message="Message sent successfully!" />
         )}
       </SafeAreaView>
     </Modal>

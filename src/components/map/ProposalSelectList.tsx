@@ -1,34 +1,32 @@
+import { BlurView } from "expo-blur";
+import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   ArrowLeft,
-  CheckCircle2,
-  PlusCircle,
   Calendar,
-  Clock,
-  Users,
-  Sparkles,
+  CheckCircle2,
   ChevronRight,
-  Star,
+  PlusCircle,
+  Sparkles,
+  Users,
   Zap,
 } from "lucide-react-native";
+import { MotiView } from "moti";
+import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Dimensions,
-  Platform,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IProposal, useProposals } from "~/hooks/useProposals";
+import SuccessMessageModal from "~/src/components/SuccessMessageModal";
 import { useTheme } from "../ThemeProvider";
 import { UnifiedData } from "./UnifiedDetailsSheet";
-import { MotiView } from "moti";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
-import React, { useState, useRef, useEffect } from "react";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 interface IProps {
@@ -484,39 +482,7 @@ const ProposalSelectList: React.FC<IProps> = ({
 
       {/* Success Overlay */}
       {showSuccess && (
-        <MotiView
-          from={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{
-            type: "spring",
-            damping: 15,
-            stiffness: 300,
-          }}
-          style={styles.successOverlay}
-        >
-          <LinearGradient
-            colors={["rgba(16, 185, 129, 0.9)", "rgba(34, 197, 94, 0.9)"]}
-            style={styles.successGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <MotiView
-              animate={{
-                rotate: "360deg",
-                scale: [1, 1.2, 1],
-              }}
-              transition={{
-                type: "spring",
-                damping: 15,
-                stiffness: 300,
-                loop: true,
-              }}
-            >
-              <CheckCircle2 size={48} color="white" />
-            </MotiView>
-            <Text style={styles.successText}>Event Added Successfully!</Text>
-          </LinearGradient>
-        </MotiView>
+        <SuccessMessageModal message="Event Added Successfully!" />
       )}
     </View>
   );
@@ -714,31 +680,5 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "white",
     letterSpacing: -0.2,
-  },
-
-  // Success Overlay
-  successOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 2000,
-  },
-  successGradient: {
-    width: 200,
-    height: 120,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 12,
-  },
-  successText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "white",
-    textAlign: "center",
   },
 });
