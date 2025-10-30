@@ -129,6 +129,7 @@ export default function BasicInfoSection({
           <Input
             value={name}
             onChangeText={setName}
+            numberOfLines={5}
             placeholder="Give your event a catchy name"
             placeholderTextColor={theme.colors.text + "66"}
             style={{
