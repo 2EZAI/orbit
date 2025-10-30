@@ -705,6 +705,8 @@ export const UnifiedCard = React.memo(
           // Pass current map center for location change detection
           currentLat: mapCenter ? mapCenter[1]?.toString() : "",
           currentLng: mapCenter ? mapCenter[0]?.toString() : "",
+          locationName: locationData?.name || "",
+          locationDescription: locationData.description || "",
         },
       });
     };

@@ -4,7 +4,7 @@ import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft } from "lucide-react-native";
+import { ArrowLeft, MapPin } from "lucide-react-native";
 import { MotiView } from "moti";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -145,7 +145,9 @@ export default function CreateEvent() {
   const [isDraftSaving, setIsDraftSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
-  const [originalDraftData, setOriginalDraftData] = useState<EventDraft | null>(null);
+  const [originalDraftData, setOriginalDraftData] = useState<EventDraft | null>(
+    null
+  );
 
   // Edit mode state
   const [isEditMode, setIsEditMode] = useState(false);
@@ -194,7 +196,11 @@ export default function CreateEvent() {
   const hasStateChanged = (): boolean => {
     if (!originalDraftData) {
       // If no original data, check if there's any meaningful content
-      return name.trim().length > 0 || description.trim().length > 0 || images.length > 0;
+      return (
+        name.trim().length > 0 ||
+        description.trim().length > 0 ||
+        images.length > 0
+      );
     }
 
     // Compare all relevant fields
@@ -214,25 +220,25 @@ export default function CreateEvent() {
       category_name: selectedTopicsName,
       is_private: isPrivate,
       external_url: externalUrl.trim(),
-      image_urls: images.map(img => img.uri),
+      image_urls: images.map((img) => img.uri),
     };
 
     const originalState = {
-      name: originalDraftData.name?.trim() || '',
-      description: originalDraftData.description?.trim() || '',
-      start_datetime: originalDraftData.start_datetime || '',
-      end_datetime: originalDraftData.end_datetime || '',
-      venue_name: originalDraftData.venue_name?.trim() || '',
-      address: originalDraftData.address?.trim() || '',
-      city: originalDraftData.city?.trim() || '',
-      state: originalDraftData.state?.trim() || '',
-      postal_code: originalDraftData.postal_code?.trim() || '',
+      name: originalDraftData.name?.trim() || "",
+      description: originalDraftData.description?.trim() || "",
+      start_datetime: originalDraftData.start_datetime || "",
+      end_datetime: originalDraftData.end_datetime || "",
+      venue_name: originalDraftData.venue_name?.trim() || "",
+      address: originalDraftData.address?.trim() || "",
+      city: originalDraftData.city?.trim() || "",
+      state: originalDraftData.state?.trim() || "",
+      postal_code: originalDraftData.postal_code?.trim() || "",
       latitude: 0, // EventDraft doesn't have latitude/longitude
       longitude: 0,
-      category_id: originalDraftData.category_id || '',
-      category_name: '', // EventDraft doesn't have category_name
+      category_id: originalDraftData.category_id || "",
+      category_name: "", // EventDraft doesn't have category_name
       is_private: originalDraftData.is_private || false,
-      external_url: originalDraftData.external_url?.trim() || '',
+      external_url: originalDraftData.external_url?.trim() || "",
       image_urls: originalDraftData.image_urls || [],
     };
 
@@ -1740,6 +1746,7 @@ export default function CreateEvent() {
               >
                 <ArrowLeft size={18} color="#8B5CF6" />
               </TouchableOpacity>
+
               <Text
                 style={{
                   fontSize: 20,
@@ -1747,7 +1754,11 @@ export default function CreateEvent() {
                   color: theme.colors.text,
                 }}
               >
-                {isEditMode ? "Edit Activity" : "Create Activity"}
+                {isEditMode
+                  ? "Edit Activity"
+                  : currentDraft?.name
+                  ? `${currentDraft?.name} Draft`
+                  : "Create Activity"}
               </Text>
             </View>
 
@@ -1786,6 +1797,89 @@ export default function CreateEvent() {
           contentContainerStyle={{ paddingBottom: 100 }}
           keyboardShouldPersistTaps="handled"
         >
+          {(params.locationName || params.locationDescription) && (
+            <MotiView
+              from={{ opacity: 0, translateY: 10 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{ type: "timing", duration: 250, delay: 80 }}
+              style={{ marginBottom: 8 }}
+            >
+              <View
+                style={{
+                  backgroundColor: theme.colors.card,
+                  borderColor: theme.colors.border,
+                  borderWidth: 1,
+                  borderRadius: 16,
+                  padding: 12,
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginBottom: 8,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      overflow: "hidden",
+                      marginRight: 10,
+                    }}
+                  >
+                    <LinearGradient
+                      colors={["#8B5CF6", "#A855F7"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{
+                        flex: 1,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <MapPin size={16} color="#ffffff" />
+                    </LinearGradient>
+                  </View>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "700",
+                      color: theme.colors.text + "99",
+                      letterSpacing: 0.3,
+                    }}
+                  >
+                    From selected location
+                  </Text>
+                </View>
+
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: theme.colors.text,
+                  }}
+                  numberOfLines={1}
+                >
+                  {(params.locationName as string) || "Selected Location"}
+                </Text>
+                {(params.locationDescription as string) ? (
+                  <Text
+                    style={{
+                      marginTop: 4,
+                      fontSize: 13,
+                      color: theme.colors.text + "99",
+                      lineHeight: 18,
+                    }}
+                    numberOfLines={2}
+                  >
+                    {params.locationDescription as string}
+                  </Text>
+                ) : null}
+              </View>
+            </MotiView>
+          )}
           <MotiView
             from={{ opacity: 0, translateY: 20 }}
             animate={{ opacity: 1, translateY: 0 }}

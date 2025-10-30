@@ -407,6 +407,8 @@ export function SocialEventCard({
         address: (locationData as any).address || "",
         categoryId: simplifiedCategory.id,
         categoryName: simplifiedCategory.name,
+        locationName: locationData?.name || "",
+        locationDescription: locationData?.description || "",
       },
     });
   };
