@@ -8,11 +8,17 @@ import {
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { SocialEventCard } from "~/src/components/social/SocialEventCard";
-import { UnifiedDetailsSheet } from "~/src/components/map/UnifiedDetailsSheet";
+import {
+  UnifiedData,
+  UnifiedDetailsSheet,
+} from "~/src/components/map/UnifiedDetailsSheet";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 import { useAuth } from "~/src/lib/auth";
 import { supabase } from "~/src/lib/supabase";
+import { IProposal } from "~/hooks/useProposals";
+import UnifiedShareSheet from "../map/UnifiedShareSheet";
+import { ChatSelectionModal } from "../social/ChatSelectionModal";
 
 type EventTab = "Created" | "Joined";
 
@@ -81,7 +87,100 @@ export default function UnifiedEventsTab({
   // Sheet state
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [shareData, setShareData] = useState<{
+    data: UnifiedData;
+    isEventType: boolean;
+  } | null>(null);
+  const [chatShareSelection, setChatShareSelection] = useState<{
+    proposal: IProposal | null;
+    show: boolean;
+    event: UnifiedData | null;
+    isEventType: boolean;
+  }>({
+    proposal: null,
+    show: false,
+    event: null,
+    isEventType: false,
+  });
+  const handleChatSelect = async (channel: Channel) => {
+    if (!channel) return;
+    try {
+      // Ensure channel is watched before sending
+      await channel.watch();
+      if (chatShareSelection.proposal) {
+        const message = await channel.sendMessage({
+          text: "Check out this proposal!",
+          type: "regular",
+          data: {
+            proposal: chatShareSelection.proposal,
+            type: "proposal/share",
+          },
+        });
+        // router.push(`/(app)/(chat)/channel/${channel.id}`);
+      }
+      if (chatShareSelection.event) {
+        const attachmentType =
+          chatShareSelection.event?.source === "ticketmaster"
+            ? "ticketmaster"
+            : chatShareSelection.isEventType
+            ? "event"
+            : "location";
+        const createPostShareAttachment = (
+          type: "event" | "location" | "ticketmaster"
+        ) => {
+          switch (type) {
+            case "event":
+              const eventData = chatShareSelection.event;
+              return {
+                type: "event_share",
+                event_id: eventData?.id || "",
+                event_data: eventData,
+              };
+            case "location":
+              const locationData = chatShareSelection.event;
+              return {
+                type: "location_share",
+                location_id: locationData?.id || "",
+                location_data: locationData,
+              };
+            case "ticketmaster":
+              const ticketmasterData = chatShareSelection.event;
+              return {
+                type: "ticketmaster_share",
+                event_id: ticketmasterData?.id || "",
+                event_data: {
+                  id: ticketmasterData?.id,
+                  name: ticketmasterData?.name,
+                  description: ticketmasterData?.description,
+                  image_urls: ticketmasterData?.image_urls,
+                  start_datetime: ticketmasterData?.start_datetime,
+                  venue_name: ticketmasterData?.venue_name,
+                  address: ticketmasterData?.address,
+                  city: ticketmasterData?.city,
+                  state: ticketmasterData?.state,
+                  source: "ticketmaster",
+                },
+              };
+            default:
+              return null;
+          }
+        };
+        const attachment = createPostShareAttachment(attachmentType);
+        await channel.sendMessage({
+          text: `Check out ${chatShareSelection.event?.name} on Orbit!`,
+          type: "regular",
+          // Send attachment (like web app) for cross-platform compatibility
+          attachments: attachment ? [attachment] : [],
+        });
+      }
+      // Send the post as a custom message with attachment
 
+      // Navigate to the chat
+    } catch (error) {
+      console.error("Error sharing post:", error);
+      // You could show a toast or alert here
+    }
+  };
   useEffect(() => {
     loadEvents();
   }, [userId, activeTab]);
@@ -103,51 +202,78 @@ export default function UnifiedEventsTab({
 
   const loadCreatedEvents = async () => {
     // Prevent fetching if userId is invalid (empty string or null)
-    if (!userId || userId.trim() === '') {
-      console.log('Invalid userId, skipping created events fetch');
+    if (!userId || userId.trim() === "") {
+      console.log("Invalid userId, skipping created events fetch");
       return;
     }
 
-    console.log('🔍 [UnifiedEventsTab] Loading created events for userId:', userId);
-    console.log('🔍 [UnifiedEventsTab] Current session user ID:', session?.user?.id);
+    console.log(
+      "🔍 [UnifiedEventsTab] Loading created events for userId:",
+      userId
+    );
+    console.log(
+      "🔍 [UnifiedEventsTab] Current session user ID:",
+      session?.user?.id
+    );
 
     try {
       // First try using the API
       try {
-        console.log('🔍 [UnifiedEventsTab] Trying API call for created events...');
+        console.log(
+          "🔍 [UnifiedEventsTab] Trying API call for created events..."
+        );
         const events = await (fetchCreatedEvents as any)(
           "created",
           1,
           50,
           userId
         );
-        console.log('🔍 [UnifiedEventsTab] API response:', events);
+        console.log("🔍 [UnifiedEventsTab] API response:", events);
         if (Array.isArray(events) && events.length > 0) {
           setCreatedEvents(events as Event[]);
-          console.log('✅ [UnifiedEventsTab] API success, found', events.length, 'created events');
+          console.log(
+            "✅ [UnifiedEventsTab] API success, found",
+            events.length,
+            "created events"
+          );
           return;
         } else {
-          console.log('⚠️ [UnifiedEventsTab] API returned empty array, trying Supabase query...');
+          console.log(
+            "⚠️ [UnifiedEventsTab] API returned empty array, trying Supabase query..."
+          );
         }
       } catch (apiError) {
-        console.log("❌ [UnifiedEventsTab] API failed, using direct Supabase query:", apiError);
+        console.log(
+          "❌ [UnifiedEventsTab] API failed, using direct Supabase query:",
+          apiError
+        );
       }
 
       // Force fallback to Supabase query to debug
-      console.log("🔍 [UnifiedEventsTab] Forcing Supabase query for debugging...");
+      console.log(
+        "🔍 [UnifiedEventsTab] Forcing Supabase query for debugging..."
+      );
 
       // First, let's check if there are any events in the database at all
-      console.log('🔍 [UnifiedEventsTab] Checking total events in database...');
+      console.log("🔍 [UnifiedEventsTab] Checking total events in database...");
       const { data: allEvents, error: allEventsError } = await supabase
         .from("events")
         .select("id, name, created_by")
         .limit(5);
-      
-      console.log('🔍 [UnifiedEventsTab] Sample events in database:', allEvents);
-      console.log('🔍 [UnifiedEventsTab] Events with created_by = userId:', allEvents?.filter(e => e.created_by === userId));
+
+      console.log(
+        "🔍 [UnifiedEventsTab] Sample events in database:",
+        allEvents
+      );
+      console.log(
+        "🔍 [UnifiedEventsTab] Events with created_by = userId:",
+        allEvents?.filter((e) => e.created_by === userId)
+      );
 
       // Fallback to direct Supabase query
-      console.log('🔍 [UnifiedEventsTab] Using direct Supabase query for created events...');
+      console.log(
+        "🔍 [UnifiedEventsTab] Using direct Supabase query for created events..."
+      );
       const { data: eventsData, error } = await supabase
         .from("events")
         .select(
@@ -195,7 +321,10 @@ export default function UnifiedEventsTab({
         .eq("created_by", userId)
         .order("start_datetime", { ascending: false });
 
-      console.log('🔍 [UnifiedEventsTab] Supabase query result:', { eventsData, error });
+      console.log("🔍 [UnifiedEventsTab] Supabase query result:", {
+        eventsData,
+        error,
+      });
       if (error) throw error;
 
       const transformedEvents: Event[] = (eventsData || []).map(
@@ -239,18 +368,25 @@ export default function UnifiedEventsTab({
         })
       );
 
-      console.log('✅ [UnifiedEventsTab] Supabase success, found', transformedEvents.length, 'created events');
+      console.log(
+        "✅ [UnifiedEventsTab] Supabase success, found",
+        transformedEvents.length,
+        "created events"
+      );
       setCreatedEvents(transformedEvents);
     } catch (error) {
-      console.error("❌ [UnifiedEventsTab] Error loading created events:", error);
+      console.error(
+        "❌ [UnifiedEventsTab] Error loading created events:",
+        error
+      );
       setCreatedEvents([]);
     }
   };
 
   const loadJoinedEvents = async () => {
     // Prevent fetching if userId is invalid (empty string or null)
-    if (!userId || userId.trim() === '') {
-      console.log('Invalid userId, skipping joined events fetch');
+    if (!userId || userId.trim() === "") {
+      console.log("Invalid userId, skipping joined events fetch");
       return;
     }
 
@@ -366,7 +502,6 @@ export default function UnifiedEventsTab({
   const handleCloseSheet = () => {
     setSelectedEvent(null);
     setIsSheetOpen(false);
-    
   };
 
   const getCurrentEvents = () => {
@@ -517,8 +652,53 @@ export default function UnifiedEventsTab({
             }}
             onShowControler={() => {}}
             isEvent={true}
+            onShare={(data, isEvent) => {
+              setSelectedEvent(null);
+              setShareData({ data, isEventType: isEvent });
+            }}
           />
         )}
+        {shareData && (
+          <UnifiedShareSheet
+            isOpen={!!shareData}
+            onClose={() => {
+              setSelectedEvent(shareData?.data as any);
+              setShareData(null);
+            }}
+            data={shareData?.data}
+            isEventType={shareData?.isEventType}
+            onProposalShare={(proposal: IProposal) => {
+              setShareData(null);
+              setChatShareSelection({
+                show: true,
+                proposal: proposal || null,
+                event: null,
+                isEventType: false,
+              });
+            }}
+            onEventShare={(event) => {
+              setShareData(null);
+              setChatShareSelection({
+                show: true,
+                proposal: null,
+                event: event || null,
+                isEventType: shareData?.isEventType,
+              });
+            }}
+          />
+        )}
+        <ChatSelectionModal
+          isOpen={chatShareSelection.show}
+          onClose={() => {
+            setChatShareSelection({
+              show: false,
+              proposal: null,
+              event: null,
+              isEventType: false,
+            });
+          }}
+          onSelectChat={handleChatSelect}
+        />
       </View>
     );
   }
@@ -664,12 +844,57 @@ export default function UnifiedEventsTab({
             // Handle if user selects a different event from within the sheet
             handleCloseSheet();
           }}
+          onShare={(data, isEvent) => {
+            setSelectedEvent(null);
+            setShareData({ data, isEventType: isEvent });
+          }}
           onShowControler={() => {
             // Handle controller show
           }}
           isEvent={true}
         />
       )}
+      {shareData && (
+        <UnifiedShareSheet
+          isOpen={!!shareData}
+          onClose={() => {
+            setSelectedEvent(shareData?.data as any);
+            setShareData(null);
+          }}
+          data={shareData?.data}
+          isEventType={shareData?.isEventType}
+          onProposalShare={(proposal: IProposal) => {
+            setShareData(null);
+            setChatShareSelection({
+              show: true,
+              proposal: proposal || null,
+              event: null,
+              isEventType: false,
+            });
+          }}
+          onEventShare={(event) => {
+            setShareData(null);
+            setChatShareSelection({
+              show: true,
+              proposal: null,
+              event: event || null,
+              isEventType: shareData?.isEventType,
+            });
+          }}
+        />
+      )}
+      <ChatSelectionModal
+        isOpen={chatShareSelection.show}
+        onClose={() => {
+          setChatShareSelection({
+            show: false,
+            proposal: null,
+            event: null,
+            isEventType: false,
+          });
+        }}
+        onSelectChat={handleChatSelect}
+      />
     </View>
   );
 }

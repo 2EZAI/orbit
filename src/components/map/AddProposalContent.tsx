@@ -1,33 +1,25 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
-import {
-  ArrowLeft,
-  Calendar,
-  Clock,
-  Sparkles,
-  Plus,
-  Zap,
-} from "lucide-react-native";
+import { BlurView } from "expo-blur";
+import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
+import { ArrowLeft, Calendar, Clock, Plus } from "lucide-react-native";
+import { MotiView } from "moti";
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   Keyboard,
   Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Dimensions,
 } from "react-native";
-import { Icon } from "react-native-elements";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useProposals } from "~/hooks/useProposals";
 import { useTheme } from "../ThemeProvider";
 import { Input } from "../ui/input";
 import { UnifiedData } from "./UnifiedDetailsSheet";
-import { MotiView } from "moti";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 interface IProps {
