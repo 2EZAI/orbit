@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -10,17 +10,24 @@ import {
   Alert,
   Dimensions,
   Animated,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '~/src/components/ThemeProvider';
-import { useAIDescription } from '~/src/hooks/useAIDescription';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { useAIDescription } from "~/src/hooks/useAIDescription";
 import type {
   AIDescriptionRequest,
   AIRefineRequest,
-} from '~/src/types/aiDescriptionTypes';
-import { Sparkles, Wand2, RefreshCw, CheckCircle, X, PenTool } from 'lucide-react-native';
+} from "~/src/types/aiDescriptionTypes";
+import {
+  Sparkles,
+  Wand2,
+  RefreshCw,
+  CheckCircle,
+  X,
+  PenTool,
+} from "lucide-react-native";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 interface AIDescriptionModalProps {
   isOpen: boolean;
@@ -51,10 +58,10 @@ export function AIDescriptionModal({
 }: AIDescriptionModalProps) {
   const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
-  const [userDescription, setUserDescription] = useState('');
-  const [refinementFeedback, setRefinementFeedback] = useState('');
+  const [userDescription, setUserDescription] = useState("");
+  const [refinementFeedback, setRefinementFeedback] = useState("");
   const [showRefinement, setShowRefinement] = useState(false);
-  
+
   // Animation refs
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
@@ -75,8 +82,8 @@ export function AIDescriptionModal({
   // Clear state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setUserDescription('');
-      setRefinementFeedback('');
+      setUserDescription("");
+      setRefinementFeedback("");
       setShowRefinement(false);
       clearDescription();
     }
@@ -101,17 +108,17 @@ export function AIDescriptionModal({
 
   const handleGenerate = async () => {
     if (!userDescription.trim()) {
-      Alert.alert('Error', 'Please enter a description of your event');
+      Alert.alert("Error", "Please enter a description of your event");
       return;
     }
 
     if (!eventName.trim()) {
-      Alert.alert('Error', 'Please enter an event name first');
+      Alert.alert("Error", "Please enter an event name first");
       return;
     }
 
-    console.log('🔍 [AI Modal] Starting description generation with:', {
-      userDescription: userDescription.substring(0, 50) + '...',
+    console.log("🔍 [AI Modal] Starting description generation with:", {
+      userDescription: userDescription.substring(0, 50) + "...",
       eventName,
       startDateTime,
       hasLocation: !!locationId,
@@ -134,12 +141,12 @@ export function AIDescriptionModal({
 
   const handleRefine = async () => {
     if (!refinementFeedback.trim()) {
-      Alert.alert('Error', 'Please enter feedback for refinement');
+      Alert.alert("Error", "Please enter feedback for refinement");
       return;
     }
 
     if (!generatedDescription) {
-      Alert.alert('Error', 'No description to refine');
+      Alert.alert("Error", "No description to refine");
       return;
     }
 
@@ -157,7 +164,7 @@ export function AIDescriptionModal({
     };
 
     await refineDescription(request);
-    setRefinementFeedback('');
+    setRefinementFeedback("");
   };
 
   const handleUseDescription = () => {
@@ -177,7 +184,7 @@ export function AIDescriptionModal({
 
   const handleNewDescription = () => {
     setShowRefinement(false);
-    setRefinementFeedback('');
+    setRefinementFeedback("");
     clearDescription();
   };
 
@@ -198,26 +205,26 @@ export function AIDescriptionModal({
         {/* Header */}
         <View
           style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
             paddingHorizontal: 20,
             paddingVertical: 16,
             borderBottomWidth: 1,
             borderBottomColor: theme.colors.border,
           }}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
             <View
               style={{
                 width: 40,
                 height: 40,
                 borderRadius: 20,
                 backgroundColor: isDarkMode
-                  ? 'rgba(168, 85, 247, 0.2)'
-                  : 'rgba(168, 85, 247, 0.1)',
-                alignItems: 'center',
-                justifyContent: 'center',
+                  ? "rgba(168, 85, 247, 0.2)"
+                  : "rgba(168, 85, 247, 0.1)",
+                alignItems: "center",
+                justifyContent: "center",
                 marginRight: 12,
               }}
             >
@@ -227,7 +234,7 @@ export function AIDescriptionModal({
               <Text
                 style={{
                   fontSize: 20,
-                  fontWeight: 'bold',
+                  fontWeight: "bold",
                   color: theme.colors.text,
                 }}
               >
@@ -251,8 +258,8 @@ export function AIDescriptionModal({
               height: 32,
               borderRadius: 16,
               backgroundColor: theme.colors.card,
-              alignItems: 'center',
-              justifyContent: 'center',
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
             <X size={18} color={theme.colors.text} />
@@ -270,7 +277,7 @@ export function AIDescriptionModal({
               <Text
                 style={{
                   fontSize: 16,
-                  fontWeight: '600',
+                  fontWeight: "600",
                   color: theme.colors.text,
                   marginBottom: 12,
                 }}
@@ -279,7 +286,7 @@ export function AIDescriptionModal({
               </Text>
               <TextInput
                 placeholder="Tell us about your event... What will happen? Who should attend? What makes it special?"
-                placeholderTextColor={theme.colors.text + '80'}
+                placeholderTextColor={theme.colors.text + "80"}
                 value={userDescription}
                 onChangeText={setUserDescription}
                 multiline
@@ -290,7 +297,7 @@ export function AIDescriptionModal({
                   padding: 16,
                   fontSize: 16,
                   color: theme.colors.text,
-                  textAlignVertical: 'top',
+                  textAlignVertical: "top",
                   borderWidth: 1,
                   borderColor: theme.colors.border,
                 }}
@@ -303,22 +310,24 @@ export function AIDescriptionModal({
                   marginTop: 8,
                 }}
               >
-                Be as detailed or brief as you like. AI will enhance your description.
+                Be as detailed or brief as you like. AI will enhance your
+                description.
               </Text>
 
               <TouchableOpacity
                 onPress={handleGenerate}
                 disabled={!userDescription.trim() || !eventName.trim()}
                 style={{
-                  backgroundColor: !userDescription.trim() || !eventName.trim()
-                    ? theme.colors.border
-                    : '#8B5CF6',
+                  backgroundColor:
+                    !userDescription.trim() || !eventName.trim()
+                      ? theme.colors.border
+                      : "#8B5CF6",
                   paddingVertical: 16,
                   paddingHorizontal: 24,
                   borderRadius: 12,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
                   marginTop: 20,
                 }}
               >
@@ -329,13 +338,13 @@ export function AIDescriptionModal({
                 )}
                 <Text
                   style={{
-                    color: 'white',
+                    color: "white",
                     fontSize: 16,
-                    fontWeight: '600',
+                    fontWeight: "600",
                     marginLeft: 8,
                   }}
                 >
-                  {isGenerating ? 'Generating...' : 'Generate AI Description'}
+                  {isGenerating ? "Generating..." : "Generate AI Description"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -348,7 +357,7 @@ export function AIDescriptionModal({
                 backgroundColor: theme.colors.card,
                 borderRadius: 16,
                 padding: 24,
-                alignItems: 'center',
+                alignItems: "center",
                 borderWidth: 1,
                 borderColor: theme.colors.border,
                 marginBottom: 24,
@@ -359,15 +368,15 @@ export function AIDescriptionModal({
                   width: 60,
                   height: 60,
                   borderRadius: 30,
-                  backgroundColor: '#8B5CF6',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  backgroundColor: "#8B5CF6",
+                  alignItems: "center",
+                  justifyContent: "center",
                   marginBottom: 16,
                   transform: [
                     {
                       rotate: rotateAnim.interpolate({
                         inputRange: [0, 1],
-                        outputRange: ['0deg', '360deg'],
+                        outputRange: ["0deg", "360deg"],
                       }),
                     },
                   ],
@@ -379,7 +388,7 @@ export function AIDescriptionModal({
                       {
                         rotate: rotateAnim.interpolate({
                           inputRange: [0, 1],
-                          outputRange: ['0deg', '360deg'],
+                          outputRange: ["0deg", "360deg"],
                         }),
                       },
                     ],
@@ -391,7 +400,7 @@ export function AIDescriptionModal({
               <Text
                 style={{
                   fontSize: 18,
-                  fontWeight: '600',
+                  fontWeight: "600",
                   color: theme.colors.text,
                   marginBottom: 8,
                 }}
@@ -415,28 +424,28 @@ export function AIDescriptionModal({
             <View style={{ marginBottom: 24 }}>
               <View
                 style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                   marginBottom: 16,
                 }}
               >
                 <Text
                   style={{
                     fontSize: 18,
-                    fontWeight: 'bold',
-                    color: '#10B981',
+                    fontWeight: "bold",
+                    color: "#10B981",
                   }}
                 >
                   Generated Description
                 </Text>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={{ flexDirection: "row", gap: 8 }}>
                   <TouchableOpacity
                     onPress={() => setShowRefinement(!showRefinement)}
                     style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      backgroundColor: '#8B5CF6' + '20',
+                      flexDirection: "row",
+                      alignItems: "center",
+                      backgroundColor: "#8B5CF6" + "20",
                       paddingHorizontal: 12,
                       paddingVertical: 6,
                       borderRadius: 8,
@@ -445,9 +454,9 @@ export function AIDescriptionModal({
                     <PenTool size={14} color="#8B5CF6" />
                     <Text
                       style={{
-                        color: '#8B5CF6',
+                        color: "#8B5CF6",
                         fontSize: 12,
-                        fontWeight: '600',
+                        fontWeight: "600",
                         marginLeft: 4,
                       }}
                     >
@@ -457,8 +466,8 @@ export function AIDescriptionModal({
                   <TouchableOpacity
                     onPress={handleNewDescription}
                     style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
+                      flexDirection: "row",
+                      alignItems: "center",
                       backgroundColor: theme.colors.card,
                       paddingHorizontal: 12,
                       paddingVertical: 6,
@@ -472,7 +481,7 @@ export function AIDescriptionModal({
                       style={{
                         color: theme.colors.text,
                         fontSize: 12,
-                        fontWeight: '600',
+                        fontWeight: "600",
                         marginLeft: 4,
                       }}
                     >
@@ -488,22 +497,22 @@ export function AIDescriptionModal({
                   borderRadius: 12,
                   padding: 16,
                   borderWidth: 1,
-                  borderColor: '#10B981' + '30',
+                  borderColor: "#10B981" + "30",
                 }}
               >
                 <View
                   style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
+                    flexDirection: "row",
+                    alignItems: "center",
                     marginBottom: 12,
                   }}
                 >
                   <CheckCircle size={16} color="#10B981" />
                   <Text
                     style={{
-                      color: '#10B981',
+                      color: "#10B981",
                       fontSize: 12,
-                      fontWeight: '600',
+                      fontWeight: "600",
                       marginLeft: 6,
                     }}
                   >
@@ -512,8 +521,8 @@ export function AIDescriptionModal({
                   {isTyping && (
                     <View
                       style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
+                        flexDirection: "row",
+                        alignItems: "center",
                         marginLeft: 8,
                       }}
                     >
@@ -522,7 +531,7 @@ export function AIDescriptionModal({
                           width: 4,
                           height: 4,
                           borderRadius: 2,
-                          backgroundColor: '#10B981',
+                          backgroundColor: "#10B981",
                           marginRight: 2,
                         }}
                       />
@@ -531,7 +540,7 @@ export function AIDescriptionModal({
                           width: 4,
                           height: 4,
                           borderRadius: 2,
-                          backgroundColor: '#10B981',
+                          backgroundColor: "#10B981",
                           marginRight: 2,
                         }}
                       />
@@ -540,7 +549,7 @@ export function AIDescriptionModal({
                           width: 4,
                           height: 4,
                           borderRadius: 2,
-                          backgroundColor: '#10B981',
+                          backgroundColor: "#10B981",
                         }}
                       />
                     </View>
@@ -558,8 +567,8 @@ export function AIDescriptionModal({
                   {isTyping && (
                     <Text
                       style={{
-                        color: '#10B981',
-                        fontWeight: 'bold',
+                        color: "#10B981",
+                        fontWeight: "bold",
                       }}
                     >
                       |
@@ -570,16 +579,16 @@ export function AIDescriptionModal({
                 {isTyping && (
                   <View
                     style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
                       marginTop: 12,
                     }}
                   >
                     <View
                       style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
+                        flexDirection: "row",
+                        alignItems: "center",
                       }}
                     >
                       <View
@@ -587,15 +596,15 @@ export function AIDescriptionModal({
                           width: 6,
                           height: 6,
                           borderRadius: 3,
-                          backgroundColor: '#10B981',
+                          backgroundColor: "#10B981",
                           marginRight: 6,
                         }}
                       />
                       <Text
                         style={{
-                          color: '#10B981',
+                          color: "#10B981",
                           fontSize: 12,
-                          fontWeight: '500',
+                          fontWeight: "500",
                         }}
                       >
                         AI is typing...
@@ -616,7 +625,7 @@ export function AIDescriptionModal({
                         style={{
                           color: theme.colors.text,
                           fontSize: 12,
-                          fontWeight: '500',
+                          fontWeight: "500",
                         }}
                       >
                         Stop
@@ -632,7 +641,7 @@ export function AIDescriptionModal({
                   <Text
                     style={{
                       fontSize: 14,
-                      fontWeight: '600',
+                      fontWeight: "600",
                       color: theme.colors.text,
                       marginBottom: 8,
                     }}
@@ -641,8 +650,8 @@ export function AIDescriptionModal({
                   </Text>
                   <View
                     style={{
-                      flexDirection: 'row',
-                      flexWrap: 'wrap',
+                      flexDirection: "row",
+                      flexWrap: "wrap",
                       gap: 8,
                     }}
                   >
@@ -650,19 +659,19 @@ export function AIDescriptionModal({
                       <View
                         key={index}
                         style={{
-                          backgroundColor: '#F59E0B' + '20',
+                          backgroundColor: "#F59E0B" + "20",
                           paddingHorizontal: 12,
                           paddingVertical: 6,
                           borderRadius: 16,
                           borderWidth: 1,
-                          borderColor: '#F59E0B' + '30',
+                          borderColor: "#F59E0B" + "30",
                         }}
                       >
                         <Text
                           style={{
-                            color: '#F59E0B',
+                            color: "#F59E0B",
                             fontSize: 12,
-                            fontWeight: '500',
+                            fontWeight: "500",
                           }}
                         >
                           {suggestion}
@@ -677,27 +686,27 @@ export function AIDescriptionModal({
               {showRefinement && (
                 <View
                   style={{
-                    backgroundColor: '#8B5CF6' + '10',
+                    backgroundColor: "#8B5CF6" + "10",
                     borderRadius: 12,
                     padding: 16,
                     marginTop: 16,
                     borderWidth: 1,
-                    borderColor: '#8B5CF6' + '20',
+                    borderColor: "#8B5CF6" + "20",
                   }}
                 >
                   <View
                     style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
+                      flexDirection: "row",
+                      alignItems: "center",
                       marginBottom: 12,
                     }}
                   >
                     <PenTool size={16} color="#8B5CF6" />
                     <Text
                       style={{
-                        color: '#8B5CF6',
+                        color: "#8B5CF6",
                         fontSize: 14,
-                        fontWeight: '600',
+                        fontWeight: "600",
                         marginLeft: 6,
                       }}
                     >
@@ -707,7 +716,7 @@ export function AIDescriptionModal({
 
                   <TextInput
                     placeholder="What would you like to change? (e.g., 'Make it more exciting', 'Add more details about the venue', 'Focus more on the target audience')"
-                    placeholderTextColor={theme.colors.text + '60'}
+                    placeholderTextColor={theme.colors.text + "60"}
                     value={refinementFeedback}
                     onChangeText={setRefinementFeedback}
                     multiline
@@ -718,26 +727,26 @@ export function AIDescriptionModal({
                       padding: 12,
                       fontSize: 14,
                       color: theme.colors.text,
-                      textAlignVertical: 'top',
+                      textAlignVertical: "top",
                       borderWidth: 1,
                       borderColor: theme.colors.border,
                       marginBottom: 12,
                     }}
                   />
 
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
                     <TouchableOpacity
                       onPress={handleRefine}
                       disabled={!refinementFeedback.trim()}
                       style={{
                         backgroundColor: !refinementFeedback.trim()
                           ? theme.colors.border
-                          : '#8B5CF6',
+                          : "#8B5CF6",
                         paddingHorizontal: 16,
                         paddingVertical: 8,
                         borderRadius: 8,
-                        flexDirection: 'row',
-                        alignItems: 'center',
+                        flexDirection: "row",
+                        alignItems: "center",
                         flex: 1,
                       }}
                     >
@@ -748,13 +757,13 @@ export function AIDescriptionModal({
                       )}
                       <Text
                         style={{
-                          color: 'white',
+                          color: "white",
                           fontSize: 14,
-                          fontWeight: '600',
+                          fontWeight: "600",
                           marginLeft: 6,
                         }}
                       >
-                        {isRefining ? 'Refining...' : 'Refine'}
+                        {isRefining ? "Refining..." : "Refine"}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -772,7 +781,7 @@ export function AIDescriptionModal({
                         style={{
                           color: theme.colors.text,
                           fontSize: 14,
-                          fontWeight: '500',
+                          fontWeight: "500",
                         }}
                       >
                         Cancel
@@ -788,13 +797,13 @@ export function AIDescriptionModal({
           {error && (
             <View
               style={{
-                backgroundColor: '#EF4444' + '10',
+                backgroundColor: "#EF4444" + "10",
                 borderRadius: 12,
                 padding: 16,
                 borderWidth: 1,
-                borderColor: '#EF4444' + '20',
-                flexDirection: 'row',
-                alignItems: 'center',
+                borderColor: "#EF4444" + "20",
+                flexDirection: "row",
+                alignItems: "center",
               }}
             >
               <View
@@ -802,9 +811,9 @@ export function AIDescriptionModal({
                   width: 20,
                   height: 20,
                   borderRadius: 10,
-                  backgroundColor: '#EF4444',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  backgroundColor: "#EF4444",
+                  alignItems: "center",
+                  justifyContent: "center",
                   marginRight: 12,
                 }}
               >
@@ -814,8 +823,8 @@ export function AIDescriptionModal({
                 <Text
                   style={{
                     fontSize: 14,
-                    fontWeight: '600',
-                    color: '#EF4444',
+                    fontWeight: "600",
+                    color: "#EF4444",
                     marginBottom: 4,
                   }}
                 >
@@ -824,7 +833,7 @@ export function AIDescriptionModal({
                 <Text
                   style={{
                     fontSize: 12,
-                    color: '#EF4444',
+                    color: "#EF4444",
                     opacity: 0.8,
                   }}
                 >
@@ -848,9 +857,10 @@ export function AIDescriptionModal({
         >
           <View
             style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              paddingBottom: 35,
             }}
           >
             <TouchableOpacity
@@ -868,7 +878,7 @@ export function AIDescriptionModal({
                 style={{
                   color: theme.colors.text,
                   fontSize: 16,
-                  fontWeight: '500',
+                  fontWeight: "500",
                 }}
               >
                 Cancel
@@ -880,20 +890,20 @@ export function AIDescriptionModal({
                 onPress={handleUseDescription}
                 disabled={isTyping}
                 style={{
-                  backgroundColor: isTyping ? theme.colors.border : '#10B981',
+                  backgroundColor: isTyping ? theme.colors.border : "#10B981",
                   paddingHorizontal: 20,
                   paddingVertical: 12,
                   borderRadius: 8,
-                  flexDirection: 'row',
-                  alignItems: 'center',
+                  flexDirection: "row",
+                  alignItems: "center",
                 }}
               >
                 <CheckCircle size={16} color="white" />
                 <Text
                   style={{
-                    color: 'white',
+                    color: "white",
                     fontSize: 16,
-                    fontWeight: '600',
+                    fontWeight: "600",
                     marginLeft: 6,
                   }}
                 >
@@ -907,4 +917,3 @@ export function AIDescriptionModal({
     </Modal>
   );
 }
-
