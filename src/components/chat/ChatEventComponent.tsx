@@ -64,6 +64,7 @@ const ChatEventComponent = ({
         onDataSelect={handleEventPress}
         onShowDetails={() => handleEventPress(data)}
         treatAsEvent={source !== "location"}
+        isCustomEvent={source === "event"}
       />
     </View>
   ) : (

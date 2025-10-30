@@ -26,7 +26,7 @@ interface SocialEventCardProps {
   onDataSelect?: (data: UnifiedData) => void;
   onShowDetails?: () => void;
   treatAsEvent?: boolean;
-  isLocation?: boolean;
+  isCustomEvent?: boolean;
 }
 
 // Type guards
@@ -257,6 +257,7 @@ export function SocialEventCard({
   onDataSelect,
   onShowDetails,
   treatAsEvent = true,
+  isCustomEvent = false,
 }: SocialEventCardProps) {
   console.log("SocialEventCard data:", data);
   const { UpdateEventStatus, fetchEventDetail, fetchLocationDetail } =
@@ -330,6 +331,9 @@ export function SocialEventCard({
 
   const hitDetailApi = async () => {
     try {
+      if (isCustomEvent) {
+        return;
+      }
       if (treatAsEvent) {
         await fetchEventDetail(data);
 
