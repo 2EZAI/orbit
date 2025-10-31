@@ -131,7 +131,9 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
   // Core state
   const [selectedTimeFrame, setSelectedTimeFrame] =
     useState<TimeFrame>("Today");
-  const [selectedEvent, setSelectedEvent] = useState<(MapEvent | MapLocation) | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<
+    (MapEvent | MapLocation) | null
+  >(null);
   const [selectedCluster, setSelectedCluster] = useState<
     (MapEvent | MapLocation)[] | null
   >(null);
@@ -158,7 +160,9 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
   const [followerList, setFollowerList] = useState<any[]>([]);
   const [filters, setFilters] = useState<FilterState>({ "show-all": true }); // Default to showing everything
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
-  const [locationChangeCenter, setLocationChangeCenter] = useState<[number, number] | null>(null);
+  const [locationChangeCenter, setLocationChangeCenter] = useState<
+    [number, number] | null
+  >(null);
 
   // Performance monitoring
   const [loadStartTime, setLoadStartTime] = useState<number | null>(null);
@@ -170,7 +174,10 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
   const calculatedCenter = useMemo(() => {
     // LOCATION CHANGE MODE: Use the new location center
     if (locationChangeCenter) {
-      console.log("🗺️ [Map] Using location change center for data fetching:", locationChangeCenter);
+      console.log(
+        "🗺️ [Map] Using location change center for data fetching:",
+        locationChangeCenter
+      );
       return locationChangeCenter;
     }
 
@@ -231,10 +238,14 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
 
   // Update global map center when calculatedCenter changes
   useEffect(() => {
-    if (calculatedCenter && calculatedCenter[0] !== 0 && calculatedCenter[1] !== 0) {
+    if (
+      calculatedCenter &&
+      calculatedCenter[0] !== 0 &&
+      calculatedCenter[1] !== 0
+    ) {
       setCurrentMapCenter({
         latitude: calculatedCenter[1], // Convert from [lng, lat] to {lat, lng}
-        longitude: calculatedCenter[0]
+        longitude: calculatedCenter[0],
       });
     }
   }, [calculatedCenter]);
@@ -534,9 +545,12 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
   // Handle route params for showing event/location cards
   useEffect(() => {
     // console.log("🗺️ [MapStateManager] Checking params:", params);
-    
+
     if (params.eventId) {
-      console.log("🗺️ [MapStateManager] Looking for event with ID:", params.eventId);
+      console.log(
+        "🗺️ [MapStateManager] Looking for event with ID:",
+        params.eventId
+      );
       let event =
         eventsNow.find((e: MapEvent) => e.id === params.eventId) ||
         eventsToday.find((e: MapEvent) => e.id === params.eventId) ||
@@ -545,63 +559,108 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
       // If event not found in existing data, check if we have eventData from params
       if (!event && params.eventData) {
         try {
-          console.log("🗺️ [MapStateManager] Event not found in data, using provided eventData");
+          console.log(
+            "🗺️ [MapStateManager] Event not found in data, using provided eventData"
+          );
           const eventData = JSON.parse(params.eventData as string);
           event = eventData as MapEvent;
-          console.log("🗺️ [MapStateManager] Using provided event data:", event.name);
+          console.log(
+            "🗺️ [MapStateManager] Using provided event data:",
+            event.name
+          );
         } catch (error) {
           console.error("🗺️ [MapStateManager] Error parsing eventData:", error);
         }
       }
 
-      console.log("🗺️ [MapStateManager] Event found:", event ? event.name : "NOT FOUND");
-      
+      console.log(
+        "🗺️ [MapStateManager] Event found:",
+        event ? event.name : "NOT FOUND"
+      );
+
       // If not found, create event object from params (for external events or events not in current timeframe)
       if (!event && params.name && params.latitude && params.longitude) {
-        console.log("🗺️ [MapStateManager] Creating event from params (external or out of timeframe)");
-        const lat = parseFloat(Array.isArray(params.latitude) ? params.latitude[0] : params.latitude);
-        const lng = parseFloat(Array.isArray(params.longitude) ? params.longitude[0] : params.longitude);
-        
+        console.log(
+          "🗺️ [MapStateManager] Creating event from params (external or out of timeframe)"
+        );
+        const lat = parseFloat(
+          Array.isArray(params.latitude) ? params.latitude[0] : params.latitude
+        );
+        const lng = parseFloat(
+          Array.isArray(params.longitude)
+            ? params.longitude[0]
+            : params.longitude
+        );
+
         event = {
-          id: Array.isArray(params.eventId) ? params.eventId[0] : params.eventId,
+          id: Array.isArray(params.eventId)
+            ? params.eventId[0]
+            : params.eventId,
           name: Array.isArray(params.name) ? params.name[0] : params.name,
-          description: params.description ? (Array.isArray(params.description) ? params.description[0] : params.description) : "",
-          venue_name: params.venue_name ? (Array.isArray(params.venue_name) ? params.venue_name[0] : params.venue_name) : "",
-          type: params.type ? (Array.isArray(params.type) ? params.type[0] : params.type) : "event",
+          description: params.description
+            ? Array.isArray(params.description)
+              ? params.description[0]
+              : params.description
+            : "",
+          venue_name: params.venue_name
+            ? Array.isArray(params.venue_name)
+              ? params.venue_name[0]
+              : params.venue_name
+            : "",
+          type: params.type
+            ? Array.isArray(params.type)
+              ? params.type[0]
+              : params.type
+            : "event",
           is_ticketmaster: params.source === "ticketmaster",
-          created_by: params.created_by ? (Array.isArray(params.created_by) ? JSON.parse(params.created_by[0]) : (typeof params.created_by === 'string' && params.created_by.startsWith('{') ? JSON.parse(params.created_by) : params.created_by)) : undefined,
+          created_by: params.created_by
+            ? Array.isArray(params.created_by)
+              ? JSON.parse(params.created_by[0])
+              : typeof params.created_by === "string" &&
+                params.created_by.startsWith("{")
+              ? JSON.parse(params.created_by)
+              : params.created_by
+            : undefined,
           start_datetime: new Date().toISOString(), // Default to now to avoid invalid date errors
           end_datetime: new Date(Date.now() + 3600000).toISOString(), // Default to 1 hour from now
           location: {
             type: "Point",
-            coordinates: [lng, lat]
+            coordinates: [lng, lat],
           },
           coordinates: {
             latitude: lat,
-            longitude: lng
-          }
+            longitude: lng,
+          },
         } as MapEvent;
       }
-      
+
       if (event) {
-        console.log("🗺️ [MapStateManager] Setting event and showing card first");
-        setIsEvent(true);
-        setSelectedEvent(event);
-        setShowDetails(false); // Show card first, not details sheet
-        
+        console.log(
+          "🗺️ [MapStateManager] Setting event and showing card first"
+        );
+        handleEventClick(event);
+        // setIsEvent(true);
+        // setSelectedEvent(event);
+        // setShowDetails(false); // Show card first, not details sheet
+
         // Focus the map on the newly created event
         if (params.eventData && event.location) {
-          console.log("🗺️ [MapStateManager] Focusing map on newly created event");
+          console.log(
+            "🗺️ [MapStateManager] Focusing map on newly created event"
+          );
           const coords = getLocationCoordinates(event.location);
-          if (coords) {
-            setMapCenter([coords.longitude, coords.latitude]);
-          }
+          // if (coords) {
+          //   setMapCenter([coords.longitude, coords.latitude]);
+          // }
         }
       }
     }
 
     if (params.locationId) {
-      console.log("🗺️ [MapStateManager] Looking for location with ID:", params.locationId);
+      console.log(
+        "🗺️ [MapStateManager] Looking for location with ID:",
+        params.locationId
+      );
       let location = locations.find(
         (l: MapLocation) => l.id === params.locationId
       );
@@ -617,31 +676,57 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
             searchName.toLowerCase().includes(l.name?.toLowerCase())
         );
       }
-      
+
       // If still not found, create a location object from params (for external locations like Google Places)
       if (!location && params.latitude && params.longitude && params.name) {
-        console.log("🗺️ [MapStateManager] Creating location from params (external source)");
-        const lat = parseFloat(Array.isArray(params.latitude) ? params.latitude[0] : params.latitude);
-        const lng = parseFloat(Array.isArray(params.longitude) ? params.longitude[0] : params.longitude);
-        
+        console.log(
+          "🗺️ [MapStateManager] Creating location from params (external source)"
+        );
+        const lat = parseFloat(
+          Array.isArray(params.latitude) ? params.latitude[0] : params.latitude
+        );
+        const lng = parseFloat(
+          Array.isArray(params.longitude)
+            ? params.longitude[0]
+            : params.longitude
+        );
+
         location = {
-          id: Array.isArray(params.locationId) ? params.locationId[0] : params.locationId,
+          id: Array.isArray(params.locationId)
+            ? params.locationId[0]
+            : params.locationId,
           name: Array.isArray(params.name) ? params.name[0] : params.name,
-          description: params.description ? (Array.isArray(params.description) ? params.description[0] : params.description) : "",
-          type: params.type ? (Array.isArray(params.type) ? params.type[0] : params.type) : "location",
-          address: params.address ? (Array.isArray(params.address) ? params.address[0] : params.address) : "",
+          description: params.description
+            ? Array.isArray(params.description)
+              ? params.description[0]
+              : params.description
+            : "",
+          type: params.type
+            ? Array.isArray(params.type)
+              ? params.type[0]
+              : params.type
+            : "location",
+          address: params.address
+            ? Array.isArray(params.address)
+              ? params.address[0]
+              : params.address
+            : "",
           location: {
             type: "Point",
-            coordinates: [lng, lat]
+            coordinates: [lng, lat],
           },
           coordinates: {
             latitude: lat,
-            longitude: lng
-          }
+            longitude: lng,
+          },
         } as MapLocation;
       }
-      
-      console.log("🗺️ [MapStateManager] Location found:", location ? location.name : "NOT FOUND", params);
+
+      console.log(
+        "🗺️ [MapStateManager] Location found:",
+        location ? location.name : "NOT FOUND",
+        params
+      );
       if (location) {
         console.log("🗺️ [MapStateManager] Calling handleLocationClick for:", {
           locationId: location.id,
@@ -665,83 +750,56 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
   // Handle location change when user confirms to load data for new area
   useEffect(() => {
     if (params.changeLocation === "true" && params.lat && params.lng) {
-      console.log("🗺️ [MapStateManager] Location change requested, updating map center");
-      
+      console.log(
+        "🗺️ [MapStateManager] Location change requested, updating map center"
+      );
+
       const newLat = parseFloat(params.lat as string);
       const newLng = parseFloat(params.lng as string);
-      
+
       // Update location change center to trigger data reload
       const newCenter = [newLng, newLat] as [number, number];
       setLocationChangeCenter(newCenter);
-      
-      console.log("🗺️ [MapStateManager] Location change center set to:", newCenter);
-      
+
+      console.log(
+        "🗺️ [MapStateManager] Location change center set to:",
+        newCenter
+      );
+
       // Also update map center for camera positioning
       setMapCenter(newCenter);
     }
   }, [params.changeLocation, params.lat, params.lng]);
 
   // Event handlers
-  const handleEventClick = useCallback((event: MapEvent) => {
-    console.log("🎯 [MapStateManager] handleEventClick called!", {
-      eventId: event.id,
-      eventName: event.name,
-      eventType: event.categories?.[0]?.name || event.type || "Unknown",
-    });
-
-    console.log(JSON.stringify(event, null, 2));
-    setSelectedEvent(event);
-    setShowDetails(false);
-    setIsEvent(true);
-
-    // Focus camera on the selected event
-    const coords = getLocationCoordinates(event.location);
-    console.log("🎯 [MapStateManager] Camera focus debug:", {
-      cameraRefExists: !!cameraRef.current,
-      eventLocation: event.location,
-      extractedCoords: coords,
-      eventName: event.name
-    });
-    
-    if (cameraRef.current && coords) {
-      console.log("🎯 [MapStateManager] Setting camera to coordinates:", coords);
-      
-      try {
-        cameraRef.current.setCamera({
-          centerCoordinate: [coords.longitude, coords.latitude],
-          zoomLevel: 16,
-          animationDuration: 800,
-          animationMode: "flyTo",
-        });
-        console.log("🎯 [MapStateManager] Camera focused on event:", event.name);
-      } catch (error) {
-        console.error("🎯 [MapStateManager] Camera focus error:", error);
-      }
-    } else {
-      console.log("🎯 [MapStateManager] Camera focus skipped - missing camera ref or coordinates");
-    }
-
-    console.log(
-      "🎯 [MapStateManager] selectedEvent state updated, UnifiedCard should show"
-    );
-  }, [cameraRef]);
-
-  const handleLocationClick = useCallback(
-    (location: MapLocation) => {
-      setIsEvent(false);
-      
-      // Focus camera on the selected location
-      const coords = getLocationCoordinates(location.location);
-      console.log("🎯 [MapStateManager] Location camera focus debug:", {
-        cameraRefExists: !!cameraRef.current,
-        locationData: location.location,
-        extractedCoords: coords,
-        locationName: location.name
+  const handleEventClick = useCallback(
+    (event: MapEvent) => {
+      console.log("🎯 [MapStateManager] handleEventClick called!", {
+        eventId: event.id,
+        eventName: event.name,
+        eventType: event.categories?.[0]?.name || event.type || "Unknown",
       });
-      
+
+      console.log(JSON.stringify(event, null, 2));
+      setSelectedEvent(event);
+      setShowDetails(false);
+      setIsEvent(true);
+
+      // Focus camera on the selected event
+      const coords = getLocationCoordinates(event.location);
+      console.log("🎯 [MapStateManager] Camera focus debug:", {
+        cameraRefExists: !!cameraRef.current,
+        eventLocation: event.location,
+        extractedCoords: coords,
+        eventName: event.name,
+      });
+
       if (cameraRef.current && coords) {
-        console.log("🎯 [MapStateManager] Setting camera to location coordinates:", coords);
-        
+        console.log(
+          "🎯 [MapStateManager] Setting camera to coordinates:",
+          coords
+        );
+
         try {
           cameraRef.current.setCamera({
             centerCoordinate: [coords.longitude, coords.latitude],
@@ -749,14 +807,68 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
             animationDuration: 800,
             animationMode: "flyTo",
           });
-          console.log("🎯 [MapStateManager] Camera focused on location:", location.name);
+          console.log(
+            "🎯 [MapStateManager] Camera focused on event:",
+            event.name
+          );
         } catch (error) {
-          console.error("🎯 [MapStateManager] Location camera focus error:", error);
+          console.error("🎯 [MapStateManager] Camera focus error:", error);
         }
       } else {
-        console.log("🎯 [MapStateManager] Location camera focus skipped - missing camera ref or coordinates");
+        console.log(
+          "🎯 [MapStateManager] Camera focus skipped - missing camera ref or coordinates"
+        );
       }
-      
+
+      console.log(
+        "🎯 [MapStateManager] selectedEvent state updated, UnifiedCard should show"
+      );
+    },
+    [cameraRef]
+  );
+
+  const handleLocationClick = useCallback(
+    (location: MapLocation) => {
+      setIsEvent(false);
+
+      // Focus camera on the selected location
+      const coords = getLocationCoordinates(location.location);
+      console.log("🎯 [MapStateManager] Location camera focus debug:", {
+        cameraRefExists: !!cameraRef.current,
+        locationData: location.location,
+        extractedCoords: coords,
+        locationName: location.name,
+      });
+
+      if (cameraRef.current && coords) {
+        console.log(
+          "🎯 [MapStateManager] Setting camera to location coordinates:",
+          coords
+        );
+
+        try {
+          cameraRef.current.setCamera({
+            centerCoordinate: [coords.longitude, coords.latitude],
+            zoomLevel: 16,
+            animationDuration: 800,
+            animationMode: "flyTo",
+          });
+          console.log(
+            "🎯 [MapStateManager] Camera focused on location:",
+            location.name
+          );
+        } catch (error) {
+          console.error(
+            "🎯 [MapStateManager] Location camera focus error:",
+            error
+          );
+        }
+      } else {
+        console.log(
+          "🎯 [MapStateManager] Location camera focus skipped - missing camera ref or coordinates"
+        );
+      }
+
       // Set the location directly without converting to event
       console.log("🎯 [MapStateManager] Setting selectedEvent to location:", {
         locationId: location.id,
@@ -822,8 +934,8 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
     if (!session?.user.id) return [];
 
     try {
-      console.log('👥 [MapStateManager] Fetching friends live locations...');
-      
+      console.log("👥 [MapStateManager] Fetching friends live locations...");
+
       const { data: follows, error: followError } = await supabase
         .from("follows")
         .select("following_id")
@@ -831,11 +943,11 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
 
       if (followError) throw followError;
       if (!follows || follows.length === 0) {
-        console.log('❌ [MapStateManager] No follows found');
+        console.log("❌ [MapStateManager] No follows found");
         return [];
       }
 
-      console.log('👥 [MapStateManager] Following count:', follows.length);
+      console.log("👥 [MapStateManager] Following count:", follows.length);
       const followingIds = follows.map((f) => f.following_id);
 
       const { data: mutuals, error: mutualError } = await supabase
@@ -845,7 +957,10 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
         .eq("following_id", session?.user.id);
 
       if (mutualError) throw mutualError;
-      console.log('👥 [MapStateManager] Mutual followers count:', mutuals?.length || 0);
+      console.log(
+        "👥 [MapStateManager] Mutual followers count:",
+        mutuals?.length || 0
+      );
 
       const mutualFollowerIds = mutuals.map((m) => m.follower_id);
 
@@ -855,14 +970,22 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
         .in("id", mutualFollowerIds);
 
       if (usersError) throw usersError;
-      console.log('👥 [MapStateManager] All mutual users:', users?.length || 0);
-      console.log('👥 [MapStateManager] Users with location sharing:', users?.filter(u => u.is_live_location_shared === 1).length || 0);
+      console.log("👥 [MapStateManager] All mutual users:", users?.length || 0);
+      console.log(
+        "👥 [MapStateManager] Users with location sharing:",
+        users?.filter((u) => u.is_live_location_shared === 1).length || 0
+      );
 
-      const live_usersIds = users?.filter(u => u.is_live_location_shared === 1).map((m) => m.id) || [];
-      console.log('👥 [MapStateManager] Live users IDs:', live_usersIds);
+      const live_usersIds =
+        users
+          ?.filter((u) => u.is_live_location_shared === 1)
+          .map((m) => m.id) || [];
+      console.log("👥 [MapStateManager] Live users IDs:", live_usersIds);
 
       if (live_usersIds.length === 0) {
-        console.log('❌ [MapStateManager] No friends have live location sharing enabled');
+        console.log(
+          "❌ [MapStateManager] No friends have live location sharing enabled"
+        );
         setFollowerList([]);
         return [];
       }
@@ -873,12 +996,21 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
         .in("user_id", live_usersIds);
 
       if (locationError) {
-        console.error('❌ [MapStateManager] Error fetching locations:', locationError);
+        console.error(
+          "❌ [MapStateManager] Error fetching locations:",
+          locationError
+        );
         throw locationError;
       }
-      
-      console.log('👥 [MapStateManager] Locations data:', JSON.stringify(locations, null, 2));
-      console.log('👥 [MapStateManager] Number of locations found:', locations?.length || 0);
+
+      console.log(
+        "👥 [MapStateManager] Locations data:",
+        JSON.stringify(locations, null, 2)
+      );
+      console.log(
+        "👥 [MapStateManager] Number of locations found:",
+        locations?.length || 0
+      );
 
       const result = live_usersIds.map((userId) => {
         const userDetail = users.find((u) => u.id === userId);
@@ -894,13 +1026,19 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
         };
       });
 
-      console.log('👥 [MapStateManager] Final result:', result);
+      console.log("👥 [MapStateManager] Final result:", result);
       const updatedFollowerList = getNearbyFollowerCounts(result);
-      console.log('✅ [MapStateManager] Updated follower list:', updatedFollowerList.length);
+      console.log(
+        "✅ [MapStateManager] Updated follower list:",
+        updatedFollowerList.length
+      );
       setFollowerList(updatedFollowerList);
       return result;
     } catch (error) {
-      console.error("❌ [MapStateManager] Error fetching followed user details:", error);
+      console.error(
+        "❌ [MapStateManager] Error fetching followed user details:",
+        error
+      );
       return [];
     }
   }, [session?.user.id]);
@@ -950,9 +1088,9 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
   // Log current user ID for debugging
   useEffect(() => {
     if (session?.user?.id) {
-      console.log('👤 [MapStateManager] ===================================');
-      console.log('👤 [MapStateManager] YOUR USER ID:', session.user.id);
-      console.log('👤 [MapStateManager] ===================================');
+      console.log("👤 [MapStateManager] ===================================");
+      console.log("👤 [MapStateManager] YOUR USER ID:", session.user.id);
+      console.log("👤 [MapStateManager] ===================================");
     }
   }, [session?.user?.id]);
 
@@ -966,21 +1104,21 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
     if (!session?.user?.id || !user) return;
 
     const isLiveLocationEnabled = (user as any).is_live_location_shared === 1;
-    
+
     if (!isLiveLocationEnabled) {
-      console.log('📍 [MapStateManager] Live location sharing disabled');
+      console.log("📍 [MapStateManager] Live location sharing disabled");
       return;
     }
 
-    console.log('📍 [MapStateManager] Starting live location updates...');
-    
+    console.log("📍 [MapStateManager] Starting live location updates...");
+
     let locationSubscription: Location.LocationSubscription | null = null;
 
     const startLocationUpdates = async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") {
-          console.log('❌ [MapStateManager] Location permission not granted');
+          console.log("❌ [MapStateManager] Location permission not granted");
           return;
         }
 
@@ -992,8 +1130,11 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
             distanceInterval: 50, // Or when user moves 50 meters
           },
           async (location) => {
-            console.log('📍 [MapStateManager] Location update:', location.coords);
-            
+            console.log(
+              "📍 [MapStateManager] Location update:",
+              location.coords
+            );
+
             try {
               const { error } = await supabase
                 .from("user_locations")
@@ -1005,19 +1146,28 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
                 .eq("user_id", session.user.id);
 
               if (error) {
-                console.error('❌ [MapStateManager] Error updating live location:', error);
+                console.error(
+                  "❌ [MapStateManager] Error updating live location:",
+                  error
+                );
               } else {
-                console.log('✅ [MapStateManager] Live location updated');
+                console.log("✅ [MapStateManager] Live location updated");
               }
             } catch (updateError) {
-              console.error('❌ [MapStateManager] Exception updating live location:', updateError);
+              console.error(
+                "❌ [MapStateManager] Exception updating live location:",
+                updateError
+              );
             }
           }
         );
 
-        console.log('✅ [MapStateManager] Location watch started');
+        console.log("✅ [MapStateManager] Location watch started");
       } catch (error) {
-        console.error('❌ [MapStateManager] Error starting location watch:', error);
+        console.error(
+          "❌ [MapStateManager] Error starting location watch:",
+          error
+        );
       }
     };
 
@@ -1026,7 +1176,7 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
     // Cleanup
     return () => {
       if (locationSubscription) {
-        console.log('🔒 [MapStateManager] Stopping location watch');
+        console.log("🔒 [MapStateManager] Stopping location watch");
         locationSubscription.remove();
       }
     };
@@ -1055,7 +1205,10 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
           eventsTomorrow.find((e: MapEvent) => e.id === data.eventId);
 
         if (event) {
-          console.log("🗺️ [MapStateManager] Found event for showEventCard:", event.name);
+          console.log(
+            "🗺️ [MapStateManager] Found event for showEventCard:",
+            event.name
+          );
           setIsEvent(true);
           handleEventClick(event as MapEvent);
         } else {
@@ -1069,7 +1222,9 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
       "mapReload",
       (shouldReload: boolean) => {
         if (shouldReload && forceRefresh) {
-          console.log("🔄 [MapStateManager] Map reload requested, refreshing data...");
+          console.log(
+            "🔄 [MapStateManager] Map reload requested, refreshing data..."
+          );
           forceRefresh();
         }
       }
