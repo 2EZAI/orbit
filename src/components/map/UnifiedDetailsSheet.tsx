@@ -816,46 +816,6 @@ export const UnifiedDetailsSheet = React.memo(
                     style={{ backgroundColor: theme.colors.border }}
                   />
                 )}
-
-                {/* Categories (for events) */}
-                {isEventType &&
-                  (currentData as any).categories &&
-                  (currentData as any).categories.length > 0 && (
-                    <View className="mb-6">
-                      <Text
-                        className="mb-3 text-lg font-bold"
-                        style={{ color: theme.colors.text }}
-                      >
-                        Activity Categories
-                      </Text>
-                      <View className="flex-row flex-wrap gap-2">
-                        {(currentData as any).categories
-                          .filter((category: any) =>
-                            getCategoryName(category.name)
-                          )
-                          .map((category: any, index: number) => (
-                            <View
-                              key={`${category.id}-${index}`}
-                              className="px-4 py-2 rounded-full"
-                              style={{
-                                backgroundColor: isDarkMode
-                                  ? "rgba(139, 92, 246, 0.2)"
-                                  : "rgb(237, 233, 254)",
-                              }}
-                            >
-                              <Text
-                                className="text-sm font-semibold"
-                                style={{
-                                  color: isDarkMode ? "#A78BFA" : "#6B46C1",
-                                }}
-                              >
-                                {getCategoryName(category.name)}
-                              </Text>
-                            </View>
-                          ))}
-                      </View>
-                    </View>
-                  )}
               </View>
             </BottomSheetScrollView>
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { View } from "react-native";
+import { View, Text } from "react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { EventDetailsSection } from "./sections/EventDetailsSection";
 import { LocationDetailsSection } from "./sections/LocationDetailsSection";
@@ -9,6 +9,7 @@ import { LocationBusinessInfoSection } from "./sections/LocationBusinessInfoSect
 import { LocationEventsSection } from "./sections/LocationEventsSection";
 import { EventSimilarSection } from "./sections/EventSimilarSection";
 import { LocationSimilarSection } from "./sections/LocationSimilarSection";
+import EventCategoriesSection from "./EventCategoriesSection";
 
 export interface UnifiedDetailsSheetContentProps {
   data: any;
@@ -42,7 +43,7 @@ export function UnifiedDetailsSheetContent({
   nearbyData,
   onDataSelect,
 }: UnifiedDetailsSheetContentProps) {
-  const { theme } = useTheme();
+  const { theme, isDarkMode } = useTheme();
 
   if (isEventType) {
     // EVENT CONTENT
@@ -51,12 +52,16 @@ export function UnifiedDetailsSheetContent({
       return (
         <View>
           <TicketmasterDetailsSection data={data} />
-          <EventAttendeesSection 
+          {/* Categories (for events) */}
+          {data.categories && data.categories.length > 0 && (
+            <EventCategoriesSection categories={data.categories} />
+          )}
+          <EventAttendeesSection
             data={data}
             attendeeCount={attendeeCount}
             attendeeProfiles={attendeeProfiles}
           />
-          <EventSimilarSection 
+          <EventSimilarSection
             data={data}
             nearbyData={nearbyData}
             onDataSelect={onDataSelect}
@@ -67,18 +72,22 @@ export function UnifiedDetailsSheetContent({
       // REGULAR EVENT CONTENT (User Events)
       return (
         <View>
-          <EventDetailsSection 
+          <EventDetailsSection
             data={data}
             isCreator={isCreator}
             isJoined={isJoined}
             hasTickets={hasTickets}
           />
-          <EventAttendeesSection 
+          {/* Categories (for events) */}
+          {data.categories && data.categories.length > 0 && (
+            <EventCategoriesSection categories={data.categories} />
+          )}
+          <EventAttendeesSection
             data={data}
             attendeeCount={attendeeCount}
             attendeeProfiles={attendeeProfiles}
           />
-          <EventSimilarSection 
+          <EventSimilarSection
             data={data}
             nearbyData={nearbyData}
             onDataSelect={onDataSelect}
@@ -92,13 +101,13 @@ export function UnifiedDetailsSheetContent({
       <View>
         <LocationDetailsSection data={data} />
         <LocationBusinessInfoSection data={data} />
-        <LocationEventsSection 
+        <LocationEventsSection
           data={data}
           locationEvents={locationEvents}
           loadingLocationEvents={loadingLocationEvents}
           onDataSelect={onDataSelect}
         />
-        <LocationSimilarSection 
+        <LocationSimilarSection
           data={data}
           nearbyData={nearbyData}
           onDataSelect={onDataSelect}
@@ -107,5 +116,3 @@ export function UnifiedDetailsSheetContent({
     );
   }
 }
-
-
