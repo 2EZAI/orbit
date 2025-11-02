@@ -1,15 +1,14 @@
 import React from "react";
-import { View, Text } from "react-native";
-import { useTheme } from "~/src/components/ThemeProvider";
-import { EventDetailsSection } from "./sections/EventDetailsSection";
-import { LocationDetailsSection } from "./sections/LocationDetailsSection";
-import { TicketmasterDetailsSection } from "./sections/TicketmasterDetailsSection";
-import { EventAttendeesSection } from "./sections/EventAttendeesSection";
-import { LocationBusinessInfoSection } from "./sections/LocationBusinessInfoSection";
-import { LocationEventsSection } from "./sections/LocationEventsSection";
-import { EventSimilarSection } from "./sections/EventSimilarSection";
-import { LocationSimilarSection } from "./sections/LocationSimilarSection";
+import { View } from "react-native";
 import EventCategoriesSection from "./EventCategoriesSection";
+import { EventAttendeesSection } from "./sections/EventAttendeesSection";
+import { EventDetailsSection } from "./sections/EventDetailsSection";
+import { EventSimilarSection } from "./sections/EventSimilarSection";
+import { LocationBusinessInfoSection } from "./sections/LocationBusinessInfoSection";
+import { LocationDetailsSection } from "./sections/LocationDetailsSection";
+import { LocationEventsSection } from "./sections/LocationEventsSection";
+import { LocationSimilarSection } from "./sections/LocationSimilarSection";
+import { TicketmasterDetailsSection } from "./sections/TicketmasterDetailsSection";
 
 export interface UnifiedDetailsSheetContentProps {
   data: any;
@@ -43,8 +42,6 @@ export function UnifiedDetailsSheetContent({
   nearbyData,
   onDataSelect,
 }: UnifiedDetailsSheetContentProps) {
-  const { theme, isDarkMode } = useTheme();
-
   if (isEventType) {
     // EVENT CONTENT
     if (isTicketmasterEvent) {
