@@ -36,6 +36,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "expo-notifications",
       "@stream-io/video-react-native-sdk",
       "expo-apple-authentication",
       "@react-native-google-signin/google-signin",
