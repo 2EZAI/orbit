@@ -1,8 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router } from "expo-router";
-import { ChevronRight } from "lucide-react-native";
+import { useIsFocused } from "@react-navigation/native";
+import { router, useFocusEffect } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { useFocusEffect } from "expo-router";
 import {
   Animated,
   Dimensions,
@@ -12,7 +11,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Icon } from "react-native-elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Google from "~/assets/svg/Google";
 import { useSocialLoginsApi } from "~/hooks/useSocialLoginsApi";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { ImageCacheManager } from "~/src/components/ui/optimized-image";
@@ -20,7 +21,6 @@ import { Text } from "~/src/components/ui/text";
 import { useAuth } from "~/src/lib/auth";
 import { cacheMonitor } from "~/src/lib/cacheMonitor";
 import { cacheWarmer } from "~/src/lib/cacheWarmer";
-import { useIsFocused } from "@react-navigation/native";
 const { width, height } = Dimensions.get("window");
 
 // Background images data
@@ -691,10 +691,7 @@ export default function LandingPage() {
       >
         <View
           style={{
-            width: 130,
-            height: 130,
-            backgroundColor: theme.colors.background,
-            borderRadius: 65,
+            borderRadius: 20,
             justifyContent: "center",
             alignItems: "center",
             shadowColor: "#8B5CF6",
@@ -702,15 +699,13 @@ export default function LandingPage() {
             shadowOpacity: 1,
             shadowRadius: 30,
             elevation: 25,
-            borderWidth: 4,
-            borderColor: "#8B5CF6",
           }}
         >
           <Image
             source={require("~/assets/bg-images/OrbitLogo.png")}
             style={{
-              width: 90,
-              height: 90,
+              width: 130,
+              height: 130,
             }}
             resizeMode="contain"
           />
@@ -742,28 +737,15 @@ export default function LandingPage() {
       >
         <Text
           style={{
-            fontSize: 32,
+            fontSize: 28,
             fontWeight: "800",
             color: theme.colors.text,
             textAlign: "center",
-            marginBottom: 16,
+            marginBottom: 30,
             lineHeight: 40,
           }}
         >
-          Where the{"\n"}moment finds you
-        </Text>
-
-        <Text
-          style={{
-            fontSize: 16,
-            color: theme.colors.text + "CC",
-            textAlign: "center",
-            marginBottom: 40,
-            lineHeight: 24,
-          }}
-        >
-          Discover spontaneous events, connect with like-minded people, and
-          create unforgettable memories wherever life takes you.
+          Discover what's{"\n"} going on near you
         </Text>
 
         <View style={{ width: "100%", gap: 12 }}>
@@ -784,8 +766,11 @@ export default function LandingPage() {
                     borderColor: theme.colors.border,
                     justifyContent: "center",
                     alignItems: "center",
+                    flexDirection: "row",
+                    gap: 10,
                   }}
                 >
+                  <Icon size={24} type="antdesign" name="apple1" />
                   <Text
                     style={{
                       color: theme.colors.text,
@@ -793,7 +778,7 @@ export default function LandingPage() {
                       fontWeight: "600",
                     }}
                   >
-                    Apple Login
+                    Continue with Apple
                   </Text>
                 </TouchableOpacity>
               )}
@@ -812,8 +797,11 @@ export default function LandingPage() {
                   borderColor: theme.colors.border,
                   justifyContent: "center",
                   alignItems: "center",
+                  flexDirection: "row",
+                  gap: 10,
                 }}
               >
+                <Google width={24} height={24} />
                 <Text
                   style={{
                     color: theme.colors.text,
@@ -821,7 +809,7 @@ export default function LandingPage() {
                     fontWeight: "600",
                   }}
                 >
-                  Google Login
+                  Continue with Google
                 </Text>
               </TouchableOpacity>
             </>
@@ -853,18 +841,6 @@ export default function LandingPage() {
             >
               Get Started
             </Text>
-            <View
-              style={{
-                width: 32,
-                height: 32,
-                backgroundColor: "white",
-                borderRadius: 16,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <ChevronRight size={18} color="#8B5CF6" />
-            </View>
           </TouchableOpacity>
 
           {!isFirstTime ? (
