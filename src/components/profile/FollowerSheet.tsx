@@ -135,7 +135,7 @@ const FollowerSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
         <TouchableOpacity
           onPress={() => {
             onClose();
-            router.push(`/(app)/profile/${item.id}`);
+            router.push(`/profile/${item.id}`);
           }}
           style={{
             flexDirection: "row",

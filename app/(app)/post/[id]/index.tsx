@@ -537,7 +537,7 @@ export default function PostView() {
             >
               <TouchableOpacity
                 onPress={() => {
-                  router.push(`/(app)/profile/${post.user.id}`);
+                  router.push(`/profile/${post.user.id}`);
                 }}
                 style={{
                   flexDirection: "row",
@@ -763,7 +763,7 @@ export default function PostView() {
                   <TouchableOpacity
                     onPress={() => {
                       router.push({
-                        pathname: "/(app)/profile/[username]",
+                        pathname: "/profile/[username]",
                         params: { username: comment.user.id },
                       });
                     }}
@@ -786,7 +786,7 @@ export default function PostView() {
                     <TouchableOpacity
                       onPress={() => {
                         router.push({
-                          pathname: "/(app)/profile/[username]",
+                          pathname: "/profile/[username]",
                           params: { username: comment.user.id },
                         });
                       }}

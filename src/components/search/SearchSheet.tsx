@@ -147,7 +147,7 @@ export function SearchSheet({
     switch (type) {
       case "user":
         console.log("🔍 [SearchSheet] Navigating to user profile:", result.id);
-        router.push(`/(app)/profile/${result.id}`);
+        router.push(`/profile/${result.id}`);
         break;
       case "event":
         const event = result as EventResult;

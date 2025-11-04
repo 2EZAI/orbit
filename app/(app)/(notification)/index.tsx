@@ -533,7 +533,7 @@ export default function NotificationView() {
       console.log("user_id>", item?.data?.user_id);
       if (item?.data?.user_id) {
         router.push({
-          pathname: "/(app)/profile/[username]",
+          pathname: "/profile/[username]",
           params: { username: item.data.user_id },
         });
       }

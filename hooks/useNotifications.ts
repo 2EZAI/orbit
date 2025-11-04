@@ -82,7 +82,7 @@ export default function useNotifications() {
           // ,false);
 
           router.push({
-            pathname: "/(app)/profile/[username]",
+            pathname: "/profile/[username]",
             params: { username: content?.data?.user_id },
           });
         }

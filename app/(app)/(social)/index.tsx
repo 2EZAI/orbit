@@ -371,7 +371,7 @@ export default function SocialFeed() {
             onPress={() => {
               if (post.user?.id) {
                 router.push({
-                  pathname: `/(app)/profile/${post.user.id}`,
+                  pathname: `/profile/${post.user.id}`,
                   params: { from: "social" },
                 });
               }

@@ -11,7 +11,12 @@ import {
   FlatList,
   Image,
 } from "react-native";
-import { useLocalSearchParams, useRouter, Stack, useFocusEffect } from "expo-router";
+import {
+  useLocalSearchParams,
+  useRouter,
+  Stack,
+  useFocusEffect,
+} from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useChat } from "~/src/lib/chat";
@@ -66,19 +71,23 @@ export default function ChatSettingsScreen() {
       setLoading(true);
       // Get the channel instance and refresh its data
       const newChannelInstance = client.channel("messaging", id);
-      
+
       // Watch the channel to get all data
       await newChannelInstance.watch();
-      
+
       // Query fresh member data to get updated count
       const membersResponse = await newChannelInstance.queryMembers({});
-      
+
       setChannelInstance(newChannelInstance);
       setChannel(newChannelInstance.data || {});
       setNewChannelName(newChannelInstance.data?.name || "");
-      setChannelImage(newChannelInstance.data?.image ? String(newChannelInstance.data.image) : null);
+      setChannelImage(
+        newChannelInstance.data?.image
+          ? String(newChannelInstance.data.image)
+          : null
+      );
       setIsMuted(newChannelInstance.muteStatus().muted);
-      
+
       // Use fresh member data from the query
       setMembers(membersResponse.members);
     } catch (error) {
@@ -106,19 +115,19 @@ export default function ChatSettingsScreen() {
     try {
       // Get current image to preserve it
       const currentImage = channel?.image || channelInstance.data?.image;
-      
+
       // Update the channel with both name and image to preserve image
-      await channelInstance.update({ 
+      await channelInstance.update({
         name: newChannelName.trim(),
-        ...(currentImage && { image: currentImage })
+        ...(currentImage && { image: currentImage }),
       });
-      
+
       // Update the UI immediately with the new data
       setChannel((prev: any) => ({
         ...prev,
-        name: newChannelName.trim()
+        name: newChannelName.trim(),
       }));
-      
+
       setShowNameModal(false);
       Alert.alert("Success", "Channel name updated successfully");
     } catch (error) {
@@ -129,7 +138,10 @@ export default function ChatSettingsScreen() {
 
   const handleChangeChannelImage = async () => {
     if (!isCurrentUserAdmin()) {
-      Alert.alert("Permission Denied", "Only admins can change the group photo");
+      Alert.alert(
+        "Permission Denied",
+        "Only admins can change the group photo"
+      );
       return;
     }
 
@@ -152,22 +164,22 @@ export default function ChatSettingsScreen() {
           // Store image URL in both local state and channel update
           const imageUrl = selectedImage.uri;
           setChannelImage(imageUrl);
-          
+
           // Get current name to preserve it
           const currentName = channel?.name || channelInstance.data?.name;
-          
+
           // Update the channel with both image and name to preserve name
-          await channelInstance.update({ 
+          await channelInstance.update({
             image: imageUrl,
-            ...(currentName && { name: currentName })
+            ...(currentName && { name: currentName }),
           });
-          
+
           // Update local state - preserve all existing data
           setChannel((prev: any) => ({
             ...prev,
-            image: imageUrl
+            image: imageUrl,
           }));
-          
+
           Alert.alert("Success", "Group photo updated successfully");
         }
       }
@@ -295,7 +307,6 @@ export default function ChatSettingsScreen() {
     );
   };
 
-
   const getMemberDisplayName = (member: any) => {
     const user = member.user;
     if (user?.first_name || user?.last_name) {
@@ -327,47 +338,17 @@ export default function ChatSettingsScreen() {
   const isCurrentUserAdmin = () => {
     if (!channel || !client?.userID) return false;
     const currentMember = members.find((m) => m.user_id === client.userID);
-    return currentMember?.role === "admin" || currentMember?.role === "owner" || currentMember?.role === "moderator";
+    return (
+      currentMember?.role === "admin" ||
+      currentMember?.role === "owner" ||
+      currentMember?.role === "moderator"
+    );
   };
 
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.card }}>
-      <Stack.Screen
-        options={{
-          headerShown: false,
-        }}
-      />
-
-      {/* Custom Header */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          padding: 16,
-          paddingTop: 8,
-          backgroundColor: theme.colors.card,
-          borderBottomWidth: 1,
-          borderBottomColor: theme.colors.border,
-        }}
-      >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={{ marginRight: 16 }}
-        >
-          <ArrowLeft size={24} color={theme.colors.text} />
-        </TouchableOpacity>
-        <Text
-          style={{
-            fontSize: 18,
-            fontWeight: "600",
-            color: theme.colors.text,
-          }}
-        >
-          Chat Settings
-        </Text>
-      </View>
-
+    <View
+      style={{ flex: 1, backgroundColor: theme.colors.card, paddingTop: 16 }}
+    >
       {loading ? (
         <View
           style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
@@ -386,7 +367,7 @@ export default function ChatSettingsScreen() {
               backgroundColor: theme.colors.background,
             }}
           >
-            <CardContent style={{ padding: 16 }}>
+            <CardContent style={{ padding: 16, paddingTop: 0 }}>
               <Text
                 style={{
                   fontSize: 18,
@@ -428,7 +409,7 @@ export default function ChatSettingsScreen() {
                         fontWeight: "500",
                       }}
                     >
-{channel?.name || "Unnamed Chat"}
+                      {channel?.name || "Unnamed Chat"}
                     </Text>
                   </View>
                   {isCurrentUserAdmin() && (
@@ -451,7 +432,13 @@ export default function ChatSettingsScreen() {
                       borderRadius: 8,
                     }}
                   >
-                    <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        flex: 1,
+                      }}
+                    >
                       <View style={{ marginRight: 12 }}>
                         {channelImage || channel?.image ? (
                           <Image
@@ -494,7 +481,9 @@ export default function ChatSettingsScreen() {
                             fontWeight: "500",
                           }}
                         >
-{channelImage || channel?.image ? "Tap to change" : "Tap to add photo"}
+                          {channelImage || channel?.image
+                            ? "Tap to change"
+                            : "Tap to add photo"}
                         </Text>
                       </View>
                     </View>
@@ -791,7 +780,7 @@ export default function ChatSettingsScreen() {
               <Button
                 onPress={() => setShowNameModal(false)}
                 variant="outline"
-                style={{ 
+                style={{
                   flex: 1,
                   backgroundColor: theme.colors.card,
                 }}
@@ -860,10 +849,7 @@ export default function ChatSettingsScreen() {
                     if (item.user_id !== client?.userID) {
                       setShowMembersModal(false);
                       // Dismiss the modal and navigate to profile
-                      router.dismiss();
-                      setTimeout(() => {
-                        router.push(`/(app)/profile/${item.user_id}`);
-                      }, 1000);
+                      router.push(`/profile/${item.user_id}`);
                     }
                   }}
                   style={{
@@ -923,10 +909,7 @@ export default function ChatSettingsScreen() {
                       onPress={() => handleRemoveMember(item.user_id)}
                       style={{ padding: 8 }}
                     >
-                      <UserMinus
-                        size={20}
-                        color={theme.colors.notification}
-                      />
+                      <UserMinus size={20} color={theme.colors.notification} />
                     </TouchableOpacity>
                   )}
                 </TouchableOpacity>
@@ -935,6 +918,6 @@ export default function ChatSettingsScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }

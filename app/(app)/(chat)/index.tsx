@@ -1,51 +1,31 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import Constants from "expo-constants";
+import { useFocusEffect, useRouter } from "expo-router";
+import { BellOff, MessageCircle, Plus, Search, X } from "lucide-react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  View,
-  TouchableOpacity,
-  TextInput,
-  Animated,
   ActivityIndicator,
   RefreshControl,
-  Platform,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  ChannelList,
-  Channel as StreamChannel,
-  ChannelAvatar,
-  useTheme as useStreamTheme,
-  ChannelPreviewMessenger,
-} from "stream-chat-expo";
-import { useChat } from "~/src/lib/chat";
-import { useAuth } from "~/src/lib/auth";
-import { useRouter, useFocusEffect } from "expo-router";
-import Constants from "expo-constants";
 import type {
   Channel,
   ChannelFilters,
   ChannelSort,
   DefaultGenerics,
 } from "stream-chat";
-import {
-  Plus,
-  Search,
-  X,
-  Bell,
-  BellOff,
-  Trash2,
-  Users,
-  MessageCircle,
-  ArrowLeft,
-  Video,
-} from "lucide-react-native";
+import { ChannelAvatar, ChannelList } from "stream-chat-expo";
 import { useTheme } from "~/src/components/ThemeProvider";
-import { Text } from "~/src/components/ui/text";
 import { Button } from "~/src/components/ui/button";
 import { Card, CardContent } from "~/src/components/ui/card";
+import { Text } from "~/src/components/ui/text";
+import { useAuth } from "~/src/lib/auth";
+import { useChat } from "~/src/lib/chat";
 
-import type { ChannelPreviewMessengerProps } from "stream-chat-expo";
 import type { ChannelMemberResponse } from "stream-chat";
-import { Icon } from "react-native-elements";
+import type { ChannelPreviewMessengerProps } from "stream-chat-expo";
 
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl;
 // console.log("[ChatList] Configured Backend URL:", BACKEND_URL);

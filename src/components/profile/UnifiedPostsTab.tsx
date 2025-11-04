@@ -311,7 +311,7 @@ export default function UnifiedPostsTab({
           <TouchableOpacity
             onPress={() => {
               if (post.user?.id) {
-                router.push(`/(app)/profile/${post.user.id}`);
+                router.push(`/profile/${post.user.id}`);
               }
             }}
             className="flex-row flex-1 items-center"
