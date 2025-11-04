@@ -438,7 +438,7 @@ export default function PostView() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session.user.id}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify(reuestData),
         }
