@@ -18,6 +18,7 @@ import { supabase } from "~/src/lib/supabase";
 import { useUser } from "~/src/lib/UserProvider";
 import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 import { useTheme } from "~/src/components/ThemeProvider";
+import { captureError } from "~/src/lib/utils/sentry";
 
 type UnifiedData = MapEvent | MapLocation;
 
@@ -316,7 +317,6 @@ export function SocialEventCard({
 
     setLoading(true);
     try {
-      // COMMENTED OUT: UpdateEventStatus - needs update for unified API
       // await UpdateEventStatus(data);
       setTimeout(() => {
         setLoading(false);
@@ -324,6 +324,10 @@ export function SocialEventCard({
       }, 2000);
     } catch (error) {
       console.error("Error updating event status:", error);
+      captureError(error, {
+        operation: "update_event_status",
+        extra: { id: (data as any)?.id },
+      });
       setLoading(false);
     }
   };
@@ -334,7 +338,7 @@ export function SocialEventCard({
         return;
       }
       if (treatAsEvent) {
-        await fetchEventDetail(data);
+        await fetchEventDetail(data as any);
 
         // Manually fetch the event details to get the updated data with join_status
         const {
@@ -363,10 +367,14 @@ export function SocialEventCard({
           }
         }
       } else {
-        await fetchLocationDetail(data as MapLocation);
+        await fetchLocationDetail(data as any);
       }
     } catch (error) {
       console.error("Error fetching details:", error);
+      captureError(error, {
+        operation: "fetch_detail",
+        extra: { id: (data as any)?.id, treatAsEvent },
+      });
     } finally {
       setLoading(false);
     }

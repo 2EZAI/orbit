@@ -15,6 +15,8 @@ import { ChatProvider } from "~/src/lib/chat";
 import { VideoProvider } from "~/src/lib/video";
 import { UserProvider } from "~/src/lib/UserProvider";
 import "~/src/styles/global.css";
+// Initialize console error capture early
+import "~/src/lib/utils/consoleCapture";
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import { useEffect } from "react";
