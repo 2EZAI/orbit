@@ -2258,6 +2258,29 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - RNSentry (7.5.0):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.01.01.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-hermes
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Sentry/HybridSDK (= 8.57.1)
+    - Yoga
   - RNSVG (15.8.0):
     - DoubleConversion
     - glog
@@ -2307,6 +2330,7 @@ PODS:
   - SDWebImageWebPCoder (0.8.5):
     - libwebp (~> 1.0)
     - SDWebImage/Core (~> 5.10)
+  - Sentry/HybridSDK (8.57.1)
   - SocketRocket (0.7.1)
   - stream-react-native-webrtc (125.4.1):
     - React-Core
@@ -2451,6 +2475,7 @@ DEPENDENCIES:
   - "rnmapbox-maps (from `../node_modules/@rnmapbox/maps`)"
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
+  - "RNSentry (from `../node_modules/@sentry/react-native`)"
   - RNSVG (from `../node_modules/react-native-svg`)
   - "stream-react-native-webrtc (from `../node_modules/@stream-io/react-native-webrtc`)"
   - "stream-video-react-native (from `../node_modules/@stream-io/video-react-native-sdk`)"
@@ -2472,6 +2497,7 @@ SPEC REPOS:
     - PromisesObjC
     - SDWebImage
     - SDWebImageWebPCoder
+    - Sentry
     - SocketRocket
     - StreamWebRTC
     - Turf
@@ -2700,6 +2726,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-reanimated"
   RNScreens:
     :path: "../node_modules/react-native-screens"
+  RNSentry:
+    :path: "../node_modules/@sentry/react-native"
   RNSVG:
     :path: "../node_modules/react-native-svg"
   stream-react-native-webrtc:
@@ -2833,9 +2861,11 @@ SPEC CHECKSUMS:
   rnmapbox-maps: a41e1cd71e665cce4950f6123266195476f73541
   RNReanimated: a2692304a6568bc656c04c8ffea812887d37436e
   RNScreens: 351f431ef2a042a1887d4d90e1c1024b8ae9d123
+  RNSentry: 4aaa6df1e807a4912fd0ec5eb908802cc306f8f2
   RNSVG: 030717ff82ea8f2117347c2fcf52a2d1eafba9ba
   SDWebImage: a7f831e1a65eb5e285e3fb046a23fcfbf08e696d
   SDWebImageWebPCoder: 908b83b6adda48effe7667cd2b7f78c897e5111d
+  Sentry: ea4ca7cd1a46c77dcc8123804ce36d8f5603a841
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   stream-react-native-webrtc: 3b627461be05c52d860d7b757d72ca7d4324dc9b
   stream-video-react-native: 91395e491351d0dff4fb281b60a5f8721515104d
