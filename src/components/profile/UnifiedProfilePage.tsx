@@ -53,6 +53,12 @@ interface UserProfile {
   following_count: number;
   posts_count: number;
   events_count: number;
+  instagram?: string | null;
+  twitter?: string | null;
+  facebook?: string | null;
+  linkedin?: string | null;
+  tiktok?: string | null;
+  customLink?: string | null;
 }
 
 interface UnifiedProfilePageProps {
@@ -84,7 +90,6 @@ export function UnifiedProfilePage({
   const [isFollowingSheetOpen, setIsFollowingSheetOpen] = useState(false);
   const isCurrentUser = !userId || userId === session?.user?.id;
   const targetUserId = userId || session?.user?.id;
-
   useFocusEffect(
     useCallback(() => {
       if (targetUserId) {
@@ -638,7 +643,10 @@ export function UnifiedProfilePage({
               borderColor: theme.colors.border,
             }}
           >
-            <TouchableOpacity style={{ alignItems: "center" }}>
+            <TouchableOpacity
+              style={{ alignItems: "center" }}
+              onPress={() => setActiveTab("Posts")}
+            >
               <Text
                 style={{
                   fontSize: 20,
@@ -718,7 +726,10 @@ export function UnifiedProfilePage({
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={{ alignItems: "center" }}>
+            <TouchableOpacity
+              style={{ alignItems: "center" }}
+              onPress={() => setActiveTab("Events")}
+            >
               <Text
                 style={{
                   fontSize: 20,

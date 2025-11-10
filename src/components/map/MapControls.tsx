@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "expo-router";
 import { View, TouchableOpacity, Pressable, Image } from "react-native";
 import {
@@ -81,6 +81,20 @@ export function MapControls({
     await fetchAllNoifications(1, 20);
   };
 
+  const ICON_SIZE = 44;
+  const ICON_RADIUS = ICON_SIZE / 2;
+
+  const baseCircleStyle = useMemo(
+    () => ({
+      width: ICON_SIZE,
+      height: ICON_SIZE,
+      borderRadius: ICON_RADIUS,
+      justifyContent: "center" as const,
+      alignItems: "center" as const,
+    }),
+    [ICON_SIZE, ICON_RADIUS]
+  );
+
   return (
     <>
       {/* Pills Row - Controls + Avatar/Notifications */}
@@ -127,9 +141,7 @@ export function MapControls({
             <TouchableOpacity
               onPress={toggleSearch}
               style={{
-                width: 42,
-                height: 42,
-                borderRadius: 18,
+                ...baseCircleStyle,
                 borderWidth: 1.5,
                 borderColor: isDarkMode
                   ? "rgba(255,255,255,0.15)"
@@ -149,9 +161,7 @@ export function MapControls({
             <TouchableOpacity
               onPress={() => setIsFilterVisible(true)}
               style={{
-                width: 42,
-                height: 42,
-                borderRadius: 18,
+                ...baseCircleStyle,
                 borderWidth: 1.5,
                 borderColor: isDarkMode
                   ? "rgba(255,255,255,0.15)"
@@ -176,9 +186,7 @@ export function MapControls({
             <TouchableOpacity
               onPress={() => setIsLocationModalVisible(true)}
               style={{
-                width: 42,
-                height: 42,
-                borderRadius: 18,
+                ...baseCircleStyle,
                 borderWidth: 1.5,
                 borderColor:
                   user?.event_location_preference === 1
@@ -192,8 +200,6 @@ export function MapControls({
                     : isDarkMode
                     ? "rgba(255,255,255,0.08)"
                     : "rgba(255,255,255,0.9)",
-                justifyContent: "center",
-                alignItems: "center",
                 position: "relative",
               }}
               activeOpacity={0.7}
@@ -264,9 +270,7 @@ export function MapControls({
             <TouchableOpacity
               onPress={() => router.push("/(app)/(notification)")}
               style={{
-                width: 42,
-                height: 42,
-                borderRadius: 18,
+                ...baseCircleStyle,
                 backgroundColor: theme.colors.primary,
                 justifyContent: "center",
                 alignItems: "center",
@@ -319,7 +323,7 @@ export function MapControls({
                 onPress={() => router.push("/(app)/(profile)")}
                 activeOpacity={0.8}
                 style={{
-                  borderRadius: 18,
+                  ...baseCircleStyle,
                   borderWidth: 2.5,
                   borderColor: theme.colors.primary,
                   shadowColor: theme.colors.primary,
@@ -336,9 +340,9 @@ export function MapControls({
                       : require("~/assets/favicon.png")
                   }
                   style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 18,
+                    width: ICON_SIZE,
+                    height: ICON_SIZE,
+                    borderRadius: ICON_RADIUS,
                   }}
                 />
               </TouchableOpacity>
