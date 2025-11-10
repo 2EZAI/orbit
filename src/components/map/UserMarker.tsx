@@ -17,15 +17,13 @@ export const UserMarker = ({ avatarUrl, heading }: UserMarkerProps) => {
   return (
     <View className="items-center justify-center">
       <View
-        className="p-0.5 rounded-full bg-white shadow-lg"
+        className="p-[3px] rounded-full bg-white shadow-lg"
         style={{
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.25,
           shadowRadius: 3.84,
           elevation: 5,
-          transform:
-            heading !== undefined ? [{ rotate: `${heading}deg` }] : undefined,
         }}
       >
         <Image

@@ -385,12 +385,15 @@ export function MapboxMarkers({
       ))}
 
       {/* User marker */}
-      {location && (
-        <MapboxGL.UserLocation
-          visible={true}
-          showsUserHeadingIndicator={true}
-          animated={true}
-        />
+      {location && typeof location.longitude === "number" && typeof location.latitude === "number" && (
+        <MapboxGL.MarkerView
+          key="user-location-marker"
+          id="user-location-marker"
+          coordinate={[location.longitude, location.latitude]}
+          anchor={{ x: 0.5, y: 0.5 }}
+        >
+          <UserMarker avatarUrl={user?.avatar_url} heading={location.heading ?? undefined} />
+        </MapboxGL.MarkerView>
       )}
 
       {/* Friend markers - Live location */}
