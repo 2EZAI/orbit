@@ -10,6 +10,7 @@ import {
   Sparkles,
   Users,
   Zap,
+  Send,
 } from "lucide-react-native";
 import { MotiView } from "moti";
 import React, { useRef, useState } from "react";
@@ -36,6 +37,7 @@ interface IProps {
   onAdd?: () => void;
   onShowEventDetails?: (proposal: IProposal) => void;
   onShowProposalDetail?: (proposal: IProposal) => void;
+  onProposalShare?: (proposal: IProposal) => void;
 }
 const ProposalSelectList: React.FC<IProps> = ({
   data,
@@ -44,6 +46,7 @@ const ProposalSelectList: React.FC<IProps> = ({
   onAdd = () => {},
   onShowProposalDetail,
   onShowEventDetails = () => {},
+  onProposalShare,
 }) => {
   const { theme, isDarkMode } = useTheme();
   const [selectedProposals, setSelectedProposals] = useState<string>("");
@@ -221,11 +224,30 @@ const ProposalSelectList: React.FC<IProps> = ({
                   </MotiView>
                 )}
 
-                {data && !isEventAlreadyAdded && (
-                  <ChevronRight
-                    size={20}
-                    color={isSelected ? "#8B5CF6" : theme.colors.text + "40"}
-                  />
+                {onProposalShare ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      onProposalShare(item);
+                    }}
+                  >
+                    <Send
+                      width={20}
+                      height={20}
+                      color={
+                        isSelected
+                          ? theme.colors.text + "30"
+                          : theme.colors.primary
+                      }
+                    />
+                  </TouchableOpacity>
+                ) : (
+                  data &&
+                  !isEventAlreadyAdded && (
+                    <ChevronRight
+                      size={20}
+                      color={isSelected ? "#8B5CF6" : theme.colors.text + "40"}
+                    />
+                  )
                 )}
               </View>
             </View>

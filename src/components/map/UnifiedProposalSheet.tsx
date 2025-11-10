@@ -44,6 +44,7 @@ const UnifiedProposalSheet: React.FC<IProps> = ({
           onBack={onClose}
           proposals={proposals}
           onShowEventDetails={(proposal) => setSelectedProposals(proposal)}
+          onProposalShare={onProposalShare}
         />
       ) : (
         <ProposalDetail
