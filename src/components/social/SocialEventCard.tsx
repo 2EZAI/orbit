@@ -526,7 +526,7 @@ export function SocialEventCard({
 
       {/* Dark Gradient Overlay for better text readability */}
       <LinearGradient
-        colors={["rgba(0, 0, 0, 0.3)", "rgba(0, 0, 0, 0.8)"]}
+        colors={["rgba(0, 0, 0, 0.3)", "rgba(0, 0, 0, 0.6)"]}
         locations={[0, 1]}
         style={{
           position: "absolute",
