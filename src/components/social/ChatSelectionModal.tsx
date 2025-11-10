@@ -126,6 +126,7 @@ export function ChatSelectionModal({
     setShowSuccessModal(true);
     setTimeout(() => {
       onClose();
+      setShowSuccessModal(false);
     }, 1000);
   };
 
