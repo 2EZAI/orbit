@@ -42,7 +42,9 @@
         
         "BACKEND_CHAT_URL":"https://orbit-chat-backend-old-9d2b903ab237.herokuapp.com",
         
-        "BACKEND_MAP_URL":"https://orbit-map-backend-c2b17aebdb75.herokuapp.com"
+        "BACKEND_MAP_URL":"https://orbit-map-backend-c2b17aebdb75.herokuapp.com",
+
+        "VITE_BACKEND_API":"https://orbit-web-backend.onrender.com"
       }
     },
 
