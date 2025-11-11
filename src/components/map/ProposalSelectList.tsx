@@ -225,21 +225,19 @@ const ProposalSelectList: React.FC<IProps> = ({
                 )}
 
                 {onProposalShare ? (
-                  <TouchableOpacity
-                    onPress={() => {
-                      onProposalShare(item);
-                    }}
-                  >
-                    <Send
-                      width={20}
-                      height={20}
-                      color={
-                        isSelected
-                          ? theme.colors.text + "30"
-                          : theme.colors.primary
-                      }
-                    />
-                  </TouchableOpacity>
+                  !isSelected ? (
+                    <TouchableOpacity
+                      onPress={() => {
+                        onProposalShare(item);
+                      }}
+                    >
+                      <Send
+                        width={20}
+                        height={20}
+                        color={theme.colors.primary}
+                      />
+                    </TouchableOpacity>
+                  ) : null
                 ) : (
                   data &&
                   !isEventAlreadyAdded && (
