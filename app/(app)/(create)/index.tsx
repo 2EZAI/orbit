@@ -340,17 +340,12 @@ export default function CreateEvent() {
     loadDraft().finally(() => setLoading(false));
   }, [params.eventId, params.locationId, params.draftId]); // Re-run when params change
 
-  // Debug: Log all params on mount
-  useEffect(() => {
-    console.log("🔍 [CreateEvent] All params received:", params);
-  }, []);
-
   const loadDraft = async () => {
     try {
       setDraftLoaded(true);
       // Debug: Log what parameters we received
       console.log("🔍 [CreateEvent] Received params:", params);
-
+      console.log("params======>", params);
       // Check if we're in EDIT MODE (editing existing event)
       if (params.editMode === "true" && params.eventId) {
         console.log(
@@ -799,7 +794,7 @@ export default function CreateEvent() {
     console.log("createevent_useEffect");
 
     // Load existing draft on mount
-    loadDraft();
+    // loadDraft();
 
     // Handle router params
     if (params.categoryId && params.categoryName) {
