@@ -70,7 +70,6 @@ const CustomPostShareComponent = ({ message }: { message: any }) => {
     (attachment: any) => attachment.type === "post_share"
   );
 
-
   if (!postShareAttachment || !postShareAttachment.post_data) {
     return null;
   }
@@ -501,7 +500,8 @@ export default function ChannelScreen() {
               lng = lastKnown?.coords?.longitude;
 
               if (typeof lat !== "number" || typeof lng !== "number") {
-                const { status } = await Location.requestForegroundPermissionsAsync();
+                const { status } =
+                  await Location.requestForegroundPermissionsAsync();
                 if (status === "granted") {
                   const current = await Location.getCurrentPositionAsync({
                     accuracy: Location.Accuracy.Balanced,
@@ -523,7 +523,8 @@ export default function ChannelScreen() {
               return await original({
                 ...msg,
                 text: augmentedText,
-                ...(typeof attachLat === "number" && typeof attachLng === "number"
+                ...(typeof attachLat === "number" &&
+                typeof attachLng === "number"
                   ? { latitude: attachLat, longitude: attachLng }
                   : {}),
               });
@@ -688,20 +689,35 @@ export default function ChannelScreen() {
             name: ed.name,
             description: ed.description,
             image_urls: ed.image_urls || (ed.image_url ? [ed.image_url] : []),
-            start_datetime: ed.start_datetime || ed.startDate || new Date().toISOString(),
+            start_datetime:
+              ed.start_datetime || ed.startDate || new Date().toISOString(),
             venue_name: ed.venue_name || ed.location || ed.name,
             address: ed.address,
             city: ed.city,
             state: ed.state,
-            source: isLocation ? "location" : isTicketmaster ? "ticketmaster" : "event",
+            source: isLocation
+              ? "location"
+              : isTicketmaster
+              ? "ticketmaster"
+              : "event",
             is_ticketmaster: !!isTicketmaster,
           } as any;
         });
 
       // Detect Load More action from any attachment
       const loadMoreAction: any | undefined = cardAttachments
-        .find((att: any) => att.actions?.some((action: any) => typeof action.value === "string" && action.value.includes('"action":"load_more"')))
-        ?.actions?.find((action: any) => typeof action.value === "string" && action.value.includes('"action":"load_more"'));
+        .find((att: any) =>
+          att.actions?.some(
+            (action: any) =>
+              typeof action.value === "string" &&
+              action.value.includes('"action":"load_more"')
+          )
+        )
+        ?.actions?.find(
+          (action: any) =>
+            typeof action.value === "string" &&
+            action.value.includes('"action":"load_more"')
+        );
 
       const openResultsModal = () => {
         setResultsItems(items);
@@ -735,7 +751,9 @@ export default function ChannelScreen() {
 
       // Multiple results: show compact trigger that opens global modal list
       return (
-        <View style={{ width: "100%", paddingHorizontal: 12, paddingVertical: 6 }}>
+        <View
+          style={{ width: "100%", paddingHorizontal: 12, paddingVertical: 6 }}
+        >
           <TouchableOpacity
             onPress={openResultsModal}
             activeOpacity={0.8}
@@ -750,10 +768,10 @@ export default function ChannelScreen() {
             }}
           >
             <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
-              View {items.length} Results{message?.text ? ` for "${message.text}"` : ""}
+              View {items.length} Results
+              {message?.text ? ` for "${message.text}"` : ""}
             </Text>
           </TouchableOpacity>
-
         </View>
       );
     }
@@ -1223,7 +1241,7 @@ export default function ChannelScreen() {
                 </View>
               ) : (
                 <>
-                  <MessageList onThreadSelect={setThread} />
+                  <MessageList onThreadSelect={setThread}  />
                   <MessageInput />
                 </>
               )}
@@ -1314,8 +1332,17 @@ export default function ChannelScreen() {
         statusBarTranslucent={true}
         presentationStyle="overFullScreen"
       >
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}>
-          <TouchableOpacity style={{ flex: 1 }} onPress={() => setResultsModalOpen(false)} />
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.4)",
+            justifyContent: "flex-end",
+          }}
+        >
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            onPress={() => setResultsModalOpen(false)}
+          />
           <View
             style={{
               maxHeight: 560,
@@ -1324,8 +1351,20 @@ export default function ChannelScreen() {
               borderTopRightRadius: 16,
             }}
           >
-            <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
-              <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 16 }}>
+            <View
+              style={{
+                paddingHorizontal: 16,
+                paddingTop: 12,
+                paddingBottom: 8,
+              }}
+            >
+              <Text
+                style={{
+                  color: theme.colors.text,
+                  fontWeight: "700",
+                  fontSize: 16,
+                }}
+              >
                 Search Results
               </Text>
               {resultsQuery ? (
@@ -1373,7 +1412,9 @@ export default function ChannelScreen() {
                     try {
                       const query = payload.query || "";
                       const offset = payload.offset || 0;
-                      await ch.sendMessage({ text: `/event ${query} offset:${offset}` });
+                      await ch.sendMessage({
+                        text: `/event ${query} offset:${offset}`,
+                      });
                       setResultsModalOpen(false);
                     } catch (e) {
                       console.log("Load more failed:", e);
