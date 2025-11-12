@@ -108,6 +108,7 @@ export function UnifiedSheetButtons({
             <View className="flex-row gap-3">
               <TouchableOpacity
                 onPress={onShare}
+                style={{ backgroundColor: theme.colors.card }}
                 className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
               >
                 <Text className="text-lg font-semibold text-purple-600">
@@ -143,27 +144,25 @@ export function UnifiedSheetButtons({
                       Edit Event
                     </Text>
                   </TouchableOpacity>
+                ) : // NON-CREATOR: Show Join/Leave button
+                isJoined ? (
+                  <TouchableOpacity
+                    onPress={onCreateOrbit}
+                    className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
+                  >
+                    <Text className="text-lg font-semibold text-white">
+                      Create Orbit
+                    </Text>
+                  </TouchableOpacity>
                 ) : (
-                  // NON-CREATOR: Show Join/Leave button
-                  isJoined ? (
-                    <TouchableOpacity
-                      onPress={onCreateOrbit}
-                      className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
-                    >
-                      <Text className="text-lg font-semibold text-white">
-                        Create Orbit
-                      </Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      onPress={onJoinEvent}
-                      className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
-                    >
-                      <Text className="text-lg font-semibold text-white">
-                        Join Event
-                      </Text>
-                    </TouchableOpacity>
-                  )
+                  <TouchableOpacity
+                    onPress={onJoinEvent}
+                    className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
+                  >
+                    <Text className="text-lg font-semibold text-white">
+                      Join Event
+                    </Text>
+                  </TouchableOpacity>
                 )}
               </View>
             ) : null}
@@ -172,6 +171,7 @@ export function UnifiedSheetButtons({
             <View className="flex-row gap-3">
               <TouchableOpacity
                 onPress={onShare}
+                style={{ backgroundColor: theme.colors.card }}
                 className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
               >
                 <Text className="text-lg font-semibold text-purple-600">
@@ -211,7 +211,8 @@ export function UnifiedSheetButtons({
           <View className="flex-row gap-3">
             <TouchableOpacity
               onPress={onShare}
-              className="flex-1 items-center py-4 bg-white rounded-2xl border-2 border-purple-600"
+              style={{ backgroundColor: theme.colors.card }}
+              className="flex-1 items-center py-4 rounded-2xl border-2 border-purple-600"
             >
               <Text className="text-lg font-semibold text-purple-600">
                 Share

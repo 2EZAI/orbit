@@ -125,7 +125,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
           <TouchableOpacity
             onPress={() => onPress(item)}
             style={{
-              backgroundColor: theme.colors.card,
+              backgroundColor: theme.colors.background,
               borderRadius: 20,
               borderWidth: 2,
               borderColor: item.is_read
@@ -246,7 +246,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
                       height: 24,
                       borderRadius: 12,
                       backgroundColor: isDarkMode
-                        ? "rgba(156, 163, 175, 0.3)"
+                        ? "rgba(156, 163, 175, 0.2)"
                         : "rgba(107, 114, 128, 0.2)",
                       justifyContent: "center",
                       alignItems: "center",

@@ -59,6 +59,7 @@ import { handleSectionViewMore } from "~/src/lib/utils/sectionViewMore";
 import { useEventDetails } from "~/hooks/useEventDetails";
 import { IProposal } from "../../../hooks/useProposals";
 import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
+import { LocationPreferencesModal } from "~/src/components/settings/LocationPreferencesModal";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const STORY_CARD_WIDTH = screenWidth * 0.8;
@@ -370,6 +371,7 @@ export default function Home() {
   const { user } = useUser();
   const { session } = useAuth();
   const router = useRouter();
+  const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
   const { eventId = null, eventType = null } = useLocalSearchParams<{
     eventId: string;
     eventType: string;
@@ -1540,6 +1542,7 @@ export default function Home() {
                 styles.searchPlaceholder,
                 { color: theme.colors.text + "80" },
               ]}
+              numberOfLines={1}
             >
               Search events, places, and people...
             </Text>
@@ -1553,6 +1556,88 @@ export default function Home() {
               <Filter size={16} color="white" />
             </TouchableOpacity>
           </TouchableOpacity>
+          <View
+            style={[
+              {
+                paddingVertical: 10,
+                paddingHorizontal: 11,
+                borderRadius: 10,
+                marginLeft: 5,
+                borderWidth: 1,
+                alignItems: "center",
+                justifyContent: "center",
+              },
+              {
+                backgroundColor: theme.colors.card,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              onPress={() => setIsLocationModalVisible(true)}
+              style={{
+                ...styles.filterButton,
+                width: 35,
+                height: 35,
+                borderRadius: 35,
+                borderWidth: 1.5,
+
+                borderColor:
+                  user?.event_location_preference === 1
+                    ? theme.colors.primary
+                    : isDarkMode
+                    ? "rgba(255,255,255,0.15)"
+                    : "rgba(0,0,0,0.12)",
+                backgroundColor:
+                  user?.event_location_preference === 1
+                    ? theme.colors.primary + "20"
+                    : isDarkMode
+                    ? "rgba(255,255,255,0.08)"
+                    : "rgba(255,255,255,0.9)",
+                position: "relative",
+              }}
+              activeOpacity={0.7}
+            >
+              <MapPin
+                size={16}
+                color={
+                  user?.event_location_preference === 1
+                    ? theme.colors.primary
+                    : theme.colors.text
+                }
+                strokeWidth={2.5}
+              />
+              {/* Subtle mode indicator */}
+              <View
+                style={{
+                  position: "absolute",
+                  bottom: -2,
+                  right: -2,
+                  width: 12,
+                  height: 12,
+                  borderRadius: 6,
+                  backgroundColor:
+                    user?.event_location_preference === 1
+                      ? theme.colors.primary
+                      : theme.colors.text + "80",
+                  borderWidth: 1.5,
+                  borderColor: theme.colors.card,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 7,
+                    fontWeight: "700",
+                    color: "white",
+                  }}
+                >
+                  {user?.event_location_preference === 1 ? "O" : "C"}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Quick Filter Chips */}
@@ -1761,6 +1846,10 @@ export default function Home() {
         }}
         onSelectChat={handleChatSelect}
       />
+      <LocationPreferencesModal
+        isOpen={isLocationModalVisible}
+        onClose={() => setIsLocationModalVisible(false)}
+      />
     </View>
   );
 }
@@ -1793,6 +1882,9 @@ const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: 20,
     paddingBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
   },
   searchBar: {
     flexDirection: "row",
@@ -1807,6 +1899,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    width: "85%",
   },
   searchPlaceholder: {
     flex: 1,

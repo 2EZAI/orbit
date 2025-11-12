@@ -84,7 +84,7 @@ function SettingItem({
         alignItems: "center",
         paddingVertical: 16,
         paddingHorizontal: 20,
-        backgroundColor: theme.colors.card,
+        backgroundColor: theme.colors.background,
         marginHorizontal: 16,
         marginBottom: 8,
         borderRadius: 12,
@@ -389,7 +389,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.card }}>
       {/* Header */}
       <View
         style={{
@@ -502,16 +502,9 @@ export default function SettingsScreen() {
         {/* Privacy & more */}
         <SectionHeader title="Privacy & more" />
         <SettingItem
-          icon={<LogOut size={20} color={theme.colors.primary} />}
-          title="Log Out"
-          onPress={handleLogout}
-          loading={isLoggingOut}
-        />
-        <SettingItem
-          icon={<Trash2 size={20} color="#FF3B30" />}
-          title="Delete My Account"
-          onPress={() => setShowDeleteAccount(true)}
-          destructive
+          icon={<FileText size={20} color={theme.colors.primary} />}
+          title="Import Contacts"
+          onPress={handleImportContacts}
         />
         <SettingItem
           icon={<ExternalLink size={20} color={theme.colors.primary} />}
@@ -531,10 +524,18 @@ export default function SettingsScreen() {
             )
           }
         />
+
         <SettingItem
-          icon={<FileText size={20} color={theme.colors.primary} />}
-          title="Import Contacts"
-          onPress={handleImportContacts}
+          icon={<LogOut size={20} color={theme.colors.primary} />}
+          title="Log Out"
+          onPress={handleLogout}
+          loading={isLoggingOut}
+        />
+        <SettingItem
+          icon={<Trash2 size={20} color="#FF3B30" />}
+          title="Delete My Account"
+          onPress={() => setShowDeleteAccount(true)}
+          destructive
         />
       </ScrollView>
 
@@ -1057,7 +1058,7 @@ export default function SettingsScreen() {
         }}
         onSelectChat={handleChatSelect}
       />
-      
+
       {/* Social Media Settings Modal */}
       <SocialMediaSettings
         isOpen={showSocialMedia}

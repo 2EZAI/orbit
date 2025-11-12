@@ -168,7 +168,7 @@ export const KeyboardAwareSheet: React.FC<KeyboardAwareSheetProps> = ({
 
   const dynamicStyles = {
     content: {
-      backgroundColor: theme.colors.background,
+      backgroundColor: theme.colors.card,
       borderTopLeftRadius: fullScreen ? 0 : 24,
       borderTopRightRadius: fullScreen ? 0 : 24,
       paddingTop: fullScreen ? 0 : 8,
@@ -224,7 +224,7 @@ export const KeyboardAwareSheet: React.FC<KeyboardAwareSheetProps> = ({
               {
                 transform: [{ translateY }],
                 // Add bottom margin when keyboard is visible
-               },
+              },
             ]}
           >
             {!fullScreen && (
@@ -235,10 +235,10 @@ export const KeyboardAwareSheet: React.FC<KeyboardAwareSheetProps> = ({
               ref={scrollViewRef}
               style={[
                 styles.scrollView,
-                { backgroundColor: theme.colors.background },
+                { backgroundColor: theme.colors.card },
               ]}
               contentContainerStyle={{
-                backgroundColor: theme.colors.background,
+                backgroundColor: theme.colors.card,
                 // Add extra padding at bottom when keyboard is visible
                 paddingBottom: keyboardHeight > 0 ? 20 : 0,
               }}

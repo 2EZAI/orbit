@@ -254,7 +254,7 @@ export function InterestsModal({ isOpen, onClose }: InterestsModalProps) {
           style={{
             padding: 20,
             paddingBottom: 16,
-            backgroundColor: theme.colors.background,
+            backgroundColor: theme.colors.card,
             borderBottomWidth: 1,
             borderBottomColor: theme.colors.border,
           }}

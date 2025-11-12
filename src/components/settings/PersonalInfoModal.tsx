@@ -156,7 +156,6 @@ export function PersonalInfoModal({ isOpen, onClose }: PersonalInfoModalProps) {
   return (
     <KeyboardAwareSheet isOpen={isOpen} onClose={onClose}>
       <View style={{ padding: 20 }}>
-        {/* Header */}
         <View
           style={{
             flexDirection: "row",
@@ -198,7 +197,7 @@ export function PersonalInfoModal({ isOpen, onClose }: PersonalInfoModalProps) {
               width: 32,
               height: 32,
               borderRadius: 16,
-              backgroundColor: theme.colors.card,
+              backgroundColor: theme.colors.background,
               alignItems: "center",
               justifyContent: "center",
             }}
@@ -285,7 +284,7 @@ export function PersonalInfoModal({ isOpen, onClose }: PersonalInfoModalProps) {
               onChangeText={setFirstName}
               placeholder="Enter your first name"
               containerStyle={{
-                backgroundColor: theme.colors.card,
+                backgroundColor: theme.colors.background,
                 borderRadius: 12,
                 borderWidth: 1,
                 borderColor: theme.colors.border,
@@ -319,7 +318,7 @@ export function PersonalInfoModal({ isOpen, onClose }: PersonalInfoModalProps) {
               onChangeText={setLastName}
               placeholder="Enter your last name"
               containerStyle={{
-                backgroundColor: theme.colors.card,
+                backgroundColor: theme.colors.background,
                 borderRadius: 12,
                 borderWidth: 1,
                 borderColor: theme.colors.border,
@@ -355,7 +354,7 @@ export function PersonalInfoModal({ isOpen, onClose }: PersonalInfoModalProps) {
               multiline
               numberOfLines={4}
               containerStyle={{
-                backgroundColor: theme.colors.card,
+                backgroundColor: theme.colors.background,
                 borderRadius: 12,
                 borderWidth: 1,
                 borderColor: theme.colors.border,
@@ -390,7 +389,7 @@ export function PersonalInfoModal({ isOpen, onClose }: PersonalInfoModalProps) {
               flex: 1,
               paddingVertical: 14,
               borderRadius: 12,
-              backgroundColor: theme.colors.card,
+              backgroundColor: theme.colors.background,
               borderWidth: 1,
               borderColor: theme.colors.border,
               alignItems: "center",

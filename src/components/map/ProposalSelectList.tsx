@@ -336,7 +336,7 @@ const ProposalSelectList: React.FC<IProps> = ({
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container]}>
       {/* Premium Header with Gradient */}
       <MotiView
         from={{ opacity: 0, translateY: -20 }}
@@ -351,7 +351,7 @@ const ProposalSelectList: React.FC<IProps> = ({
         <LinearGradient
           colors={
             isDarkMode
-              ? ["rgba(0,0,0,0.8)", "rgba(0,0,0,0.4)"]
+              ? ["rgba(34,40,49,0.8)", "rgba(34,40,49,0.4)"]
               : ["rgba(255,255,255,0.9)", "rgba(255,255,255,0.6)"]
           }
           style={styles.headerGradient}
