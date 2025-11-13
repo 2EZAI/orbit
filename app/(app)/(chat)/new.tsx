@@ -444,7 +444,7 @@ export default function NewChatScreen() {
   const hitNoificationApi = async (typee: string, chatId: string) => {
     if (!session) return;
     try {
-      const reuestData = {
+      const requestData = {
         senderId: session.user.id,
         type: typee,
         data: {
@@ -461,18 +461,15 @@ export default function NewChatScreen() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify(reuestData),
+          body: JSON.stringify(requestData),
         }
       );
-      // console.log("requestData", reuestData);
 
       if (!response.ok) {
-        // console.log("error>", response);
         throw new Error(await response.text());
       }
 
-      const data_ = await response.json();
-      // console.log("response>", data_);
+       await response.json();
     } catch (e) {
       console.log("error_catch>", e);
     }
