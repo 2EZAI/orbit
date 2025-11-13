@@ -386,6 +386,7 @@ export default function Map() {
                           }
                           location={state.location}
                           user={user}
+                          userlocation={userlocation}
                           followerList={state.followerList}
                           // REMOVED: hideCount prop (not needed)
                           selectedEvent={state.selectedEvent}

@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { View } from "react-native";
 import MapboxGL from "@rnmapbox/maps";
+import { useRouter } from "expo-router";
 import {
   MapEvent,
   MapLocation,
@@ -96,6 +97,10 @@ interface MapboxMarkersProps {
     heading?: number | null;
   } | null;
   user: any;
+  userlocation?: {
+    latitude?: string | number | null;
+    longitude?: string | number | null;
+  } | null;
   followerList: any[];
 
   // Selection state
@@ -118,6 +123,7 @@ export function MapboxMarkers({
   clustersLocations,
   location,
   user,
+  userlocation,
   followerList,
   selectedEvent,
   selectedTimeFrame,
@@ -125,9 +131,37 @@ export function MapboxMarkers({
   onClusterPress,
   setIsEvent,
 }: MapboxMarkersProps) {
+  const router = useRouter();
   // Progressive rendering state
   const [visibleMarkers, setVisibleMarkers] = useState(0);
   const [isRendering, setIsRendering] = useState(false);
+
+  // Use location as primary, fallback to userlocation if location is null
+  const effectiveLocation = useMemo(() => {
+    if (location && typeof location.latitude === "number" && typeof location.longitude === "number") {
+      return location;
+    }
+    
+    // Fallback to userlocation if available (handle null values)
+    if (userlocation?.latitude != null && userlocation?.longitude != null) {
+      const lat = typeof userlocation.latitude === "string" 
+        ? parseFloat(userlocation.latitude) 
+        : userlocation.latitude;
+      const lng = typeof userlocation.longitude === "string" 
+        ? parseFloat(userlocation.longitude) 
+        : userlocation.longitude;
+      
+      if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+        return {
+          latitude: lat,
+          longitude: lng,
+          heading: null,
+        };
+      }
+    }
+    
+    return null;
+  }, [location, userlocation]);
 
   // Log follower list for debugging
   useEffect(() => {
@@ -385,14 +419,18 @@ export function MapboxMarkers({
       ))}
 
       {/* User marker */}
-      {location && typeof location.longitude === "number" && typeof location.latitude === "number" && (
+      {effectiveLocation && typeof effectiveLocation.longitude === "number" && typeof effectiveLocation.latitude === "number" && (
         <MapboxGL.MarkerView
           key="user-location-marker"
           id="user-location-marker"
-          coordinate={[location.longitude, location.latitude]}
+          coordinate={[effectiveLocation.longitude, effectiveLocation.latitude]}
           anchor={{ x: 0.5, y: 0.5 }}
         >
-          <UserMarker avatarUrl={user?.avatar_url} heading={location.heading ?? undefined} />
+          <UserMarker 
+            avatarUrl={user?.avatar_url} 
+            heading={effectiveLocation.heading ?? undefined}
+            onPress={() => router.push("/(app)/(profile)")}
+          />
         </MapboxGL.MarkerView>
       )}
 
@@ -428,6 +466,7 @@ export function MapboxMarkers({
               avatarUrl={friend.avatar_url}
               count={friend.nearbyCount}
               showCount={friend.nearbyCount > 1}
+              onPress={() => router.push(`/profile/${friend.userId}`)}
             />
           </MapboxGL.MarkerView>
         );

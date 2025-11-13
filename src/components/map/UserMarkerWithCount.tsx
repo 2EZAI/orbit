@@ -1,4 +1,4 @@
-import { View, Image, Text } from "react-native";
+import { View, Image, Text, TouchableOpacity } from "react-native";
 import { useEffect, useState } from "react";
 
 interface UserMarkerWithCountProps {
@@ -6,6 +6,7 @@ interface UserMarkerWithCountProps {
   heading?: number;
   count?: number;
   showCount?: boolean;
+  onPress?: () => void;
 }
 
 export const UserMarkerWithCount = ({
@@ -13,6 +14,7 @@ export const UserMarkerWithCount = ({
   heading,
   count,
   showCount,
+  onPress,
 }: UserMarkerWithCountProps) => {
   const [imageError, setImageError] = useState(false);
 
@@ -21,7 +23,7 @@ export const UserMarkerWithCount = ({
     setImageError(false); // Reset error state when URL changes
   }, [avatarUrl]);
 
-  return (
+  const content = (
     <View className="justify-center items-center w-20">
       <View
         className="p-6 bg-white rounded-full shadow-lg"
@@ -65,4 +67,14 @@ export const UserMarkerWithCount = ({
       <View className="-mt-1 w-2 h-2 rounded-full bg-black/20" />
     </View>
   );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return content;
 };
