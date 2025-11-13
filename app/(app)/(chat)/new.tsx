@@ -1,51 +1,39 @@
-import { useState, useEffect, useMemo } from "react";
-import {
-  SafeAreaView,
-  View,
-  FlatList,
-  Alert,
-  Platform,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
-import { useChat } from "~/src/lib/chat";
-import { useRouter } from "expo-router";
-import { supabase } from "~/src/lib/supabase";
 import { User as AuthUser } from "@supabase/supabase-js";
+import { useRouter } from "expo-router";
 import {
-  Users,
-  Search,
-  X,
   ArrowLeft,
-  UserPlus,
+  Search,
   UserCheck,
+  UserPlus,
+  Users,
+  X,
 } from "lucide-react-native";
-import { Input } from "~/src/components/ui/input";
-import { Button } from "~/src/components/ui/button";
-import { Text } from "~/src/components/ui/text";
-import { Card, CardContent } from "~/src/components/ui/card";
-import { useAuth } from "~/src/lib/auth";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  SafeAreaView,
+  TouchableOpacity,
+  View
+} from "react-native";
+import { useNotificationsApi } from "~/hooks/useNotificationsApi";
+import { useTheme } from "~/src/components/ThemeProvider";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "~/src/components/ui/avatar";
-import { useTheme } from "~/src/components/ThemeProvider";
-import { Icon } from "react-native-elements";
-import { useNotificationsApi } from "~/hooks/useNotificationsApi";
+import { Input } from "~/src/components/ui/input";
+import { Text } from "~/src/components/ui/text";
+import { useAuth } from "~/src/lib/auth";
+import { useChat } from "~/src/lib/chat";
+import { supabase } from "~/src/lib/supabase";
 
 interface User extends AuthUser {
   first_name: string | null;
   last_name: string | null;
-  username: string | null;
-  avatar_url: string | null;
-}
-
-interface DatabaseUser {
-  id: string;
-  email: string | null;
-  first_name: string | null;
-  last_name: string | null;
+  username: string | null;a
   avatar_url: string | null;
 }
 
