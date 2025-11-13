@@ -80,7 +80,7 @@ function SettingItem({
     <GlassPressable
       disabled={loading}
       onPress={loading ? undefined : onPress}
-      style={{ marginBottom: 8 }}
+      style={{ marginBottom: 8, marginHorizontal: 16 }}
     >
       <View
         style={{
@@ -91,7 +91,6 @@ function SettingItem({
           backgroundColor: isDarkMode
             ? "rgba(255, 255, 255, 0.08)"
             : "rgba(255, 255, 255, 0.9)",
-          marginHorizontal: 16,
 
           borderRadius: 12,
           borderWidth: 1,
