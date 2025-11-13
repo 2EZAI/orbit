@@ -35,7 +35,7 @@ import { supabase } from "~/src/lib/supabase";
 import { useUser } from "~/src/lib/UserProvider";
 import Toast from "react-native-toast-message";
 import { SafeAreaView } from "react-native-safe-area-context";
-
+import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -54,6 +54,7 @@ interface PermissionState {
 export default function PermissionsScreen() {
   const { user } = useUser();
   const { session } = useAuth();
+  const { sendNotification } = useNotificationsApi();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -229,38 +230,6 @@ export default function PermissionsScreen() {
     (p) => p.granted || (p.key === "contacts" && !p.granted)
   );
 
-  const hitNotificationApi = async (type: string) => {
-    if (!user || !session?.user?.id) return;
-    try {
-      const requestData = {
-        userId: user.id,
-        type: type,
-      };
-
-      const response = await fetch(
-        `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify(requestData),
-        }
-      );
-      console.log("requestData", requestData);
-
-      if (!response.ok) {
-        console.log("error>", response);
-        throw new Error(await response.text());
-      }
-
-      const data_ = await response.json();
-      console.log("response>", data_);
-    } catch (e) {
-      console.log("error_catch>", e);
-    }
-  };
 
   const handleContinue = async () => {
     if (!user || isSubmitting) return;
@@ -277,7 +246,10 @@ export default function PermissionsScreen() {
       if (error) throw error;
 
       console.log("Permissions saved, navigating to app");
-      hitNotificationApi("welcome");
+      sendNotification({
+        type: "welcome",
+        userId: user.id,
+      });
       if (permissions.contacts.granted) {
         router.replace("/(app)/contacts");
       } else {

@@ -37,6 +37,7 @@ import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { useAuth } from "~/src/lib/auth";
 import { supabase } from "~/src/lib/supabase";
+import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 
 interface Post {
   id: string;
@@ -85,6 +86,7 @@ export default function PostView() {
   const params = useLocalSearchParams();
   const id = typeof params.id === "string" ? params.id : null;
   const { session } = useAuth();
+  const { sendNotification } = useNotificationsApi();
   const insets = useSafeAreaInsets();
   const [post, setPost] = useState<Post | null>(null);
   const [likeCount, setLikeCount] = useState(0);
@@ -383,7 +385,11 @@ export default function PostView() {
         setPost((post) =>
           post ? { ...post, like_count: post.like_count + 1 } : null
         );
-        hitNoificationApi("like");
+        sendNotification({
+          type: "like",
+          userId: post?.user?.id,
+          postId: id || undefined,
+        });
       }
     } catch (error) {
       console.error("Error toggling like:", error);
@@ -411,49 +417,16 @@ export default function PostView() {
       setPost((post) =>
         post ? { ...post, comment_count: post.comment_count + 1 } : null
       );
-      hitNoificationApi("comment");
+      sendNotification({
+        type: "comment",
+        userId: post?.user?.id,
+        postId: id || undefined,
+      });
     } catch (error) {
       console.error("Error submitting comment:", error);
       Alert.alert("Error", "Failed to submit comment");
     } finally {
       setSubmittingComment(false);
-    }
-  };
-
-  const hitNoificationApi = async (typee: string) => {
-    if (!session?.user.id) return;
-    try {
-      const reuestData = {
-        userId: post?.user?.id,
-        senderId: session?.user?.id,
-        type: typee,
-        data: {
-          post_id: id,
-        },
-      };
-
-      const response = await fetch(
-        `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify(reuestData),
-        }
-      );
-      console.log("eventData", reuestData);
-
-      if (!response.ok) {
-        console.log("error>", response);
-        throw new Error(await response.text());
-      }
-
-      const data_ = await response.json();
-      // console.log("response>",data_);
-    } catch (e) {
-      console.log("error_catch>", e);
     }
   };
 

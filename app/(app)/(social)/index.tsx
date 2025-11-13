@@ -117,7 +117,7 @@ export default function SocialFeed() {
   const { session } = useAuth();
   const { user } = useUser();
   const { theme, isDarkMode } = useTheme();
-  const { fetchAllNoifications, unReadCount } = useNotificationsApi();
+  const { fetchAllNoifications, unReadCount, sendNotification } = useNotificationsApi();
   const { client } = useChat();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
@@ -303,6 +303,12 @@ export default function SocialFeed() {
                 : p
             )
           );
+          // Send notification when liking
+          sendNotification({
+            type: "like",
+            userId: post.user.id,
+            postId: postId,
+          });
         }
       }
     } catch (error) {

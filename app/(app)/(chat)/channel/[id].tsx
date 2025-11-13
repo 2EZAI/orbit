@@ -27,6 +27,7 @@ import {
 import { Text } from "~/src/components/ui/text";
 import { useAuth } from "~/src/lib/auth";
 import { useChat } from "~/src/lib/chat";
+import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 
 import { ArrowLeft } from "lucide-react-native";
 import ChatEventComponent from "~/src/components/chat/ChatEventComponent";
@@ -439,6 +440,7 @@ export default function ChannelScreen() {
   const { id } = useLocalSearchParams();
   const { from } = useLocalSearchParams();
   const { client } = useChat();
+  const { sendNotification } = useNotificationsApi();
   const router = useRouter();
   const [shareData, setShareData] = useState<{
     data: UnifiedData;
@@ -487,6 +489,19 @@ export default function ChannelScreen() {
       channel.sendMessage = async (msg: any) => {
         try {
           const text: string | undefined = msg?.text?.trim();
+          
+          // Send notification for regular messages (not /event commands)
+          if (text && !text.startsWith("/event") && !text.startsWith("/")) {
+            const channelName = channel.data?.name || channel.id;
+            const isGroup = Object.keys(channel.state.members || {}).length > 2;
+            const notificationType = isGroup ? "new_group_message" : "new_message";
+            sendNotification({
+              type: notificationType,
+              chatId: channel.id,
+              groupName: channelName,
+            });
+          }
+          
           if (text && text.startsWith("/event")) {
             let augmentedText = text; // keep original text without lat/lng tokens
             let attachLat: number | undefined;
@@ -1032,47 +1047,6 @@ export default function ChannelScreen() {
     }
   }, [channel]);
 
-  const hitNoificationApi = async (
-    typee: string,
-    chatId: string,
-    name: string
-  ) => {
-    if (!session) return;
-    try {
-      console.log("vcvc");
-      const reuestData = {
-        senderId: session.user.id,
-        type: typee,
-        data: {
-          chat_id: chatId,
-          group_name: name,
-        },
-      };
-      ///send notification
-      const response = await fetch(
-        `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify(reuestData),
-        }
-      );
-      // console.log("requestData", reuestData);
-
-      if (!response.ok) {
-        // console.log("error>",response);
-        throw new Error(await response.text());
-      }
-
-      const data_ = await response.json();
-      console.log("response>", data_);
-    } catch (e) {
-      console.log("error_catch>", e);
-    }
-  };
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.card }}>

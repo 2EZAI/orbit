@@ -32,6 +32,7 @@ import {
 } from "~/src/components/ui/avatar";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Icon } from "react-native-elements";
+import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 
 interface User extends AuthUser {
   first_name: string | null;
@@ -64,6 +65,7 @@ export default function NewChatScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingFollows, setIsLoadingFollows] = useState(false);
   const { session } = useAuth();
+  const { sendNotification } = useNotificationsApi();
 
   const isGroupChat = selectedUsers.length > 1;
 
@@ -403,10 +405,18 @@ export default function NewChatScreen() {
         console.log("selectedUsers");
         if (selectedUsers.length === 1) {
           console.log("selectedUsers1");
-          hitNoificationApi("new_chat", chatChannel.id);
+          sendNotification({
+            type: "new_chat",
+            chatId: chatChannel.id,
+            groupName: chatName,
+          });
         } else {
           console.log("selectedUserselse");
-          hitNoificationApi("new_group_chat", chatChannel.id);
+          sendNotification({
+            type: "new_group_chat",
+            chatId: chatChannel.id,
+            groupName: chatName,
+          });
         }
       }
 
@@ -441,39 +451,6 @@ export default function NewChatScreen() {
     }
   };
 
-  const hitNoificationApi = async (typee: string, chatId: string) => {
-    if (!session) return;
-    try {
-      const requestData = {
-        senderId: session.user.id,
-        type: typee,
-        data: {
-          chat_id: chatId,
-          group_name: chatName,
-        },
-      };
-      ///send notification
-      const response = await fetch(
-        `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify(requestData),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-
-       await response.json();
-    } catch (e) {
-      console.log("error_catch>", e);
-    }
-  };
 
   return (
     <SafeAreaView
