@@ -57,6 +57,7 @@ import { InterestsModal } from "~/src/components/settings/InterestsModal";
 import { LocationPreferencesModal } from "~/src/components/settings/LocationPreferencesModal";
 import { PrivacyModal } from "~/src/components/settings/PrivacyModal";
 import { SocialMediaSettings } from "~/src/components/settings/SocialMediaSettings";
+import GlassPressable from "~/src/components/ui/GlassPressable";
 
 interface SettingItemProps {
   icon: React.ReactNode;
@@ -73,64 +74,70 @@ function SettingItem({
   destructive = false,
   loading = false,
 }: SettingItemProps) {
-  const { theme } = useTheme();
+  const { theme, isDarkMode } = useTheme();
 
   return (
-    <TouchableOpacity
-      onPress={loading ? undefined : onPress}
+    <GlassPressable
       disabled={loading}
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 16,
-        paddingHorizontal: 20,
-        backgroundColor: theme.colors.card,
-        marginHorizontal: 16,
-        marginBottom: 8,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-      }}
+      onPress={loading ? undefined : onPress}
+      style={{ marginBottom: 8 }}
     >
       <View
         style={{
-          width: 40,
-          height: 40,
-          borderRadius: 20,
-          backgroundColor: destructive
-            ? "#FF3B30" + "20"
-            : theme.colors.primary + "20",
+          flexDirection: "row",
           alignItems: "center",
-          justifyContent: "center",
-          marginRight: 16,
+          paddingVertical: 16,
+          paddingHorizontal: 20,
+          backgroundColor: isDarkMode
+            ? "rgba(255, 255, 255, 0.08)"
+            : "rgba(255, 255, 255, 0.9)",
+          marginHorizontal: 16,
+
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: theme.colors.border,
         }}
       >
-        {icon}
+        <View
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: destructive
+              ? "#FF3B30" + "20"
+              : theme.colors.primary + "20",
+            alignItems: "center",
+            justifyContent: "center",
+            marginRight: 16,
+          }}
+        >
+          {icon}
+        </View>
+
+        <Text
+          style={{
+            flex: 1,
+            fontSize: 16,
+            fontWeight: "600",
+            color: destructive ? "#FF3B30" : theme.colors.text,
+          }}
+        >
+          {title}
+        </Text>
+
+        {loading ? (
+          <ActivityIndicator
+            size="small"
+            color={destructive ? "#FF3B30" : theme.colors.primary}
+          />
+        ) : (
+          <ChevronRight
+            size={20}
+            color={destructive ? "#FF3B30" : theme.colors.text + "60"}
+          />
+        )}
       </View>
-
-      <Text
-        style={{
-          flex: 1,
-          fontSize: 16,
-          fontWeight: "600",
-          color: destructive ? "#FF3B30" : theme.colors.text,
-        }}
-      >
-        {title}
-      </Text>
-
-      {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={destructive ? "#FF3B30" : theme.colors.primary}
-        />
-      ) : (
-        <ChevronRight
-          size={20}
-          color={destructive ? "#FF3B30" : theme.colors.text + "60"}
-        />
-      )}
-    </TouchableOpacity>
+    </GlassPressable>
   );
 }
 

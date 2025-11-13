@@ -76,6 +76,7 @@ const ModernSearchInput = ({
         style={{
           flexDirection: "row",
           alignItems: "center",
+          
           backgroundColor: isDarkMode
             ? "rgba(255, 255, 255, 0.08)"
             : "rgba(255, 255, 255, 0.9)",
