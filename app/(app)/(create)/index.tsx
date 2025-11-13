@@ -105,7 +105,6 @@ export default function CreateEvent() {
 
   const [categoryList, setCategoryList] = useState<Partial<Category>>({});
   const [selectedPrompts, setSelectedPrompts] = useState<Partial<Prompt>>({});
-  const [showPrompts, setshowPrompts] = useState<boolean>(false);
   const [prompts, setPrompts] = useState<Partial<Prompt>>({});
 
   const { showActionSheetWithOptions } = useActionSheet();
@@ -793,9 +792,6 @@ export default function CreateEvent() {
   useEffect(() => {
     console.log("createevent_useEffect");
 
-    // Load existing draft on mount
-    // loadDraft();
-
     // Handle router params
     if (params.categoryId && params.categoryName) {
       const simpleCategory = {
@@ -806,7 +802,6 @@ export default function CreateEvent() {
       setCategoryList(simpleCategory as Category);
       setSelectedTopics(params.categoryId as string);
       setSelectedTopicsName(params.categoryName as string);
-      setshowPrompts(true);
       if (params.prompts) {
         try {
           const raw = params.prompts;
@@ -1527,10 +1522,14 @@ export default function CreateEvent() {
 
       // Determine if we're updating or creating
       const isUpdating = isEditMode && editingEventId;
-      const apiUrl = isUpdating
-        ? `${process.env.BACKEND_MAP_URL}/api/events/${editingEventId}`
-        : `${process.env.BACKEND_MAP_URL}/api/events`;
-      const method = isUpdating ? "PUT" : "POST";
+      // Use POST for both create and update
+      const apiUrl = `${process.env.BACKEND_MAP_URL}/api/events`;
+      const method = "POST";
+      
+      // Add event_id to body if updating
+      if (isUpdating) {
+        eventData.event_id = editingEventId;
+      }
 
       console.log(`${isUpdating ? "✏️ Updating" : "✨ Creating"} event:`, {
         method,
@@ -1547,14 +1546,35 @@ export default function CreateEvent() {
         body: JSON.stringify(eventData),
       });
 
+      // Get response text first (can only read body once)
+      const responseText = await response.text();
+      
       if (!response.ok) {
-        const responseData = await response.json();
-        throw new Error(responseData.error || "Failed to create event");
+        // Try to parse as JSON, fallback to text if it fails
+        let errorMessage = "Failed to create event";
+        try {
+          const responseData = JSON.parse(responseText);
+          errorMessage = responseData.error || responseData.message || errorMessage;
+        } catch (parseError) {
+          // If parsing fails, use the text response
+          errorMessage = responseText || `HTTP ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
+      
       if (!isEditMode) {
         await clearDraft();
       }
-      const event = await response.json();
+      
+      // Parse successful response
+      let event;
+      try {
+        event = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("Error parsing response:", parseError);
+        console.error("Response text:", responseText.substring(0, 200));
+        throw new Error(`Invalid response format from server: ${parseError instanceof Error ? parseError.message : "Unknown error"}`);
+      }
       // console.log("event>>", event);
 
       Toast.show({
