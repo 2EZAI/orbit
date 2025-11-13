@@ -16,6 +16,7 @@ import {
 import { EventMarker } from "./EventMarker";
 import { UserMarker } from "./UserMarker";
 import { UserMarkerWithCount } from "./UserMarkerWithCount";
+import { haptics } from "~/src/lib/haptics";
 
 // Progressive rendering configuration - ORIGINAL WITH SPEED IMPROVEMENT
 const PROGRESSIVE_RENDERING_CONFIG = {
@@ -429,7 +430,10 @@ export function MapboxMarkers({
           <UserMarker 
             avatarUrl={user?.avatar_url} 
             heading={effectiveLocation.heading ?? undefined}
-            onPress={() => router.push("/(app)/(profile)")}
+            onPress={() => {
+              haptics.selection();
+              router.push("/(app)/(profile)");
+            }}
           />
         </MapboxGL.MarkerView>
       )}
