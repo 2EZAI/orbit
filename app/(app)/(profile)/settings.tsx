@@ -84,7 +84,7 @@ function SettingItem({
         alignItems: "center",
         paddingVertical: 16,
         paddingHorizontal: 20,
-        backgroundColor: theme.colors.background,
+        backgroundColor: theme.colors.card,
         marginHorizontal: 16,
         marginBottom: 8,
         borderRadius: 12,

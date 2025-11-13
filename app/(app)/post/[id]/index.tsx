@@ -5,7 +5,7 @@ import {
   Heart,
   MapPin,
   MessageCircle,
-  MoreHorizontal
+  MoreHorizontal,
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
@@ -19,7 +19,7 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { Icon } from "react-native-elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -434,7 +434,7 @@ export default function PostView() {
     <View
       style={{
         flex: 1,
-        backgroundColor: theme.colors.background,
+        backgroundColor: theme.colors.card,
         paddingBottom: insets.bottom + parseInt(marginBottom_.replace("%", "")),
       }}
     >

@@ -117,7 +117,8 @@ export default function SocialFeed() {
   const { session } = useAuth();
   const { user } = useUser();
   const { theme, isDarkMode } = useTheme();
-  const { fetchAllNoifications, unReadCount, sendNotification } = useNotificationsApi();
+  const { fetchAllNoifications, unReadCount, sendNotification } =
+    useNotificationsApi();
   const { client } = useChat();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
@@ -695,7 +696,7 @@ export default function SocialFeed() {
                     style={{
                       color: "white",
                       fontSize: 10,
-                      fontWeight: "800",
+                      fontWeight: "600",
                       textAlign: "center",
                       includeFontPadding: false,
                       lineHeight: 10,

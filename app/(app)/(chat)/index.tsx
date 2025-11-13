@@ -26,6 +26,7 @@ import { useChat } from "~/src/lib/chat";
 
 import type { ChannelMemberResponse } from "stream-chat";
 import type { ChannelPreviewMessengerProps } from "stream-chat-expo";
+import GlassPressable from "~/src/components/ui/GlassPressable";
 
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl;
 // console.log("[ChatList] Configured Backend URL:", BACKEND_URL);
@@ -116,7 +117,7 @@ const ModernChannelPreview = (
   props: ChannelPreviewMessengerProps<DefaultGenerics>
 ) => {
   const { channel, onSelect } = props;
-  const { theme } = useTheme();
+  const { theme, isDarkMode } = useTheme();
 
   const getChannelName = () => {
     if (channel.data?.name) {
@@ -231,16 +232,26 @@ const ModernChannelPreview = (
   const isMuted = channel.muteStatus().muted;
 
   return (
-    <TouchableOpacity onPress={() => onSelect?.(channel)} className="mx-4 mb-3">
+    <GlassPressable
+      onPress={() => onSelect?.(channel)}
+      baselineIntensity={28}
+      pressIntensity={44}
+      style={{ marginHorizontal: 5, marginBottom: 10 }}
+    >
       <Card
         style={{
           overflow: "hidden",
-          backgroundColor: theme.colors.border,
-          borderColor: theme.colors.border,
+          // Translucent to allow glass blur to show underlying content
+          backgroundColor: isDarkMode
+            ? "rgba(28,28,30,0.55)"
+            : "rgba(255,255,255,0.40)",
+          borderColor: isDarkMode
+            ? theme.colors.border + "60"
+            : theme.colors.border + "80",
           shadowColor: theme.colors.border,
           shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.1,
-          shadowRadius: 2,
+          shadowOpacity: 0.08,
+          shadowRadius: 4,
           elevation: 2,
         }}
       >
@@ -319,7 +330,7 @@ const ModernChannelPreview = (
           </View>
         </CardContent>
       </Card>
-    </TouchableOpacity>
+    </GlassPressable>
   );
 };
 

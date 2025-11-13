@@ -820,12 +820,14 @@ export default function NotificationView() {
               <View
                 style={{
                   backgroundColor: theme.colors.primary,
-                  borderRadius: 10,
-                  paddingHorizontal: 6,
-                  paddingVertical: 2,
+                  borderRadius: 12,
+                  width: 24,
+                  height: 24,
+
                   marginLeft: 8,
                   minWidth: 20,
                   alignItems: "center",
+                  justifyContent: "center",
                   shadowColor: theme.colors.primary,
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.3,

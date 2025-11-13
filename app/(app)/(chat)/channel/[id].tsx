@@ -46,6 +46,7 @@ import { IProposal } from "~/hooks/useProposals";
 import UnifiedProposalSheet from "~/src/components/map/UnifiedProposalSheet";
 import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
 import * as Location from "expo-location";
+import { darkVideoTheme } from "../../../../src/lib/streamVideoTheme";
 
 // BULLETPROOF Message Component - ONLY renders polls, returns NULL for everything else
 // This forces Stream to use its default components for all non-poll messages
@@ -489,19 +490,21 @@ export default function ChannelScreen() {
       channel.sendMessage = async (msg: any) => {
         try {
           const text: string | undefined = msg?.text?.trim();
-          
+
           // Send notification for regular messages (not /event commands)
           if (text && !text.startsWith("/event") && !text.startsWith("/")) {
             const channelName = channel.data?.name || channel.id;
             const isGroup = Object.keys(channel.state.members || {}).length > 2;
-            const notificationType = isGroup ? "new_group_message" : "new_message";
+            const notificationType = isGroup
+              ? "new_group_message"
+              : "new_message";
             sendNotification({
               type: notificationType,
               chatId: channel.id,
               groupName: channelName,
             });
           }
-          
+
           if (text && text.startsWith("/event")) {
             let augmentedText = text; // keep original text without lat/lng tokens
             let attachLat: number | undefined;
@@ -1047,7 +1050,6 @@ export default function ChannelScreen() {
     }
   }, [channel]);
 
-
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
       <Stack.Screen
@@ -1215,7 +1217,7 @@ export default function ChannelScreen() {
                 </View>
               ) : (
                 <>
-                  <MessageList onThreadSelect={setThread}  />
+                  <MessageList onThreadSelect={setThread} />
                   <MessageInput />
                 </>
               )}

@@ -1298,9 +1298,10 @@ export default function Home() {
                 top: -4,
                 right: -4,
                 backgroundColor: "#ff3b30",
-                borderRadius: 10,
-                minWidth: 20,
-                height: 20,
+                borderRadius: 12,
+                width: 24,
+                height: 24,
+
                 justifyContent: "center",
                 alignItems: "center",
                 borderWidth: 2,
@@ -1308,9 +1309,16 @@ export default function Home() {
               }}
             >
               <Text
-                style={{ color: "white", fontSize: 12, fontWeight: "bold" }}
+                style={{
+                  color: "white",
+                  fontSize: 12,
+                  fontWeight: "bold",
+                  lineHeight: 14,
+                  textAlign: "center",
+                  includeFontPadding: false,
+                }}
               >
-                {unReadCount > 99 ? "99+" : String(unReadCount)}
+                {unReadCount > 9 ? "9+" : String(unReadCount)}
               </Text>
             </View>
           ) : undefined,
