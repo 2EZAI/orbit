@@ -1192,26 +1192,38 @@ export default function CreateEvent() {
 
   const showTimePicker = (isStart: boolean) => {
     const currentDate = isStart ? startDate : endDate;
-    const hours = Array.from({ length: 24 }, (_, i) => {
-      const hour = i % 12 || 12;
-      const ampm = i < 12 ? "AM" : "PM";
-      return `${hour}:00 ${ampm}`;
+    // Build 30-minute slots across 24 hours => 48 options
+    const totalSlots = 24 * 2;
+    const timeLabels = Array.from({ length: totalSlots }, (_, i) => {
+      const hour24 = Math.floor(i / 2);
+      const minutes = i % 2 === 0 ? 0 : 30;
+      const hour12 = hour24 % 12 || 12;
+      const ampm = hour24 < 12 ? "AM" : "PM";
+      const mm = minutes === 0 ? "00" : "30";
+      return `${hour12}:${mm} ${ampm}`;
     });
 
-    const options = [...hours, "Cancel"];
+    const CANCEL_INDEX = totalSlots;
+    const options = [...timeLabels, "Cancel"];
 
     showActionSheetWithOptions(
       {
         options,
-        cancelButtonIndex: 24,
+        cancelButtonIndex: CANCEL_INDEX,
         title: `Select ${isStart ? "Start" : "End"} Time`,
       },
       (selectedIndex) => {
-        if (selectedIndex === undefined || selectedIndex === 24) return;
+        if (selectedIndex === undefined || selectedIndex === CANCEL_INDEX)
+          return;
+
+        const hour24 = Math.floor(selectedIndex / 2);
+        const minutes = selectedIndex % 2 === 0 ? 0 : 30;
 
         const newDate = new Date(currentDate);
-        newDate.setHours(selectedIndex);
-        newDate.setMinutes(0);
+        newDate.setHours(hour24);
+        newDate.setMinutes(minutes);
+        newDate.setSeconds(0);
+        newDate.setMilliseconds(0);
 
         if (isStart) {
           setStartDate(newDate);
@@ -1525,7 +1537,7 @@ export default function CreateEvent() {
       // Use POST for both create and update
       const apiUrl = `${process.env.BACKEND_MAP_URL}/api/events`;
       const method = "POST";
-      
+
       // Add event_id to body if updating
       if (isUpdating) {
         eventData.event_id = editingEventId;
@@ -1548,24 +1560,26 @@ export default function CreateEvent() {
 
       // Get response text first (can only read body once)
       const responseText = await response.text();
-      
+
       if (!response.ok) {
         // Try to parse as JSON, fallback to text if it fails
         let errorMessage = "Failed to create event";
         try {
           const responseData = JSON.parse(responseText);
-          errorMessage = responseData.error || responseData.message || errorMessage;
+          errorMessage =
+            responseData.error || responseData.message || errorMessage;
         } catch (parseError) {
           // If parsing fails, use the text response
-          errorMessage = responseText || `HTTP ${response.status}: ${response.statusText}`;
+          errorMessage =
+            responseText || `HTTP ${response.status}: ${response.statusText}`;
         }
         throw new Error(errorMessage);
       }
-      
+
       if (!isEditMode) {
         await clearDraft();
       }
-      
+
       // Parse successful response
       let event;
       try {
@@ -1573,7 +1587,11 @@ export default function CreateEvent() {
       } catch (parseError) {
         console.error("Error parsing response:", parseError);
         console.error("Response text:", responseText.substring(0, 200));
-        throw new Error(`Invalid response format from server: ${parseError instanceof Error ? parseError.message : "Unknown error"}`);
+        throw new Error(
+          `Invalid response format from server: ${
+            parseError instanceof Error ? parseError.message : "Unknown error"
+          }`
+        );
       }
       // console.log("event>>", event);
 

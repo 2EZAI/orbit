@@ -1633,17 +1633,7 @@ export default function Home() {
                   justifyContent: "center",
                   alignItems: "center",
                 }}
-              >
-                <Text
-                  style={{
-                    fontSize: 7,
-                    fontWeight: "700",
-                    color: "white",
-                  }}
-                >
-                  {user?.event_location_preference === 1 ? "O" : "C"}
-                </Text>
-              </View>
+              ></View>
             </TouchableOpacity>
           </View>
         </View>
