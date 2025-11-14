@@ -763,6 +763,8 @@ export default function LandingPage() {
                     paddingVertical: 18,
                     paddingHorizontal: 24,
                     borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: theme.colors.border,
                     justifyContent: "center",
                     alignItems: "center",
                     flexDirection: "row",
