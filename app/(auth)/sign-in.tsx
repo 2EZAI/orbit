@@ -10,7 +10,6 @@ import {
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -24,8 +23,6 @@ import { useTheme } from "~/src/components/ThemeProvider";
 import { Input } from "~/src/components/ui/input";
 import { Text } from "~/src/components/ui/text";
 import { supabase } from "../../src/lib/supabase";
-
-const { width, height } = Dimensions.get("window");
 
 export default function SignIn(): JSX.Element {
   const { theme } = useTheme();
@@ -54,7 +51,6 @@ export default function SignIn(): JSX.Element {
     setLoading(true);
 
     try {
-      await saveTutorialFinished();
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -94,15 +90,6 @@ export default function SignIn(): JSX.Element {
       setLoading(false);
     }
   }
-
-  const saveTutorialFinished = async () => {
-    try {
-      await AsyncStorage.setItem("tutorial_finished", JSON.stringify("1"));
-      console.log("Saved successfully");
-    } catch (error) {
-      // console.error("Error saving tutorial_finished:", error);
-    }
-  };
 
   return (
     <View
