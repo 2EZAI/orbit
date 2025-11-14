@@ -148,7 +148,7 @@ const Firefly = ({ id, theme }: { id: string; theme: any }) => {
     <Animated.View
       style={{
         position: "absolute",
-        width: size * 3, // Larger container for blur effect
+        width: size * 3,
         height: size * 3,
         transform: [
           { translateX: translateX },
@@ -504,7 +504,7 @@ const GeometricPattern = ({ rotation }: { rotation: Animated.Value }) => {
 
 export default function LandingPage() {
   const isFocused = useIsFocused();
-  const { theme } = useTheme();
+  const { theme, isDarkMode } = useTheme();
   const { session, loading } = useAuth();
   const insets = useSafeAreaInsets();
   const [isSocialLogin, setIsSocialLogin] = useState(false);
@@ -607,7 +607,7 @@ export default function LandingPage() {
       <View
         style={{
           flex: 1,
-          backgroundColor: theme.colors.background,
+          backgroundColor: isDarkMode ? "#000000" : theme.colors.background,
           justifyContent: "center",
           alignItems: "center",
         }}
@@ -622,7 +622,7 @@ export default function LandingPage() {
       <View
         style={{
           flex: 1,
-          backgroundColor: theme.colors.background,
+          backgroundColor: isDarkMode ? "#000000" : theme.colors.background,
           justifyContent: "center",
           alignItems: "center",
         }}
@@ -636,7 +636,7 @@ export default function LandingPage() {
     <View
       style={{
         flex: 1,
-        backgroundColor: theme.colors.background,
+        backgroundColor: isDarkMode ? "#000000" : theme.colors.background,
       }}
     >
       <StatusBar
@@ -654,6 +654,7 @@ export default function LandingPage() {
           right: 0,
           bottom: 0,
           overflow: "hidden",
+          backgroundColor: isDarkMode ? "#000000" : "transparent",
         }}
       >
         {/* Fireflies */}
@@ -810,44 +811,81 @@ export default function LandingPage() {
               </TouchableOpacity>
             </>
           ) : null}
-          <TouchableOpacity
-            onPress={handleSignUp}
+          <View
             style={{
-              backgroundColor: "#8B5CF6",
-              paddingVertical: 18,
-              paddingHorizontal: 24,
-              borderRadius: 16,
               flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              shadowColor: "#8B5CF6",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 6,
+              gap: 12,
+              width: "100%",
             }}
           >
-            <Text
+            <TouchableOpacity
+              onPress={() => {
+                router.navigate("/(auth)/sign-up");
+              }}
               style={{
-                color: "white",
-                fontSize: 18,
-                fontWeight: "700",
-                marginRight: 8,
+                flex: 1,
+                backgroundColor: "#8B5CF6",
+                paddingVertical: 18,
+                paddingHorizontal: 24,
+                borderRadius: 16,
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#8B5CF6",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 6,
               }}
             >
-              Get Started
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={{
+                  color: "white",
+                  fontSize: 18,
+                  fontWeight: "700",
+                }}
+              >
+                Sign Up
+              </Text>
+            </TouchableOpacity>
 
-          {!isFirstTime ? (
             <TouchableOpacity
-              onPress={handleGetStarted}
+              onPress={async () => {
+                await AsyncStorage.setItem("hasStarted", "true");
+                router.navigate("/(app)/(map)");
+              }}
               style={{
+                flex: 1,
                 backgroundColor: "transparent",
                 paddingVertical: 18,
                 paddingHorizontal: 24,
                 borderRadius: 16,
                 borderWidth: 2,
+                borderColor: theme.colors.border,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text
+                style={{
+                  color: theme.colors.text,
+                  fontSize: 18,
+                  fontWeight: "700",
+                }}
+              >
+                Browse
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {!isFirstTime ? (
+            <TouchableOpacity
+              onPress={handleGetStarted}
+              style={{
+                backgroundColor: isDarkMode ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.04)",
+                paddingVertical: 18,
+                paddingHorizontal: 24,
+                borderRadius: 16,
+                borderWidth: 1,
                 borderColor: theme.colors.border,
                 justifyContent: "center",
                 alignItems: "center",
