@@ -52,15 +52,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ],
     ios: {
       bundleIdentifier: "com.dovydmcnugget.orbit",
-      buildNumber: "23",
+      buildNumber: "24",
       supportsTablet: true,
       config: {
         usesNonExemptEncryption: false,
       },
       infoPlist: {
         UIBackgroundModes: ["remote-notification"],
-        NSUserTrackingUsageDescription:
-          "This identifier will be used to deliver personalized ads to you.",
         NSUserNotificationUsageDescription:
           "This app uses notifications to keep you informed.",
       },
