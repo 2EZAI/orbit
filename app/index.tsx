@@ -758,12 +758,10 @@ export default function LandingPage() {
                     await appleLogin();
                   }}
                   style={{
-                    backgroundColor: "transparent",
+                    backgroundColor: "#FFFFFF",
                     paddingVertical: 18,
                     paddingHorizontal: 24,
                     borderRadius: 16,
-                    borderWidth: 2,
-                    borderColor: theme.colors.border,
                     justifyContent: "center",
                     alignItems: "center",
                     flexDirection: "row",
@@ -773,7 +771,7 @@ export default function LandingPage() {
                   <Icon size={24} type="antdesign" name="apple1" />
                   <Text
                     style={{
-                      color: theme.colors.text,
+                      color: "#000000",
                       fontSize: 16,
                       fontWeight: "600",
                     }}
@@ -789,12 +787,10 @@ export default function LandingPage() {
                   await googleLogin();
                 }}
                 style={{
-                  backgroundColor: "transparent",
+                  backgroundColor: "#000000",
                   paddingVertical: 18,
                   paddingHorizontal: 24,
                   borderRadius: 16,
-                  borderWidth: 2,
-                  borderColor: theme.colors.border,
                   justifyContent: "center",
                   alignItems: "center",
                   flexDirection: "row",
@@ -804,7 +800,7 @@ export default function LandingPage() {
                 <Google width={24} height={24} />
                 <Text
                   style={{
-                    color: theme.colors.text,
+                    color: "#FFFFFF",
                     fontSize: 16,
                     fontWeight: "600",
                   }}
