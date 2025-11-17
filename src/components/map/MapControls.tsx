@@ -1,25 +1,26 @@
-import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "expo-router";
-import { View, TouchableOpacity, Pressable, Image } from "react-native";
 import {
-  Search,
-  Navigation2,
-  Plus,
-  Minus,
   Bell,
   Info,
   MapPin,
+  Minus,
+  Navigation2,
+  Plus,
+  Search,
 } from "lucide-react-native";
-import { useTheme } from "~/src/components/ThemeProvider";
-import { Text } from "~/src/components/ui/text";
+import React, { useMemo, useState } from "react";
+import { Image, Pressable, TouchableOpacity, View } from "react-native";
 import { Icon } from "react-native-elements";
 import { useNotificationsApi } from "~/hooks/useNotificationsApi";
-import { useUser } from "~/src/lib/UserProvider";
-import { SearchSheet } from "~/src/components/search/SearchSheet";
+import { FilterState, MarkerFilter } from "~/src/components/map/MarkerFilter";
 import { MarkerLegend } from "~/src/components/map/MarkerLegend";
-import { MarkerFilter, FilterState } from "~/src/components/map/MarkerFilter";
+import { SearchSheet } from "~/src/components/search/SearchSheet";
 import { LocationPreferencesModal } from "~/src/components/settings/LocationPreferencesModal";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { Text } from "~/src/components/ui/text";
 import { useAuth } from "~/src/lib/auth";
+import { useUser } from "~/src/lib/UserProvider";
+import NotificationBadge from "../ui/NotificationBadge";
 
 type TimeFrame = "Today" | "Week" | "Weekend";
 
@@ -67,18 +68,6 @@ export function MapControls({
 
   const toggleSearch = () => {
     setIsSearchVisible(!isSearchVisible);
-  };
-
-  useEffect(() => {
-    hitNotificationCount();
-  }, []);
-
-  useEffect(() => {
-    console.log("unReadCounta>>", unReadCount);
-  }, [unReadCount]);
-
-  const hitNotificationCount = async () => {
-    await fetchAllNoifications(1, 20);
   };
 
   const ICON_SIZE = 44;
@@ -277,34 +266,7 @@ export function MapControls({
               activeOpacity={0.8}
             >
               <Bell size={16} color="white" />
-              {!!(unReadCount && unReadCount > 0) && (
-                <View
-                  style={{
-                    position: "absolute",
-                    top: -6,
-                    right: -6,
-                    backgroundColor: "#ff3b30",
-                    borderRadius: 10,
-                    minWidth: 20,
-                    height: 20,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    borderWidth: 2,
-                    borderColor: "white",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: "white",
-                      fontSize: 9,
-                      fontWeight: "700",
-                      lineHeight: 12,
-                    }}
-                  >
-                    {unReadCount > 99 ? "99+" : String(unReadCount)}
-                  </Text>
-                </View>
-              )}
+              <NotificationBadge />
             </TouchableOpacity>
 
             {/* User Avatar */}

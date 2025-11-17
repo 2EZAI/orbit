@@ -11,7 +11,6 @@ import {
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   FlatList,
   Image,
   RefreshControl,
@@ -32,6 +31,7 @@ import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
 import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
 import { SocialEventCard } from "~/src/components/social/SocialEventCard";
 import { useTheme } from "~/src/components/ThemeProvider";
+import NotificationBadge from "~/src/components/ui/NotificationBadge";
 import { ScreenHeader } from "~/src/components/ui/screen-header";
 import { Text } from "~/src/components/ui/text";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
@@ -61,8 +61,6 @@ interface Post {
   isLiked?: boolean;
 }
 
-const { width: screenWidth } = Dimensions.get("window");
-
 const ImageGallery = ({
   images,
   postId,
@@ -72,8 +70,6 @@ const ImageGallery = ({
   postId: string;
   event?: any;
 }) => {
-  const { theme, isDarkMode } = useTheme();
-
   const handleImagePress = () => {
     router.push({
       pathname: `/post/${postId}`,
@@ -117,8 +113,7 @@ export default function SocialFeed() {
   const { session } = useAuth();
   const { user } = useUser();
   const { theme, isDarkMode } = useTheme();
-  const { fetchAllNoifications, unReadCount, sendNotification } =
-    useNotificationsApi();
+  const { sendNotification } = useNotificationsApi();
   const { client } = useChat();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
@@ -149,10 +144,6 @@ export default function SocialFeed() {
   );
 
   const PAGE_SIZE = 20;
-
-  useEffect(() => {
-    fetchAllNoifications(1, 20);
-  }, []);
 
   const loadPosts = async (isRefresh = false) => {
     if (loading || (!hasMore && !isRefresh)) {
@@ -676,36 +667,7 @@ export default function SocialFeed() {
                 });
               },
               backgroundColor: theme.colors.primary,
-              badge: true ? (
-                <View
-                  style={{
-                    position: "absolute",
-                    top: -4,
-                    right: -6,
-                    backgroundColor: "#ff3b30",
-                    width: 18,
-                    height: 18,
-                    borderRadius: 9,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    borderWidth: 2,
-                    borderColor: "white",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: "white",
-                      fontSize: 10,
-                      fontWeight: "600",
-                      textAlign: "center",
-                      includeFontPadding: false,
-                      lineHeight: 10,
-                    }}
-                  >
-                    {unReadCount > 99 ? "9" : String(unReadCount || 5)[0]}
-                  </Text>
-                </View>
-              ) : undefined,
+              badge: <NotificationBadge />,
             },
             {
               icon: (
@@ -764,36 +726,7 @@ export default function SocialFeed() {
               });
             },
             backgroundColor: theme.colors.primary,
-            badge: true ? (
-              <View
-                style={{
-                  position: "absolute",
-                  top: -4,
-                  right: -6,
-                  backgroundColor: "#ff3b30",
-                  width: 18,
-                  height: 18,
-                  borderRadius: 9,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  borderWidth: 2,
-                  borderColor: "white",
-                }}
-              >
-                <Text
-                  style={{
-                    color: "white",
-                    fontSize: 10,
-                    fontWeight: "800",
-                    textAlign: "center",
-                    includeFontPadding: false,
-                    lineHeight: 10,
-                  }}
-                >
-                  {unReadCount > 99 ? "9" : String(unReadCount || 5)[0]}
-                </Text>
-              </View>
-            ) : undefined,
+            badge: <NotificationBadge />,
           },
           {
             icon: (

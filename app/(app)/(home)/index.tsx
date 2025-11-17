@@ -3,13 +3,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   Bell,
   Bookmark,
-  Calendar,
   Clock,
   Filter,
   MapPin,
   Search,
-  Sparkles,
-  Users,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -24,10 +21,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import type { Channel } from "stream-chat";
 import { SafeAreaView } from "react-native-safe-area-context";
+import type { Channel } from "stream-chat";
 import { useHomeFeed } from "~/hooks/useHomeFeed";
-import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { OptimizedImage } from "~/src/components/ui/optimized-image";
 import { Text } from "~/src/components/ui/text";
@@ -49,154 +45,22 @@ import { SectionViewSheet } from "~/src/components/SectionViewSheet";
 import { ScreenHeader } from "~/src/components/ui/screen-header";
 
 // Utils
+import { useEventDetails } from "~/hooks/useEventDetails";
 import {
   FilterState,
   generateDefaultFilters,
 } from "~/src/components/map/MarkerFilter";
 import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
+import { LocationPreferencesModal } from "~/src/components/settings/LocationPreferencesModal";
+import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
+import NotificationBadge from "~/src/components/ui/NotificationBadge";
 import { useAuth } from "~/src/lib/auth";
 import { handleSectionViewMore } from "~/src/lib/utils/sectionViewMore";
-import { useEventDetails } from "~/hooks/useEventDetails";
 import { IProposal } from "../../../hooks/useProposals";
-import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
-import { LocationPreferencesModal } from "~/src/components/settings/LocationPreferencesModal";
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
+const { width: screenWidth } = Dimensions.get("window");
 const STORY_CARD_WIDTH = screenWidth * 0.8;
 const STORY_CARD_HEIGHT = 200;
-
-// Story Cards Component for Featured Content
-interface StoryCardProps {
-  item: any;
-  onPress: () => void;
-}
-
-const StoryCard = ({ item, onPress }: StoryCardProps) => {
-  const { theme } = useTheme();
-
-  const [saved, setSaved] = useState(false);
-
-  const isEvent = item.start_datetime || item.type === "event";
-  const imageUrl = item.image_urls?.[0] || item.image;
-  const attendeeCount = item.attendees || Math.floor(Math.random() * 50) + 10;
-
-  return (
-    <TouchableOpacity
-      style={styles.storyCard}
-      onPress={onPress}
-      activeOpacity={0.95}
-    >
-      {/* Background Image */}
-      <View style={styles.storyImageContainer}>
-        <OptimizedImage
-          uri={imageUrl}
-          width={STORY_CARD_WIDTH}
-          height={STORY_CARD_HEIGHT}
-          quality={90}
-          style={styles.storyBackgroundImage}
-          resizeMode="cover"
-        />
-
-        {/* Gradient Overlay */}
-        <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.7)"]}
-          style={styles.storyGradientOverlay}
-        />
-      </View>
-
-      {/* Top Badge */}
-      <View style={styles.storyTopActions}>
-        <View style={styles.storyCategoryBadge}>
-          <Sparkles size={10} color="#fff" />
-          <Text style={styles.storyCategoryText}>
-            {isEvent ? "Featured Event" : "Featured Place"}
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.storyActionButton}
-          onPress={() => setSaved(!saved)}
-        >
-          <Bookmark
-            size={16}
-            color={saved ? theme.colors.primary : "#fff"}
-            fill={saved ? theme.colors.primary : "transparent"}
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Bottom Content */}
-      <View style={styles.storyBottomContent}>
-        <Text style={styles.storyTitle} numberOfLines={1}>
-          {item.name || item.title}
-        </Text>
-
-        <View style={styles.storyMetaInfo}>
-          {isEvent && item.start_datetime && (
-            <View style={styles.storyMetaItem}>
-              <Calendar size={12} color="#fff" />
-              <Text style={styles.storyMetaText}>
-                {new Date(item.start_datetime).toLocaleDateString()}
-              </Text>
-            </View>
-          )}
-
-          <View style={styles.storyMetaItem}>
-            <Users size={12} color="#fff" />
-            <Text style={styles.storyMetaText}>{attendeeCount}</Text>
-          </View>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-};
-
-// Story Section Component
-const StorySection = ({
-  events,
-  onEventSelect,
-}: {
-  events: any[];
-  onEventSelect: (event: any) => void;
-}) => {
-  const { theme } = useTheme();
-
-  if (!events || events.length === 0) return null;
-
-  return (
-    <View style={styles.storySectionContainer}>
-      <View style={styles.storySectionHeader}>
-        <Text style={[styles.storySectionTitle, { color: theme.colors.text }]}>
-          ✨ Featured
-        </Text>
-        <Text
-          style={[
-            styles.storySectionSubtitle,
-            { color: theme.colors.text + "80" },
-          ]}
-        >
-          Don't miss these amazing events
-        </Text>
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.storyScrollContent}
-        snapToInterval={STORY_CARD_WIDTH + 15}
-        decelerationRate="fast"
-      >
-        {events.slice(0, 5).map((event, index) => (
-          <StoryCard
-            key={`story-${event.id}-${index}`}
-            item={event}
-            onPress={() => onEventSelect(event)}
-          />
-        ))}
-      </ScrollView>
-    </View>
-  );
-};
 
 // TikTok-Style Location Cards Component
 interface TikTokLocationCardProps {
@@ -376,7 +240,7 @@ export default function Home() {
     eventId: string;
     eventType: string;
   }>();
-  const { fetchAllNoifications, unReadCount } = useNotificationsApi();
+
   const { getEventDetails } = useEventDetails();
   // Home feed data
   const { data, loading, error, refetch } = useHomeFeed();
@@ -507,10 +371,6 @@ export default function Home() {
   };
   // Animation
   const scrollY = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    fetchAllNoifications(1, 20);
-  }, []);
   const handleDeepLinkEvent = async () => {
     console.log("handling deep link event>", eventId, eventType);
     if (!session) return;
@@ -1291,37 +1151,7 @@ export default function Home() {
             });
           },
           backgroundColor: theme.colors.primary,
-          badge: !!(unReadCount && unReadCount > 0) ? (
-            <View
-              style={{
-                position: "absolute",
-                top: -4,
-                right: -4,
-                backgroundColor: "#ff3b30",
-                borderRadius: 12,
-                width: 24,
-                height: 24,
-
-                justifyContent: "center",
-                alignItems: "center",
-                borderWidth: 2,
-                borderColor: "white",
-              }}
-            >
-              <Text
-                style={{
-                  color: "white",
-                  fontSize: 12,
-                  fontWeight: "bold",
-                  lineHeight: 14,
-                  textAlign: "center",
-                  includeFontPadding: false,
-                }}
-              >
-                {unReadCount > 9 ? "9+" : String(unReadCount)}
-              </Text>
-            </View>
-          ) : undefined,
+          badge: <NotificationBadge />,
         },
         {
           icon: (
@@ -1354,29 +1184,7 @@ export default function Home() {
             });
           },
           backgroundColor: theme.colors.primary,
-          badge: !!(unReadCount && unReadCount > 0) ? (
-            <View
-              style={{
-                position: "absolute",
-                top: -4,
-                right: -4,
-                backgroundColor: "#ff3b30",
-                borderRadius: 10,
-                minWidth: 20,
-                height: 20,
-                justifyContent: "center",
-                alignItems: "center",
-                borderWidth: 2,
-                borderColor: "white",
-              }}
-            >
-              <Text
-                style={{ color: "white", fontSize: 12, fontWeight: "bold" }}
-              >
-                {unReadCount > 99 ? "99+" : String(unReadCount)}
-              </Text>
-            </View>
-          ) : undefined,
+          badge: <NotificationBadge />,
         },
       ];
     }

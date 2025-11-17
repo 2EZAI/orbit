@@ -323,8 +323,6 @@ export default function NotificationView() {
   const insets = useSafeAreaInsets();
   const PAGE_SIZE = 20;
   const [refreshing, setRefreshing] = useState<boolean>(false);
-  const [selectedEvent, setSelectedEvent] = useState<any>(null);
-  const [isEvent, setIsEvent] = useState(false);
   const { fetchAllNoifications, readNoifications } = useNotificationsApi();
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
