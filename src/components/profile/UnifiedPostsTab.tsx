@@ -1,29 +1,28 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  FlatList,
-  TouchableOpacity,
-  Image,
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  Dimensions,
-} from "react-native";
-import { Text } from "~/src/components/ui/text";
-import { supabase } from "~/src/lib/supabase";
-import { useAuth } from "~/src/lib/auth";
 import { format } from "date-fns";
+import { router } from "expo-router";
 import {
   Heart,
-  MessageCircle,
-  Send,
   MapPin,
+  MessageCircle,
   MoreHorizontal,
+  Send,
 } from "lucide-react-native";
-import { router } from "expo-router";
-import { UserAvatar } from "~/src/components/ui/user-avatar";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Image,
+  RefreshControl,
+  ScrollView,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SocialEventCard } from "~/src/components/social/SocialEventCard";
 import { useTheme } from "~/src/components/ThemeProvider";
+import { Text } from "~/src/components/ui/text";
+import { UserAvatar } from "~/src/components/ui/user-avatar";
+import { useAuth } from "~/src/lib/auth";
+import { supabase } from "~/src/lib/supabase";
 
 interface Post {
   id: string;
@@ -52,8 +51,6 @@ interface UnifiedPostsTabProps {
   onScroll?: any;
   refreshControl?: any;
 }
-
-const { width: screenWidth } = Dimensions.get("window");
 
 const ImageGallery = ({
   images,
@@ -131,8 +128,8 @@ export default function UnifiedPostsTab({
     }
 
     // Prevent fetching if userId is invalid (empty string or null)
-    if (!userId || userId.trim() === '') {
-      console.log('Invalid userId, skipping post fetch');
+    if (!userId || userId.trim() === "") {
+      console.log("Invalid userId, skipping post fetch");
       setLoading(false);
       setRefreshing(false);
       return;

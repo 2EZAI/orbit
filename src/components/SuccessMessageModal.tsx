@@ -1,9 +1,8 @@
-import React from "react";
-import { MotiView } from "moti";
 import { LinearGradient } from "expo-linear-gradient";
-import { StyleSheet, Text } from "react-native";
 import { CheckCircle2 } from "lucide-react-native";
-import { useTheme } from "~/src/components/ThemeProvider";
+import { MotiView } from "moti";
+import React from "react";
+import { StyleSheet, Text } from "react-native";
 const SuccessMessageModal = ({ message }: { message: string }) => {
   return (
     <MotiView

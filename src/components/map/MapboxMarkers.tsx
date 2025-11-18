@@ -26,35 +26,6 @@ const PROGRESSIVE_RENDERING_CONFIG = {
   MAX_BATCH_SIZE: 50, // Max 50 markers per batch
 };
 
-// Helper function to extract coordinates from location object
-const getLocationCoordinates = (
-  location: any
-): { latitude: number; longitude: number } | null => {
-  if (!location) return null;
-
-  // Handle GeoJSON format (new API format)
-  if (
-    location.type === "Point" &&
-    location.coordinates &&
-    Array.isArray(location.coordinates)
-  ) {
-    const [longitude, latitude] = location.coordinates;
-    if (typeof latitude === "number" && typeof longitude === "number") {
-      return { latitude, longitude };
-    }
-  }
-
-  // Handle old format (fallback)
-  if (
-    typeof location.latitude === "number" &&
-    typeof location.longitude === "number"
-  ) {
-    return { latitude: location.latitude, longitude: location.longitude };
-  }
-
-  return null;
-};
-
 // Helper function to determine marker type
 const getMarkerType = (
   event: MapEvent
@@ -139,19 +110,25 @@ export function MapboxMarkers({
 
   // Use location as primary, fallback to userlocation if location is null
   const effectiveLocation = useMemo(() => {
-    if (location && typeof location.latitude === "number" && typeof location.longitude === "number") {
+    if (
+      location &&
+      typeof location.latitude === "number" &&
+      typeof location.longitude === "number"
+    ) {
       return location;
     }
-    
+
     // Fallback to userlocation if available (handle null values)
     if (userlocation?.latitude != null && userlocation?.longitude != null) {
-      const lat = typeof userlocation.latitude === "string" 
-        ? parseFloat(userlocation.latitude) 
-        : userlocation.latitude;
-      const lng = typeof userlocation.longitude === "string" 
-        ? parseFloat(userlocation.longitude) 
-        : userlocation.longitude;
-      
+      const lat =
+        typeof userlocation.latitude === "string"
+          ? parseFloat(userlocation.latitude)
+          : userlocation.latitude;
+      const lng =
+        typeof userlocation.longitude === "string"
+          ? parseFloat(userlocation.longitude)
+          : userlocation.longitude;
+
       if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
         return {
           latitude: lat,
@@ -160,13 +137,13 @@ export function MapboxMarkers({
         };
       }
     }
-    
+
     return null;
   }, [location, userlocation]);
 
   // Log follower list for debugging
   useEffect(() => {
-    console.log('👥 [MapboxMarkers] Follower list updated:', {
+    console.log("👥 [MapboxMarkers] Follower list updated:", {
       count: followerList?.length || 0,
       followers: followerList,
     });
@@ -420,61 +397,71 @@ export function MapboxMarkers({
       ))}
 
       {/* User marker */}
-      {effectiveLocation && typeof effectiveLocation.longitude === "number" && typeof effectiveLocation.latitude === "number" && (
-        <MapboxGL.MarkerView
-          key="user-location-marker"
-          id="user-location-marker"
-          coordinate={[effectiveLocation.longitude, effectiveLocation.latitude]}
-          anchor={{ x: 0.5, y: 0.5 }}
-        >
-          <UserMarker 
-            avatarUrl={user?.avatar_url} 
-            heading={effectiveLocation.heading ?? undefined}
-            onPress={() => {
-              haptics.selection();
-              router.push("/(app)/(profile)");
-            }}
-          />
-        </MapboxGL.MarkerView>
-      )}
-
-      {/* Friend markers - Live location */}
-      {followerList && followerList.length > 0 && followerList.map((friend: any, index: number) => {
-        // Only render if friend has valid coordinates
-        if (!friend.live_location_latitude || !friend.live_location_longitude) {
-          return null;
-        }
-
-        const lat = parseFloat(friend.live_location_latitude);
-        const lng = parseFloat(friend.live_location_longitude);
-
-        // Skip invalid coordinates
-        if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
-          return null;
-        }
-
-        console.log(`👥 [MapboxMarkers] Rendering friend marker ${index}:`, {
-          userId: friend.userId,
-          lat,
-          lng,
-          nearbyCount: friend.nearbyCount,
-        });
-
-        return (
+      {effectiveLocation &&
+        typeof effectiveLocation.longitude === "number" &&
+        typeof effectiveLocation.latitude === "number" && (
           <MapboxGL.MarkerView
-            key={`friend-${friend.userId}`}
-            id={`friend-marker-${friend.userId}`}
-            coordinate={[lng, lat]} // [longitude, latitude] for Mapbox
+            key="user-location-marker"
+            id="user-location-marker"
+            coordinate={[
+              effectiveLocation.longitude,
+              effectiveLocation.latitude,
+            ]}
+            anchor={{ x: 0.5, y: 0.5 }}
           >
-            <UserMarkerWithCount
-              avatarUrl={friend.avatar_url}
-              count={friend.nearbyCount}
-              showCount={friend.nearbyCount > 1}
-              onPress={() => router.push(`/profile/${friend.userId}`)}
+            <UserMarker
+              avatarUrl={user?.avatar_url}
+              heading={effectiveLocation.heading ?? undefined}
+              onPress={() => {
+                haptics.selection();
+                router.push("/(app)/(profile)");
+              }}
             />
           </MapboxGL.MarkerView>
-        );
-      })}
+        )}
+
+      {/* Friend markers - Live location */}
+      {followerList &&
+        followerList.length > 0 &&
+        followerList.map((friend: any, index: number) => {
+          // Only render if friend has valid coordinates
+          if (
+            !friend.live_location_latitude ||
+            !friend.live_location_longitude
+          ) {
+            return null;
+          }
+
+          const lat = parseFloat(friend.live_location_latitude);
+          const lng = parseFloat(friend.live_location_longitude);
+
+          // Skip invalid coordinates
+          if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
+            return null;
+          }
+
+          console.log(`👥 [MapboxMarkers] Rendering friend marker ${index}:`, {
+            userId: friend.userId,
+            lat,
+            lng,
+            nearbyCount: friend.nearbyCount,
+          });
+
+          return (
+            <MapboxGL.MarkerView
+              key={`friend-${friend.userId}`}
+              id={`friend-marker-${friend.userId}`}
+              coordinate={[lng, lat]} // [longitude, latitude] for Mapbox
+            >
+              <UserMarkerWithCount
+                avatarUrl={friend.avatar_url}
+                count={friend.nearbyCount}
+                showCount={friend.nearbyCount > 1}
+                onPress={() => router.push(`/profile/${friend.userId}`)}
+              />
+            </MapboxGL.MarkerView>
+          );
+        })}
     </>
   );
 }

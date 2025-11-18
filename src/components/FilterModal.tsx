@@ -1,19 +1,14 @@
+import { Calendar, Tag, Users, X } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  View,
-  Text,
-  TouchableOpacity,
   Modal,
   ScrollView,
   StyleSheet,
-  Dimensions,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { X, Calendar, Users, Tag } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
-// Simple filter state to match existing MapControls interface
 interface FilterState {
   [key: string]: boolean;
 }

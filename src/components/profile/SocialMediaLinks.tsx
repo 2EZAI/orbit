@@ -1,9 +1,9 @@
-import React from "react";
-import { View, TouchableOpacity, Linking } from "react-native";
-import { Text } from "~/src/components/ui/text";
-import { useTheme } from "~/src/components/ThemeProvider";
-import { Instagram, Twitter, Facebook, Linkedin, Camera, Link } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { Camera, Facebook, Instagram, Link, Linkedin, Twitter } from "lucide-react-native";
+import React from "react";
+import { Linking, TouchableOpacity, View } from "react-native";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { Text } from "~/src/components/ui/text";
 
 interface SocialMediaLinksProps {
   instagram?: string | null;

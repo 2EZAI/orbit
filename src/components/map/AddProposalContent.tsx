@@ -7,7 +7,6 @@ import { MotiView } from "moti";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   Keyboard,
   Platform,
   StyleSheet,
@@ -21,7 +20,6 @@ import { useTheme } from "../ThemeProvider";
 import { Input } from "../ui/input";
 import { UnifiedData } from "./UnifiedDetailsSheet";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 interface IProps {
   onBack: () => void;
   data: UnifiedData | undefined;

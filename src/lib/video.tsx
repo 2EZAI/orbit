@@ -1,12 +1,8 @@
+import { Call, StreamVideoClient } from "@stream-io/video-react-native-sdk";
+import Constants from "expo-constants";
 import { createContext, useContext, useEffect, useState } from "react";
-import {
-  StreamVideo,
-  StreamVideoClient,
-  Call,
-} from "@stream-io/video-react-native-sdk";
 import { useAuth } from "./auth";
 import { supabase } from "./supabase";
-import Constants from "expo-constants";
 
 const STREAM_VIDEO_API_KEY = Constants.expoConfig?.extra?.streamApiKey;
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl;

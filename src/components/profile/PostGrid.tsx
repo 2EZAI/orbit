@@ -1,12 +1,6 @@
-import React from "react";
-import {
-  View,
-  FlatList,
-  TouchableOpacity,
-  Image,
-  RefreshControl,
-} from "react-native";
 import { router } from "expo-router";
+import React from "react";
+import { FlatList, Image, TouchableOpacity, View } from "react-native";
 import { Text } from "~/src/components/ui/text";
 
 interface Post {

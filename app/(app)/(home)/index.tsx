@@ -73,7 +73,6 @@ const TikTokLocationCard = ({ item, onPress }: TikTokLocationCardProps) => {
   const [saved, setSaved] = useState(false);
 
   const imageUrl = item.image_urls?.[0] || item.image;
-  // const visitCount = Math.floor(Math.random() * 200) + 50;
 
   return (
     <TouchableOpacity

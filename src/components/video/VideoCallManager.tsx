@@ -1,19 +1,18 @@
-import React, { useState, useEffect } from "react";
+import { useRouter } from "expo-router";
+import { Clock, Phone, PhoneCall, Users, Video } from "lucide-react-native";
+import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  TouchableOpacity,
+  ActivityIndicator,
   Alert,
   FlatList,
   StyleSheet,
-  ActivityIndicator,
+  Text,
+  View,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { useVideo } from "~/src/lib/video";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Button } from "~/src/components/ui/button";
 import { Card } from "~/src/components/ui/card";
-import { Phone, Video, Users, Clock, PhoneCall } from "lucide-react-native";
+import { useVideo } from "~/src/lib/video";
 
 interface ActiveCall {
   id: string;

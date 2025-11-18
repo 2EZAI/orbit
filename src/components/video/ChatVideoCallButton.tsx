@@ -1,10 +1,9 @@
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { useVideo } from "~/src/lib/video";
-import { useTheme } from "~/src/components/ThemeProvider";
-import { Button } from "~/src/components/ui/button";
 import { Phone, Video } from "lucide-react-native";
+import React, { useState } from "react";
+import { Alert, StyleSheet, TouchableOpacity, View } from "react-native";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { useVideo } from "~/src/lib/video";
 
 interface ChatVideoCallButtonProps {
   channelId: string;
