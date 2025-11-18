@@ -1,8 +1,8 @@
 import React from "react";
 import { View } from "react-native";
-import { Text } from "~/src/components/ui/text";
-import TopicSingleSelectDropdown from "~/src/components/topics/TopicSingleSelectDropdown";
 import { useTheme } from "~/src/components/ThemeProvider";
+import TopicSingleSelectDropdown from "~/src/components/topics/TopicSingleSelectDropdown";
+import { Text } from "~/src/components/ui/text";
 
 interface CategorySectionProps {
   selectedTopics: string;

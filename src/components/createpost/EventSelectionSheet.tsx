@@ -1,21 +1,21 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import { debounce } from "lodash";
+import { Calendar, Plus, Search, Users, X } from "lucide-react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  View,
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  Image,
-  ActivityIndicator,
-  Text,
+  View,
 } from "react-native";
-import { Sheet } from "../ui/sheet";
-import { supabase } from "../../lib/supabase";
-import { Input } from "../ui/input";
-import { Calendar, MapPin, Users, Search, X, Plus } from "lucide-react-native";
-import { debounce } from "lodash";
-import { useAuth } from "../../lib/auth";
-import { useTheme } from "../ThemeProvider";
 import { useUpdateEvents } from "~/hooks/useUpdateEvents";
+import { useAuth } from "../../lib/auth";
+import { supabase } from "../../lib/supabase";
+import { useTheme } from "../ThemeProvider";
+import { Input } from "../ui/input";
+import { Sheet } from "../ui/sheet";
 
 interface MapEvent {
   id: string;

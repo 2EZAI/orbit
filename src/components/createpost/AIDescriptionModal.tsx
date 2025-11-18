@@ -1,15 +1,22 @@
-import React, { useEffect, useState, useRef } from "react";
 import {
-  View,
+  CheckCircle,
+  PenTool,
+  RefreshCw,
+  Sparkles,
+  Wand2,
+  X,
+} from "lucide-react-native";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Modal,
+  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
-  Modal,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  Animated,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "~/src/components/ThemeProvider";
@@ -18,16 +25,6 @@ import type {
   AIDescriptionRequest,
   AIRefineRequest,
 } from "~/src/types/aiDescriptionTypes";
-import {
-  Sparkles,
-  Wand2,
-  RefreshCw,
-  CheckCircle,
-  X,
-  PenTool,
-} from "lucide-react-native";
-
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 interface AIDescriptionModalProps {
   isOpen: boolean;

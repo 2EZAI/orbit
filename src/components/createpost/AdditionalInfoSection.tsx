@@ -1,8 +1,8 @@
 import React from "react";
-import { View, ScrollView } from "react-native";
-import { Text } from "~/src/components/ui/text";
-import { Input } from "~/src/components/ui/input";
+import { View } from "react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
+import { Input } from "~/src/components/ui/input";
+import { Text } from "~/src/components/ui/text";
 
 interface AdditionalInfoSectionProps {
   externalUrl: string;
