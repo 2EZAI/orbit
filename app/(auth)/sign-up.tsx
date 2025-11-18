@@ -1,34 +1,31 @@
+import { router } from "expo-router";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Check,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+} from "lucide-react-native";
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  ScrollView,
+  StatusBar,
   TouchableOpacity,
   View,
-  StatusBar,
-  Dimensions,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  Linking,
-  Alert,
 } from "react-native";
-import { supabase } from "../../src/lib/supabase";
-import { router } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
+import { useTheme } from "~/src/components/ThemeProvider";
 import { Input } from "~/src/components/ui/input";
 import { Text } from "~/src/components/ui/text";
-import Toast from "react-native-toast-message";
-import {
-  Lock,
-  Mail,
-  AlertTriangle,
-  ArrowLeft,
-  Eye,
-  EyeOff,
-  Check,
-} from "lucide-react-native";
-import { useTheme } from "~/src/components/ThemeProvider";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-const { width, height } = Dimensions.get("window");
+import { supabase } from "../../src/lib/supabase";
 
 export default function SignUp(): JSX.Element {
   const { theme } = useTheme();
