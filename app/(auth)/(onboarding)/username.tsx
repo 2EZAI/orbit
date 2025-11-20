@@ -53,8 +53,8 @@ export default function UsernameScreen() {
 
   // Form state
   const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [firstName, setFirstName] = useState(user?.first_name || "");
+  const [lastName, setLastName] = useState(user?.last_name || "");
   const [phone, setPhone] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -303,11 +303,9 @@ This platform helps you discover and join amazing events near you. Let's get sta
   const handleContinue = async () => {
     if (!user || !username || !isAvailable || isSubmitting) return;
 
-    if ( !firstName || !lastName) {
+    if (!firstName || !lastName) {
       setShowValidationErrors(true);
-      setError(
-        "Please fill in all required fields"
-      );
+      setError("Please fill in all required fields");
       // Toast.show({
       //   type: "error",
       //   text1: "Missing Required Fields",
@@ -368,8 +366,7 @@ This platform helps you discover and join amazing events near you. Let's get sta
     // because createChat() should redirect away from this page
   };
 
-  const isFormValid =
-    firstName && lastName && username && isAvailable;
+  const isFormValid = firstName && lastName && username && isAvailable;
 
   return (
     <KeyboardAvoidingView
@@ -1024,7 +1021,7 @@ This platform helps you discover and join amazing events near you. Let's get sta
                 >
                   {!isFormValid
                     ? `Complete All Fields ${
-                         !firstName || !lastName
+                        !firstName || !lastName
                           ? "👤"
                           : !username || !isAvailable
                           ? "@"
@@ -1050,7 +1047,7 @@ This platform helps you discover and join amazing events near you. Let's get sta
                 {!firstName && "First Name"}
                 {!firstName && !lastName && ", "}
                 {!lastName && "Last Name"}
-                {( !firstName || !lastName) &&
+                {(!firstName || !lastName) &&
                   (!username || !isAvailable) &&
                   ", "}
                 {!username && "Username"}

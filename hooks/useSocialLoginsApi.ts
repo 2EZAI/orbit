@@ -120,7 +120,7 @@ export function useSocialLoginsApi() {
         ],
       });
       // console.log("credential>", credential);
-      console.log("credential>", credential);
+      console.log("credential>", JSON.stringify(credential, null, 2));
       // Sign in via Supabase Auth.
       if (credential.identityToken) {
         // console.log("credential??>", credential);
@@ -131,6 +131,8 @@ export function useSocialLoginsApi() {
           provider: "apple",
           token: credential.identityToken,
         });
+        console.log("user>>>>", JSON.stringify(user, null, 2));
+        console.log("credential?.user>>>>", credential?.user);
         const exists = await checkUserOnboarded(user?.id || "");
         if (exists) {
           //user exsist navigate to home
@@ -145,6 +147,8 @@ export function useSocialLoginsApi() {
               {
                 apple_id: credential?.user,
                 register_type: "apple",
+                first_name: credential?.fullName?.givenName || "",
+                last_name: credential?.fullName?.familyName || "",
               },
               user
             );
