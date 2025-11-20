@@ -1,6 +1,13 @@
+import { useRouter } from "expo-router";
 import React from "react";
-import { ActivityIndicator, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { useAuth } from "~/src/lib/auth";
@@ -39,6 +46,7 @@ export function UnifiedSheetButtons({
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
+  const router = useRouter();
   // Determine event source and type for proper button logic
   const eventSource = data?.source;
   const isTicketmasterEvent =
@@ -47,7 +55,14 @@ export function UnifiedSheetButtons({
     Boolean(data?.ticketmaster_details);
 
   const isUserEvent = eventSource === "user";
-
+  const onUnAuth = () => {
+    Toast.show({
+      type: "info",
+      text1: "Please Log In",
+      text2: "You need to be logged in to perform this action.",
+    });
+    router.dismissAll();
+  };
   if (loading) {
     return (
       <View
@@ -80,29 +95,30 @@ export function UnifiedSheetButtons({
         >
           <View className="flex-col gap-3">
             {/* Primary Action Row */}
-            {session ? (
-              <View className="flex-row gap-3">
+
+            <View className="flex-row gap-3">
+              <TouchableOpacity
+                style={!session ? styles.disabledButton : {}}
+                onPress={() => (session ? onTicketPurchase() : onUnAuth())}
+                className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
+              >
+                <Text className="text-lg font-semibold text-white">
+                  Buy Tickets
+                </Text>
+              </TouchableOpacity>
+
+              {isJoined && (
                 <TouchableOpacity
-                  onPress={onTicketPurchase}
-                  className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
+                  style={!session ? styles.disabledButton : {}}
+                  onPress={() => (session ? onCreateOrbit() : onUnAuth())}
+                  className="flex-1 items-center py-4 bg-blue-600 rounded-2xl"
                 >
                   <Text className="text-lg font-semibold text-white">
-                    Buy Tickets
+                    Create Orbit
                   </Text>
                 </TouchableOpacity>
-
-                {isJoined && (
-                  <TouchableOpacity
-                    onPress={onCreateOrbit}
-                    className="flex-1 items-center py-4 bg-blue-600 rounded-2xl"
-                  >
-                    <Text className="text-lg font-semibold text-white">
-                      Create Orbit
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ) : null}
+              )}
+            </View>
 
             {/* Secondary Action Row */}
             <View className="flex-row gap-3">
@@ -132,40 +148,42 @@ export function UnifiedSheetButtons({
         >
           <View className="flex-col gap-3">
             {/* Primary Action Row - Edit for creators, Join/Leave for others */}
-            {session ? (
-              <View className="flex-row gap-3">
-                {isCreator ? (
-                  // CREATOR: Show Edit button
-                  <TouchableOpacity
-                    onPress={onEdit}
-                    className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
-                  >
-                    <Text className="text-lg font-semibold text-white">
-                      Edit Event
-                    </Text>
-                  </TouchableOpacity>
-                ) : // NON-CREATOR: Show Join/Leave button
-                isJoined ? (
-                  <TouchableOpacity
-                    onPress={onCreateOrbit}
-                    className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
-                  >
-                    <Text className="text-lg font-semibold text-white">
-                      Create Orbit
-                    </Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    onPress={onJoinEvent}
-                    className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
-                  >
-                    <Text className="text-lg font-semibold text-white">
-                      Join Event
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ) : null}
+
+            <View className="flex-row gap-3">
+              {isCreator ? (
+                // CREATOR: Show Edit button
+                <TouchableOpacity
+                  style={!session ? styles.disabledButton : {}}
+                  onPress={() => (session ? onEdit() : onUnAuth())}
+                  className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
+                >
+                  <Text className="text-lg font-semibold text-white">
+                    Edit Event
+                  </Text>
+                </TouchableOpacity>
+              ) : // NON-CREATOR: Show Join/Leave button
+              isJoined ? (
+                <TouchableOpacity
+                  style={!session ? styles.disabledButton : {}}
+                  onPress={() => (session ? onCreateOrbit() : onUnAuth())}
+                  className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
+                >
+                  <Text className="text-lg font-semibold text-white">
+                    Create Orbit
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={!session ? styles.disabledButton : {}}
+                  onPress={() => (session ? onJoinEvent() : onUnAuth())}
+                  className="flex-1 items-center py-4 bg-purple-600 rounded-2xl"
+                >
+                  <Text className="text-lg font-semibold text-white">
+                    Join Event
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
 
             {/* Secondary Action Row */}
             <View className="flex-row gap-3">
@@ -196,16 +214,16 @@ export function UnifiedSheetButtons({
       >
         <View className="flex-col gap-3">
           {/* Primary Action Row */}
-          {session ? (
-            <TouchableOpacity
-              onPress={onCreateEvent}
-              className="items-center py-4 bg-purple-600 rounded-2xl"
-            >
-              <Text className="text-lg font-semibold text-white">
-                Create Event
-              </Text>
-            </TouchableOpacity>
-          ) : null}
+
+          <TouchableOpacity
+            style={!session ? styles.disabledButton : {}}
+            onPress={() => (session ? onCreateEvent() : onUnAuth())}
+            className="items-center py-4 bg-purple-600 rounded-2xl"
+          >
+            <Text className="text-lg font-semibold text-white">
+              Create Event
+            </Text>
+          </TouchableOpacity>
 
           {/* Secondary Action Row */}
           <View className="flex-row gap-3">
@@ -220,7 +238,14 @@ export function UnifiedSheetButtons({
             </TouchableOpacity>
           </View>
         </View>
+        <Toast />
       </View>
     );
   }
 }
+const styles = StyleSheet.create({
+  disabledButton: {
+    // backgroundColor: "#A9A9A9",
+    opacity: 0.6,
+  },
+});

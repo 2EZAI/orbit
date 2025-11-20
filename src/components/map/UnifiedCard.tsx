@@ -6,26 +6,26 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   DeviceEventEmitter,
-  Dimensions,
   Image,
+  PanResponder,
   ScrollView,
+  StyleSheet,
   TouchableOpacity,
   View,
-  PanResponder,
 } from "react-native";
-import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
-import { useUpdateEvents } from "~/hooks/useUpdateEvents";
-import { useAuth } from "~/src/lib/auth";
-import { formatDate, formatTime } from "~/src/lib/date";
-import { Text } from "../ui/text";
-import { UnifiedDetailsSheet } from "./UnifiedDetailsSheet";
+import Toast from "react-native-toast-message";
+import type { Channel } from "stream-chat";
 import { useEventJoinStatus } from "~/hooks/useEventJoinStatus";
 import { useJoinEvent } from "~/hooks/useJoinEvent";
-import { haptics } from "~/src/lib/haptics";
 import { IProposal } from "~/hooks/useProposals";
-import type { Channel } from "stream-chat";
-import UnifiedShareSheet from "./UnifiedShareSheet";
+import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
+import { useAuth } from "~/src/lib/auth";
+import { formatDate, formatTime } from "~/src/lib/date";
+import { haptics } from "~/src/lib/haptics";
 import { ChatSelectionModal } from "../social/ChatSelectionModal";
+import { Text } from "../ui/text";
+import { UnifiedDetailsSheet } from "./UnifiedDetailsSheet";
+import UnifiedShareSheet from "./UnifiedShareSheet";
 
 type UnifiedData = MapEvent | MapLocation;
 
@@ -38,8 +38,6 @@ interface UnifiedCardProps {
   treatAsEvent?: boolean; // Explicit prop to override type detection
   mapCenter?: [number, number] | null; // Current map center for location change detection
 }
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 // Type guards
 const isEvent = (data: UnifiedData): data is MapEvent => {
@@ -325,13 +323,12 @@ export const UnifiedCard = React.memo(
       treatAsEvent,
       timestamp: Date.now(),
     });
-    const { UpdateEventStatus, fetchEventDetail, fetchLocationDetail } =
-      useUpdateEvents();
+
     const router = useRouter();
 
     const { session } = useAuth();
     const [showDetails, setShowDetails] = useState(false);
-    const currentIndex = nearbyData.findIndex((item) => item.id === data.id);
+
     const [loading, setLoading] = useState(false); // Start with false since we have data
     const [detailData, setDetailData] = useState<any>(data); // Initialize with data immediately
     const [userLocation, setUserLocation] = useState<{
@@ -560,7 +557,14 @@ export const UnifiedCard = React.memo(
     };
 
     // REMOVED: Gesture handling and animations for better performance
-
+    const onUnAuth = () => {
+      Toast.show({
+        type: "info",
+        text1: "Please Log In",
+        text2: "You need to be logged in to perform this action.",
+      });
+      router.dismissAll();
+    };
     const handleContextAction = (action: string) => {
       switch (action) {
         case "join":
@@ -570,9 +574,17 @@ export const UnifiedCard = React.memo(
             (data as any)?.is_ticketmaster;
           if (isTicketmaster) {
             // For Ticketmaster events: "Buy Tickets" -> opens ticket purchase
+            if (!session) {
+              onUnAuth();
+              return;
+            }
             handleTicketPurchase();
           } else {
             // For user events: Join button -> turns into "Create Orbit"
+            if (!session) {
+              onUnAuth();
+              return;
+            }
             if (treatAsEvent && !isJoinedFromDB) {
               hitUpdateEventApi();
             }
@@ -584,14 +596,26 @@ export const UnifiedCard = React.memo(
         case "create":
           if (detailData?.source === "user" && isJoinedFromDB) {
             // For EVENTS: "Create Orbit" -> creates group chat
+            if (!session) {
+              onUnAuth();
+              return;
+            }
             handleCreateOrbit();
           } else {
             // For LOCATIONS: "Create Activity" -> goes to create activity page
+            if (!session) {
+              onUnAuth();
+              return;
+            }
             handleCreateEvent();
           }
           break;
         case "edit":
           // For EVENTS: "Edit Event" -> goes to edit event page
+          if (!session) {
+            onUnAuth();
+            return;
+          }
           if (treatAsEvent) {
             router.push({
               pathname: "/(app)/(create)",
@@ -928,29 +952,36 @@ export const UnifiedCard = React.memo(
 
               {/* Context-Aware Action Buttons */}
               <View className="flex-row gap-2">
-                {contextActions.map((action, index) =>
-                  (action.action === "join" || action.action === "create") &&
-                  !session ? null : (
-                    <TouchableOpacity
-                      key={index}
-                      className="flex-1 py-2 rounded-full"
-                      style={{
-                        backgroundColor:
-                          index === 0 ? "rgba(255,255,255,0.9)" : "#3B82F6", // Solid blue for action buttons
-                      }}
-                      onPress={() => handleContextAction(action.action)}
-                    >
-                      <View className="flex-row justify-center items-center">
-                        <Text
-                          className={`font-bold text-base ${
-                            index === 0 ? "text-black" : "text-white"
-                          }`}
-                        >
-                          {action.label}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  )
+                {contextActions.map(
+                  (action, index) =>
+                    (action.action === "join" ||
+                      action.action === "create" ||
+                      (action.action === "details" && !session)) && (
+                      <TouchableOpacity
+                        key={index}
+                        className="flex-1 py-2 rounded-full"
+                        style={[
+                          {
+                            backgroundColor:
+                              index === 0 ? "rgba(255,255,255,0.9)" : "#3B82F6", // Solid blue for action buttons
+                          },
+                          !session && action.action !== "details"
+                            ? styles.disabledButton
+                            : {},
+                        ]}
+                        onPress={() => handleContextAction(action.action)}
+                      >
+                        <View className="flex-row justify-center items-center">
+                          <Text
+                            className={`font-bold text-base ${
+                              index === 0 ? "text-black" : "text-white"
+                            }`}
+                          >
+                            {action.label}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    )
                 )}
               </View>
             </View>
@@ -1033,3 +1064,9 @@ export const UnifiedCard = React.memo(
     );
   }
 );
+const styles = StyleSheet.create({
+  disabledButton: {
+    // backgroundColor: "#A9A9A9",
+    opacity: 0.6,
+  },
+});

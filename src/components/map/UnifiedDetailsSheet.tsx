@@ -17,7 +17,6 @@ import { useEventJoinStatus } from "~/hooks/useEventJoinStatus";
 import { useJoinEvent } from "~/hooks/useJoinEvent";
 import { useLocationEvents } from "~/hooks/useLocationEvents";
 import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
-import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { ConfettiAnimation } from "~/src/components/ui/ConfettiAnimation";
 import { Text } from "~/src/components/ui/text";
@@ -175,13 +174,6 @@ export const UnifiedDetailsSheet = React.memo(
       }
     }, [isOpen, data?.id]);
 
-    const {
-      UpdateEventStatus,
-      fetchEventDetail,
-      fetchLocationDetail,
-      fetchLocationEvents,
-    } = useUpdateEvents();
-
     // Location events are now handled by the useLocationEvents hook above
 
     // PanResponder for swipe to close modal
@@ -210,19 +202,6 @@ export const UnifiedDetailsSheet = React.memo(
     const handleShare = async () => {
       const currentData = detailData || data;
       onShare(currentData, isEventType);
-      // try {
-      //   haptics.selection(); // Light haptic on share action
-      //   await Share.share({
-      //     message: `Check out ${currentData?.name} on Orbit!
-      //     ${currentData?.description}
-
-      //     https://orbit-redirects.vercel.app/?action=share&eventId=${currentData.id}
-      //     `,
-      //     title: isEventType ? "Activity on Orbit" : "Location on Orbit",
-      //   });
-      // } catch (error) {
-      //   console.error("Error sharing:", error);
-      // }
     };
 
     const handleTicketPurchase = () => {

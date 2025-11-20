@@ -1,23 +1,22 @@
-import React, { useState, useEffect } from "react";
+import { LinearGradient } from "expo-linear-gradient";
+import { Calendar, MapPin, Star, Users } from "lucide-react-native";
+import React, { useEffect, useState } from "react";
 import {
-  View,
-  TouchableOpacity,
-  Image,
-  Dimensions,
   ActivityIndicator,
   DeviceEventEmitter,
+  Image,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Text } from "../ui/text";
-import { LinearGradient } from "expo-linear-gradient";
 import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
-import { formatTime, formatDate } from "~/src/lib/date";
-import { Users, MapPin, Calendar, Star } from "lucide-react-native";
+import { formatDate, formatTime } from "~/src/lib/date";
+import { Text } from "../ui/text";
 
 import { useRouter } from "expo-router";
-import { supabase } from "~/src/lib/supabase";
-import { useUser } from "~/src/lib/UserProvider";
 import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 import { useTheme } from "~/src/components/ThemeProvider";
+import { supabase } from "~/src/lib/supabase";
+import { useUser } from "~/src/lib/UserProvider";
 import { captureError } from "~/src/lib/utils/sentry";
 
 type UnifiedData = MapEvent | MapLocation;
