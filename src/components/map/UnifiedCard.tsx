@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
-import { Calendar, MapPin, Star, Users, X } from "lucide-react-native";
+import { Calendar, MapPin, Star, Users, X, Flag } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -26,6 +26,8 @@ import { ChatSelectionModal } from "../social/ChatSelectionModal";
 import { Text } from "../ui/text";
 import { UnifiedDetailsSheet } from "./UnifiedDetailsSheet";
 import UnifiedShareSheet from "./UnifiedShareSheet";
+import FlagContentModal from "../modals/FlagContentModal";
+import { useFlagging } from "~/hooks/useFlagging";
 
 type UnifiedData = MapEvent | MapLocation;
 
@@ -328,13 +330,14 @@ export const UnifiedCard = React.memo(
 
     const { session } = useAuth();
     const [showDetails, setShowDetails] = useState(false);
+    const [flagOpen, setFlagOpen] = useState({
+      open: false,
+      eventId: "",
+      locationId: "",
+    });
 
-    const [loading, setLoading] = useState(false); // Start with false since we have data
     const [detailData, setDetailData] = useState<any>(data); // Initialize with data immediately
-    const [userLocation, setUserLocation] = useState<{
-      latitude: number;
-      longitude: number;
-    } | null>(null);
+
     const [shareData, setShareData] = useState<{
       data: UnifiedData;
       isEventType: boolean;
@@ -429,6 +432,7 @@ export const UnifiedCard = React.memo(
         // You could show a toast or alert here
       }
     };
+    const { createFlag } = useFlagging();
     // NEW: Use the join event hooks (like web app)
     const { joinEvent, leaveEvent, isLoading: isJoining } = useJoinEvent();
 
@@ -517,44 +521,6 @@ export const UnifiedCard = React.memo(
         // No longer needed - data is already complete
       });
     }, []);
-
-    // REMOVED: Location fetching to make card render instantly
-    // Location will be fetched in background if needed
-
-    const getCurrentLocation = async () => {
-      try {
-        // Use cached location first for faster response
-        const lastKnownLocation = await Location.getLastKnownPositionAsync({
-          maxAge: 60000, // 1 minute cache
-        });
-
-        if (lastKnownLocation) {
-          setUserLocation({
-            latitude: lastKnownLocation.coords.latitude,
-            longitude: lastKnownLocation.coords.longitude,
-          });
-          return;
-        }
-
-        // Only request permission if we don't have cached location
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== "granted") {
-          console.log("Location permission denied");
-          return;
-        }
-
-        // Use faster location options
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced, // Faster than high accuracy
-        });
-        setUserLocation({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        });
-      } catch (error) {
-        console.error("Error getting location:", error);
-      }
-    };
 
     // REMOVED: Gesture handling and animations for better performance
     const onUnAuth = () => {
@@ -859,13 +825,29 @@ export const UnifiedCard = React.memo(
             />
 
             {/* Close Button */}
-            <TouchableOpacity
-              className="absolute top-2 right-2 z-10 justify-center items-center w-8 h-8 rounded-full bg-black/30"
-              onPress={onClose}
+            <View
+              className="absolute top-2 right-2 z-10"
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
             >
-              <X size={20} color="white" />
-            </TouchableOpacity>
-
+              <TouchableOpacity
+                className=" justify-center items-center w-8 h-8 rounded-full bg-black/30"
+                onPress={() => {
+                  setFlagOpen({
+                    open: true,
+                    eventId: treatAsEvent ? data.id : "",
+                    locationId: treatAsEvent ? "" : data.id,
+                  });
+                }}
+              >
+                <Flag size={20} color="red" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                className=" justify-center items-center w-8 h-8 rounded-full bg-black/30"
+                onPress={onClose}
+              >
+                <X size={20} color="white" />
+              </TouchableOpacity>
+            </View>
             {/* Content */}
             <View className="p-4">
               {/* Header with Icon and Category */}
@@ -986,13 +968,25 @@ export const UnifiedCard = React.memo(
               </View>
             </View>
           </View>
+          <FlagContentModal
+            visible={flagOpen.open}
+            contentTitle={data.name}
+            variant="sheet"
+            onClose={() =>
+              setFlagOpen({ open: false, eventId: "", locationId: "" })
+            }
+            onSubmit={async ({ reason, explanation }) => {
+              const isEventFlag = isEvent(data);
+              const idToFlag = data.id;
+              await createFlag({
+                reason,
+                explanation,
+                event_id: isEventFlag ? idToFlag : "",
+                static_location_id: isEventFlag ? "" : idToFlag,
+              });
+            }}
+          />
         </View>
-
-        {loading && (
-          <View className="absolute top-0 right-0 bottom-0 left-0 justify-center items-center bg-black/20">
-            <ActivityIndicator size="large" color="#ffffff" />
-          </View>
-        )}
 
         {showDetails && (
           <UnifiedDetailsSheet
@@ -1009,6 +1003,7 @@ export const UnifiedCard = React.memo(
             }}
           />
         )}
+
         {shareData && (
           <UnifiedShareSheet
             isOpen={!!shareData}
