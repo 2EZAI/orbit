@@ -39,6 +39,8 @@ import UnifiedInfoTab from "./UnifiedInfoTab";
 import UnifiedPostsTab from "./UnifiedPostsTab";
 import FollowerSheet from "./FollowerSheet";
 import FollowingSheet from "./FollowingSheet";
+import { useBlocking } from "~/hooks/useBlocking";
+import { set } from "lodash";
 
 type Tab = "Posts" | "Events" | "Info";
 
@@ -79,7 +81,7 @@ export function UnifiedProfilePage({
   const { theme, isDarkMode } = useTheme();
   const { followUser, unfollowUser, getFollowCounts } = useFollow();
   const { client } = useChat();
-
+  const { getBlockStatus, blockUser, unblockUser } = useBlocking();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("Posts");
   const [isLoading, setIsLoading] = useState(true);
@@ -88,8 +90,10 @@ export function UnifiedProfilePage({
   const [refreshing, setRefreshing] = useState(false);
   const [isFollowerSheetOpen, setIsFollowerSheetOpen] = useState(false);
   const [isFollowingSheetOpen, setIsFollowingSheetOpen] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
   const isCurrentUser = !userId || userId === session?.user?.id;
   const targetUserId = userId || session?.user?.id;
+
   useFocusEffect(
     useCallback(() => {
       if (targetUserId) {
@@ -177,6 +181,7 @@ export function UnifiedProfilePage({
         userData.id !== session.user.id
       ) {
         await checkFollowStatus(userData.id);
+        await checkBlockStatus(userData.id);
       }
     } catch (error) {
       console.error("Error loading profile:", error);
@@ -217,7 +222,7 @@ export function UnifiedProfilePage({
   };
 
   const handleFollowToggle = async () => {
-    if (!session?.user?.id || !profile) return;
+    if (!session?.user?.id || !profile || isBlocked) return;
 
     try {
       if (isFollowing) {
@@ -290,12 +295,19 @@ export function UnifiedProfilePage({
   };
 
   const handleDirectMessage = async () => {
-    if (!client || !session?.user?.id || !profile || isCurrentUser) {
+    if (
+      !client ||
+      !session?.user?.id ||
+      !profile ||
+      isCurrentUser ||
+      isBlocked
+    ) {
       console.log("Cannot start DM: Missing requirements", {
         hasClient: !!client,
         hasCurrentUserId: !!session?.user?.id,
         hasProfile: !!profile,
         isCurrentUser,
+        isBlocked,
       });
       return;
     }
@@ -394,6 +406,34 @@ export function UnifiedProfilePage({
     setIsFollowingSheetOpen(false);
   };
 
+  const checkBlockStatus = async (profileUserId: string) => {
+    if (!session?.user?.id) return;
+    try {
+      const status = await getBlockStatus(profileUserId);
+      console.log(status);
+      setIsBlocked(status);
+    } catch (e) {
+      setIsBlocked(false);
+    }
+  };
+
+  const handleBlockToggle = async () => {
+    console.log(targetUserId, session?.user.id);
+    try {
+      if (!isBlocked) {
+        const res = await blockUser(targetUserId!);
+        console.log(res);
+        setIsBlocked(res);
+      } else {
+        const res = await unblockUser(targetUserId!);
+        setIsBlocked(!res);
+      }
+    } catch (error) {
+      console.error("Error toggling block:", error);
+      Toast.show({ type: "error", text1: "Error updating block status" });
+    }
+  };
+
   if (isLoading || !profile) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.card }}>
@@ -432,13 +472,16 @@ export function UnifiedProfilePage({
       >
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <TouchableOpacity
-            onPress={onBack || (() => {
-              if (from === 'social') {
-                router.push('/(app)/(social)');
-              } else {
-                router.back();
-              }
-            })}
+            onPress={
+              onBack ||
+              (() => {
+                if (from === "social") {
+                  router.push("/(app)/(social)");
+                } else {
+                  router.back();
+                }
+              })
+            }
             style={{
               marginRight: 12,
               padding: 8,
@@ -754,75 +797,174 @@ export function UnifiedProfilePage({
 
           {/* Action Buttons - Only for non-current users */}
           {!isCurrentUser && (
-            <View style={{ flexDirection: "row", gap: 12, marginBottom: 20 }}>
-              <TouchableOpacity
-                onPress={handleFollowToggle}
-                style={{
-                  flex: 1,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  paddingVertical: 14,
-                  borderRadius: 24,
-                  backgroundColor: isFollowing
-                    ? theme.colors.card
-                    : theme.colors.primary,
-                  borderWidth: isFollowing ? 1 : 0,
-                  borderColor: theme.colors.border,
-                }}
-              >
-                {isFollowing ? (
-                  <UserMinus
-                    size={18}
-                    color={theme.colors.text}
-                    strokeWidth={2.5}
-                  />
-                ) : (
-                  <UserPlus size={18} color="white" strokeWidth={2.5} />
-                )}
-                <Text
-                  style={{
-                    marginLeft: 8,
-                    fontSize: 16,
-                    fontWeight: "700",
-                    color: isFollowing ? theme.colors.text : "white",
-                  }}
-                >
-                  {isFollowing ? "Following" : "Follow"}
-                </Text>
-              </TouchableOpacity>
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 12,
+                marginBottom: 20,
+              }}
+            >
+              {isBlocked ? (
+                <View style={{ flexGrow: 1, flexBasis: "100%", gap: 14 }}>
+                  <View
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      borderRadius: 16,
+                      backgroundColor: isDarkMode
+                        ? "rgba(255,255,255,0.06)"
+                        : "rgba(0,0,0,0.04)",
+                      borderWidth: 1,
+                      borderColor: theme.colors.border,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: "700",
+                        color: theme.colors.text,
+                        marginBottom: 4,
+                      }}
+                    >
+                      You have blocked this user.
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        lineHeight: 20,
+                        color: theme.colors.text + "80",
+                      }}
+                    >
+                      You can see their profile but cannot interact with them.
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={handleBlockToggle}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      paddingVertical: 14,
+                      borderRadius: 24,
+                      backgroundColor: theme.colors.primary + "60",
+                      borderWidth: 1,
+                      borderColor: theme.colors.border,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: "700",
+                        color: theme.colors.text,
+                      }}
+                    >
+                      Unblock User
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    onPress={handleFollowToggle}
+                    disabled={isBlocked}
+                    style={{
+                      flex: 1,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      paddingVertical: 14,
+                      borderRadius: 24,
+                      backgroundColor: isFollowing
+                        ? theme.colors.card
+                        : theme.colors.primary,
+                      borderWidth: isFollowing ? 1 : 0,
+                      borderColor: theme.colors.border,
+                      opacity: isBlocked ? 0.5 : 1,
+                    }}
+                  >
+                    {isFollowing ? (
+                      <UserMinus
+                        size={18}
+                        color={theme.colors.text}
+                        strokeWidth={2.5}
+                      />
+                    ) : (
+                      <UserPlus size={18} color="white" strokeWidth={2.5} />
+                    )}
+                    <Text
+                      style={{
+                        marginLeft: 8,
+                        fontSize: 16,
+                        fontWeight: "700",
+                        color: isFollowing ? theme.colors.text : "white",
+                      }}
+                    >
+                      {isFollowing ? "Following" : "Follow"}
+                    </Text>
+                  </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={handleDirectMessage}
-                style={{
-                  paddingHorizontal: 20,
-                  paddingVertical: 14,
-                  borderRadius: 24,
-                  backgroundColor: theme.colors.card,
-                  borderWidth: 1,
-                  borderColor: theme.colors.border,
-                }}
-              >
-                <MessageCircle
-                  size={18}
-                  color={theme.colors.text}
-                  strokeWidth={2.5}
-                />
-              </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleDirectMessage}
+                    disabled={isBlocked}
+                    style={{
+                      paddingHorizontal: 20,
+                      paddingVertical: 14,
+                      borderRadius: 24,
+                      backgroundColor: theme.colors.card,
+                      borderWidth: 1,
+                      borderColor: theme.colors.border,
+                      opacity: isBlocked ? 0.5 : 1,
+                    }}
+                  >
+                    <MessageCircle
+                      size={18}
+                      color={theme.colors.text}
+                      strokeWidth={2.5}
+                    />
+                  </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={handleShareProfile}
-                style={{
-                  paddingHorizontal: 20,
-                  paddingVertical: 14,
-                  borderRadius: 24,
-                  backgroundColor: theme.colors.card,
-                  borderWidth: 1,
-                  borderColor: theme.colors.border,
-                }}
-              >
-                <Send size={18} color={theme.colors.text} strokeWidth={2.5} />
-              </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleShareProfile}
+                    disabled={isBlocked}
+                    style={{
+                      paddingHorizontal: 20,
+                      paddingVertical: 14,
+                      borderRadius: 24,
+                      backgroundColor: theme.colors.card,
+                      borderWidth: 1,
+                      borderColor: theme.colors.border,
+                      opacity: isBlocked ? 0.5 : 1,
+                    }}
+                  >
+                    <Send
+                      size={18}
+                      color={theme.colors.text}
+                      strokeWidth={2.5}
+                    />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleBlockToggle}
+                    style={{
+                      paddingHorizontal: 20,
+                      paddingVertical: 14,
+                      borderRadius: 24,
+                      backgroundColor: "#ff2d55" + "60",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: "700",
+                        color: "white",
+                      }}
+                    >
+                      Block
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           )}
         </View>
