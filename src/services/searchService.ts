@@ -120,10 +120,6 @@ export class SearchService {
     this.baseUrl = baseUrl
   }
 
-  setAuthToken(token: string | null) {
-    this.authToken = token
-  }
-
   async search(params: SearchParams): Promise<SearchResponse> {
     const { query, latitude, longitude, radius = 100, limit = 10 } = params
 
