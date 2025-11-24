@@ -12,8 +12,7 @@ import {
 } from "react-native";
 import { useUser } from "~/src/lib/UserProvider";
 import { useRealtimeSearch } from "../../hooks/useSearch";
-import { useAuth } from "../../lib/auth";
-import { EventResult, LocationResult, searchService, UserResult } from "../../services/searchService";
+import { EventResult, LocationResult, UserResult } from "../../services/searchService";
 import { useTheme } from "../ThemeProvider";
 import { Input } from "../ui/input";
 import { OptimizedImage } from "../ui/optimized-image";
@@ -37,12 +36,10 @@ export function SearchSheet({
   onShowControler,
 }: SearchSheetProps) {
   const { theme } = useTheme();
-  const { session } = useAuth();
   const { user, userlocation } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<TabType>("users");
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
 
   // Get user location coordinates for search
@@ -66,19 +63,10 @@ export function SearchSheet({
     return undefined;
   }, [user, userlocation]);
 
-  // Update search service auth token
-  useEffect(() => {
-    if (session?.access_token) {
-      searchService.setAuthToken(session.access_token);
-    }
-  }, [session?.access_token]);
-
   // Use the new search hook
   const { 
     results, 
     isLoading, 
-    error, 
-    totalResults, 
     hasResults 
   } = useRealtimeSearch(searchQuery, userLocation, {
     radius: 100, // 100km radius (matches web app)
@@ -100,7 +88,6 @@ export function SearchSheet({
       setSearchQuery("");
       setActiveTab("users");
       setIsExpanded(false);
-      setIsFocused(false);
       // Focus search input after a brief delay
       setTimeout(() => searchInputRef.current?.focus(), 100);
     }
@@ -279,14 +266,6 @@ export function SearchSheet({
               }
               value={searchQuery}
               onChangeText={handleSearchQueryChange}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => {
-                // Only set focus to false if there's no search query
-                // This prevents premature collapse while user is still searching
-                if (searchQuery.length === 0) {
-                  setIsFocused(false);
-                }
-              }}
               placeholderTextColor={theme.colors.text + "80"}
               style={{
                 backgroundColor: theme.colors.card,
@@ -299,7 +278,6 @@ export function SearchSheet({
             <TouchableOpacity
               onPress={() => {
                 setSearchQuery("");
-                setIsFocused(false);
                 searchInputRef.current?.blur();
               }}
               style={{
