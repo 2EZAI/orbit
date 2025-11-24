@@ -456,6 +456,7 @@ export default function ChannelScreen() {
   const [error, setError] = useState<string | null>(null);
   const [thread, setThread] = useState<any>(null);
   const [memberCount, setMemberCount] = useState<number>(0);
+  const [name, setName] = useState<string>("");
   const channelRef = useRef<ChannelType | null>(null);
   const { theme } = useTheme();
   const { user } = useUserData();
@@ -1021,6 +1022,14 @@ export default function ChannelScreen() {
       const updateMemberCount = async () => {
         try {
           const members = await channel.queryMembers({});
+          if (members.members.length === 2) {
+            const found = members.members.find(
+              (m) => m.user_id !== session?.user?.id
+            );
+            if (found) {
+              setName(found.user?.name || found.user?.username || "Chat");
+            }
+          }
           setMemberCount(members.members.length);
         } catch (error) {
           console.error("Error fetching members:", error);
@@ -1049,7 +1058,7 @@ export default function ChannelScreen() {
       };
     }
   }, [channel]);
-
+  console.log("channel data", JSON.stringify(channel?.data, null, 2));
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
       <Stack.Screen
@@ -1072,7 +1081,7 @@ export default function ChannelScreen() {
                   textAlign: "center",
                 }}
               >
-                {channel?.data?.name || "Chat"}
+                {name || channel?.data?.name || "Chat"}
               </Text>
               {channel?.data?.name !== "Orbit App" && (
                 <Text
