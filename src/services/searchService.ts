@@ -3,8 +3,6 @@
  * Based on web app implementation with React Native adaptations
  */
 
-import { supabase } from '../lib/supabase'
-
 export interface SearchParams {
   query: string
   latitude?: number
@@ -149,9 +147,6 @@ export class SearchService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(this.authToken && {
-            Authorization: `Bearer ${this.authToken}`,
-          }),
         },
         body: JSON.stringify(requestBody),
       })
