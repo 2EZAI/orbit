@@ -76,7 +76,7 @@ const ModernSearchInput = ({
         style={{
           flexDirection: "row",
           alignItems: "center",
-          
+
           backgroundColor: isDarkMode
             ? "rgba(255, 255, 255, 0.08)"
             : "rgba(255, 255, 255, 0.9)",
@@ -119,9 +119,16 @@ const ModernChannelPreview = (
 ) => {
   const { channel, onSelect } = props;
   const { theme, isDarkMode } = useTheme();
-
+  const { session } = useAuth();
   const getChannelName = () => {
-    if (channel.data?.name) {
+    const members = Object.values(channel.state.members);
+
+    if (members.length === 2) {
+      return (
+        members.find((m) => m.user?.id !== session?.user.id)?.user?.name ||
+        "Chat"
+      );
+    } else if (channel.data?.name) {
       return channel.data.name;
     }
 
