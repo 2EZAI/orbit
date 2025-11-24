@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   ActivityIndicator,
@@ -58,7 +58,7 @@ export default function UsernameScreen() {
   const [phone, setPhone] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
-
+  const [showValidation, setShowValidation] = useState(false);
   // Validation state
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
   const [isChecking, setIsChecking] = useState(false);
@@ -113,15 +113,13 @@ export default function UsernameScreen() {
     } finally {
       setIsChecking(false);
     }
-  }, 500);
-
+  }, 100);
+  const checkingTimer = useRef<NodeJS.Timeout | null>(null);
   const handleUsernameChange = (value: string) => {
     setUsername(value);
+
     if (value) {
       checkUsername(value);
-    } else {
-      setIsAvailable(null);
-      setError(null);
     }
   };
 
@@ -301,6 +299,7 @@ This platform helps you discover and join amazing events near you. Let's get sta
   };
 
   const handleContinue = async () => {
+    setShowValidation(true);
     if (!user || !username || !isAvailable || isSubmitting) return;
 
     if (!firstName || !lastName) {
@@ -366,7 +365,9 @@ This platform helps you discover and join amazing events near you. Let's get sta
     // because createChat() should redirect away from this page
   };
 
-  const isFormValid = firstName && lastName && username && isAvailable;
+  const isFormValid = useMemo(() => {
+    return firstName && lastName && username && isAvailable;
+  }, [firstName, lastName, username, isAvailable]);
 
   return (
     <KeyboardAvoidingView
@@ -591,14 +592,14 @@ This platform helps you discover and join amazing events near you. Let's get sta
                       fontSize: 16,
                       fontWeight: "600",
                       color:
-                        showValidationErrors && !firstName
+                        showValidationErrors && !firstName && showValidation
                           ? "#EF4444"
                           : theme.colors.text,
                       marginBottom: 12,
                     }}
                   >
                     First Name *
-                    {showValidationErrors && !firstName && (
+                    {showValidationErrors && !firstName && showValidation && (
                       <Text style={{ color: "#EF4444" }}> - Required</Text>
                     )}
                   </Text>
@@ -610,27 +611,30 @@ This platform helps you discover and join amazing events near you. Let's get sta
                         : "rgba(255, 255, 255, 0.9)",
                       borderRadius: 20,
                       borderWidth: 2,
-                      borderColor: firstName
-                        ? "#10B981"
-                        : showValidationErrors && !firstName
-                        ? "#EF4444"
-                        : theme.dark
-                        ? "rgba(139, 92, 246, 0.3)"
-                        : "rgba(139, 92, 246, 0.2)",
+                      borderColor:
+                        firstName && showValidation
+                          ? "#10B981"
+                          : showValidationErrors && !firstName && showValidation
+                          ? "#EF4444"
+                          : theme.dark
+                          ? "rgba(139, 92, 246, 0.3)"
+                          : "rgba(139, 92, 246, 0.2)",
                       paddingHorizontal: 20,
                       justifyContent: "center",
-                      shadowColor: firstName
-                        ? "#10B981"
-                        : showValidationErrors && !firstName
-                        ? "#EF4444"
-                        : firstName
-                        ? "#8B5CF6"
-                        : "transparent",
+                      shadowColor:
+                        firstName && showValidation
+                          ? "#10B981"
+                          : showValidationErrors && !firstName && showValidation
+                          ? "#EF4444"
+                          : firstName && showValidation
+                          ? "#8B5CF6"
+                          : "transparent",
                       shadowOffset: { width: 0, height: 4 },
                       shadowOpacity: 0.2,
                       shadowRadius: 12,
                       elevation:
-                        firstName || (showValidationErrors && !firstName)
+                        (firstName && showValidation) ||
+                        (showValidationErrors && !firstName && showValidation)
                           ? 6
                           : 0,
                     }}
@@ -664,14 +668,14 @@ This platform helps you discover and join amazing events near you. Let's get sta
                       fontSize: 16,
                       fontWeight: "600",
                       color:
-                        showValidationErrors && !lastName
+                        showValidationErrors && !lastName && showValidation
                           ? "#EF4444"
                           : theme.colors.text,
                       marginBottom: 12,
                     }}
                   >
                     Last Name *
-                    {showValidationErrors && !lastName && (
+                    {showValidationErrors && !lastName && showValidation && (
                       <Text style={{ color: "#EF4444" }}> - Required</Text>
                     )}
                   </Text>
@@ -683,27 +687,32 @@ This platform helps you discover and join amazing events near you. Let's get sta
                         : "rgba(255, 255, 255, 0.9)",
                       borderRadius: 20,
                       borderWidth: 2,
-                      borderColor: lastName
-                        ? "#10B981"
-                        : showValidationErrors && !lastName
-                        ? "#EF4444"
-                        : theme.dark
-                        ? "rgba(139, 92, 246, 0.3)"
-                        : "rgba(139, 92, 246, 0.2)",
+                      borderColor:
+                        lastName && showValidation
+                          ? "#10B981"
+                          : showValidationErrors && !lastName && showValidation
+                          ? "#EF4444"
+                          : theme.dark
+                          ? "rgba(139, 92, 246, 0.3)"
+                          : "rgba(139, 92, 246, 0.2)",
                       paddingHorizontal: 20,
                       justifyContent: "center",
-                      shadowColor: lastName
-                        ? "#10B981"
-                        : showValidationErrors && !lastName
-                        ? "#EF4444"
-                        : lastName
-                        ? "#8B5CF6"
-                        : "transparent",
+                      shadowColor:
+                        lastName && showValidation
+                          ? "#10B981"
+                          : showValidationErrors && !lastName && showValidation
+                          ? "#EF4444"
+                          : lastName && showValidation
+                          ? "#8B5CF6"
+                          : "transparent",
                       shadowOffset: { width: 0, height: 4 },
                       shadowOpacity: 0.2,
                       shadowRadius: 12,
                       elevation:
-                        lastName || (showValidationErrors && !lastName) ? 6 : 0,
+                        (lastName && showValidation) ||
+                        (showValidationErrors && !lastName && showValidation)
+                          ? 6
+                          : 0,
                     }}
                   >
                     <KeyboardAwareInput

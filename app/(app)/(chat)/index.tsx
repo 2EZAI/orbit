@@ -124,12 +124,15 @@ const ModernChannelPreview = (
     const members = Object.values(channel.state.members);
 
     if (members.length === 2) {
-      return (
-        members.find((m) => m.user?.id !== session?.user.id)?.user?.name ||
-        "Chat"
-      );
+      const foundUser = members.find(
+        (m) => m.user?.id !== session?.user.id
+      )?.user;
+      console.log(foundUser);
+      return foundUser?.name || "Chat";
     } else if (channel.data?.name) {
       return channel.data.name;
+    } else {
+      return "";
     }
 
     // Get other members (excluding current user)
