@@ -38,6 +38,7 @@ import { Text } from "~/src/components/ui/text";
 import { useAuth } from "~/src/lib/auth";
 import { supabase } from "~/src/lib/supabase";
 import { useNotificationsApi } from "~/hooks/useNotificationsApi";
+import { usePostRefresh } from "~/src/lib/postProvider";
 
 interface Post {
   id: string;
@@ -113,6 +114,7 @@ export default function PostView() {
     event: null,
     isEventType: false,
   });
+  const { isRefreshRequired, setRefreshRequired } = usePostRefresh();
   const handleChatSelect = async (channel: Channel) => {
     if (!channel) return;
     try {
@@ -413,6 +415,9 @@ export default function PostView() {
       if (error) throw error;
 
       setNewComment("");
+      if (!isRefreshRequired) {
+        setRefreshRequired(true);
+      }
       fetchComments();
       setPost((post) =>
         post ? { ...post, comment_count: post.comment_count + 1 } : null

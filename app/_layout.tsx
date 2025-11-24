@@ -24,6 +24,7 @@ import * as Sentry from "@sentry/react-native";
 import Constants from "expo-constants";
 import { supabaseIntegration } from "@supabase/sentry-js-integration";
 import { supabase } from "~/src/lib/supabase";
+import { PostRefreshProvider } from "~/src/lib/postProvider";
 
 Sentry.init({
   dsn: "https://d49231e6742e5638c77f98c0c7691b77@o4510307919462400.ingest.us.sentry.io/4510308014882816",
@@ -33,11 +34,8 @@ Sentry.init({
   replaysOnErrorSampleRate: 1.0, // this means 100% of sessions with errors are sent to Sentry, sessions are used to track user behavior
   attachScreenshot: true,
   attachViewHierarchy: true,
-  // Adds more context data to events (IP address, cookies, user, etc.)
-  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
-  sendDefaultPii: true,
 
-  // Enable Logs
+  sendDefaultPii: true,
   enableLogs: true,
   debug: false,
   integrations: [
@@ -46,9 +44,8 @@ Sentry.init({
       breadcrumbs: true,
       errors: true,
     }),
-    // React Native performance tracing (navigation + network)
+
     Sentry.reactNativeTracingIntegration({
-      // Skip Supabase REST API calls - they're handled by supabaseIntegration
       shouldCreateSpanForRequest: (url: string) => {
         const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl as
           | string
@@ -80,9 +77,6 @@ Sentry.init({
       sentry: true,
     }),
   ],
-
-  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
-  // spotlight: __DEV__,
 });
 
 const toastConfig = {
@@ -244,7 +238,9 @@ export default Sentry.wrap(function RootLayout() {
             <ChatProvider>
               <VideoProvider>
                 <ActionSheetProvider>
-                  <RootLayoutContent />
+                  <PostRefreshProvider>
+                    <RootLayoutContent />
+                  </PostRefreshProvider>
                 </ActionSheetProvider>
               </VideoProvider>
             </ChatProvider>

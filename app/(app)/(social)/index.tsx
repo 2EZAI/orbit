@@ -1,5 +1,6 @@
 import { format } from "date-fns";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
+import { set } from "lodash";
 import {
   Bell,
   Heart,
@@ -8,7 +9,7 @@ import {
   Plus,
   Send,
 } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -37,6 +38,7 @@ import { Text } from "~/src/components/ui/text";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
 import { useAuth } from "~/src/lib/auth";
 import { useChat } from "~/src/lib/chat";
+import { usePostRefresh } from "~/src/lib/postProvider";
 import { supabase } from "~/src/lib/supabase";
 import { useUser } from "~/src/lib/UserProvider";
 import { socialPostService } from "~/src/services/socialPostService";
@@ -122,6 +124,7 @@ export default function SocialFeed() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const { setRefreshRequired, isRefreshRequired } = usePostRefresh();
   const [shareData, setShareData] = useState<{
     data: UnifiedData;
     isEventType: boolean;
@@ -214,7 +217,16 @@ export default function SocialFeed() {
   useEffect(() => {
     loadPosts(true);
   }, []);
-
+  useFocusEffect(
+    useCallback(() => {
+      console.log("isRefreshRequired>", isRefreshRequired);
+      if (isRefreshRequired) {
+        loadPosts(true).then(() => {
+          setRefreshRequired(false);
+        });
+      }
+    }, [isRefreshRequired])
+  );
   const onRefresh = () => {
     setRefreshing(true);
     setPage(1);
