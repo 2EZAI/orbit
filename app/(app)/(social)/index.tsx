@@ -39,6 +39,7 @@ import { useAuth } from "~/src/lib/auth";
 import { useChat } from "~/src/lib/chat";
 import { supabase } from "~/src/lib/supabase";
 import { useUser } from "~/src/lib/UserProvider";
+import { socialPostService } from "~/src/services/socialPostService";
 
 interface Post {
   id: string;
@@ -145,6 +146,8 @@ export default function SocialFeed() {
 
   const PAGE_SIZE = 20;
 
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+
   const loadPosts = async (isRefresh = false) => {
     if (loading || (!hasMore && !isRefresh)) {
       return;
@@ -155,71 +158,41 @@ export default function SocialFeed() {
     if (isRefresh) {
       setPage(1);
       setHasMore(true);
+      setNextCursor(null);
     }
 
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `${process.env.BACKEND_MAP_URL}/api/posts/all?page=${currentPage}&limit=${PAGE_SIZE}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token}`,
-          },
-        }
+      // Use web API via service
+      const response = await socialPostService.fetchPosts({
+        cursor: isRefresh ? undefined : nextCursor || undefined,
+        page: isRefresh ? 1 : currentPage, // Fallback for backward compatibility
+        limit: PAGE_SIZE,
+        authToken: session?.access_token,
+      });
+
+      // Transform web API response to mobile format
+      const postsData = response.feed_items || [];
+      console.log({postsData})
+      const transformedPosts = socialPostService.transformPostsToMobileFormat(
+        postsData.filter((item) => item.type === "post") as any[]
       );
 
-      if (!response.ok) {
-        setLoading(false);
-        setRefreshing(false);
-        setHasMore(false);
-        throw new Error(await response.text());
-      }
-
-      const response_ = await response.json();
-      const postsData = response_?.data;
-      // console.log("postsData>",postsData);
-      const transformedPosts =
-        postsData?.map((post: any) => ({
-          id: post.id,
-          content: post.content,
-          media_urls: post.media_urls || [],
-          created_at: post.created_at,
-          address: post.address,
-          city: post.city,
-          state: post.state,
-          like_count: Math.max(0, post?.likes?.count || 0),
-          comment_count: Math.max(0, post?.comments?.count || 0),
-          user: post.created_by || {
-            id: post.id,
-            username: post.username,
-            avatar_url: post.avatar_url,
-            first_name: post.first_name,
-            last_name: post.last_name,
-          },
-          event: post.event,
-          isLiked: false,
-        })) || [];
-
-      // Check which posts are liked by the current user
-      if (session?.user?.id) {
-        try {
-          const { data: likedPosts } = await supabase
-            .from("post_likes")
-            .select("post_id")
-            .eq("user_id", session.user.id);
-
-          const likedPostIds = new Set(likedPosts?.map((p) => p.post_id) || []);
-          transformedPosts.forEach((post: Post) => {
-            post.isLiked = likedPostIds.has(post.id);
-          });
-        } catch (error) {
-          console.error("Error checking likes:", error);
+      // Update pagination cursor
+      if (response.pagination?.next_cursor) {
+        setNextCursor(response.pagination.next_cursor);
+        setHasMore(response.pagination.has_more);
+      } else {
+        // Fallback to page-based pagination
+        if (transformedPosts.length === 0) {
+          setHasMore(false);
+        } else {
+          setHasMore(true);
+          setPage((prev) => prev + 1);
         }
       }
-
+console.log({transformedPosts})
       if (transformedPosts.length === 0) {
         setHasMore(false);
       } else {
@@ -228,10 +201,10 @@ export default function SocialFeed() {
         } else {
           setPosts((prev) => [...prev, ...transformedPosts]);
         }
-        setPage((prev) => prev + 1);
       }
     } catch (error) {
       console.error("Error fetching posts:", error);
+      setHasMore(false);
     } finally {
       setLoading(false);
       setRefreshing(false);
