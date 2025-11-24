@@ -174,7 +174,7 @@ export default function SocialFeed() {
 
       // Transform web API response to mobile format
       const postsData = response.feed_items || [];
-      console.log({postsData})
+      console.log({ postsData });
       const transformedPosts = socialPostService.transformPostsToMobileFormat(
         postsData.filter((item) => item.type === "post") as any[]
       );
@@ -192,7 +192,7 @@ export default function SocialFeed() {
           setPage((prev) => prev + 1);
         }
       }
-console.log({transformedPosts})
+      console.log({ transformedPosts });
       if (transformedPosts.length === 0) {
         setHasMore(false);
       } else {
@@ -383,13 +383,6 @@ console.log({transformedPosts})
               </Text>
             </View>
           </TouchableOpacity>
-
-          {/*  <TouchableOpacity className="p-2">
-            <MoreHorizontal
-              size={20}
-              color={isDarkMode ? "#9CA3AF" : "#6B7280"}
-            />
-          </TouchableOpacity>*/}
         </View>
 
         {/* Post Content */}
@@ -493,7 +486,7 @@ console.log({transformedPosts})
                       : "#6B7280",
                   }}
                 >
-                  {post.like_count}
+                  {post.like_count > 0 ? post.like_count : "0"}
                 </Text>
               </TouchableOpacity>
 
@@ -516,7 +509,7 @@ console.log({transformedPosts})
                   className="ml-2 text-sm font-medium"
                   style={{ color: isDarkMode ? "#9CA3AF" : "#6B7280" }}
                 >
-                  {post.comment_count}
+                  {post.comment_count > 0 ? post.comment_count : "0"}
                 </Text>
               </TouchableOpacity>
 
