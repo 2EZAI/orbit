@@ -539,15 +539,46 @@ export default function ChannelScreen() {
               }
             } catch {}
             try {
-              return await original({
+              // Send message - StreamChat will detect /event as command, but backend should handle it
+              const messagePayload: any = {
                 ...msg,
                 text: augmentedText,
                 ...(typeof attachLat === "number" &&
                 typeof attachLng === "number"
                   ? { latitude: attachLat, longitude: attachLng }
                   : {}),
-              });
+              };
+              
+              return await original(messagePayload);
             } catch (err: any) {
+              const errorMsg = err?.message || String(err);
+              // If StreamChat's custom command endpoint fails, send as regular message via channel's internal API
+              if (errorMsg.includes("custom command") || errorMsg.includes("command endpoint")) {
+                console.log("/event: Custom command endpoint failed, sending as regular message");
+                try {
+                  // Use channel's _client.sendMessage to bypass command detection
+                  const messageData: any = {
+                    text: augmentedText,
+                    ...(typeof attachLat === "number" &&
+                    typeof attachLng === "number"
+                      ? { latitude: attachLat, longitude: attachLng }
+                      : {}),
+                  };
+                  
+                  // Send directly via StreamChat API endpoint, bypassing command detection
+                  const channelId = channel.id;
+                  const channelType = channel.type;
+                  const response = await channel._client.post({
+                    url: `channels/${channelType}/${channelId}/message`,
+                    data: { message: messageData },
+                  });
+                  
+                  return response.message;
+                } catch (retryErr: any) {
+                  console.error("/event send failed after retry:", retryErr?.message || retryErr);
+                  throw retryErr;
+                }
+              }
               console.error("/event send failed:", err?.message || err);
               throw err;
             }
@@ -1397,9 +1428,22 @@ export default function ChannelScreen() {
                     try {
                       const query = payload.query || "";
                       const offset = payload.offset || 0;
-                      await ch.sendMessage({
-                        text: `/event ${query} offset:${offset}`,
-                      });
+                      try {
+                        await ch.sendMessage({
+                          text: `/event ${query} offset:${offset}`,
+                        });
+                      } catch (err: any) {
+                        const errorMsg = err?.message || String(err);
+                        if (errorMsg.includes("custom command") || errorMsg.includes("command endpoint")) {
+                          // Retry with escaped command to bypass StreamChat's command detection
+                          const escapedText = `/event ${query} offset:${offset}`.replace(/^\//, "/\u200B");
+                          await ch.sendMessage({
+                            text: escapedText,
+                          });
+                        } else {
+                          throw err;
+                        }
+                      }
                       setResultsModalOpen(false);
                     } catch (e) {
                       console.log("Load more failed:", e);
