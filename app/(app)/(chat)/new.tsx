@@ -15,7 +15,7 @@ import {
   FlatList,
   SafeAreaView,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 import { useTheme } from "~/src/components/ThemeProvider";
@@ -33,7 +33,8 @@ import { supabase } from "~/src/lib/supabase";
 interface User extends AuthUser {
   first_name: string | null;
   last_name: string | null;
-  username: string | null;a
+  username: string | null;
+  a;
   avatar_url: string | null;
 }
 
@@ -288,25 +289,54 @@ export default function NewChatScreen() {
     try {
       // Get all member IDs including the current user
       const memberIds = [client.userID, ...selectedUsers.map((u) => u.id)];
-      // console.log("Member IDs:", memberIds);
 
-      // Generate a unique channel ID using timestamp and random string
+      // If this is a direct message (exactly two members), check for existing channel first
+      if (memberIds.length === 2) {
+        try {
+          console.log("[NewChat] Checking for existing DM channel", memberIds);
+          const existingChannels = await client.queryChannels({
+            type: "messaging",
+            members: { $eq: memberIds }, // Exactly these two members
+          });
+          if (existingChannels.length > 0) {
+            const existing = existingChannels[0];
+            console.log(
+              "[NewChat] Existing DM found, navigating instead of creating",
+              existing.id
+            );
+            // Close modal if open
+            router.back();
+            setTimeout(() => {
+              router.push({
+                pathname: "/(app)/(chat)/channel/[id]",
+                params: {
+                  id: existing.id,
+                  name:
+                    existing.data?.name ||
+                    chatName ||
+                    defaultChatName ||
+                    "Chat",
+                },
+              });
+            }, 300);
+            return; // Prevent new channel creation
+          }
+        } catch (dmErr) {
+          console.log(
+            "[NewChat] DM existing channel check failed (continuing to create):",
+            dmErr
+          );
+        }
+      }
       const timestamp = Date.now();
       const randomStr = Math.random().toString(36).substring(7);
       const uniqueChannelId = `${timestamp}-${randomStr}`;
 
-      // Create the channel with members list and name
-      // console.log("[NewChat] Creating Stream channel with config:", {
-      //   members: memberIds,
-      //   name: chatName,
-      // });
       const channel = client.channel("messaging", uniqueChannelId, {
         members: memberIds,
         name: chatName,
       });
 
-      // This both creates the channel and subscribes to it
-      console.log("[NewChat] Watching channel...");
       await channel.watch();
 
       // Ensure all selected members (and creator) are members — handles reused DM channels
@@ -438,7 +468,6 @@ export default function NewChatScreen() {
       );
     }
   };
-
 
   return (
     <SafeAreaView
