@@ -1427,16 +1427,15 @@ export default function ChannelScreen() {
                     if (!payload || !ch) return;
                     try {
                       const query = payload.query || "";
-                      const offset = payload.offset || 0;
                       try {
                         await ch.sendMessage({
-                          text: `/event ${query} offset:${offset}`,
+                          text: `/event ${query}`,
                         });
                       } catch (err: any) {
                         const errorMsg = err?.message || String(err);
                         if (errorMsg.includes("custom command") || errorMsg.includes("command endpoint")) {
                           // Retry with escaped command to bypass StreamChat's command detection
-                          const escapedText = `/event ${query} offset:${offset}`.replace(/^\//, "/\u200B");
+                          const escapedText = `/event ${query}`.replace(/^\//, "/\u200B");
                           await ch.sendMessage({
                             text: escapedText,
                           });
