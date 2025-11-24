@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   TouchableOpacity,
@@ -22,7 +22,6 @@ import {
   MapPin,
   ArrowLeft,
   Calendar,
-  Plus,
 } from "lucide-react-native";
 import { ImagePickerService } from "~/src/lib/imagePicker";
 import * as ImagePicker from "expo-image-picker";
@@ -30,6 +29,7 @@ import { supabase } from "~/src/lib/supabase";
 import { useAuth } from "~/src/lib/auth";
 import { Stack } from "expo-router";
 import { useUser } from "~/src/lib/UserProvider";
+import { usePostRefresh } from "~/src/lib/postProvider";
 import {
   useSafeAreaInsets,
   SafeAreaView,
@@ -80,6 +80,8 @@ export default function CreatePost() {
   const { user } = useUser();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
+  const { setRefreshRequired } = usePostRefresh();
+
   const [content, setContent] = useState("");
   const [mediaFiles, setMediaFiles] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -336,7 +338,7 @@ export default function CreatePost() {
         text1: "Post Created!",
         text2: "Your post has been created successfully",
       });
-
+      setRefreshRequired(true);
       router.replace("/(app)/(social)");
     } catch (error) {
       console.error("Error creating post:", error);
