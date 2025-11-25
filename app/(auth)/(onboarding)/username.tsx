@@ -1,35 +1,31 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import * as FileSystem from "expo-file-system";
+import * as ImagePicker from "expo-image-picker";
+import { router } from "expo-router";
+import { Camera, Check, Mail, Phone, User, X } from "lucide-react-native";
+import { useEffect, useMemo, useState } from "react";
 import {
-  View,
   ActivityIndicator,
-  TouchableOpacity,
-  StatusBar,
-  Dimensions,
+  Alert,
   Image,
+  KeyboardAvoidingView,
   Platform,
   ScrollView,
-  KeyboardAvoidingView,
-  Alert,
+  StatusBar,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { router } from "expo-router";
-import { supabase } from "~/src/lib/supabase";
-import { Text } from "~/src/components/ui/text";
-import { Input } from "~/src/components/ui/input";
-import { KeyboardAwareInput } from "~/src/components/ui/keyboard-aware-input";
-import { useUser } from "~/src/lib/UserProvider";
-import { Check, X, Camera, Mail, Phone, User } from "lucide-react-native";
-import { useDebouncedCallback } from "~/src/hooks/useDebounce";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { KeyboardAwareInput } from "~/src/components/ui/keyboard-aware-input";
+import { Text } from "~/src/components/ui/text";
+import { useDebouncedCallback } from "~/src/hooks/useDebounce";
+import { useKeyboardAware } from "~/src/hooks/useKeyboardAware";
 import { useAuth } from "~/src/lib/auth";
 import { useChat } from "~/src/lib/chat";
-import { useTheme } from "~/src/components/ThemeProvider";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useKeyboardAware } from "~/src/hooks/useKeyboardAware";
 import { ImagePickerService } from "~/src/lib/imagePicker";
-import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
-
-const { width, height } = Dimensions.get("window");
+import { supabase } from "~/src/lib/supabase";
+import { useUser } from "~/src/lib/UserProvider";
 
 // Function to convert base64 to Uint8Array for Supabase storage
 function decode(base64: string): Uint8Array {
@@ -58,6 +54,7 @@ export default function UsernameScreen() {
   const [phone, setPhone] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [isUserNameChecked, setIsUserNameChecked] = useState(false);
   const [showValidation, setShowValidation] = useState(false);
   // Validation state
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
@@ -112,9 +109,10 @@ export default function UsernameScreen() {
       setIsAvailable(false);
     } finally {
       setIsChecking(false);
+      setIsUserNameChecked(true);
     }
-  }, 100);
-  const checkingTimer = useRef<NodeJS.Timeout | null>(null);
+  }, 500);
+
   const handleUsernameChange = (value: string) => {
     setUsername(value);
 
@@ -884,28 +882,28 @@ This platform helps you discover and join amazing events near you. Let's get sta
                   borderRadius: 20,
                   borderWidth: 2,
                   borderColor:
-                    username && isAvailable
+                    username && isAvailable && isUserNameChecked
                       ? "#10B981"
-                      : username && isAvailable === false
+                      : username && isAvailable === false && isUserNameChecked
                       ? "#EF4444"
-                      : username
-                      ? "#8B5CF6"
-                      : theme.dark
+                      : // : username
+                      // ? "#8B5CF6"
+                      theme.dark
                       ? "rgba(139, 92, 246, 0.3)"
                       : "rgba(139, 92, 246, 0.2)",
                   paddingHorizontal: 20,
                   shadowColor:
-                    username && isAvailable
+                    username && isAvailable && isUserNameChecked
                       ? "#10B981"
                       : username && isAvailable === false
                       ? "#EF4444"
-                      : username
-                      ? "#8B5CF6"
-                      : "transparent",
+                      : // : username
+                        // ? "#8B5CF6"
+                        "transparent",
                   shadowOffset: { width: 0, height: 4 },
                   shadowOpacity: 0.2,
                   shadowRadius: 12,
-                  elevation: username ? 6 : 0,
+                  elevation: 6,
                 }}
               >
                 <Text
