@@ -938,7 +938,7 @@ export const UnifiedCard = React.memo(
                   (action, index) =>
                     (action.action === "join" ||
                       action.action === "create" ||
-                      (action.action === "details" && !session)) && (
+                      action.action === "details") && (
                       <TouchableOpacity
                         key={index}
                         className="flex-1 py-2 rounded-full"
