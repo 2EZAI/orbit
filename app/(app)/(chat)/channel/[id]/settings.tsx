@@ -190,14 +190,14 @@ export default function ChatSettingsScreen() {
   };
 
   const handleToggleMute = async () => {
-    if (!channel) return;
+    if (!channelInstance) return;
 
     try {
       if (isMuted) {
-        await channel.unmute();
+        await channelInstance.unmute();
         setIsMuted(false);
       } else {
-        await channel.mute();
+        await channelInstance.mute();
         setIsMuted(true);
       }
     } catch (error) {
@@ -254,7 +254,7 @@ export default function ChatSettingsScreen() {
   };
 
   const handleRemoveMember = async (memberId: string) => {
-    if (!channel) return;
+    if (!channelInstance) return;
 
     Alert.alert(
       "Remove Member",
@@ -266,8 +266,8 @@ export default function ChatSettingsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await channel.removeMembers([memberId]);
-              const membersResponse = await channel.queryMembers({});
+              await channelInstance.removeMembers([memberId]);
+              const membersResponse = await channelInstance.queryMembers({});
               setMembers(membersResponse.members);
               Alert.alert("Success", "Member removed successfully");
             } catch (error) {
