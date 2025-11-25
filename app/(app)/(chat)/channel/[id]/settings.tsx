@@ -640,7 +640,7 @@ export default function ChatSettingsScreen() {
               </TouchableOpacity>
 
               {/* Leave Channel */}
-              {!isCurrentUserAdmin() && (
+              {!isCurrentUserAdmin() && members.length > 2 && (
                 <TouchableOpacity
                   onPress={handleLeaveChannel}
                   style={{
@@ -667,72 +667,98 @@ export default function ChatSettingsScreen() {
           </Card>
 
           {/* Danger Zone */}
-          {isCurrentUserAdmin() && (
-            <Card
-              style={{
-                marginBottom: 16,
-                backgroundColor: theme.colors.card,
-              }}
-            >
-              <CardContent style={{ padding: 16 }}>
-                <Text
-                  style={{
-                    fontSize: 18,
-                    fontWeight: "600",
-                    color: theme.colors.text,
-                    marginBottom: 16,
-                  }}
-                >
-                  Danger Zone
-                </Text>
 
-                <TouchableOpacity
-                  onPress={handleClearHistory}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    padding: 12,
-                    backgroundColor: theme.colors.notification + "20",
-                    borderRadius: 8,
-                    marginBottom: 12,
-                  }}
-                >
-                  <Trash2
-                    size={20}
-                    color={theme.colors.notification}
-                    style={{ marginRight: 12 }}
-                  />
-                  <Text
-                    style={{ fontSize: 16, color: theme.colors.notification }}
+          <Card
+            style={{
+              marginBottom: 16,
+              backgroundColor: theme.colors.card,
+            }}
+          >
+            <CardContent style={{ padding: 16 }}>
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: "600",
+                  color: theme.colors.text,
+                  marginBottom: 16,
+                }}
+              >
+                Danger Zone
+              </Text>
+              {isCurrentUserAdmin() && members.length > 2 ? (
+                <>
+                  <TouchableOpacity
+                    onPress={handleClearHistory}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      padding: 12,
+                      backgroundColor: theme.colors.notification + "20",
+                      borderRadius: 8,
+                      marginBottom: 12,
+                    }}
                   >
-                    Clear Chat History
-                  </Text>
-                </TouchableOpacity>
+                    <Trash2
+                      size={20}
+                      color={theme.colors.notification}
+                      style={{ marginRight: 12 }}
+                    />
+                    <Text
+                      style={{ fontSize: 16, color: theme.colors.notification }}
+                    >
+                      Clear Chat History
+                    </Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  onPress={handleDeleteChat}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    padding: 12,
-                    backgroundColor: theme.colors.notification + "20",
-                    borderRadius: 8,
-                  }}
-                >
-                  <Trash2
-                    size={20}
-                    color={theme.colors.notification}
-                    style={{ marginRight: 12 }}
-                  />
-                  <Text
-                    style={{ fontSize: 16, color: theme.colors.notification }}
+                  <TouchableOpacity
+                    onPress={handleDeleteChat}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      padding: 12,
+                      backgroundColor: theme.colors.notification + "20",
+                      borderRadius: 8,
+                    }}
                   >
-                    Delete Chat
-                  </Text>
-                </TouchableOpacity>
-              </CardContent>
-            </Card>
-          )}
+                    <Trash2
+                      size={20}
+                      color={theme.colors.notification}
+                      style={{ marginRight: 12 }}
+                    />
+                    <Text
+                      style={{ fontSize: 16, color: theme.colors.notification }}
+                    >
+                      Delete Chat
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    onPress={handleLeaveChannel}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      padding: 12,
+                      backgroundColor: theme.colors.notification + "20",
+                      borderRadius: 8,
+                    }}
+                  >
+                    <Trash2
+                      size={20}
+                      color={theme.colors.notification}
+                      style={{ marginRight: 12 }}
+                    />
+                    <Text
+                      style={{ fontSize: 16, color: theme.colors.notification }}
+                    >
+                      Delete Chat
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </CardContent>
+          </Card>
         </ScrollView>
       )}
 
