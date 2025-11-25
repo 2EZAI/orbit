@@ -291,9 +291,9 @@ export default function ChatSettingsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              if (!channel || !client?.userID) return;
+              if (!channelInstance || !client?.userID) return;
 
-              await channel.removeMembers([client.userID]);
+              await channelInstance.removeMembers([client.userID]);
               router.back();
               router.back(); // Go back to channel list
               Alert.alert("Success", "You have left the chat");
