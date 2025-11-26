@@ -1,7 +1,9 @@
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  DeviceEventEmitter,
   StyleSheet,
   TouchableOpacity,
   View,
@@ -11,6 +13,7 @@ import Toast from "react-native-toast-message";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { useAuth } from "~/src/lib/auth";
+import { supabase } from "~/src/lib/supabase";
 
 export interface UnifiedSheetButtonsProps {
   data: any;
@@ -26,6 +29,8 @@ export interface UnifiedSheetButtonsProps {
   onCreateEvent: () => void;
   onEdit: () => void;
   onShare: () => void;
+  onDelete?: () => void;
+  from?: string; // Track where user came from for navigation after delete
 }
 
 export function UnifiedSheetButtons({
@@ -42,11 +47,14 @@ export function UnifiedSheetButtons({
   onCreateEvent,
   onEdit,
   onShare,
+  onDelete,
+  from,
 }: UnifiedSheetButtonsProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const router = useRouter();
+  const [isDeleting, setIsDeleting] = useState(false);
   // Determine event source and type for proper button logic
   const eventSource = data?.source;
   const isTicketmasterEvent =
@@ -62,6 +70,101 @@ export function UnifiedSheetButtons({
       text2: "You need to be logged in to perform this action.",
     });
     router.dismissAll();
+  };
+
+  const handleDeleteEvent = () => {
+    Alert.alert(
+      "Delete Event",
+      "Are you sure you want to delete this event? This action cannot be undone.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            // Use event_id if available, otherwise use id
+            const eventId = data?.event_id || data?.id;
+            
+            if (!session || !eventId) {
+              Toast.show({
+                type: "error",
+                text1: "Error",
+                text2: "Unable to delete event. Please try again.",
+              });
+              return;
+            }
+
+            setIsDeleting(true);
+            try {
+              
+              if (!eventId) {
+                throw new Error("Event ID not found");
+              }
+
+              const { error } = await supabase
+                .from("events")
+                .delete()
+                .eq("id", eventId);
+
+              if (error) {
+                throw error;
+              }
+
+              Toast.show({
+                type: "success",
+                text1: "Event Deleted",
+                text2: "The event has been successfully deleted.",
+              });
+
+              // Emit event to refresh map and remove event from list
+              DeviceEventEmitter.emit("mapReload", true);
+              DeviceEventEmitter.emit("eventDeleted", { eventId: eventId });
+
+              // Call the optional callback if provided (should handle closing sheet)
+              if (onDelete) {
+                onDelete();
+              }
+              
+              // Navigate back to the screen user came from
+              if (from) {
+                // Navigate to specific screen based on 'from' parameter
+                switch (from) {
+                  case "home":
+                    router.replace("/(app)/(home)");
+                    break;
+                  case "profile":
+                    router.replace("/(app)/(profile)");
+                    break;
+                  case "social":
+                    router.replace("/(app)/(social)");
+                    break;
+                  case "map":
+                    router.replace("/(app)/(map)");
+                    break;
+                  default:
+                    router.back();
+                }
+              } else {
+                // Fallback to router.back() if no 'from' parameter
+                router.back();
+              }
+            } catch (error: any) {
+              console.error("Error deleting event:", error);
+              Toast.show({
+                type: "error",
+                text1: "Error",
+                text2: error?.message || "Failed to delete event. Please try again.",
+              });
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
   };
   if (loading) {
     return (
@@ -196,6 +299,33 @@ export function UnifiedSheetButtons({
                   Share
                 </Text>
               </TouchableOpacity>
+              {isCreator && (
+                <TouchableOpacity
+                  onPress={handleDeleteEvent}
+                  disabled={isDeleting}
+                  style={{
+                    backgroundColor: theme.colors.notification + "20",
+                    opacity: isDeleting ? 0.6 : 1,
+                    borderColor: theme.colors.notification,
+                    borderWidth: 2,
+                  }}
+                  className="flex-1 items-center py-4 rounded-2xl"
+                >
+                  {isDeleting ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={theme.colors.notification}
+                    />
+                  ) : (
+                    <Text
+                      className="text-lg font-semibold"
+                      style={{ color: theme.colors.notification }}
+                    >
+                      Delete Event
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
