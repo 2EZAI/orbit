@@ -458,6 +458,7 @@ export default function Map() {
                             state.setShowDetails(false);
                             setShareData({ data, isEventType: isEvent });
                           }}
+                          from="map"
                           onShowControler={() => state.setShowControler(true)}
                           isEvent={state.isEvent}
                         />

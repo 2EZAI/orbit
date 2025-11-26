@@ -1598,6 +1598,7 @@ export default function Home() {
           }}
           onShowControler={() => {}}
           isEvent={!isSelectedItemLocation}
+          from="home"
         />
       )}
 

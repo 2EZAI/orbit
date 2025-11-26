@@ -70,6 +70,7 @@ interface UnifiedDetailsSheetProps {
   onShowControler: () => void;
   isEvent?: boolean;
   onShare: (data: UnifiedData, isEventType: boolean) => void;
+  from?: string; // Track where user came from (e.g., "home", "profile", "social", "map")
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -111,6 +112,7 @@ export const UnifiedDetailsSheet = React.memo(
     onShowControler,
     isEvent,
     onShare,
+    from,
   }: UnifiedDetailsSheetProps) => {
     const [loading, setLoading] = useState(false);
     const [detailData, setDetailData] = useState<UnifiedData | undefined>(
@@ -317,6 +319,11 @@ export const UnifiedDetailsSheet = React.memo(
           from: "details",
         },
       });
+    };
+
+    const handleDelete = () => {
+      // Close the sheet - UnifiedSheetButtons will handle deletion and navigation
+      onClose();
     };
 
     // COMMENTED OUT: Old detail API calls - now using unified API data directly
@@ -836,6 +843,8 @@ export const UnifiedDetailsSheet = React.memo(
                 onCreateEvent={handleCreateEvent}
                 onEdit={handleEdit}
                 onShare={handleShare}
+                onDelete={handleDelete}
+                from={from}
               />
             </BottomSheet>
 

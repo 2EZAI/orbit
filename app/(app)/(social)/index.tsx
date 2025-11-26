@@ -795,6 +795,7 @@ export default function SocialFeed() {
           }}
           onShowControler={() => {}}
           isEvent={!isSelectedItemLocation}
+          from="social"
         />
       )}
       {shareData && (

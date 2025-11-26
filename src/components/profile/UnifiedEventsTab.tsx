@@ -656,6 +656,7 @@ export default function UnifiedEventsTab({
               setSelectedEvent(null);
               setShareData({ data, isEventType: isEvent });
             }}
+            from="profile"
           />
         )}
         {shareData && (
