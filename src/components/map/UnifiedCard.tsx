@@ -1,10 +1,8 @@
 import { LinearGradient } from "expo-linear-gradient";
-import * as Location from "expo-location";
 import { useRouter } from "expo-router";
-import { Calendar, MapPin, Star, Users, X, Flag } from "lucide-react-native";
+import { Calendar, Flag, MapPin, Star, Users, X } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   DeviceEventEmitter,
   Image,
   PanResponder,
@@ -16,18 +14,18 @@ import {
 import Toast from "react-native-toast-message";
 import type { Channel } from "stream-chat";
 import { useEventJoinStatus } from "~/hooks/useEventJoinStatus";
+import { useFlagging } from "~/hooks/useFlagging";
 import { useJoinEvent } from "~/hooks/useJoinEvent";
 import { IProposal } from "~/hooks/useProposals";
 import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
 import { useAuth } from "~/src/lib/auth";
 import { formatDate, formatTime } from "~/src/lib/date";
 import { haptics } from "~/src/lib/haptics";
+import FlagContentModal from "../modals/FlagContentModal";
 import { ChatSelectionModal } from "../social/ChatSelectionModal";
 import { Text } from "../ui/text";
 import { UnifiedDetailsSheet } from "./UnifiedDetailsSheet";
 import UnifiedShareSheet from "./UnifiedShareSheet";
-import FlagContentModal from "../modals/FlagContentModal";
-import { useFlagging } from "~/hooks/useFlagging";
 
 type UnifiedData = MapEvent | MapLocation;
 
