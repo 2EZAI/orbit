@@ -1,10 +1,15 @@
 import React from "react";
-import { ScrollView, TouchableOpacity, View, ActivityIndicator } from "react-native";
+import {
+  ScrollView,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+} from "react-native";
 import { MapPin, Star } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { OptimizedImage } from "~/src/components/ui/optimized-image";
-import { useSimilarItems } from "~/src/hooks/useSimilarItems";
+import { useSimilarItems } from "~/hooks/useSimilarItems";
 import { useUser } from "~/src/lib/UserProvider";
 
 interface LocationSimilarSectionProps {
@@ -13,29 +18,44 @@ interface LocationSimilarSectionProps {
   onDataSelect: (data: any) => void;
 }
 
-export function LocationSimilarSection({ 
-  data, 
-  onDataSelect 
+export function LocationSimilarSection({
+  data,
+  onDataSelect,
 }: LocationSimilarSectionProps) {
   const { theme, isDarkMode } = useTheme();
   const { userlocation } = useUser();
 
-console.log('🔍 [LocationSimilarSection] Data:', data);
+  console.log("🔍 [LocationSimilarSection] Data:", data);
 
   let locationLat = null;
   let locationLng = null;
-  
+
   // Use the similar items API like web app
   // Get coordinates from userlocation or fallback to event location coordinates
-  const userLat = userlocation?.latitude ? parseFloat(userlocation.latitude) : null;
-  const userLng = userlocation?.longitude ? parseFloat(userlocation.longitude) : null;
-  
-  // Use event's location coordinates as fallback if user location is not available
-  const latitude = (data.location?.coordinates?.[1] ? parseFloat(data.location.coordinates[1]) : null) || userLat;
-  const longitude = (data.location?.coordinates?.[0] ? parseFloat(data.location.coordinates[0]) : null) || userLng;
+  const userLat = userlocation?.latitude
+    ? parseFloat(userlocation.latitude)
+    : null;
+  const userLng = userlocation?.longitude
+    ? parseFloat(userlocation.longitude)
+    : null;
 
-  const { locations: similarLocations, isLoading, error, hasResults } = useSimilarItems({
-    itemType: 'location',
+  // Use event's location coordinates as fallback if user location is not available
+  const latitude =
+    (data.location?.coordinates?.[1]
+      ? parseFloat(data.location.coordinates[1])
+      : null) || userLat;
+  const longitude =
+    (data.location?.coordinates?.[0]
+      ? parseFloat(data.location.coordinates[0])
+      : null) || userLng;
+
+  const {
+    locations: similarLocations,
+    isLoading,
+    error,
+    hasResults,
+  } = useSimilarItems({
+    itemType: "location",
     itemId: data.id,
     category: data.category?.name || data.type, // Match web app exactly
     name: data.name,
@@ -47,7 +67,7 @@ console.log('🔍 [LocationSimilarSection] Data:', data);
   });
 
   // Debug logging for similar locations
-  console.log('📍 [LocationSimilarSection] Debug:', {
+  console.log("📍 [LocationSimilarSection] Debug:", {
     dataId: data.id,
     dataName: data.name,
     dataCategory: data.category,
@@ -85,7 +105,9 @@ console.log('🔍 [LocationSimilarSection] Data:', data);
   }
 
   if (error || !hasResults) {
-    console.log('❌ [LocationSimilarSection] No similar locations found, returning null');
+    console.log(
+      "❌ [LocationSimilarSection] No similar locations found, returning null"
+    );
     return null;
   }
 
@@ -112,7 +134,7 @@ console.log('🔍 [LocationSimilarSection] Data:', data);
           Similar Places
         </Text>
       </View>
-      
+
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -123,12 +145,15 @@ console.log('🔍 [LocationSimilarSection] Data:', data);
             <TouchableOpacity
               key={`${item.id}-${index}`}
               onPress={() => {
-                console.log('📍 [LocationSimilarSection] Similar location clicked:', {
-                  locationId: item.id,
-                  locationName: item.name,
-                  locationType: item.type,
-                  hasOnDataSelect: !!onDataSelect,
-                });
+                console.log(
+                  "📍 [LocationSimilarSection] Similar location clicked:",
+                  {
+                    locationId: item.id,
+                    locationName: item.name,
+                    locationType: item.type,
+                    hasOnDataSelect: !!onDataSelect,
+                  }
+                );
                 if (onDataSelect) {
                   onDataSelect(item);
                 }
@@ -158,9 +183,7 @@ console.log('🔍 [LocationSimilarSection] Data:', data);
                 <Text
                   className="text-xs"
                   style={{
-                    color: isDarkMode
-                      ? "rgba(255,255,255,0.7)"
-                      : "#6B7280",
+                    color: isDarkMode ? "rgba(255,255,255,0.7)" : "#6B7280",
                   }}
                 >
                   {getCategoryName(item.category?.name || item.type) || "Place"}
@@ -196,5 +219,3 @@ console.log('🔍 [LocationSimilarSection] Data:', data);
     </View>
   );
 }
-
-

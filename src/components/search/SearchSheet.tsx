@@ -1,6 +1,12 @@
 import { router } from "expo-router";
 import { Calendar, MapPin, Search, Users, X } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Image,
@@ -8,11 +14,15 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { useUser } from "~/src/lib/UserProvider";
-import { useRealtimeSearch } from "../../hooks/useSearch";
-import { EventResult, LocationResult, UserResult } from "../../services/searchService";
+import { useRealtimeSearch } from "../../../hooks/useSearch";
+import {
+  EventResult,
+  LocationResult,
+  UserResult,
+} from "../../services/searchService";
 import { useTheme } from "../ThemeProvider";
 import { Input } from "../ui/input";
 import { OptimizedImage } from "../ui/optimized-image";
@@ -45,35 +55,44 @@ export function SearchSheet({
   // Get user location coordinates for search
   const userLocation = useMemo(() => {
     if (!user) return undefined;
-    
+
     let coordinates = undefined;
-    
+
     // First try: If user prefers orbit mode and has saved coordinates
     if (user.event_location_preference === 1 && userlocation) {
       coordinates = {
-        latitude: userlocation.latitude != null ? parseFloat(userlocation.latitude) : NaN,
-        longitude: userlocation.longitude != null ? parseFloat(userlocation.longitude) : NaN,
+        latitude:
+          userlocation.latitude != null
+            ? parseFloat(userlocation.latitude)
+            : NaN,
+        longitude:
+          userlocation.longitude != null
+            ? parseFloat(userlocation.longitude)
+            : NaN,
       };
-      
-      if (Number.isFinite(coordinates.latitude) && Number.isFinite(coordinates.longitude)) {
+
+      if (
+        Number.isFinite(coordinates.latitude) &&
+        Number.isFinite(coordinates.longitude)
+      ) {
         return coordinates;
       }
     }
-    
+
     return undefined;
   }, [user, userlocation]);
 
   // Use the new search hook
-  const { 
-    results, 
-    isLoading, 
-    hasResults 
-  } = useRealtimeSearch(searchQuery, userLocation, {
-    radius: 100, // 100km radius (matches web app)
-    limit: 10, // 10 results per category (matches web app)
-    debounceMs: 300,
-    enabled: isOpen,
-  });
+  const { results, isLoading, hasResults } = useRealtimeSearch(
+    searchQuery,
+    userLocation,
+    {
+      radius: 100, // 100km radius (matches web app)
+      limit: 10, // 10 results per category (matches web app)
+      debounceMs: 300,
+      enabled: isOpen,
+    }
+  );
 
   // Tab configuration
   const tabs = [
@@ -111,14 +130,15 @@ export function SearchSheet({
     setSearchQuery(query);
   }, []);
 
-
-
   // Handle result selection
   const handleSelectResult = (
     result: UserResult | EventResult | LocationResult,
     type: "user" | "event" | "location"
   ) => {
-    console.log("🔍 [SearchSheet] handleSelectResult called:", { type, result });
+    console.log("🔍 [SearchSheet] handleSelectResult called:", {
+      type,
+      result,
+    });
 
     // Call controller first if it exists
     if (onShowControler && typeof onShowControler === "function") {
@@ -141,7 +161,7 @@ export function SearchSheet({
         // Check if we have valid coordinates
         const eventLat = event.location?.coordinates?.[1];
         const eventLng = event.location?.coordinates?.[0];
-        
+
         if (!eventLat || !eventLng || isNaN(eventLat) || isNaN(eventLng)) {
           return;
         }
@@ -157,7 +177,10 @@ export function SearchSheet({
             venue_name: event.venue_name || "",
             description: event.description || "",
             type: event.type || "event",
-            created_by: typeof event.created_by === 'string' ? event.created_by : JSON.stringify(event.created_by || {}),
+            created_by:
+              typeof event.created_by === "string"
+                ? event.created_by
+                : JSON.stringify(event.created_by || {}),
           },
         });
         break;
@@ -222,7 +245,7 @@ export function SearchSheet({
   // Result count for tabs
   const getTabCount = (tabId: TabType) => {
     if (!results) return 0;
-    
+
     switch (tabId) {
       case "events":
         return results.events.length;

@@ -20,7 +20,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "~/src/components/ThemeProvider";
-import { useAIDescription } from "~/src/hooks/useAIDescription";
+import { useAIDescription } from "~/hooks/useAIDescription";
 import type {
   AIDescriptionRequest,
   AIRefineRequest,

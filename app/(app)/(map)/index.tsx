@@ -3,7 +3,7 @@ import { useIsFocused } from "@react-navigation/native";
 import { View } from "react-native";
 import { Text } from "~/src/components/ui/text";
 import { useUser } from "~/src/lib/UserProvider";
-import { useMapCamera } from "~/src/hooks/useMapCamera";
+import { useMapCamera } from "~/hooks/useMapCamera";
 
 // Import new modular components
 import { MapboxContainer } from "~/src/components/map/MapboxContainer";
