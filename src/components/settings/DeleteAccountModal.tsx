@@ -112,13 +112,13 @@ export function DeleteAccountModal({
                 width: 40,
                 height: 40,
                 borderRadius: 20,
-                backgroundColor: "#FF3B30" + "20",
+                backgroundColor: theme.colors.primary + "20",
                 alignItems: "center",
                 justifyContent: "center",
                 marginRight: 12,
               }}
             >
-              <Trash2 size={20} color="#FF3B30" />
+              <Trash2 size={20} color={theme.colors.primary} />
             </View>
             <Text
               style={{
@@ -126,7 +126,7 @@ export function DeleteAccountModal({
                 fontWeight: "800",
                 lineHeight: 25,
                 paddingVertical: 2,
-                color: "#FF3B30",
+                color: theme.colors.primary,
               }}
             >
               Delete My Account
@@ -155,20 +155,20 @@ export function DeleteAccountModal({
               width: 60,
               height: 60,
               borderRadius: 30,
-              backgroundColor: "#FF3B30" + "20",
+              backgroundColor: theme.colors.notification + "20",
               alignItems: "center",
               justifyContent: "center",
               marginBottom: 16,
             }}
           >
-            <AlertTriangle size={30} color="#FF3B30" />
+            <AlertTriangle size={30} color={theme.colors.notification} />
           </View>
 
           <Text
             style={{
               fontSize: 18,
               fontWeight: "700",
-              color: "#FF3B30",
+              color: theme.colors.notification,
               marginBottom: 12,
               textAlign: "center",
             }}
@@ -231,7 +231,7 @@ export function DeleteAccountModal({
               flex: 1,
               paddingVertical: 14,
               borderRadius: 12,
-              backgroundColor: "#FF3B30",
+              backgroundColor: theme.colors.primary,
               alignItems: "center",
               opacity: isDeleting ? 0.7 : 1,
             }}
