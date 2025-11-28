@@ -1283,19 +1283,22 @@ export default function CreateEvent() {
       return;
     }
 
+    const apiUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+      query
+    )}.json?access_token=${
+      process.env.MAPBOX_ACCESS_TOKEN
+    }&country=US&types=address&autocomplete=true`;
+    
+
     try {
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-          query
-        )}.json?access_token=${
-          process.env.MAPBOX_ACCESS_TOKEN
-        }&country=US&types=address`
-      );
+      const response = await fetch(apiUrl);
       const data = await response.json();
+      
+      
       setSearchResults(data.features || []);
       setShowResults(true);
     } catch (error) {
-      console.error("Error searching address:", error);
+      console.error("❌ [AddressSearch] Error searching address:", error);
     }
   };
 
@@ -1314,20 +1317,46 @@ export default function CreateEvent() {
   };
 
   const handleAddressSelect = (feature: MapboxFeature) => {
+    console.log("📍 [AddressSelect] Selected feature:", {
+      id: feature.id,
+      text: feature.text,
+      place_name: feature.place_name,
+      properties: feature.properties,
+      context: feature.context,
+    });
+    
     const contextMap = new Map(
       feature.context?.map((item) => [item.id.split(".")[0], item.text])
     );
 
+    console.log("📍 [AddressSelect] Context map:", Array.from(contextMap.entries()));
+
+    // Extract the full street address from place_name (everything before the first comma)
+    // place_name format: "2280 Northeast 214th Street, Miami, FL, USA"
+    // We want: "2280 Northeast 214th Street"
+    let fullAddress = feature.text; // Default fallback
+    
+    if (feature.place_name) {
+      // Get the first part before the first comma (the street address)
+      const addressParts = feature.place_name.split(',');
+      fullAddress = addressParts[0].trim();
+      console.log("📍 [AddressSelect] Extracted address from place_name:", fullAddress);
+    } else if (feature.properties?.address) {
+      // Fallback: combine properties.address with text
+      fullAddress = `${feature.properties.address} ${feature.text}`;
+      console.log("📍 [AddressSelect] Combined address from properties:", fullAddress);
+    }
+
     const newLocationDetails = {
-      address1: feature.properties.address
-        ? `${feature.properties.address} ${feature.text}`
-        : feature.text,
+      address1: fullAddress,
       address2: "",
       city: contextMap.get("place") || "",
       state: contextMap.get("region") || "",
       zip: contextMap.get("postcode") || "",
       coordinates: feature.center,
     };
+
+    console.log("📍 [AddressSelect] Constructed location details:", newLocationDetails);
 
     setLocationDetails(newLocationDetails);
     setAddress1(newLocationDetails.address1);
@@ -1530,7 +1559,16 @@ export default function CreateEvent() {
         //   eventData.event_id = eventID;
         // }
       }
-      console.log("eventData>>", eventData);
+      console.log("📤 [CreateEvent] Event data being sent to API:", eventData);
+      console.log("📤 [CreateEvent] Address being sent:", {
+        address: eventData.address,
+        address_line2: eventData.address_line2,
+        city: eventData.city,
+        state: eventData.state,
+        zip: eventData.zip,
+        locationDetails_address1: locationDetails.address1,
+        address1_state: address1,
+      });
 
       // Determine if we're updating or creating
       const isUpdating = isEditMode && editingEventId;
