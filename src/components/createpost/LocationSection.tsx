@@ -161,37 +161,58 @@ export default function LocationSection({
                 : "rgba(255, 255, 255, 0.7)",
             }}
           >
-            {searchResults.slice(0, 5).map((result) => (
-              <TouchableOpacity
-                key={result.id}
-                onPress={() => onAddressSelect(result)}
-                style={{
-                  padding: 12,
-                  borderBottomWidth: 1,
-                  borderBottomColor: theme.dark
-                    ? "rgba(139, 92, 246, 0.1)"
-                    : "rgba(139, 92, 246, 0.05)",
-                }}
-              >
-                <Text
+            {searchResults.slice(0, 5).map((result) => {
+              console.log("📍 [LocationSection] Rendering result:", {
+                id: result.id,
+                text: result.text,
+                place_name: result.place_name,
+                properties: result.properties,
+              });
+              
+              // Display full address: use properties.address + text if available, otherwise use place_name
+              const displayAddress = result.properties?.address 
+                ? `${result.properties.address} ${result.text}`
+                : result.place_name || result.text;
+              
+              // Extract city/state from place_name for secondary text
+              const secondaryText = result.place_name 
+                ? result.place_name.split(',').slice(1).join(',').trim() 
+                : '';
+              
+              return (
+                <TouchableOpacity
+                  key={result.id}
+                  onPress={() => onAddressSelect(result)}
                   style={{
-                    fontSize: 14,
-                    fontWeight: "600",
-                    color: theme.colors.text,
+                    padding: 12,
+                    borderBottomWidth: 1,
+                    borderBottomColor: theme.dark
+                      ? "rgba(139, 92, 246, 0.1)"
+                      : "rgba(139, 92, 246, 0.05)",
                   }}
                 >
-                  {result.text}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: theme.colors.text + "CC",
-                  }}
-                >
-                  {result.place_name}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontWeight: "600",
+                      color: theme.colors.text,
+                    }}
+                  >
+                    {displayAddress}
+                  </Text>
+                  {secondaryText ? (
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: theme.colors.text + "CC",
+                      }}
+                    >
+                      {secondaryText}
+                    </Text>
+                  ) : null}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
 

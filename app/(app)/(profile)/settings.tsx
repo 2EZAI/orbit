@@ -105,7 +105,7 @@ function SettingItem({
             height: 40,
             borderRadius: 20,
             backgroundColor: destructive
-              ? "#FF3B30" + "20"
+              ? theme.colors.notification + "20"
               : theme.colors.primary + "20",
             alignItems: "center",
             justifyContent: "center",
@@ -120,7 +120,7 @@ function SettingItem({
             flex: 1,
             fontSize: 16,
             fontWeight: "600",
-            color: destructive ? "#FF3B30" : theme.colors.text,
+            color: destructive ? theme.colors.notification : theme.colors.text,
           }}
         >
           {title}
@@ -129,12 +129,12 @@ function SettingItem({
         {loading ? (
           <ActivityIndicator
             size="small"
-            color={destructive ? "#FF3B30" : theme.colors.primary}
+            color={destructive ? theme.colors.notification : theme.colors.primary}
           />
         ) : (
           <ChevronRight
             size={20}
-            color={destructive ? "#FF3B30" : theme.colors.text + "60"}
+            color={destructive ? theme.colors.notification : theme.colors.text + "60"}
           />
         )}
       </View>
@@ -540,16 +540,16 @@ export default function SettingsScreen() {
         />
 
         <SettingItem
-          icon={<LogOut size={20} color={theme.colors.primary} />}
+          icon={<LogOut size={20} color={theme.colors.notification} />}
           title="Log Out"
           onPress={handleLogout}
           loading={isLoggingOut}
+          destructive
         />
         <SettingItem
-          icon={<Trash2 size={20} color="#FF3B30" />}
+          icon={<Trash2 size={20} color={theme.colors.primary} />}
           title="Delete My Account"
           onPress={() => setShowDeleteAccount(true)}
-          destructive
         />
       </ScrollView>
 

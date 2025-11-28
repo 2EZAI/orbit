@@ -10,8 +10,12 @@ const NotificationBadge = () => {
       fetchAllNoifications(1, 20);
     }, [])
   );
+  
   return unReadCount ? (
-    <View style={styles.container}>
+    <View style={[
+      styles.container,
+      unReadCount > 9 && { right: -12 } // Move further right when showing "9+" to avoid touching bell icon
+    ]}>
       <Text style={styles.text}>
         {unReadCount > 9 ? "9+" : String(unReadCount)}
       </Text>

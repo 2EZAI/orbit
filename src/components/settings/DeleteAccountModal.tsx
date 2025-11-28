@@ -47,30 +47,46 @@ export function DeleteAccountModal({
               });
 
               if (error) {
-                console.error('Error deleting user data:', error);
-                Alert.alert('Error', 'Failed to delete account data. Please try again or contact support.');
+                console.error('Error deleting user account:', error);
+                Alert.alert(
+                  'Unable to Delete Account',
+                  'We were unable to delete your account. Please try again later or contact support.',
+                  [{ text: 'OK' }]
+                );
                 setIsDeleting(false);
                 return;
               }
 
               if (data?.error) {
-                console.error('RPC function error:', data.error);
-                Alert.alert('Error', data.error);
+                console.error('RPC function error:', data);
+                Alert.alert(
+                  'Unable to Delete Account',
+                  'We were unable to delete your account. Please try again later or contact support.',
+                  [{ text: 'OK' }]
+                );
                 setIsDeleting(false);
                 return;
               }
 
-              // Delete the user from auth (this requires admin privileges)
-              // For now, we'll sign out the user and let them know to contact support for complete deletion
+              // Sign out the user first
               await supabase.auth.signOut();
               
-              // Navigate to login screen
+              // Close the modal before navigation
+              onClose();
+              
+              // Navigate to landing page (sign-in screen)
+              // Use dismissAll to clear navigation stack, then navigate to root
+              router.dismissAll();
               router.replace('/');
               
               Alert.alert('Success', 'Your account data has been deleted successfully. Your account will be completely removed within 24 hours.');
-            } catch (error) {
+            } catch (error: any) {
               console.error('Unexpected error during account deletion:', error);
-              Alert.alert('Error', 'An unexpected error occurred. Please contact support.');
+              Alert.alert(
+                'Unable to Delete Account',
+                'We were unable to delete your account. Please try again later or contact support.',
+                [{ text: 'OK' }]
+              );
               setIsDeleting(false);
             }
           },
@@ -96,13 +112,13 @@ export function DeleteAccountModal({
                 width: 40,
                 height: 40,
                 borderRadius: 20,
-                backgroundColor: "#FF3B30" + "20",
+                backgroundColor: theme.colors.primary + "20",
                 alignItems: "center",
                 justifyContent: "center",
                 marginRight: 12,
               }}
             >
-              <Trash2 size={20} color="#FF3B30" />
+              <Trash2 size={20} color={theme.colors.primary} />
             </View>
             <Text
               style={{
@@ -110,7 +126,7 @@ export function DeleteAccountModal({
                 fontWeight: "800",
                 lineHeight: 25,
                 paddingVertical: 2,
-                color: "#FF3B30",
+                color: theme.colors.primary,
               }}
             >
               Delete My Account
@@ -139,20 +155,20 @@ export function DeleteAccountModal({
               width: 60,
               height: 60,
               borderRadius: 30,
-              backgroundColor: "#FF3B30" + "20",
+              backgroundColor: theme.colors.notification + "20",
               alignItems: "center",
               justifyContent: "center",
               marginBottom: 16,
             }}
           >
-            <AlertTriangle size={30} color="#FF3B30" />
+            <AlertTriangle size={30} color={theme.colors.notification} />
           </View>
 
           <Text
             style={{
               fontSize: 18,
               fontWeight: "700",
-              color: "#FF3B30",
+              color: theme.colors.notification,
               marginBottom: 12,
               textAlign: "center",
             }}
@@ -215,7 +231,7 @@ export function DeleteAccountModal({
               flex: 1,
               paddingVertical: 14,
               borderRadius: 12,
-              backgroundColor: "#FF3B30",
+              backgroundColor: theme.colors.primary,
               alignItems: "center",
               opacity: isDeleting ? 0.7 : 1,
             }}
