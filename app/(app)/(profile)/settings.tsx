@@ -58,6 +58,8 @@ import { LocationPreferencesModal } from "~/src/components/settings/LocationPref
 import { PrivacyModal } from "~/src/components/settings/PrivacyModal";
 import { SocialMediaSettings } from "~/src/components/settings/SocialMediaSettings";
 import GlassPressable from "~/src/components/ui/GlassPressable";
+import Payment from "~/assets/svg/Payment";
+import { PaymentSubscriptionModal } from "~/src/components/settings/PaymentSubscriptionModal.";
 
 interface SettingItemProps {
   icon: React.ReactNode;
@@ -178,6 +180,7 @@ export default function SettingsScreen() {
   });
   // Modal states
   const [showPersonalInfo, setShowPersonalInfo] = useState(false);
+  const [showPaymentSubscription, setShowPaymentSubscription] = useState(false);
   const [showUsername, setShowUsername] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -453,6 +456,11 @@ export default function SettingsScreen() {
           onPress={() => setShowPersonalInfo(true)}
         />
         <SettingItem
+          icon={<Payment width={24} height={24} fill={theme.colors.primary} />}
+          title="Payment & Subscriptions"
+          onPress={() => setShowPaymentSubscription(true)}
+        />
+        <SettingItem
           icon={<Edit3 size={20} color={theme.colors.primary} />}
           title="Update User Name"
           onPress={() => setShowUsername(true)}
@@ -550,7 +558,10 @@ export default function SettingsScreen() {
         isOpen={showPersonalInfo}
         onClose={() => setShowPersonalInfo(false)}
       />
-
+      <PaymentSubscriptionModal
+        isOpen={showPaymentSubscription}
+        onClose={() => setShowPaymentSubscription(false)}
+      />
       <UsernameModal
         isOpen={showUsername}
         onClose={() => setShowUsername(false)}
