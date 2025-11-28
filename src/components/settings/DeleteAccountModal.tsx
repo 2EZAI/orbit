@@ -6,7 +6,7 @@ import { useTheme } from "~/src/components/ThemeProvider";
 import { Trash2, X, AlertTriangle } from "lucide-react-native";
 import { supabase } from "~/src/lib/supabase";
 import { useAuth } from "~/src/lib/auth";
-import { router } from "expo-router";
+import { router, useNavigation } from "expo-router";
 
 interface DeleteAccountModalProps {
   isOpen: boolean;
@@ -20,49 +20,53 @@ export function DeleteAccountModal({
   const { theme } = useTheme();
   const { session } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
+  const navigation = useNavigation();
 
   const handleDeleteAccount = async () => {
     if (!session?.user) {
-      Alert.alert('Error', 'No user session found');
+      Alert.alert("Error", "No user session found");
       return;
     }
 
     Alert.alert(
-      'Delete Account',
-      'Are you absolutely sure you want to delete your account? This action cannot be undone and will permanently remove all your data.',
+      "Delete Account",
+      "Are you absolutely sure you want to delete your account? This action cannot be undone and will permanently remove all your data.",
       [
         {
-          text: 'Cancel',
-          style: 'cancel',
+          text: "Cancel",
+          style: "cancel",
         },
         {
-          text: 'Delete Account',
-          style: 'destructive',
+          text: "Delete Account",
+          style: "destructive",
           onPress: async () => {
             setIsDeleting(true);
             try {
               // Call RPC function to delete user data
-              const { data, error } = await supabase.rpc('delete_user_account', {
-                user_id_to_delete: session.user.id
-              });
+              const { data, error } = await supabase.rpc(
+                "delete_user_account",
+                {
+                  user_id_to_delete: session.user.id,
+                }
+              );
 
               if (error) {
-                console.error('Error deleting user account:', error);
+                console.error("Error deleting user account:", error);
                 Alert.alert(
-                  'Unable to Delete Account',
-                  'We were unable to delete your account. Please try again later or contact support.',
-                  [{ text: 'OK' }]
+                  "Unable to Delete Account",
+                  "We were unable to delete your account. Please try again later or contact support.",
+                  [{ text: "OK" }]
                 );
                 setIsDeleting(false);
                 return;
               }
 
               if (data?.error) {
-                console.error('RPC function error:', data);
+                console.error("RPC function error:", data);
                 Alert.alert(
-                  'Unable to Delete Account',
-                  'We were unable to delete your account. Please try again later or contact support.',
-                  [{ text: 'OK' }]
+                  "Unable to Delete Account",
+                  "We were unable to delete your account. Please try again later or contact support.",
+                  [{ text: "OK" }]
                 );
                 setIsDeleting(false);
                 return;
@@ -70,22 +74,26 @@ export function DeleteAccountModal({
 
               // Sign out the user first
               await supabase.auth.signOut();
-              
+
               // Close the modal before navigation
               onClose();
-              
+
               // Navigate to landing page (sign-in screen)
               // Use dismissAll to clear navigation stack, then navigate to root
-              router.dismissAll();
-              router.replace('/');
-              
-              Alert.alert('Success', 'Your account data has been deleted successfully. Your account will be completely removed within 24 hours.');
-            } catch (error: any) {
-              console.error('Unexpected error during account deletion:', error);
+              router.back();
+              // router.replace("/");
+              navigation.dispatch({ type: "POP_TO_TOP" });
+
               Alert.alert(
-                'Unable to Delete Account',
-                'We were unable to delete your account. Please try again later or contact support.',
-                [{ text: 'OK' }]
+                "Success",
+                "Your account data has been deleted successfully. Your account will be completely removed within 24 hours."
+              );
+            } catch (error: any) {
+              console.error("Unexpected error during account deletion:", error);
+              Alert.alert(
+                "Unable to Delete Account",
+                "We were unable to delete your account. Please try again later or contact support.",
+                [{ text: "OK" }]
               );
               setIsDeleting(false);
             }
@@ -187,11 +195,8 @@ export function DeleteAccountModal({
           >
             This action will permanently delete your account and all associated
             data including:
-            {"\n\n"}
-            • Your profile information
-            • All your posts and activities
-            • Your followers and following lists
-            • Chat messages and conversations
+            {"\n\n"}• Your profile information • All your posts and activities •
+            Your followers and following lists • Chat messages and conversations
             • Event drafts and saved locations
             {"\n\n"}
             This action cannot be undone.
