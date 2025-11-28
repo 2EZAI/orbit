@@ -47,30 +47,46 @@ export function DeleteAccountModal({
               });
 
               if (error) {
-                console.error('Error deleting user data:', error);
-                Alert.alert('Error', 'Failed to delete account data. Please try again or contact support.');
+                console.error('Error deleting user account:', error);
+                Alert.alert(
+                  'Unable to Delete Account',
+                  'We were unable to delete your account. Please try again later or contact support.',
+                  [{ text: 'OK' }]
+                );
                 setIsDeleting(false);
                 return;
               }
 
               if (data?.error) {
-                console.error('RPC function error:', data.error);
-                Alert.alert('Error', data.error);
+                console.error('RPC function error:', data);
+                Alert.alert(
+                  'Unable to Delete Account',
+                  'We were unable to delete your account. Please try again later or contact support.',
+                  [{ text: 'OK' }]
+                );
                 setIsDeleting(false);
                 return;
               }
 
-              // Delete the user from auth (this requires admin privileges)
-              // For now, we'll sign out the user and let them know to contact support for complete deletion
+              // Sign out the user first
               await supabase.auth.signOut();
               
-              // Navigate to login screen
+              // Close the modal before navigation
+              onClose();
+              
+              // Navigate to landing page (sign-in screen)
+              // Use dismissAll to clear navigation stack, then navigate to root
+              router.dismissAll();
               router.replace('/');
               
               Alert.alert('Success', 'Your account data has been deleted successfully. Your account will be completely removed within 24 hours.');
-            } catch (error) {
+            } catch (error: any) {
               console.error('Unexpected error during account deletion:', error);
-              Alert.alert('Error', 'An unexpected error occurred. Please contact support.');
+              Alert.alert(
+                'Unable to Delete Account',
+                'We were unable to delete your account. Please try again later or contact support.',
+                [{ text: 'OK' }]
+              );
               setIsDeleting(false);
             }
           },
