@@ -85,10 +85,7 @@ export default function ChatLayout() {
                 name="channel/[id]"
                 options={{
                   title: "Chat",
-                  headerShown: true,
-                  headerTitleAlign: "center",
-                  headerBackTitle: "Chats",
-                  headerBackVisible: true,
+                  headerShown: false,
                 }}
               />
               <Stack.Screen

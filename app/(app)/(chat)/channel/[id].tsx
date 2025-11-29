@@ -478,11 +478,12 @@ export default function ChannelScreen() {
   const [resultsModalOpen, setResultsModalOpen] = useState(false);
   const [resultsItems, setResultsItems] = useState<UnifiedData[]>([]);
   const [resultsQuery, setResultsQuery] = useState<string>("");
+  const originalSendRef = useRef<any>(null);
   const loadMorePayloadRef = useRef<any>(null);
   const modalChannelRef = useRef<any>(null);
 
   // Patch channel.sendMessage to append lat/lng for /event commands (web parity)
-  const originalSendRef = useRef<any>(null);
+
   useEffect(() => {
     if (!channel) return;
     if (!originalSendRef.current) {
@@ -548,13 +549,18 @@ export default function ChannelScreen() {
                   ? { latitude: attachLat, longitude: attachLng }
                   : {}),
               };
-              
+
               return await original(messagePayload);
             } catch (err: any) {
               const errorMsg = err?.message || String(err);
               // If StreamChat's custom command endpoint fails, send as regular message via channel's internal API
-              if (errorMsg.includes("custom command") || errorMsg.includes("command endpoint")) {
-                console.log("/event: Custom command endpoint failed, sending as regular message");
+              if (
+                errorMsg.includes("custom command") ||
+                errorMsg.includes("command endpoint")
+              ) {
+                console.log(
+                  "/event: Custom command endpoint failed, sending as regular message"
+                );
                 try {
                   // Use channel's _client.sendMessage to bypass command detection
                   const messageData: any = {
@@ -564,7 +570,7 @@ export default function ChannelScreen() {
                       ? { latitude: attachLat, longitude: attachLng }
                       : {}),
                   };
-                  
+
                   // Send directly via StreamChat API endpoint, bypassing command detection
                   const channelId = channel.id;
                   const channelType = channel.type;
@@ -572,10 +578,13 @@ export default function ChannelScreen() {
                     url: `channels/${channelType}/${channelId}/message`,
                     data: { message: messageData },
                   });
-                  
+
                   return response.message;
                 } catch (retryErr: any) {
-                  console.error("/event send failed after retry:", retryErr?.message || retryErr);
+                  console.error(
+                    "/event send failed after retry:",
+                    retryErr?.message || retryErr
+                  );
                   throw retryErr;
                 }
               }
@@ -860,8 +869,6 @@ export default function ChannelScreen() {
   const handleChatSelect = async (channel: any) => {
     if (!channel) return;
     try {
-      console.log("handleChatSelect", chatShareSelection.event);
-      // Ensure channel is watched before sending
       await channel.watch();
       if (chatShareSelection.proposal) {
         const message = await channel.sendMessage({
@@ -1089,65 +1096,35 @@ export default function ChannelScreen() {
       };
     }
   }, [channel]);
-  console.log("channel data", JSON.stringify(channel?.data, null, 2));
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
-      <Stack.Screen
-        options={{
-          headerTitle: () => (
-            <TouchableOpacity
-              style={{ alignItems: "center" }}
-              onPress={() => {
-                // Optional: Navigate to contact info on title tap (iOS behavior)
-                if (channel?.data?.name !== "Orbit App") {
-                  handleInfoPress();
-                }
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 17,
-                  fontWeight: "600",
-                  color: theme.colors.text,
-                  textAlign: "center",
-                }}
-              >
-                {name || channel?.data?.name || "Chat"}
-              </Text>
-              {channel?.data?.name !== "Orbit App" && (
-                <Text
-                  style={{
-                    fontSize: 13,
-                    color: theme.colors.text + "60",
-                    textAlign: "center",
-                    marginTop: 1,
-                  }}
-                >
-                  {memberCount} {memberCount === 1 ? "member" : "members"}
-                </Text>
-              )}
-            </TouchableOpacity>
-          ),
-          headerLeft: () => (
-            <TouchableOpacity
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                paddingLeft: 8,
-              }}
-              onPress={() => {
-                if (from === "home" || from === "social" || from === "map") {
-                  router.push({
-                    pathname: `/(app)/(notification)`,
-                    params: { from: from },
-                  });
-                } else {
-                  router.back();
-                }
-              }}
-            >
-              <ArrowLeft size={22} color={theme.colors.text} strokeWidth={2} />
-              {/*<Text
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <TouchableOpacity
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingLeft: 8,
+          }}
+          onPress={() => {
+            if (from === "home" || from === "social" || from === "map") {
+              router.push({
+                pathname: `/(app)/(notification)`,
+                params: { from: from },
+              });
+            } else {
+              router.back();
+            }
+          }}
+        >
+          <ArrowLeft size={22} color={theme.colors.text} strokeWidth={2} />
+          {/*<Text
                 style={{
                   fontSize: 17,
                   color: theme.colors.text,
@@ -1157,13 +1134,43 @@ export default function ChannelScreen() {
                 Messages
               </Text>
                */}
-            </TouchableOpacity>
-          ),
-          headerRight: () =>
-            channel?.data?.name !== "Orbit App" ? (
-              <View style={{ flexDirection: "row", paddingRight: 8, gap: 12 }}>
-                {/* Audio Call Button - HIDDEN during development */}
-                {/* 
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ alignItems: "center" }}
+          onPress={() => {
+            // Optional: Navigate to contact info on title tap (iOS behavior)
+            if (channel?.data?.name !== "Orbit App") {
+              handleInfoPress();
+            }
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 17,
+              fontWeight: "600",
+              color: theme.colors.text,
+              textAlign: "center",
+            }}
+          >
+            {name || channel?.data?.name || "Chat"}
+          </Text>
+          {channel?.data?.name !== "Orbit App" && (
+            <Text
+              style={{
+                fontSize: 13,
+                color: theme.colors.text + "60",
+                textAlign: "center",
+                marginTop: 1,
+              }}
+            >
+              {memberCount} {memberCount === 1 ? "member" : "members"}
+            </Text>
+          )}
+        </TouchableOpacity>
+        {channel?.data?.name !== "Orbit App" ? (
+          <View style={{ flexDirection: "row", paddingRight: 8, gap: 12 }}>
+            {/* Audio Call Button - HIDDEN during development */}
+            {/* 
                 <TouchableOpacity
                   onPress={handleAudioCall}
                   style={{ padding: 4 }}
@@ -1172,8 +1179,8 @@ export default function ChannelScreen() {
                 </TouchableOpacity>
                 */}
 
-                {/* Video Call Button - HIDDEN during development */}
-                {/* 
+            {/* Video Call Button - HIDDEN during development */}
+            {/* 
                 <TouchableOpacity
                   onPress={handleVideoCall}
                   style={{ padding: 4 }}
@@ -1182,24 +1189,13 @@ export default function ChannelScreen() {
                 </TouchableOpacity>
                 */}
 
-                {/* Settings Button */}
-                <TouchableOpacity
-                  onPress={handleInfoPress}
-                  style={{ padding: 4 }}
-                >
-                  <Info size={20} color={theme.colors.text} strokeWidth={2} />
-                </TouchableOpacity>
-              </View>
-            ) : null,
-          headerStyle: {
-            backgroundColor: theme.colors.card,
-          },
-          headerTintColor: theme.colors.text,
-          headerTitleAlign: "center",
-          headerBackVisible: false,
-          headerShadowVisible: false,
-        }}
-      />
+            {/* Settings Button */}
+            <TouchableOpacity onPress={handleInfoPress} style={{ padding: 4 }}>
+              <Info size={20} color={theme.colors.text} strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
+        ) : null}
+      </View>
 
       {/* Active Call Banner - HIDDEN during development */}
       {/* 
@@ -1227,7 +1223,7 @@ export default function ChannelScreen() {
       ) : channel ? (
         <Channel
           channel={channel}
-          keyboardVerticalOffset={90}
+          keyboardVerticalOffset={40}
           thread={thread}
           threadList={!!thread}
           Message={BulletproofMessage}
@@ -1250,16 +1246,21 @@ export default function ChannelScreen() {
                 >
                   <View className="w-[80%] p-4 border bg-muted/50 border-border rounded-tl-3xl rounded-tr-3xl rounded-bl-none rounded-br-3xl">
                     <Text className="text-text">
-                      {" "}
                       {orbitMsg?.text || "No orbit message"}
                     </Text>
                   </View>
                 </View>
               ) : (
-                <>
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: theme.colors.card,
+                    paddingBottom: 30,
+                  }}
+                >
                   <MessageList onThreadSelect={setThread} />
                   <MessageInput />
-                </>
+                </View>
               )}
             </>
           )}
@@ -1433,9 +1434,15 @@ export default function ChannelScreen() {
                         });
                       } catch (err: any) {
                         const errorMsg = err?.message || String(err);
-                        if (errorMsg.includes("custom command") || errorMsg.includes("command endpoint")) {
+                        if (
+                          errorMsg.includes("custom command") ||
+                          errorMsg.includes("command endpoint")
+                        ) {
                           // Retry with escaped command to bypass StreamChat's command detection
-                          const escapedText = `/event ${query}`.replace(/^\//, "/\u200B");
+                          const escapedText = `/event ${query}`.replace(
+                            /^\//,
+                            "/\u200B"
+                          );
                           await ch.sendMessage({
                             text: escapedText,
                           });

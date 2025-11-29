@@ -621,7 +621,7 @@ export default function NewChatScreen() {
                     onChangeText={setChatName}
                     placeholder={defaultChatName}
                     style={{
-                      backgroundColor: theme.colors.card,
+                      backgroundColor: theme.colors.background,
                       borderColor: theme.colors.border,
                       color: theme.colors.text,
                     }}
