@@ -114,7 +114,7 @@ export function PaymentsDashboard({ accountId }: PaymentsDashboardProps) {
 
       console.error("Failed to load balance:", errorMessage);
     }
-  }, [accountId, getAccountBalance]);
+  }, [accountId]);
 
   const loadTransactions = useCallback(
     async (cursor?: string) => {
@@ -153,7 +153,7 @@ export function PaymentsDashboard({ accountId }: PaymentsDashboardProps) {
         setTransactionsLoading(false);
       }
     },
-    [accountId, getTransactions]
+    [accountId]
   );
 
   const loadPayouts = useCallback(async () => {
@@ -173,7 +173,7 @@ export function PaymentsDashboard({ accountId }: PaymentsDashboardProps) {
 
       console.error("Failed to load payouts:", errorMessage);
     }
-  }, [accountId, getPayouts]);
+  }, [accountId]);
 
   const loadDashboardData = useCallback(async () => {
     if (hasLoadedRef.current) return; // Prevent multiple simultaneous loads
@@ -196,7 +196,7 @@ export function PaymentsDashboard({ accountId }: PaymentsDashboardProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [accountId, getAccountBalance, getTransactions, getPayouts]);
+  }, [loadBalance, loadPayouts, loadTransactions]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
