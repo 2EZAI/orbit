@@ -253,6 +253,231 @@ export const useStripe = () => {
     return await response.json();
   };
 
+  const createAccountLink = async (accountId: string): Promise<string> => {
+    if (!session?.access_token) {
+      throw new Error("No authentication token available");
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}onboard/create-account-link`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+            "User-Agent": "Orbit-Mobile",
+          },
+          body: JSON.stringify({ accountId, platform: "mobile" }),
+        }
+      );
+
+      setIsLoading(false);
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({
+          error: `HTTP ${response.status}: ${response.statusText}`,
+        }));
+        const errorMessage =
+          error.error || error.message || "Failed to create account link";
+
+        if (
+          response.status === 404 ||
+          errorMessage.toLowerCase().includes("route not found") ||
+          errorMessage.toLowerCase().includes("not found") ||
+          errorMessage.toLowerCase().includes("endpoint not found")
+        ) {
+          throw new Error(
+            "Onboarding endpoint not available. Please contact support."
+          );
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      return result.url;
+    } catch (error) {
+      setIsLoading(false);
+      throw error;
+    }
+  };
+
+  const createAccountManagementLink = async (
+    accountId: string
+  ): Promise<string> => {
+    if (!session?.access_token) {
+      throw new Error("No authentication token available");
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}onboard/create-account-link`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+            "User-Agent": "Orbit-Mobile",
+          },
+          body: JSON.stringify({
+            accountId,
+            type: "account_update",
+            platform: "mobile",
+          }),
+        }
+      );
+
+      setIsLoading(false);
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({
+          error: `HTTP ${response.status}: ${response.statusText}`,
+        }));
+        const errorMessage =
+          error.error ||
+          error.message ||
+          `Failed to create account management link (${response.status})`;
+
+        if (
+          response.status === 404 ||
+          errorMessage.toLowerCase().includes("route not found") ||
+          errorMessage.toLowerCase().includes("not found") ||
+          errorMessage.toLowerCase().includes("endpoint not found")
+        ) {
+          throw new Error(
+            "Account management feature is not available. The backend endpoint may not be configured yet."
+          );
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      return result.url;
+    } catch (error) {
+      setIsLoading(false);
+      throw error;
+    }
+  };
+
+  const getAccountBalance = async (accountId: string) => {
+    if (!session?.access_token) {
+      throw new Error("No authentication token available");
+    }
+
+    const response = await fetch(`${API_BASE_URL}stripe/balance/${accountId}`, {
+      headers: {
+        Authorization: `Bearer ${session?.access_token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        error: `HTTP ${response.status}: ${response.statusText}`,
+      }));
+      const errorMessage =
+        error.error || error.message || "Failed to get account balance";
+
+      if (response.status === 404) {
+        throw new Error("BALANCE_ENDPOINT_NOT_AVAILABLE");
+      }
+
+      throw new Error(errorMessage);
+    }
+
+    return await response.json();
+  };
+
+  const getTransactions = async (
+    accountId: string,
+    options?: {
+      limit?: number;
+      startingAfter?: string;
+    }
+  ) => {
+    if (!session?.access_token) {
+      throw new Error("No authentication token available");
+    }
+
+    const params = new URLSearchParams({
+      accountId,
+      limit: (options?.limit || 20).toString(),
+    });
+    if (options?.startingAfter) {
+      params.append("startingAfter", options.startingAfter);
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}stripe/transactions?${params}`,
+      {
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        error: `HTTP ${response.status}: ${response.statusText}`,
+      }));
+      const errorMessage =
+        error.error || error.message || "Failed to get transactions";
+
+      if (response.status === 404) {
+        throw new Error("TRANSACTIONS_ENDPOINT_NOT_AVAILABLE");
+      }
+
+      throw new Error(errorMessage);
+    }
+
+    return await response.json();
+  };
+
+  const getPayouts = async (
+    accountId: string,
+    options?: {
+      limit?: number;
+      startingAfter?: string;
+    }
+  ) => {
+    if (!session?.access_token) {
+      throw new Error("No authentication token available");
+    }
+
+    const params = new URLSearchParams({
+      accountId,
+      limit: (options?.limit || 20).toString(),
+    });
+    if (options?.startingAfter) {
+      params.append("startingAfter", options.startingAfter);
+    }
+
+    const response = await fetch(`${API_BASE_URL}stripe/payouts?${params}`, {
+      headers: {
+        Authorization: `Bearer ${session?.access_token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        error: `HTTP ${response.status}: ${response.statusText}`,
+      }));
+      const errorMessage =
+        error.error || error.message || "Failed to get payouts";
+
+      if (response.status === 404) {
+        throw new Error("PAYOUTS_ENDPOINT_NOT_AVAILABLE");
+      }
+
+      throw new Error(errorMessage);
+    }
+
+    return await response.json();
+  };
+
   return {
     status,
     isLoading,
@@ -261,5 +486,10 @@ export const useStripe = () => {
     createAccountSession,
     getAccountStatus,
     getAccountDetails,
+    createAccountLink,
+    createAccountManagementLink,
+    getAccountBalance,
+    getTransactions,
+    getPayouts,
   };
 };
