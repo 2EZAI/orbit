@@ -17,7 +17,7 @@ import {
   RefreshCw,
 } from "lucide-react-native";
 import Toast from "react-native-toast-message";
-import { Linking } from "react-native";
+import { Linking, StyleSheet } from "react-native";
 
 interface PaymentsDashboardProps {
   accountId: string;
@@ -180,11 +180,7 @@ export function PaymentsDashboard({ accountId }: PaymentsDashboardProps) {
     hasLoadedRef.current = true;
     setIsLoading(true);
     try {
-      await Promise.all([
-        loadBalance(),
-        loadPayouts(),
-        loadTransactions(),
-      ]);
+      await Promise.all([loadBalance(), loadPayouts(), loadTransactions()]);
     } catch (err: any) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to load dashboard data";
@@ -202,11 +198,7 @@ export function PaymentsDashboard({ accountId }: PaymentsDashboardProps) {
     setIsRefreshing(true);
     hasLoadedRef.current = false; // Reset flag for refresh
     try {
-      await Promise.all([
-        loadBalance(),
-        loadPayouts(),
-        loadTransactions(),
-      ]);
+      await Promise.all([loadBalance(), loadPayouts(), loadTransactions()]);
     } catch (err: any) {
       // Silently fail on refresh
       console.error("Refresh error:", err);
@@ -253,14 +245,7 @@ export function PaymentsDashboard({ accountId }: PaymentsDashboardProps) {
 
   if (isLoading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          padding: 32,
-        }}
-      >
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text
           style={{
@@ -302,36 +287,21 @@ export function PaymentsDashboard({ accountId }: PaymentsDashboardProps) {
               borderColor: theme.colors.border,
             }}
           >
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                marginBottom: 8,
-              }}
-            >
+            <View style={styles.walletContainer}>
               <Wallet size={20} color={theme.colors.primary} />
               <Text
-                style={{
-                  fontSize: 12,
-                  color: theme.colors.text + "80",
-                  marginLeft: 8,
-                }}
+                style={[
+                  styles.title,
+                  {
+                    color: theme.colors.text + "80",
+                  },
+                ]}
               >
                 Available Balance
               </Text>
             </View>
-            <Text
-              style={{
-                fontSize: 24,
-                fontWeight: "800",
-                color: theme.colors.text,
-                marginBottom: 4,
-              }}
-            >
-              {formatCurrency(
-                availableAmount,
-                balance?.available[0]?.currency
-              )}
+            <Text style={[styles.subTitle, { color: theme.colors.text }]}>
+              {formatCurrency(availableAmount, balance?.available[0]?.currency)}
             </Text>
             <Text
               style={{
@@ -361,23 +331,17 @@ export function PaymentsDashboard({ accountId }: PaymentsDashboardProps) {
               }}
             >
               <RefreshCw size={20} color={theme.colors.primary} />
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: theme.colors.text + "80",
-                  marginLeft: 8,
-                }}
-              >
+              <Text style={[styles.title, { color: theme.colors.text + "80" }]}>
                 Pending Balance
               </Text>
             </View>
             <Text
-              style={{
-                fontSize: 24,
-                fontWeight: "800",
-                color: theme.colors.text,
-                marginBottom: 4,
-              }}
+              style={[
+                styles.subTitle,
+                {
+                  color: theme.colors.text,
+                },
+              ]}
             >
               {formatCurrency(pendingAmount, balance?.pending[0]?.currency)}
             </Text>
@@ -529,10 +493,7 @@ export function PaymentsDashboard({ accountId }: PaymentsDashboardProps) {
                       }}
                     >
                       {transaction.type === "charge" ? "+" : "-"}
-                      {formatCurrency(
-                        transaction.amount,
-                        transaction.currency
-                      )}
+                      {formatCurrency(transaction.amount, transaction.currency)}
                     </Text>
                     <Text
                       style={{
@@ -701,4 +662,26 @@ export function PaymentsDashboard({ accountId }: PaymentsDashboardProps) {
     </ScrollView>
   );
 }
-
+const styles = StyleSheet.create({
+  subTitle: {
+    fontSize: 24,
+    lineHeight: 32,
+    fontWeight: "800",
+    marginBottom: 4,
+  },
+  title: {
+    marginLeft: 8,
+    fontSize: 12,
+  },
+  walletContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 32,
+  },
+});
