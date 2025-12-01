@@ -52,7 +52,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ],
     ios: {
       bundleIdentifier: "com.dovydmcnugget.orbit",
-      buildNumber: "27",
+      buildNumber: "28",
       supportsTablet: true,
       config: {
         usesNonExemptEncryption: false,
