@@ -525,7 +525,7 @@ export default function PermissionsScreen() {
                 ? "✅ All permissions granted!"
                 : `${
                     Object.values(permissions).filter((p) => p.granted).length
-                  }/4 permissions granted`}
+                  }/5 permissions granted`}
             </Text>
             <Text
               style={{
