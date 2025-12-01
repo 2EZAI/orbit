@@ -5,9 +5,9 @@ import {
   TouchableOpacity,
   View,
   ScrollView,
-  Linking,
   Alert,
 } from "react-native";
+import { router } from "expo-router";
 import Payment from "~/assets/svg/Payment";
 import { useStripe } from "~/hooks/useStripe";
 import { useTheme } from "~/src/components/ThemeProvider";
@@ -90,20 +90,21 @@ export function PaymentSubscriptionModal({
         throw new Error("Unable to get Stripe account ID");
       }
 
-      // Get account link and open in browser
+      // Get account link and open in WebView
       const accountLinkUrl = await createAccountLink(accountId);
 
-      const canOpen = await Linking.canOpenURL(accountLinkUrl);
-      if (canOpen) {
-        await Linking.openURL(accountLinkUrl);
-        Toast.show({
-          type: "info",
-          text1: "Redirecting to Stripe",
-          text2: "Complete your setup and you'll return here automatically",
-        });
-      } else {
-        throw new Error("Cannot open Stripe onboarding URL");
-      }
+      // Close modal and navigate to WebView
+      onClose();
+      
+      router.push({
+        pathname: "/(app)/(webview)",
+        params: {
+          external_url: accountLinkUrl,
+          title: "Stripe Onboarding",
+          accountId: accountId,
+          type: "stripe-onboarding",
+        },
+      });
     } catch (error: any) {
       console.error("Failed to start Stripe onboarding:", error);
       Toast.show({

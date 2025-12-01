@@ -32,6 +32,12 @@ export default function WebviewLayout() {
   const [showOverlay, setShowOverlay] = useState(false);
 
   const handleBackPress = () => {
+    // For Stripe onboarding, just go back without confirmation
+    if (title === "Stripe Onboarding") {
+      router.back();
+      return;
+    }
+    
     if (title !== "Privacy Policy" && title !== "Terms & Conditions") {
       setShowOverlay(true); // show full screen view
     } else {
@@ -47,7 +53,7 @@ export default function WebviewLayout() {
       //   eventId: eventSelected,
       // },
     });
-    let result = await UpdateEventStatus(event);
+    await UpdateEventStatus(event);
 
     setTimeout(() => {
       //  router.back(); // user confirms navigation
