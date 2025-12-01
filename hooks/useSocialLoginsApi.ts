@@ -143,19 +143,29 @@ export function useSocialLoginsApi() {
         } else {
           //new user
           if (!error) {
+            const appleFirstName = credential?.fullName?.givenName || "";
+            const appleLastName = credential?.fullName?.familyName || "";
+            
             await updateUser(
               {
                 apple_id: credential?.user,
                 register_type: "apple",
-                first_name: credential?.fullName?.givenName || "",
-                last_name: credential?.fullName?.familyName || "",
+                first_name: appleFirstName,
+                last_name: appleLastName,
               },
               user
             );
+            
             // User is signed in.
-            // Navigate to onboarding
+            // Navigate to onboarding with name params so they're available immediately
             setTimeout(() => {
-              router.replace("/(auth)/(onboarding)/username");
+              router.replace({
+                pathname: "/(auth)/(onboarding)/username",
+                params: {
+                  ...(appleFirstName && { firstName: appleFirstName }),
+                  ...(appleLastName && { lastName: appleLastName }),
+                },
+              });
             }, 500);
           }
         }
