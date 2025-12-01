@@ -1,6 +1,6 @@
 import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Camera, Check, Mail, Phone, User, X } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -46,11 +46,16 @@ export default function UsernameScreen() {
   const insets = useSafeAreaInsets();
   const { keyboardState, scrollViewRef, scrollToInput, ScrollToInputContext } =
     useKeyboardAware();
+  const params = useLocalSearchParams();
 
-  // Form state
+  // Form state - Initialize from URL params (Apple Sign In) or user data
   const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [firstName, setFirstName] = useState(user?.first_name || "");
-  const [lastName, setLastName] = useState(user?.last_name || "");
+  const [firstName, setFirstName] = useState(
+    (params.firstName as string) || user?.first_name || ""
+  );
+  const [lastName, setLastName] = useState(
+    (params.lastName as string) || user?.last_name || ""
+  );
   const [phone, setPhone] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
