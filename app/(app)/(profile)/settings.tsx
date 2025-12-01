@@ -459,11 +459,11 @@ export default function SettingsScreen() {
           title="Update Personal Information"
           onPress={() => setShowPersonalInfo(true)}
         />
-        {/* <SettingItem
+        <SettingItem
           icon={<Payment width={24} height={24} fill={theme.colors.primary} />}
           title="Payment & Subscriptions"
           onPress={() => setShowPaymentSubscription(true)}
-        /> */}
+        />
         <SettingItem
           icon={<Edit3 size={20} color={theme.colors.primary} />}
           title="Update User Name"
