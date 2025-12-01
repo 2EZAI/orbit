@@ -559,10 +559,6 @@ export default function PostView() {
                   </Text>
                 </View>
               </TouchableOpacity>
-
-              <TouchableOpacity>
-                <MoreHorizontal size={24} color={theme.colors.text} />
-              </TouchableOpacity>
             </View>
 
             {/* Post Content */}

@@ -226,10 +226,12 @@ export default function PermissionsScreen() {
       updatePermissionState("contacts", { loading: false });
     }
   };
-  const allPermissionsGranted = Object.values(permissions).every(
-    (p) => p.granted || (p.key === "contacts" && !p.granted)
-  );
-
+  const allPermissionsGranted =
+    permissions.location.granted &&
+    permissions.camera.granted &&
+    permissions.photos.granted &&
+    permissions.notifications.granted &&
+    permissions.contacts.granted;
 
   const handleContinue = async () => {
     if (!user || isSubmitting) return;
@@ -535,7 +537,7 @@ export default function PermissionsScreen() {
             >
               {allPermissionsGranted
                 ? "You're all set to explore the cosmos!"
-                : "Grant permissions to unlock all features"}
+                : "You can enable permissions to unlock all features. You can change this anytime in Settings."}
             </Text>
             {!allPermissionsGranted && (
               <Text
@@ -664,19 +666,10 @@ export default function PermissionsScreen() {
         {/* Continue Button */}
         <TouchableOpacity
           onPress={handleContinue}
-          disabled={
-            !permissions.camera.granted ||
-            !permissions.location.granted ||
-            !permissions.location.granted ||
-            !permissions.photos.granted ||
-            isSubmitting
-          }
+          disabled={isSubmitting}
           style={{
             height: 64,
-            backgroundColor:
-              allPermissionsGranted && !isSubmitting
-                ? "#8B5CF6"
-                : theme.colors.text + "33",
+            backgroundColor: theme.colors.primary,
             borderRadius: 20,
             justifyContent: "center",
             alignItems: "center",
@@ -695,14 +688,10 @@ export default function PermissionsScreen() {
               style={{
                 fontSize: 20,
                 fontWeight: "800",
-                color: allPermissionsGranted
-                  ? "white"
-                  : theme.colors.text + "66",
+                color: "white",
               }}
             >
-              {allPermissionsGranted
-                ? "Launch Into Orbit! 🚀"
-                : "Grant All Permissions"}
+              {"Continue"}
             </Text>
           )}
         </TouchableOpacity>
