@@ -4,6 +4,7 @@ import { Calendar, MapPin, Navigation, User } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { openMapDirections } from "~/src/lib/nativeActions";
+import Payment from "~/assets/svg/Payment";
 
 interface EventDetailsSectionProps {
   data: any;
@@ -12,11 +13,11 @@ interface EventDetailsSectionProps {
   hasTickets: boolean;
 }
 
-export function EventDetailsSection({ 
-  data, 
-  isCreator, 
-  isJoined, 
-  hasTickets 
+export function EventDetailsSection({
+  data,
+  isCreator,
+  isJoined,
+  hasTickets,
 }: EventDetailsSectionProps) {
   const { theme, isDarkMode } = useTheme();
 
@@ -24,18 +25,19 @@ export function EventDetailsSection({
     const startDate = new Date(data.start_datetime);
     const endDate = data.end_datetime ? new Date(data.end_datetime) : null;
 
-    const isSameDay = endDate && startDate.toDateString() === endDate.toDateString();
+    const isSameDay =
+      endDate && startDate.toDateString() === endDate.toDateString();
 
-    const startDateStr = startDate.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    const startDateStr = startDate.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
 
-    const startTimeStr = startDate.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
+    const startTimeStr = startDate.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
       hour12: true,
     });
 
@@ -44,22 +46,22 @@ export function EventDetailsSection({
     }
 
     if (isSameDay) {
-      const endTimeStr = endDate.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
+      const endTimeStr = endDate.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
         hour12: true,
       });
       return `${startDateStr} from ${startTimeStr} to ${endTimeStr}`;
     } else {
-      const endDateStr = endDate.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
+      const endDateStr = endDate.toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
       });
-      const endTimeStr = endDate.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
+      const endTimeStr = endDate.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
         hour12: true,
       });
       return `${startDateStr} at ${startTimeStr} to ${endDateStr} at ${endTimeStr}`;
@@ -80,10 +82,13 @@ export function EventDetailsSection({
       {/* Description Section - Matches web EventDescription component */}
       {data.description && (
         <View className="mb-4">
-          <Text className="mb-2 text-lg font-bold" style={{ color: theme.colors.text }}>
+          <Text
+            className="mb-2 text-lg font-bold"
+            style={{ color: theme.colors.text }}
+          >
             About This Event
           </Text>
-          <Text 
+          <Text
             className="text-base leading-relaxed"
             style={{ color: isDarkMode ? theme.colors.text : "#6B7280" }}
           >
@@ -96,14 +101,21 @@ export function EventDetailsSection({
       <View
         className="p-4 rounded-xl border"
         style={{
-          backgroundColor: isDarkMode ? "rgba(255,255,255,0.05)" : theme.colors.card,
-          borderColor: isDarkMode ? "rgba(255,255,255,0.1)" : theme.colors.border,
+          backgroundColor: isDarkMode
+            ? "rgba(255,255,255,0.05)"
+            : theme.colors.card,
+          borderColor: isDarkMode
+            ? "rgba(255,255,255,0.1)"
+            : theme.colors.border,
         }}
       >
         {/* Section Header */}
         <View className="flex-row items-center mb-3">
-          <Calendar size={16} color={isDarkMode ? "rgba(255,255,255,0.6)" : "#6B7280"} />
-          <Text 
+          <Calendar
+            size={16}
+            color={isDarkMode ? "rgba(255,255,255,0.6)" : "#6B7280"}
+          />
+          <Text
             className="ml-2 text-sm"
             style={{ color: isDarkMode ? "rgba(255,255,255,0.6)" : "#6B7280" }}
           >
@@ -118,13 +130,18 @@ export function EventDetailsSection({
               <View
                 className="p-1.5 rounded"
                 style={{
-                  backgroundColor: isDarkMode ? "rgba(139, 92, 246, 0.2)" : "rgba(139, 92, 246, 0.1)",
+                  backgroundColor: isDarkMode
+                    ? "rgba(139, 92, 246, 0.2)"
+                    : "rgba(139, 92, 246, 0.1)",
                 }}
               >
                 <Calendar size={12} color="#8B5CF6" />
               </View>
               <View className="flex-1">
-                <Text className="font-medium" style={{ color: theme.colors.text }}>
+                <Text
+                  className="font-medium"
+                  style={{ color: theme.colors.text }}
+                >
                   {formatEventDateTime()}
                 </Text>
               </View>
@@ -137,19 +154,29 @@ export function EventDetailsSection({
               <View
                 className="p-1.5 rounded"
                 style={{
-                  backgroundColor: isDarkMode ? "rgba(107, 114, 128, 0.2)" : "rgba(107, 114, 128, 0.1)",
+                  backgroundColor: isDarkMode
+                    ? "rgba(107, 114, 128, 0.2)"
+                    : "rgba(107, 114, 128, 0.1)",
                 }}
               >
                 <MapPin size={12} color="#6B7280" />
               </View>
               <View className="flex-1">
                 {data.venue_name && (
-                  <Text className="font-medium" style={{ color: theme.colors.text }}>
+                  <Text
+                    className="font-medium"
+                    style={{ color: theme.colors.text }}
+                  >
                     {data.venue_name}
                   </Text>
                 )}
                 {data.address && (
-                  <Text className="text-sm" style={{ color: isDarkMode ? "rgba(255,255,255,0.7)" : "#6B7280" }}>
+                  <Text
+                    className="text-sm"
+                    style={{
+                      color: isDarkMode ? "rgba(255,255,255,0.7)" : "#6B7280",
+                    }}
+                  >
                     {data.address}
                   </Text>
                 )}
@@ -163,17 +190,28 @@ export function EventDetailsSection({
               <View
                 className="p-1.5 rounded"
                 style={{
-                  backgroundColor: isDarkMode ? "rgba(16, 185, 129, 0.2)" : "rgba(16, 185, 129, 0.1)",
+                  backgroundColor: isDarkMode
+                    ? "rgba(16, 185, 129, 0.2)"
+                    : "rgba(16, 185, 129, 0.1)",
                 }}
               >
                 <User size={12} color="#10B981" />
               </View>
               <View className="flex-1">
-                <Text className="font-medium" style={{ color: theme.colors.text }}>
-                  Created by {data.created_by.username || data.created_by.name || 'Host'}
+                <Text
+                  className="font-medium"
+                  style={{ color: theme.colors.text }}
+                >
+                  Created by{" "}
+                  {data.created_by.username || data.created_by.name || "Host"}
                 </Text>
                 {data.created_by.username && (
-                  <Text className="text-xs" style={{ color: isDarkMode ? "rgba(255,255,255,0.6)" : "#6B7280" }}>
+                  <Text
+                    className="text-xs"
+                    style={{
+                      color: isDarkMode ? "rgba(255,255,255,0.6)" : "#6B7280",
+                    }}
+                  >
                     @{data.created_by.username}
                   </Text>
                 )}
@@ -183,6 +221,19 @@ export function EventDetailsSection({
         </View>
 
         {/* Action Buttons */}
+        {data?.ticket_status === "sales_live" && (
+          <View className="flex-row mt-4" style={{ gap: 8 }}>
+            <TouchableOpacity
+              onPress={handleDirections}
+              className="flex-1 flex-row items-center justify-center py-2.5 px-3 rounded-lg bg-green-500"
+            >
+              <Payment width={16} height={16} fill={"white"} />
+              <Text className="ml-1.5 text-sm font-semibold text-white">
+                Purchase Tickets
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
         <View className="flex-row mt-4" style={{ gap: 8 }}>
           <TouchableOpacity
             onPress={handleDirections}

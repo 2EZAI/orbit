@@ -44,6 +44,7 @@ export interface MapEvent {
   join_status?: boolean;
   source?: string;
   type?: string;
+  
 }
 
 export interface MapLocation {
@@ -617,9 +618,10 @@ export function useUnifiedMapData({
         console.log(
           `[UnifiedMapData] ⚡ Created ${eventClusters.length} event clusters and ${locationClusters.length} location clusters`
         );
-        console.log(
+        console
+          .log
           // `[UnifiedMapData] 📊 Time-based clusters: ${nowEventClusters.length} now, ${todayEventClusters.length} today, ${tomorrowEventClusters.length} tomorrow`
-        );
+          ();
       } catch (error) {
         console.error("[UnifiedMapData] Error processing clusters:", error);
       }

@@ -13,17 +13,13 @@
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "usesAppleSignIn": true,
       "supportsTablet": true,
       "bundleIdentifier": "com.dovydmcnugget.orbit",
       "infoPlist": {
-        "UIBackgroundModes": [
-          "remote-notification"
-        ],
+        "UIBackgroundModes": ["remote-notification"],
         "NSUserNotificationUsageDescription": "This app uses notifications to keep you informed."
       }
     },
@@ -80,6 +76,13 @@
           "url": "https://sentry.io/",
           "project": "react-native",
           "organization": "orbit-social-app"
+        }
+      ],
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.dovydmcnugget.orbit",
+          "enableGooglePay": true
         }
       ]
     ],

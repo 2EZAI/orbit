@@ -40,7 +40,17 @@ export type UnifiedData = (MapEvent | MapLocation) & {
     username?: string;
     avatar_url: string | null;
   };
+  ticket_status?:
+    | "free"
+    | "paid_unconfigured"
+    | "paid_configured"
+    | "sales_live";
+  stripe_payment_link_url?: string;
+  ticket_price_cents?: number;
+  ticket_remaining?: number;
+  ticket_total?: number;
   join_status?: boolean;
+
   external_url?: string;
   category?: Category;
   categories?: Category[];
@@ -117,6 +127,10 @@ export const UnifiedDetailsSheet = React.memo(
     const [loading, setLoading] = useState(false);
     const [detailData, setDetailData] = useState<UnifiedData | undefined>(
       undefined
+    );
+    console.log(
+      "🔍 [UnifiedDetailsSheet] detailData:😅😅😅😅😅😅🥶🥶🥶",
+      detailData?.ticket_status
     );
     const [flagOpen, setFlagOpen] = useState({
       open: false,

@@ -478,6 +478,7 @@ export const useStripe = () => {
     return await response.json();
   };
 
+
   return {
     status,
     isLoading,
