@@ -413,6 +413,38 @@ export class SocialPostService {
   transformPostsToMobileFormat(posts: PostFeedItem[]): any[] {
     return posts.map((post) => this.transformPostToMobileFormat(post));
   }
+
+  /**
+   * Delete a post (matches web app API)
+   */
+  async deletePost(postId: string, authToken: string): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/${postId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = `Failed to delete post: ${response.statusText}`;
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          if (errorText) errorMessage = errorText;
+        }
+        
+        throw new Error(errorMessage);
+      }
+    } catch (error) {
+      console.error("❌ [SocialPostService] Delete post error:", error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance

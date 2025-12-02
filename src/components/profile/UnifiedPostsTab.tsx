@@ -10,6 +10,7 @@ import {
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   RefreshControl,
@@ -17,12 +18,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { PostMenuDropdown } from "~/src/components/social/PostMenuDropdown";
 import { SocialEventCard } from "~/src/components/social/SocialEventCard";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
 import { useAuth } from "~/src/lib/auth";
 import { supabase } from "~/src/lib/supabase";
+import { socialPostService } from "~/src/services/socialPostService";
 
 interface Post {
   id: string;
@@ -292,6 +295,46 @@ export default function UnifiedPostsTab({
     }
   };
 
+  const handleDeletePost = async (postId: string) => {
+    if (!session?.user?.id) {
+      Alert.alert("Error", "Please sign in to delete posts");
+      return;
+    }
+
+    Alert.alert(
+      "Delete Post",
+      "Are you sure you want to delete this post? This action cannot be undone.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // Get access token from Supabase session
+              const { data: { session: currentSession } } = await supabase.auth.getSession();
+
+              if (!currentSession?.access_token) {
+                Alert.alert("Error", "Please sign in to delete posts");
+                return;
+              }
+
+              await socialPostService.deletePost(postId, currentSession.access_token);
+              // Remove post from local state
+              setPosts((prevPosts) => prevPosts.filter((p) => p.id !== postId));
+            } catch (error) {
+              console.error("Error deleting post:", error);
+              Alert.alert("Error", "Failed to delete post. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderPost = ({ item: post, index }: { item: Post; index: number }) => {
     const hasEvent = post.event;
     const hasImages = post.media_urls && post.media_urls.length > 0;
@@ -348,12 +391,13 @@ export default function UnifiedPostsTab({
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity className="p-2">
-            <MoreHorizontal
-              size={20}
-              color={isDarkMode ? "#9CA3AF" : "#6B7280"}
+          {isCurrentUser && (
+            <PostMenuDropdown
+              postId={post.id}
+              isOwner={isCurrentUser}
+              onDelete={handleDeletePost}
             />
-          </TouchableOpacity>
+          )}
         </View>
 
         {/* Post Content */}
