@@ -1,13 +1,11 @@
 import { MoreHorizontal, Trash2, X } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  StyleSheet,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
+    StyleSheet,
+    TouchableOpacity,
+    View
 } from "react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
-import { Text } from "~/src/components/ui/text";
 
 interface PostMenuDropdownProps {
   postId: string;
