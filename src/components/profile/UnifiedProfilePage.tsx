@@ -37,12 +37,13 @@ import { useUser } from "~/src/lib/UserProvider";
 import UnifiedEventsTab from "./UnifiedEventsTab";
 import UnifiedInfoTab from "./UnifiedInfoTab";
 import UnifiedPostsTab from "./UnifiedPostsTab";
+import UnifiedTicketTab from "./UnifiedTicketTab";
 import FollowerSheet from "./FollowerSheet";
 import FollowingSheet from "./FollowingSheet";
 import { useBlocking } from "~/hooks/useBlocking";
 import { set } from "lodash";
 
-type Tab = "Posts" | "Events" | "Info";
+type Tab = "Posts" | "Events" | "Info" | "Tickets";
 
 interface UserProfile {
   id: string;
@@ -989,7 +990,7 @@ export function UnifiedProfilePage({
               borderColor: theme.colors.border,
             }}
           >
-            {(["Posts", "Events", "Info"] as Tab[]).map((tab) => (
+            {(["Posts", "Events", "Info", "Tickets"] as Tab[]).map((tab) => (
               <Pressable
                 key={tab}
                 onPress={() => setActiveTab(tab)}
@@ -1043,6 +1044,7 @@ export function UnifiedProfilePage({
               isCurrentUser={isCurrentUser}
             />
           )}
+          {activeTab === "Tickets" && <UnifiedTicketTab />}
         </View>
       </ScrollView>
       <FollowerSheet
