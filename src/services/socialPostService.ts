@@ -415,7 +415,7 @@ export class SocialPostService {
   }
 
   /**
-   * Delete a post (matches web app API)
+   * Delete a post
    */
   async deletePost(postId: string, authToken: string): Promise<void> {
     try {
