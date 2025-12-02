@@ -83,6 +83,7 @@ export const useCheckoutSession = () => {
           });
           return { success: false, checkoutSession: null, event: null };
         }
+        setState({ loading: false, error: null });
         return data;
       } catch (err) {
         const message =

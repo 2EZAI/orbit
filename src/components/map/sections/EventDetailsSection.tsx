@@ -1,11 +1,17 @@
-import React from "react";
-import { TouchableOpacity, View } from "react-native";
+import {
+  initPaymentSheet,
+  presentPaymentSheet,
+} from "@stripe/stripe-react-native";
 import { Calendar, MapPin, Navigation, User } from "lucide-react-native";
+import React from "react";
+import { ActivityIndicator, TouchableOpacity, View } from "react-native";
+import Toast from "react-native-toast-message";
+import Payment from "~/assets/svg/Payment";
+import { useCheckoutSession } from "~/hooks/useCheckoutSession";
+import { useUserData } from "~/hooks/useUserData";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { openMapDirections } from "~/src/lib/nativeActions";
-import Payment from "~/assets/svg/Payment";
-
 interface EventDetailsSectionProps {
   data: any;
   isCreator: boolean;
@@ -20,7 +26,8 @@ export function EventDetailsSection({
   hasTickets,
 }: EventDetailsSectionProps) {
   const { theme, isDarkMode } = useTheme();
-
+  const { createCheckoutSession, loading } = useCheckoutSession();
+  const { user } = useUserData();
   const formatEventDateTime = () => {
     const startDate = new Date(data.start_datetime);
     const endDate = data.end_datetime ? new Date(data.end_datetime) : null;
@@ -76,7 +83,50 @@ export function EventDetailsSection({
       await openMapDirections(lat, lng, data.address || data.venue_name);
     }
   };
-
+  const handleTicketPurchase = async () => {
+    const key = `${user?.id}-${data.id}-${Date.now()}`;
+    const checkoutSessionData = await createCheckoutSession({
+      eventId: data.id,
+      idempotencyKey: key,
+    });
+    console.log(
+      "🔍 [EventDetailsSection] checkoutSessionData:",
+      checkoutSessionData.checkoutSession?.clientSecret
+    );
+    if (
+      checkoutSessionData.success &&
+      checkoutSessionData.checkoutSession?.clientSecret
+    ) {
+      const { error: initError } = await initPaymentSheet({
+        merchantDisplayName: "Orbit",
+        paymentIntentClientSecret:
+          checkoutSessionData.checkoutSession?.clientSecret,
+        style: "automatic",
+        returnURL: "com.dovydmcnugget.orbit://payment-success",
+        // Only include customerId / customerEphemeralKeySecret if your backend
+        // actually returns valid Stripe values for them.
+      });
+      console.log("🔍 [EventDetailsSection] initError:", initError);
+      if (initError) {
+        Toast.show({
+          type: "error",
+          text1: "Payment error",
+          text2: initError.message,
+        });
+      } else {
+        const { error: presentError } = await presentPaymentSheet();
+        if (presentError) {
+          console.error("Error presenting payment sheet:", presentError);
+          return;
+        } else {
+          Toast.show({
+            type: "success",
+            text1: "Payment successful",
+          });
+        }
+      }
+    }
+  };
   return (
     <View className="mb-6">
       {/* Description Section - Matches web EventDescription component */}
@@ -224,13 +274,16 @@ export function EventDetailsSection({
         {data?.ticket_status === "sales_live" && (
           <View className="flex-row mt-4" style={{ gap: 8 }}>
             <TouchableOpacity
-              onPress={handleDirections}
+              onPress={handleTicketPurchase}
               className="flex-1 flex-row items-center justify-center py-2.5 px-3 rounded-lg bg-green-500"
             >
               <Payment width={16} height={16} fill={"white"} />
               <Text className="ml-1.5 text-sm font-semibold text-white">
-                Purchase Tickets
+                Purchase Tickets{" "}
+                {data.ticket_price_cents &&
+                  `$${(data.ticket_price_cents / 100).toFixed(2)}`}
               </Text>
+              {loading && <ActivityIndicator size="small" color="white" />}
             </TouchableOpacity>
           </View>
         )}
