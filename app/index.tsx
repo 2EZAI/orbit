@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
-import { router, useFocusEffect } from "expo-router";
+import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Animated,
@@ -511,26 +511,11 @@ export default function LandingPage() {
   const [isReady, setIsReady] = useState(false);
   const [orbitingImages, setOrbitingImages] = useState<any[]>([]);
   const [fireflies, setFireflies] = useState<string[]>([]);
-  const [isFirstTime, setIsFirstTime] = useState(false);
   const mainRotation = useState(() => new Animated.Value(0))[0];
   // Logo center coordinates
   const logoCenterX = width / 2;
   const logoCenterY = height * 0.3;
   const { appleLogin, googleLogin } = useSocialLoginsApi();
-  const checkIfFirstTime = async () => {
-    const isAlreadyGetStarted = await AsyncStorage.getItem("hasStarted");
-    if (isAlreadyGetStarted) {
-      setIsFirstTime(false);
-    } else {
-      setIsFirstTime(true);
-    }
-  };
-  // Redirect authenticated users to the app
-  useFocusEffect(
-    React.useCallback(() => {
-      checkIfFirstTime();
-    }, [])
-  );
 
   useEffect(() => {
     if (!loading && session && isFocused && !isSocialLogin) {
@@ -595,11 +580,6 @@ export default function LandingPage() {
     router.navigate("/(auth)/sign-in");
   };
 
-  const handleSignUp = async () => {
-    // router.push("/(auth)/sign-up");
-    await AsyncStorage.setItem("hasStarted", "true");
-    router.navigate("/(app)/(map)");
-  };
 
   // Show loading while checking authentication
   if (loading) {
@@ -750,69 +730,65 @@ export default function LandingPage() {
         </Text>
 
         <View style={{ width: "100%", gap: 12 }}>
-          {!isFirstTime ? (
-            <>
-              {Platform.OS == "ios" && (
-                <TouchableOpacity
-                  onPress={async () => {
-                    setIsSocialLogin(true);
-                    await appleLogin();
-                  }}
-                  style={{
-                    backgroundColor: "#FFFFFF",
-                    paddingVertical: 18,
-                    paddingHorizontal: 24,
-                    borderRadius: 16,
-                    borderWidth: 1,
-                    borderColor: theme.colors.border,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    flexDirection: "row",
-                    gap: 10,
-                  }}
-                >
-                  <Icon size={24} type="antdesign" name="apple1" />
-                  <Text
-                    style={{
-                      color: "#000000",
-                      fontSize: 16,
-                      fontWeight: "600",
-                    }}
-                  >
-                    Continue with Apple
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity
-                onPress={async () => {
-                  setIsSocialLogin(true);
-                  await googleLogin();
-                }}
+          {Platform.OS == "ios" && (
+            <TouchableOpacity
+              onPress={async () => {
+                setIsSocialLogin(true);
+                await appleLogin();
+              }}
+              style={{
+                backgroundColor: "#FFFFFF",
+                paddingVertical: 18,
+                paddingHorizontal: 24,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                justifyContent: "center",
+                alignItems: "center",
+                flexDirection: "row",
+                gap: 10,
+              }}
+            >
+              <Icon size={24} type="antdesign" name="apple1" />
+              <Text
                 style={{
-                  backgroundColor: "#000000",
-                  paddingVertical: 18,
-                  paddingHorizontal: 24,
-                  borderRadius: 16,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  flexDirection: "row",
-                  gap: 10,
+                  color: "#000000",
+                  fontSize: 16,
+                  fontWeight: "600",
                 }}
               >
-                <Google width={24} height={24} />
-                <Text
-                  style={{
-                    color: "#FFFFFF",
-                    fontSize: 16,
-                    fontWeight: "600",
-                  }}
-                >
-                  Continue with Google
-                </Text>
-              </TouchableOpacity>
-            </>
-          ) : null}
+                Continue with Apple
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            onPress={async () => {
+              setIsSocialLogin(true);
+              await googleLogin();
+            }}
+            style={{
+              backgroundColor: "#000000",
+              paddingVertical: 18,
+              paddingHorizontal: 24,
+              borderRadius: 16,
+              justifyContent: "center",
+              alignItems: "center",
+              flexDirection: "row",
+              gap: 10,
+            }}
+          >
+            <Google width={24} height={24} />
+            <Text
+              style={{
+                color: "#FFFFFF",
+                fontSize: 16,
+                fontWeight: "600",
+              }}
+            >
+              Continue with Google
+            </Text>
+          </TouchableOpacity>
           <View
             style={{
               flexDirection: "row",
@@ -851,8 +827,8 @@ export default function LandingPage() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={async () => {
-                await AsyncStorage.setItem("hasStarted", "true");
+              onPress={() => {
+
                 router.navigate("/(app)/(map)");
               }}
               style={{
@@ -879,31 +855,29 @@ export default function LandingPage() {
             </TouchableOpacity>
           </View>
 
-          {!isFirstTime ? (
-            <TouchableOpacity
-              onPress={handleGetStarted}
+          <TouchableOpacity
+            onPress={handleGetStarted}
+            style={{
+              backgroundColor: isDarkMode ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.04)",
+              paddingVertical: 18,
+              paddingHorizontal: 24,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Text
               style={{
-                backgroundColor: isDarkMode ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.04)",
-                paddingVertical: 18,
-                paddingHorizontal: 24,
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-                justifyContent: "center",
-                alignItems: "center",
+                color: theme.colors.text,
+                fontSize: 16,
+                fontWeight: "600",
               }}
             >
-              <Text
-                style={{
-                  color: theme.colors.text,
-                  fontSize: 16,
-                  fontWeight: "600",
-                }}
-              >
-                Login
-              </Text>
-            </TouchableOpacity>
-          ) : null}
+              Login
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     </View>
