@@ -1,13 +1,14 @@
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import { Calendar, MapPin, Star, Users } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   DeviceEventEmitter,
-  Image,
   TouchableOpacity,
   View,
 } from "react-native";
+import FastImage from "react-native-fast-image";
 import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
 import { formatDate, formatTime } from "~/src/lib/date";
 import { Text } from "../ui/text";
@@ -282,8 +283,22 @@ export function SocialEventCard({
   }, []);
 
   useEffect(() => {
+    // Set detailData immediately with initial data to show images right away
     setDetailData(data);
-    hitDetailApi();
+    
+    // Only fetch detail API if we don't have image_urls in the initial data
+    // For created events, we already have all the data we need, so skip the API call
+    if (!data.image_urls || data.image_urls.length === 0) {
+      // Only fetch if we're missing image data
+      hitDetailApi();
+    } else {
+      // For events with images, delay the API call to not block rendering
+      // This fetches updated attendee counts, etc. in the background
+      const timer = setTimeout(() => {
+        hitDetailApi();
+      }, 500); // Delay by 500ms to let images render first
+      return () => clearTimeout(timer);
+    }
   }, [data]);
 
   const handleContextAction = (action: string) => {
@@ -362,7 +377,12 @@ export function SocialEventCard({
 
           if (response.ok) {
             const eventDetails = await response.json();
-            setDetailData(eventDetails);
+            // Preserve image_urls from original data if API response doesn't have them
+            const updatedDetails = {
+              ...eventDetails,
+              image_urls: eventDetails.image_urls || data.image_urls,
+            };
+            setDetailData(updatedDetails);
           }
         }
       } else {
@@ -434,6 +454,20 @@ export function SocialEventCard({
     const detail = detailData || data;
 
     if (treatAsEvent) {
+      // Log image_urls for debugging
+      if (detail.id && !detail.image_urls?.[0]) {
+        console.log("🖼️ [SocialEventCard] Event missing image_urls:", {
+          id: detail.id,
+          name: detail.name,
+          image_urls: detail.image_urls,
+          image_urls_type: typeof detail.image_urls,
+          image_urls_is_array: Array.isArray(detail.image_urls),
+          has_detailData: !!detailData,
+          detailData_image_urls: detailData?.image_urls,
+          data_image_urls: data?.image_urls,
+        });
+      }
+
       return {
         title: detail.name,
         subtitle: detail.venue_name,
@@ -514,13 +548,30 @@ export function SocialEventCard({
     >
       {/* Background Image with Blur */}
       {displayValues.imageUrl && (
-        <Image
-          source={{ uri: displayValues.imageUrl }}
-          className="absolute w-full h-full"
-          resizeMode="cover"
-          blurRadius={8} // Add blur effect
-          style={{ opacity: 0.6 }}
-        />
+        <>
+          <FastImage
+            source={{
+              uri: displayValues.imageUrl,
+              priority: FastImage.priority.normal,
+              cache: FastImage.cacheControl.immutable,
+            }}
+            style={{
+              position: "absolute",
+              width: "100%",
+              height: "100%",
+            }}
+            resizeMode={FastImage.resizeMode.cover}
+          />
+          {/* Blur effect overlay */}
+          <BlurView
+            intensity={8}
+            style={{
+              position: "absolute",
+              width: "100%",
+              height: "100%",
+            }}
+          />
+        </>
       )}
 
       {/* Dark Gradient Overlay for better text readability */}
