@@ -19,7 +19,7 @@ import { supabase } from "~/src/lib/supabase";
 import { IProposal } from "~/hooks/useProposals";
 import UnifiedShareSheet from "../map/UnifiedShareSheet";
 import { ChatSelectionModal } from "../social/ChatSelectionModal";
-
+import type { Channel } from "stream-chat";
 type EventTab = "Created" | "Joined";
 
 interface Event {

@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, TouchableOpacity } from "react-native";
 import { Ticket } from "~/hooks/useMyTickets";
 import { useTheme } from "../ThemeProvider";
 import { Text } from "~/src/components/ui/text";
+import { UnifiedData } from "../map/UnifiedDetailsSheet";
+import { useEventDetails } from "~/hooks/useEventDetails";
 
 function formatDate(dateString: string | null) {
   if (!dateString) return "TBA";
@@ -36,13 +38,35 @@ function formatTicketId(id: string) {
   );
 }
 
-export function TicketCard({ ticket }: { ticket: Ticket }) {
+export function TicketCard({
+  ticket,
+  onShowDetails,
+  onViewEvent,
+}: {
+  ticket: Ticket;
+  onShowDetails?: (event: UnifiedData | null) => void;
+  onViewEvent?: (event: UnifiedData | null) => void;
+}) {
   const { theme, isDarkMode } = useTheme();
+  const [eventData, setEventData] = useState<UnifiedData | null>(null);
+  const { getEventDetails } = useEventDetails();
 
   const eventDate = formatDate(ticket.event_start_datetime || ticket.issued_at);
   const eventTime = formatTime(ticket.event_start_datetime || ticket.issued_at);
   const issuedDate = formatDate(ticket.issued_at);
 
+  useEffect(() => {
+    if (eventData) return;
+    const fetchEventDetails = async () => {
+      const eventDetails = await getEventDetails(ticket.event_id, "supabase");
+      console.log(
+        "🔍 [TicketCard] eventDetails:😅😅😅😅😅😅🥶🥶🥶",
+        eventDetails
+      );
+      setEventData(eventDetails);
+    };
+    fetchEventDetails();
+  }, [ticket.event_id]);
   return (
     <View
       style={{
@@ -145,9 +169,7 @@ export function TicketCard({ ticket }: { ticket: Ticket }) {
             justifyContent: "center",
             alignItems: "center",
           }}
-          onPress={() => {
-            console.log("[UnifiedTicketTab] Show QR Code pressed", ticket.id);
-          }}
+          onPress={() => onShowDetails?.(eventData)}
         >
           <Text
             style={{
@@ -171,9 +193,10 @@ export function TicketCard({ ticket }: { ticket: Ticket }) {
           }}
           onPress={() => {
             console.log(
-              "[UnifiedTicketTab] View Event pressed",
-              ticket.event_id
+              "🔍 [TicketCard] eventData:😅😅😅😅😅😅🥶🥶🥶",
+              eventData
             );
+            onViewEvent?.(eventData);
           }}
         >
           <Text

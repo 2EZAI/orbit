@@ -8,9 +8,14 @@ import {
 } from "react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
-import { useMyTickets, TicketStatus } from "~/hooks/useMyTickets";
+import { useMyTickets, TicketStatus, Ticket } from "~/hooks/useMyTickets";
 import TicketCard from "./TicketCard";
-
+import { TicketDetailsSheet } from "./TicketDetailsSheet";
+import { UnifiedData, UnifiedDetailsSheet } from "../map/UnifiedDetailsSheet";
+import { ChatSelectionModal } from "../social/ChatSelectionModal";
+import UnifiedShareSheet from "../map/UnifiedShareSheet";
+import { IProposal } from "~/hooks/useProposals";
+import type { Channel } from "stream-chat";
 const STATUS_OPTIONS: { label: string; value?: TicketStatus }[] = [
   { label: "All Tickets", value: undefined },
   { label: "Active", value: "active" },
@@ -26,19 +31,114 @@ export default function UnifiedTicketTab() {
     TicketStatus | undefined
   >(undefined);
 
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [detailsVisible, setDetailsVisible] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [shareData, setShareData] = useState<{
+    data: UnifiedData;
+    isEventType: boolean;
+  } | null>(null);
+  const [chatShareSelection, setChatShareSelection] = useState<{
+    proposal: IProposal | null;
+    show: boolean;
+    event: UnifiedData | null;
+    isEventType: boolean;
+  }>({
+    proposal: null,
+    show: false,
+    event: null,
+    isEventType: false,
+  });
+  const handleChatSelect = async (channel: Channel) => {
+    if (!channel) return;
+    try {
+      // Ensure channel is watched before sending
+      await channel.watch();
+      if (chatShareSelection.proposal) {
+        const message = await channel.sendMessage({
+          text: "Check out this proposal!",
+          type: "regular",
+          data: {
+            proposal: chatShareSelection.proposal,
+            type: "proposal/share",
+          },
+        });
+        // router.push(`/(app)/(chat)/channel/${channel.id}`);
+      }
+      if (chatShareSelection.event) {
+        const attachmentType =
+          chatShareSelection.event?.source === "ticketmaster"
+            ? "ticketmaster"
+            : chatShareSelection.isEventType
+            ? "event"
+            : "location";
+        const createPostShareAttachment = (
+          type: "event" | "location" | "ticketmaster"
+        ) => {
+          switch (type) {
+            case "event":
+              const eventData = chatShareSelection.event;
+              return {
+                type: "event_share",
+                event_id: eventData?.id || "",
+                event_data: eventData,
+              };
+            case "location":
+              const locationData = chatShareSelection.event;
+              return {
+                type: "location_share",
+                location_id: locationData?.id || "",
+                location_data: locationData,
+              };
+            case "ticketmaster":
+              const ticketmasterData = chatShareSelection.event;
+              return {
+                type: "ticketmaster_share",
+                event_id: ticketmasterData?.id || "",
+                event_data: {
+                  id: ticketmasterData?.id,
+                  name: ticketmasterData?.name,
+                  description: ticketmasterData?.description,
+                  image_urls: ticketmasterData?.image_urls,
+                  start_datetime: ticketmasterData?.start_datetime,
+                  venue_name: ticketmasterData?.venue_name,
+                  address: ticketmasterData?.address,
+                  city: ticketmasterData?.city,
+                  state: ticketmasterData?.state,
+                  source: "ticketmaster",
+                },
+              };
+            default:
+              return null;
+          }
+        };
+        const attachment = createPostShareAttachment(attachmentType);
+        await channel.sendMessage({
+          text: `Check out ${chatShareSelection.event?.name} on Orbit!`,
+          type: "regular",
+          // Send attachment (like web app) for cross-platform compatibility
+          attachments: attachment ? [attachment] : [],
+        });
+      }
+      // Send the post as a custom message with attachment
+
+      // Navigate to the chat
+    } catch (error) {
+      console.error("Error sharing post:", error);
+      // You could show a toast or alert here
+    }
+  };
   const { data, isLoading, isError, error, refetch } = useMyTickets({
     status: selectedStatus,
   });
 
   const tickets = data?.tickets ?? [];
-  const total = data?.total ?? 0;
 
-  const activeFilterLabel = useMemo(
-    () =>
-      STATUS_OPTIONS.find((opt) => opt.value === selectedStatus)?.label ||
-      "All Tickets",
-    [selectedStatus]
-  );
+  const handleShowDetails = (ticket: Ticket) => {
+    setSelectedTicket(ticket);
+    setDetailsVisible(true);
+  };
 
   const onRefresh = async () => {
     await refetch();
@@ -53,48 +153,6 @@ export default function UnifiedTicketTab() {
         paddingVertical: 16,
       }}
     >
-      {/* Header / filter row */}
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 16,
-        }}
-      >
-        <View style={{ flex: 1 }}>
-          <Text
-            style={{
-              fontSize: 12,
-              color: theme.colors.text + "88",
-              fontWeight: "600",
-            }}
-          >
-            Filter by status
-          </Text>
-          <Text
-            style={{
-              fontSize: 16,
-              fontWeight: "700",
-              color: theme.colors.text,
-            }}
-          >
-            {activeFilterLabel}
-          </Text>
-        </View>
-
-        <View style={{ alignItems: "flex-end" }}>
-          <Text
-            style={{
-              fontSize: 12,
-              color: theme.colors.text + "88",
-            }}
-          >
-            {total} ticket{total === 1 ? "" : "s"}
-          </Text>
-        </View>
-      </View>
-
       {/* Status chips */}
       <ScrollView
         horizontal
@@ -146,6 +204,7 @@ export default function UnifiedTicketTab() {
             flex: 1,
             alignItems: "center",
             justifyContent: "center",
+            paddingBottom: 100,
           }}
         >
           <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -216,6 +275,7 @@ export default function UnifiedTicketTab() {
             alignItems: "center",
             justifyContent: "center",
             paddingHorizontal: 24,
+            paddingBottom: 100,
           }}
         >
           <Text
@@ -244,7 +304,19 @@ export default function UnifiedTicketTab() {
         <FlatList
           data={tickets}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <TicketCard ticket={item} />}
+          renderItem={({ item }) => (
+            <TicketCard
+              ticket={item}
+              onShowDetails={(event: UnifiedData | null) => {
+                handleShowDetails(item);
+                setSelectedEvent(event);
+              }}
+              onViewEvent={(event) => {
+                setSelectedEvent(event);
+                setIsSheetOpen(true);
+              }}
+            />
+          )}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 24 }}
           refreshControl={
@@ -252,6 +324,79 @@ export default function UnifiedTicketTab() {
           }
         />
       )}
+
+      <TicketDetailsSheet
+        visible={detailsVisible}
+        ticket={selectedTicket}
+        eventData={selectedEvent}
+        onClose={() => setDetailsVisible(false)}
+      />
+      {/* Event Details Sheet */}
+      {selectedEvent && (
+        <UnifiedDetailsSheet
+          data={selectedEvent as any}
+          isOpen={isSheetOpen}
+          onClose={() => {
+            setSelectedEvent(null);
+            setIsSheetOpen(false);
+          }}
+          nearbyData={[]} // Empty for now, could add similar events later
+          onDataSelect={(data) => {
+            // Handle if user selects a different event from within the sheet
+            setSelectedEvent(null);
+            setIsSheetOpen(false);
+          }}
+          onShare={(data, isEvent) => {
+            setSelectedEvent(null);
+            setShareData({ data, isEventType: isEvent });
+          }}
+          onShowControler={() => {
+            // Handle controller show
+          }}
+          isEvent={true}
+        />
+      )}
+      {shareData && (
+        <UnifiedShareSheet
+          isOpen={!!shareData}
+          onClose={() => {
+            setSelectedEvent(shareData?.data as any);
+            setShareData(null);
+          }}
+          data={shareData?.data}
+          isEventType={shareData?.isEventType}
+          onProposalShare={(proposal: IProposal) => {
+            setShareData(null);
+            setChatShareSelection({
+              show: true,
+              proposal: proposal || null,
+              event: null,
+              isEventType: false,
+            });
+          }}
+          onEventShare={(event) => {
+            setShareData(null);
+            setChatShareSelection({
+              show: true,
+              proposal: null,
+              event: event || null,
+              isEventType: shareData?.isEventType,
+            });
+          }}
+        />
+      )}
+      <ChatSelectionModal
+        isOpen={chatShareSelection.show}
+        onClose={() => {
+          setChatShareSelection({
+            show: false,
+            proposal: null,
+            event: null,
+            isEventType: false,
+          });
+        }}
+        onSelectChat={handleChatSelect}
+      />
     </View>
   );
 }

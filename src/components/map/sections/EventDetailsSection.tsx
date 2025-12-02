@@ -97,10 +97,16 @@ export function EventDetailsSection({
       checkoutSessionData.success &&
       checkoutSessionData.checkoutSession?.clientSecret
     ) {
+      console.log(
+        typeof checkoutSessionData.checkoutSession?.clientSecret,
+        checkoutSessionData.checkoutSession?.clientSecret.length,
+        checkoutSessionData.checkoutSession?.clientSecret.trim().length
+      );
       const { error: initError } = await initPaymentSheet({
         merchantDisplayName: "Orbit",
+        
         paymentIntentClientSecret:
-          checkoutSessionData.checkoutSession?.clientSecret,
+          checkoutSessionData.checkoutSession?.clientSecret.trim(),
         style: "automatic",
         returnURL: "com.dovydmcnugget.orbit://payment-success",
         // Only include customerId / customerEphemeralKeySecret if your backend
