@@ -1,8 +1,9 @@
 import { format } from "date-fns";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { set } from "lodash";
 import {
   Bell,
+  Flag,
   Heart,
   MapPin,
   MessageCircle,
@@ -22,6 +23,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { Channel } from "stream-chat";
+import { useFlagging } from "~/hooks/useFlagging";
 import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 import { IProposal } from "~/hooks/useProposals";
 import {
@@ -29,6 +31,7 @@ import {
   UnifiedDetailsSheet,
 } from "~/src/components/map/UnifiedDetailsSheet";
 import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
+import FlagContentModal from "~/src/components/modals/FlagContentModal";
 import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
 import { SocialEventCard } from "~/src/components/social/SocialEventCard";
 import { useTheme } from "~/src/components/ThemeProvider";
@@ -115,6 +118,7 @@ const ImageGallery = ({
 export default function SocialFeed() {
   const { session } = useAuth();
   const { user } = useUser();
+  const { refreshRequired = false } = useLocalSearchParams();
   const { theme, isDarkMode } = useTheme();
   const { sendNotification } = useNotificationsApi();
   const { client } = useChat();
@@ -123,6 +127,7 @@ export default function SocialFeed() {
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [isScrolled, setIsScrolled] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const { setRefreshRequired, isRefreshRequired } = usePostRefresh();
   const [shareData, setShareData] = useState<{
@@ -146,11 +151,14 @@ export default function SocialFeed() {
   const [selectedPostForShare, setSelectedPostForShare] = useState<Post | null>(
     null
   );
-
+  const [flagOpen, setFlagOpen] = useState({
+    open: false,
+    id: "",
+  });
   const PAGE_SIZE = 20;
 
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-
+  const { createFlag } = useFlagging();
   const loadPosts = async (isRefresh = false) => {
     if (loading || (!hasMore && !isRefresh)) {
       return;
@@ -213,7 +221,12 @@ export default function SocialFeed() {
       setRefreshing(false);
     }
   };
-
+  useEffect(() => {
+    console.log("refreshRequired>", refreshRequired);
+    if (refreshRequired) {
+     setRefreshRequired(true);
+    }
+  }, [refreshRequired]);
   useEffect(() => {
     loadPosts(true);
   }, []);
@@ -394,6 +407,11 @@ export default function SocialFeed() {
                 {format(new Date(post.created_at), "MMM d • h:mm a")}
               </Text>
             </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setFlagOpen({ open: true, id: post.id })}
+          >
+            <Flag color="red" size={20} />
           </TouchableOpacity>
         </View>
 
@@ -731,6 +749,7 @@ export default function SocialFeed() {
       <FlatList
         data={posts}
         renderItem={renderPost}
+        onScroll={() => setIsScrolled(true)}
         keyExtractor={(item) => item.id}
         refreshControl={
           <RefreshControl
@@ -741,7 +760,7 @@ export default function SocialFeed() {
           />
         }
         onEndReached={() => {
-          if (hasMore && !loading) {
+          if (hasMore && !loading && isScrolled) {
             loadPosts();
           }
         }}
@@ -872,6 +891,20 @@ export default function SocialFeed() {
         }}
         onSelectChat={handleSelectChat}
         // postId={selectedPostForShare?.id || ""}
+      />
+      <FlagContentModal
+        visible={flagOpen.open}
+        contentTitle={"Post"}
+        variant="sheet"
+        onClose={() => setFlagOpen({ open: false, id: "" })}
+        onSubmit={async ({ reason, explanation }) => {
+          await createFlag({
+            reason,
+            explanation,
+            post_id: flagOpen.id,
+          });
+          loadPosts(true);
+        }}
       />
     </SafeAreaView>
   );

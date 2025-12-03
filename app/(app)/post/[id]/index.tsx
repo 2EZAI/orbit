@@ -2,10 +2,10 @@ import { format } from "date-fns";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import {
   ArrowLeft,
+  Flag,
   Heart,
   MapPin,
   MessageCircle,
-  MoreHorizontal,
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
@@ -24,21 +24,23 @@ import {
 import { Icon } from "react-native-elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { Channel } from "stream-chat";
+import { useFlagging } from "~/hooks/useFlagging";
 import { MapEvent } from "~/hooks/useMapEvents";
+import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 import { IProposal } from "~/hooks/useProposals";
 import {
   UnifiedData,
   UnifiedDetailsSheet,
 } from "~/src/components/map/UnifiedDetailsSheet";
 import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
+import FlagContentModal from "~/src/components/modals/FlagContentModal";
 import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
 import { SocialEventCard } from "~/src/components/social/SocialEventCard";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { useAuth } from "~/src/lib/auth";
-import { supabase } from "~/src/lib/supabase";
-import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 import { usePostRefresh } from "~/src/lib/postProvider";
+import { supabase } from "~/src/lib/supabase";
 
 interface Post {
   id: string;
@@ -225,7 +227,11 @@ export default function PostView() {
 
   const { event } = useLocalSearchParams();
   const [eventObj, setEventObj] = useState<EventObject | null>(null);
-
+  const [flagOpen, setFlagOpen] = useState({
+    open: false,
+    id: "",
+  });
+  const { createFlag } = useFlagging();
   useEffect(() => {
     if (event) {
       try {
@@ -447,6 +453,7 @@ export default function PostView() {
         options={{
           headerShown: true,
           headerTitle: "Post",
+
           headerStyle: {
             backgroundColor: theme.colors.card,
           },
@@ -456,6 +463,7 @@ export default function PostView() {
             fontWeight: "600",
           },
           headerTintColor: theme.colors.text,
+
           headerLeft: () => (
             <TouchableOpacity onPress={() => router.push("/(app)/(social)")}>
               {Platform.OS === "ios" ? (
@@ -468,6 +476,13 @@ export default function PostView() {
                   color={theme.colors.primary || "#239ED0"}
                 />
               )}
+            </TouchableOpacity>
+          ),
+          headerRight: () => (
+            <TouchableOpacity
+              onPress={() => setFlagOpen({ open: true, id: post?.id || "" })}
+            >
+              <Flag color="red" size={24} />
             </TouchableOpacity>
           ),
           headerShadowVisible: false,
@@ -903,6 +918,26 @@ export default function PostView() {
           />
         </KeyboardAvoidingView>
       )}
+      <FlagContentModal
+        visible={flagOpen.open}
+        contentTitle={"Post"}
+        variant="sheet"
+        onClose={() => setFlagOpen({ open: false, id: "" })}
+        onSubmit={async ({ reason, explanation }) => {
+          await createFlag({
+            reason,
+            explanation,
+            post_id: flagOpen.id,
+          });
+          router.push({
+            pathname: "/(app)/(social)",
+            params: {
+              // Expo Router route params are strings
+              refreshRequired: "true",
+            },
+          });
+        }}
+      />
     </View>
   );
 }

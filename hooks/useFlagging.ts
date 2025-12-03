@@ -15,6 +15,7 @@ export interface CreateFlagRequest {
   static_location_id?: string;
   reason: FlagReason;
   explanation?: string;
+  post_id?: string;
 }
 export function useFlagging() {
   const { session } = useAuth();
@@ -25,7 +26,7 @@ export function useFlagging() {
     }
 
     // Validate that either event_id or static_location_id is provided
-    if (!data.event_id && !data.static_location_id) {
+    if (!data.event_id && !data.static_location_id && !data.post_id) {
       Toast.show({
         type: "error",
         text1: "Event Id or Location Id required to flag",
@@ -37,10 +38,10 @@ export function useFlagging() {
       return;
     }
 
-    if (data.event_id && data.static_location_id) {
+    if (data.event_id && data.static_location_id && data.post_id) {
       Toast.show({
         type: "error",
-        text1: "Cannot provide both Event Id and Location Id to flag",
+        text1: "Cannot provide both Event Id, Location Id and Post Id to flag",
         position: "top",
         visibilityTime: 3000,
         autoHide: true,
