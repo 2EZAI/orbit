@@ -478,13 +478,14 @@ export default function PostView() {
               )}
             </TouchableOpacity>
           ),
-          headerRight: () => (
-            <TouchableOpacity
-              onPress={() => setFlagOpen({ open: true, id: post?.id || "" })}
-            >
-              <Flag color="red" size={24} />
-            </TouchableOpacity>
-          ),
+          headerRight: () =>
+            post?.user?.id !== session?.user.id ? (
+              <TouchableOpacity
+                onPress={() => setFlagOpen({ open: true, id: post?.id || "" })}
+              >
+                <Flag color="red" size={24} />
+              </TouchableOpacity>
+            ) : null,
           headerShadowVisible: false,
         }}
       />

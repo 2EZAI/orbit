@@ -224,7 +224,7 @@ export default function SocialFeed() {
   useEffect(() => {
     console.log("refreshRequired>", refreshRequired);
     if (refreshRequired) {
-     setRefreshRequired(true);
+      setRefreshRequired(true);
     }
   }, [refreshRequired]);
   useEffect(() => {
@@ -408,11 +408,13 @@ export default function SocialFeed() {
               </Text>
             </View>
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setFlagOpen({ open: true, id: post.id })}
-          >
-            <Flag color="red" size={20} />
-          </TouchableOpacity>
+          {post.user.id !== session?.user.id && (
+            <TouchableOpacity
+              onPress={() => setFlagOpen({ open: true, id: post.id })}
+            >
+              <Flag color="red" size={20} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Post Content */}
