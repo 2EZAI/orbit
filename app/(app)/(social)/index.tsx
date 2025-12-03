@@ -18,9 +18,11 @@ import {
   RefreshControl,
   ScrollView,
   StatusBar,
+  StyleSheet,
   TouchableOpacity,
   View,
 } from "react-native";
+import { BlurView } from "expo-blur";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { Channel } from "stream-chat";
 import { useFlagging } from "~/hooks/useFlagging";
@@ -411,8 +413,31 @@ export default function SocialFeed() {
           {post.user.id !== session?.user.id && (
             <TouchableOpacity
               onPress={() => setFlagOpen({ open: true, id: post.id })}
+              style={styles.flagButton}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Flag color="red" size={20} />
+              <View
+                style={[
+                  styles.flagIconContainer,
+                  {
+                    backgroundColor: isDarkMode
+                      ? "rgba(255, 255, 255, 0.1)"
+                      : "rgba(0, 0, 0, 0.05)",
+                  },
+                ]}
+              >
+                {isDarkMode && (
+                  <BlurView
+                    intensity={20}
+                    tint="dark"
+                    style={StyleSheet.absoluteFillObject}
+                  />
+                )}
+                <Flag
+                  color={isDarkMode ? "#ef4444" : "#dc2626"}
+                  size={16}
+                />
+              </View>
             </TouchableOpacity>
           )}
         </View>
@@ -911,3 +936,20 @@ export default function SocialFeed() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  flagButton: {
+    marginLeft: 8,
+    marginRight: -4,
+  },
+  flagIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(239, 68, 68, 0.2)",
+  },
+});
