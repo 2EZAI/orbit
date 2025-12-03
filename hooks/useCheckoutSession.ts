@@ -12,9 +12,9 @@ type CreateCheckoutParams = {
 
 type CheckoutResult = {
   success: boolean;
-  checkoutSession: {
+  paymentIntent: {
     clientSecret: string;
-    sessionId: string;
+    id: string;
   } | null;
   event: {
     id: string;
@@ -50,7 +50,7 @@ export const useCheckoutSession = () => {
           text1: "Not signed in",
           text2: message,
         });
-        return { success: false, checkoutSession: null, event: null };
+        return { success: false, paymentIntent: null, event: null };
       }
 
       setState({ loading: true, error: null });
@@ -58,9 +58,9 @@ export const useCheckoutSession = () => {
       try {
         // 1. Ask your backend to create a PaymentIntent & ephemeral key
         const response = await fetch(
-          `${API_BASE_URL}stripe/checkout-session/${params.eventId}?idempotencyKey=${params.idempotencyKey}`,
+          `${API_BASE_URL}stripe/payment-intent/${params.eventId}?idempotencyKey=${params.idempotencyKey}`,
           {
-            method: "GET",
+            method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${session.access_token}`,
@@ -81,7 +81,7 @@ export const useCheckoutSession = () => {
             text1: "Payment error",
             text2: message,
           });
-          return { success: false, checkoutSession: null, event: null };
+          return { success: false, paymentIntent: null, event: null };
         }
         setState({ loading: false, error: null });
         return data;
@@ -96,7 +96,7 @@ export const useCheckoutSession = () => {
           text1: "Payment error",
           text2: message,
         });
-        return { success: false, checkoutSession: null, event: null };
+        return { success: false, paymentIntent: null, event: null };
       }
     },
     [session?.access_token, initPaymentSheet, presentPaymentSheet]
