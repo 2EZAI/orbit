@@ -234,10 +234,15 @@ export const FlagContentModal: React.FC<FlagContentModalProps> = ({
                     activeOpacity={0.8}
                   >
                     <Text
-                      style={{ color: theme.colors.text, fontWeight: "600" }}
+                      style={{ 
+                        color: reason 
+                          ? theme.colors.text 
+                          : theme.colors.text + "60", 
+                        fontWeight: "600" 
+                      }}
                     >
                       {REASON_OPTIONS.find((r) => r.value === reason)?.label ||
-                        ""}
+                        "Select a reason"}
                     </Text>
                     <Text
                       style={{ color: theme.colors.text + "60", fontSize: 12 }}
