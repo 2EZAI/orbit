@@ -12,11 +12,9 @@ import {
   Dimensions,
 } from "react-native";
 import { BlurView } from "expo-blur";
-// Removed unused LinearGradient import
 import * as Haptics from "expo-haptics";
 import { useTheme } from "~/src/components/ThemeProvider";
 import GlassPressable from "~/src/components/ui/GlassPressable";
-import PostLayout from "../../../app/(app)/post/_layout";
 import { FlagReason } from "~/hooks/useFlagging";
 import Toast from "react-native-toast-message";
 const { width, height } = Dimensions.get("window");
@@ -30,34 +28,49 @@ interface FlagContentModalProps {
   }) => Promise<void> | void;
   loading?: boolean;
 
-  contentTitle?: string; // e.g. Post title / username
-  variant?: "center" | "sheet"; // presentation style
+  contentTitle?: string;
+  variant?: "center" | "sheet";
 }
-interface Flags {
+export interface Flags {
   label: string;
   value: FlagReason;
   description: string;
 }
 const REASON_OPTIONS: Flags[] = [
   {
-    value: "inappropriate_content",
-    label: "Inappropriate Content",
-    description: "Content violates community guidelines",
+    value: "sexual_adult_content",
+    label: "Sexual / Adult Content",
+    description: "Objectionable material & age compliance",
   },
   {
-    value: "spam",
-    label: "Spam",
-    description: "Spam or repetitive content",
+    value: "hate_speech_harassment_bullying",
+    label: "Hate Speech / Harassment / Bullying",
+    description: "Safety & anti-abuse protections",
+  },
+  {
+    value: "violence_threats_self_harm",
+    label: "Violence / Threats / Self-harm",
+    description: "User safety & legal responsibility",
+  },
+  {
+    value: "illegal_activity",
+    label: "Illegal Activity",
+    description: "Prohibited conduct (drugs, weapons, crime)",
+  },
+  {
+    value: "spam_scam_fraud",
+    label: "Spam / Scam / Fraud",
+    description: "Platform abuse & user protection",
+  },
+  {
+    value: "copyright_ip_violation",
+    label: "Copyright / IP Violation",
+    description: "Legal compliance under DMCA/IP",
   },
   {
     value: "misinformation",
     label: "Misinformation",
     description: "False or misleading information",
-  },
-  {
-    value: "harassment",
-    label: "Harassment",
-    description: "Content promotes harassment",
   },
   {
     value: "fake_event",
