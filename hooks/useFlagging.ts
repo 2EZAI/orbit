@@ -70,7 +70,7 @@ export function useFlagging() {
       });
       return;
     }
-    console.log("final data>", data);
+    console.log("\n\nfinal data>", data);
     const response = await fetch(
       `https://orbit-web-backend.onrender.com/api/flags`,
       {
