@@ -19,7 +19,7 @@ export interface CreateFlagRequest {
   reason: FlagReason;
   explanation?: string;
   post_id?: string;
-  comment_id?: string;
+  post_comment_id?: string;
   user_id?: string;
 }
 export function useFlagging() {
@@ -31,13 +31,13 @@ export function useFlagging() {
     }
 
     // Validate that at least one content type ID is provided
-    const hasContentId = 
-      data.event_id || 
-      data.static_location_id || 
-      data.post_id || 
-      data.comment_id || 
+    const hasContentId =
+      data.event_id ||
+      data.static_location_id ||
+      data.post_id ||
+      data.post_comment_id ||
       data.user_id;
-    
+
     if (!hasContentId) {
       Toast.show({
         type: "error",
@@ -55,7 +55,7 @@ export function useFlagging() {
       data.event_id,
       data.static_location_id,
       data.post_id,
-      data.comment_id,
+      data.post_comment_id,
       data.user_id,
     ].filter(Boolean).length;
 
@@ -70,6 +70,7 @@ export function useFlagging() {
       });
       return;
     }
+    console.log("final data>", data);
     const response = await fetch(
       `https://orbit-web-backend.onrender.com/api/flags`,
       {

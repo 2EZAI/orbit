@@ -1,11 +1,6 @@
 import { format } from "date-fns";
 import { Stack, router, useLocalSearchParams } from "expo-router";
-import {
-  ArrowLeft,
-  Heart,
-  MapPin,
-  MessageCircle,
-} from "lucide-react-native";
+import { ArrowLeft, Heart, MapPin, MessageCircle } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -948,7 +943,7 @@ export default function PostView() {
             await createFlag({
               reason,
               explanation,
-              comment_id: flagOpen.id,
+              post_comment_id: flagOpen.id,
             });
           } else {
             await createFlag({
@@ -963,9 +958,7 @@ export default function PostView() {
 
       <CommentActionSheet
         visible={commentActionSheet.visible}
-        onClose={() =>
-          setCommentActionSheet({ visible: false, commentId: "" })
-        }
+        onClose={() => setCommentActionSheet({ visible: false, commentId: "" })}
         onReport={() => {
           setFlagOpen({
             open: true,
