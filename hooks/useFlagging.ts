@@ -2,10 +2,13 @@ import Toast from "react-native-toast-message";
 import { useAuth } from "~/src/lib/auth";
 
 export type FlagReason =
-  | "inappropriate_content"
-  | "spam"
+  | "sexual_adult_content"
+  | "hate_speech_harassment_bullying"
+  | "violence_threats_self_harm"
+  | "illegal_activity"
+  | "spam_scam_fraud"
+  | "copyright_ip_violation"
   | "misinformation"
-  | "harassment"
   | "fake_event"
   | "wrong_location"
   | "other";
