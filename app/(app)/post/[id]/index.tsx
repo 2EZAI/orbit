@@ -2,7 +2,6 @@ import { format } from "date-fns";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import {
   ArrowLeft,
-  Flag,
   Heart,
   MapPin,
   MessageCircle,
@@ -15,12 +14,14 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   RefreshControl,
   ScrollView,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import { Icon } from "react-native-elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { Channel } from "stream-chat";
@@ -35,6 +36,8 @@ import {
 import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
 import FlagContentModal from "~/src/components/modals/FlagContentModal";
 import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
+import { CommentActionSheet } from "~/src/components/social/CommentActionSheet";
+import { PostMenuDropdown } from "~/src/components/social/PostMenuDropdown";
 import { SocialEventCard } from "~/src/components/social/SocialEventCard";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
@@ -230,7 +233,12 @@ export default function PostView() {
   const [flagOpen, setFlagOpen] = useState({
     open: false,
     id: "",
+    type: "post" as "post" | "comment",
   });
+  const [commentActionSheet, setCommentActionSheet] = useState<{
+    visible: boolean;
+    commentId: string;
+  }>({ visible: false, commentId: "" });
   const { createFlag } = useFlagging();
   useEffect(() => {
     if (event) {
@@ -478,14 +486,15 @@ export default function PostView() {
               )}
             </TouchableOpacity>
           ),
-          headerRight: () =>
-            post?.user?.id !== session?.user.id ? (
-              <TouchableOpacity
-                onPress={() => setFlagOpen({ open: true, id: post?.id || "" })}
-              >
-                <Flag color="red" size={24} />
-              </TouchableOpacity>
-            ) : null,
+          headerRight: () => (
+            <PostMenuDropdown
+              postId={post?.id || ""}
+              isOwner={post?.user?.id === session?.user.id}
+              onReport={(postId) =>
+                setFlagOpen({ open: true, id: postId, type: "post" })
+              }
+            />
+          ),
           headerShadowVisible: false,
         }}
       />
@@ -746,8 +755,18 @@ export default function PostView() {
                 Comments
               </Text>
               {comments.map((comment) => (
-                <View
+                <Pressable
                   key={comment.id}
+                  onLongPress={() => {
+                    if (comment.user.id !== session?.user.id) {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      setCommentActionSheet({
+                        visible: true,
+                        commentId: comment.id,
+                      });
+                    }
+                  }}
+                  delayLongPress={400}
                   style={{ flexDirection: "row", marginBottom: 16 }}
                 >
                   <TouchableOpacity
@@ -805,7 +824,7 @@ export default function PostView() {
                       {format(new Date(comment.created_at), "MMM d, yyyy")}
                     </Text>
                   </View>
-                </View>
+                </Pressable>
               ))}
             </View>
           </ScrollView>
@@ -921,21 +940,37 @@ export default function PostView() {
       )}
       <FlagContentModal
         visible={flagOpen.open}
-        contentTitle={"Post"}
+        contentTitle={flagOpen.type === "comment" ? "Comment" : "Post"}
         variant="sheet"
-        onClose={() => setFlagOpen({ open: false, id: "" })}
+        onClose={() => setFlagOpen({ open: false, id: "", type: "post" })}
         onSubmit={async ({ reason, explanation }) => {
-          await createFlag({
-            reason,
-            explanation,
-            post_id: flagOpen.id,
-          });
-          router.push({
-            pathname: "/(app)/(social)",
-            params: {
-              // Expo Router route params are strings
-              refreshRequired: "true",
-            },
+          if (flagOpen.type === "comment") {
+            await createFlag({
+              reason,
+              explanation,
+              comment_id: flagOpen.id,
+            });
+          } else {
+            await createFlag({
+              reason,
+              explanation,
+              post_id: flagOpen.id,
+            });
+          }
+          setFlagOpen({ open: false, id: "", type: "post" });
+        }}
+      />
+
+      <CommentActionSheet
+        visible={commentActionSheet.visible}
+        onClose={() =>
+          setCommentActionSheet({ visible: false, commentId: "" })
+        }
+        onReport={() => {
+          setFlagOpen({
+            open: true,
+            id: commentActionSheet.commentId,
+            type: "comment",
           });
         }}
       />
