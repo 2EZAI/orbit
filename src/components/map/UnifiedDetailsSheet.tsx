@@ -682,7 +682,7 @@ export const UnifiedDetailsSheet = React.memo(
                       }}
                       className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
                     >
-                      <Flag size={20} color="red" />
+                      <Flag size={20} color="#000" />
                     </TouchableOpacity>
                   </View>
 
