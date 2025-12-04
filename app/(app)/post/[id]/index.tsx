@@ -39,22 +39,7 @@ import { Text } from "~/src/components/ui/text";
 import { useAuth } from "~/src/lib/auth";
 import { usePostRefresh } from "~/src/lib/postProvider";
 import { supabase } from "~/src/lib/supabase";
-
-interface Post {
-  id: string;
-  content: string;
-  address: string;
-  media_urls: string[];
-  created_at: string;
-  user: {
-    id: string;
-    username: string | null;
-    avatar_url: string | null;
-  };
-  like_count: number;
-  comment_count: number;
-  event?: MapEvent | null; // Make event optional
-}
+import { IPost, socialPostService } from "~/src/services/socialPostService";
 
 interface Comment {
   id: string;
@@ -89,7 +74,7 @@ export default function PostView() {
   const { session } = useAuth();
   const { sendNotification } = useNotificationsApi();
   const insets = useSafeAreaInsets();
-  const [post, setPost] = useState<Post | null>(null);
+  const [post, setPost] = useState<IPost | null>(null);
   const [likeCount, setLikeCount] = useState(0);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,6 +100,7 @@ export default function PostView() {
     isEventType: false,
   });
   const { isRefreshRequired, setRefreshRequired } = usePostRefresh();
+
   const handleChatSelect = async (channel: Channel) => {
     if (!channel) return;
     try {
@@ -203,24 +189,20 @@ export default function PostView() {
     }
 
     fetchPost();
-    getLikeCount();
+
     checkIfLiked();
-    fetchComments();
   }, [id]);
 
   useEffect(() => {
     DeviceEventEmitter.addListener("refreshPost", (valueEvent) => {
       console.log("event----refreshPost");
-      getLikeCount();
+
       checkIfLiked();
-      fetchComments();
     });
   }, []);
 
   const onRefresh = async () => {
-    getLikeCount();
     checkIfLiked();
-    fetchComments();
   };
 
   const { event } = useLocalSearchParams();
@@ -250,53 +232,58 @@ export default function PostView() {
     if (!id) return;
 
     try {
-      const { data: rawData, error } = await supabase
-        .from("posts")
-        .select(
-          `
-    id,
-    content,
-    address,
-    media_urls,
-    created_at,
-    like_count,
-    comment_count,
-    event_id,
-    user:users!posts_user_id_fkey (
-      id,
-      username,
-      avatar_url
-    )
-  `
-        )
-        .eq("id", id)
-        .single();
+      //     const { data: rawData, error } = await supabase
+      //       .from("posts")
+      //       .select(
+      //         `
+      //   id,
+      //   content,
+      //   address,
+      //   media_urls,
+      //   created_at,
+      //   like_count,
+      //   comment_count,
+      //   event_id,
+      //   user:users!posts_user_id_fkey (
+      //     id,
+      //     username,
+      //     avatar_url
+      //   )
+      // `
+      //       )
+      //       .eq("id", id)
+      //       .single();
 
-      if (error) throw error;
-      if (!rawData) throw new Error("Post not found");
+      //     if (error) throw error;
+      //     if (!rawData) throw new Error("Post not found");
 
-      // Handle both array and object cases from Supabase query
-      const userData = Array.isArray(rawData.user)
-        ? rawData.user[0]
-        : rawData.user;
+      //     // Handle both array and object cases from Supabase query
+      //     const userData = Array.isArray(rawData.user)
+      //       ? rawData.user[0]
+      //       : rawData.user;
 
-      const transformedPost: Post = {
-        id: rawData.id,
-        content: rawData.content,
-        address: rawData.address,
-        media_urls: rawData.media_urls || [],
-        created_at: rawData.created_at,
-        like_count: rawData.like_count || 0,
-        comment_count: rawData.comment_count || 0,
-        user: {
-          id: userData?.id || "",
-          username: userData?.username || null,
-          avatar_url: userData?.avatar_url || null,
-        },
-        event: null, // Set to null by default, can be populated later if needed
-      };
-
-      setPost(transformedPost);
+      //     const transformedPost: Post = {
+      //       id: rawData.id,
+      //       content: rawData.content,
+      //       address: rawData.address,
+      //       media_urls: rawData.media_urls || [],
+      //       created_at: rawData.created_at,
+      //       like_count: rawData.like_count || 0,
+      //       comment_count: rawData.comment_count || 0,
+      //       user: {
+      //         id: userData?.id || "",
+      //         username: userData?.username || null,
+      //         avatar_url: userData?.avatar_url || null,
+      //       },
+      //       event: null, // Set to null by default, can be populated later if needed
+      //     };
+      const postDetails = await socialPostService.getPostDetails(
+        id,
+        session?.access_token || ""
+      );
+      setPost(postDetails?.data || null);
+      setComments(postDetails?.data?.comments?.items || []);
+      setLikeCount(postDetails?.data?.likes?.count || 0);
       setError(null);
     } catch (error) {
       console.error("[PostView] Error fetching post:", error);
@@ -322,46 +309,6 @@ export default function PostView() {
       setLiked(!!data);
     } catch (error) {
       console.error("Error checking like status:", error);
-    }
-  };
-
-  const getLikeCount = async () => {
-    try {
-      const { count, error } = await supabase
-        .from("post_likes")
-        .select("id", { count: "exact", head: true })
-        .eq("post_id", id);
-
-      if (error) throw error;
-
-      console.log("Like count:", count);
-      setLikeCount(count || 0);
-    } catch (error) {
-      console.error("Error fetching like count:", error);
-    }
-  };
-
-  const fetchComments = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("post_comments")
-        .select(
-          `
-          *,
-          user:users!inner (
-            id,
-            username,
-            avatar_url
-          )
-        `
-        )
-        .eq("post_id", id)
-        .order("created_at", { ascending: true });
-
-      if (error) throw error;
-      setComments(data || []);
-    } catch (error) {
-      console.error("Error fetching comments:", error);
     }
   };
 
@@ -427,10 +374,8 @@ export default function PostView() {
       if (!isRefreshRequired) {
         setRefreshRequired(true);
       }
-      fetchComments();
-      setPost((post) =>
-        post ? { ...post, comment_count: post.comment_count + 1 } : null
-      );
+      fetchPost();
+
       sendNotification({
         type: "comment",
         userId: post?.user?.id,
@@ -600,43 +545,50 @@ export default function PostView() {
               </Text>
             </View>
 
-            {/* Post address */}
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                paddingHorizontal: 16,
-                paddingBottom: 12,
-                backgroundColor: theme.colors.card,
-              }}
-            >
-              {Platform.OS === "ios" ? (
-                <MapPin size={20} color={theme.colors.primary || "#239ED0"} />
-              ) : (
-                <Icon
-                  name="map-marker"
-                  type="material-community"
-                  size={20}
-                  color={theme.colors.primary || "#239ED0"}
-                />
-              )}
+            {post?.location_data?.address &&
+              post?.location_data?.city &&
+              post?.location_data?.state && (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingHorizontal: 16,
+                    paddingBottom: 12,
+                    backgroundColor: theme.colors.card,
+                  }}
+                >
+                  {Platform.OS === "ios" ? (
+                    <MapPin
+                      size={20}
+                      color={theme.colors.primary || "#239ED0"}
+                    />
+                  ) : (
+                    <Icon
+                      name="map-marker"
+                      type="material-community"
+                      size={20}
+                      color={theme.colors.primary || "#239ED0"}
+                    />
+                  )}
 
-              <Text
-                style={{
-                  marginLeft: 8,
-                  fontSize: 14,
-                  color: theme.colors.text + "80",
-                }}
-              >
-                {post?.address}
-              </Text>
-            </View>
+                  <Text
+                    style={{
+                      marginLeft: 8,
+                      fontSize: 14,
+                      color: theme.colors.text + "80",
+                    }}
+                  >
+                    {post?.location_data?.address} {post?.location_data?.city}{" "}
+                    {post?.location_data?.state}
+                  </Text>
+                </View>
+              )}
 
             {/* Event Card */}
             {eventObj != null && (
               <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
                 <SocialEventCard
-                  data={eventObj as any}
+                  data={post?.event as any}
                   onDataSelect={(data) => {
                     setIsShowEvent(true);
                   }}
@@ -939,15 +891,17 @@ export default function PostView() {
         variant="sheet"
         onClose={() => setFlagOpen({ open: false, id: "", type: "post" })}
         onSubmit={async ({ reason, explanation }) => {
+          console.log("flagOpen>", flagOpen);
           if (flagOpen.type === "comment") {
             const response = await createFlag({
               reason,
               explanation,
               post_comment_id: flagOpen.id,
             });
-            if (response.ok) {
-              await fetchComments();
-            }
+
+            // if (response.ok) {
+            await fetchPost();
+            // }
           } else {
             const response = await createFlag({
               reason,

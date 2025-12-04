@@ -187,6 +187,242 @@ export interface CreatePostResponse {
   success: boolean;
   post: PostFeedItem;
 }
+export interface IPost {
+  id: string;
+  content: string;
+  media_urls: Array<string> | null;
+  created_at: string;
+  updated_at: string;
+  like_count: number;
+  comment_count: number;
+  is_liked: boolean | null;
+  is_owner: boolean | null;
+  is_following: boolean | null;
+  // Address fields
+  address?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  full_address?: string;
+  // Location convenience object
+  location?: {
+    latitude: number;
+    longitude: number;
+  };
+  // Lightweight author summary
+  created_by?: {
+    id: string;
+    name: string;
+    username: string;
+    avatar_url: string;
+  };
+  // Full author profile
+  user: {
+    id: string;
+    username: string;
+    first_name: string;
+    last_name: string;
+    avatar_url: string;
+    bio?: string;
+    location?: string;
+  };
+  event?: {
+    id: string;
+    name: string;
+    description: string;
+    start_datetime: string;
+    end_datetime?: string;
+    venue_name?: string;
+    address: string;
+    city: string;
+    state: string;
+    postal_code?: string;
+    location?: {
+      longitude: string;
+      latitude: string;
+    };
+    external_url?: string;
+    image_urls: Array<string>;
+    coordinates?: {
+      lat: number;
+      lng: number;
+    };
+    // TicketMaster specific fields
+    is_ticketmaster?: boolean;
+    source?: "supabase" | "ticketmaster";
+    category?: {
+      id: string;
+      name: string;
+      icon?: string;
+    };
+    attendees?: {
+      count: number;
+      profiles: Array<{
+        id: string;
+        avatar_url: string;
+        name: string;
+        first_name: string;
+        last_name: string;
+      }>;
+    };
+    ticketmaster_details?: {
+      type: string;
+      locale: string;
+      name: string;
+      description: string;
+      url: string;
+      id: string;
+      dates: {
+        start: any;
+        end: any;
+        timezone: string;
+        status: any;
+        spanMultipleDays: boolean;
+      };
+      sales: {
+        public: any;
+        presales: any[];
+      } | null;
+      priceRanges: any[];
+      enhanced_images: any[];
+      venue: {
+        id: string;
+        name: string;
+        type: string;
+        url: string;
+        locale: string;
+        timezone: string;
+        city: any;
+        state: any;
+        country: any;
+        address: any;
+        location: any;
+        postalCode: string;
+        boxOfficeInfo: any;
+        parkingDetail: any;
+        accessibleSeatingDetail: any;
+        generalInfo: any;
+        social: any;
+        images: any[];
+        markets: any[];
+        dmas: any[];
+        distance: any;
+        units: any;
+      };
+      attractions: Array<{
+        id: string;
+        name: string;
+        type: string;
+        url: string;
+        locale: string;
+        externalLinks: any;
+        aliases: any;
+        images: any[];
+        classifications: any[];
+        upcomingEvents: any;
+        _links: any;
+      }>;
+      classifications: Array<{
+        primary: boolean;
+        segment: any;
+        genre: any;
+        subGenre: any;
+        type: any;
+        subType: any;
+        family: boolean;
+      }>;
+      promoter: any;
+      pleaseNote: string;
+      info: string;
+      accessibility: any;
+      ticketLimit: any;
+      ageRestrictions: any;
+      ticketing: any;
+      _links: any;
+      seatmap: any;
+      externalLinks: any;
+      test: boolean;
+      aliases: any;
+    };
+    categories?: Array<{
+      id: string;
+      name: string;
+      icon?: string;
+      genre?: string;
+      subGenre?: string;
+      type?: string;
+      subType?: string;
+      isPrimary?: boolean;
+    }>;
+    pricing?: {
+      currency?: string;
+      min_price?: number;
+      max_price?: number;
+      price_ranges?: Array<{
+        type: string;
+        currency: string;
+        min: number;
+        max: number;
+      }>;
+    };
+  };
+  location_data?: {
+    address: string;
+    city: string;
+    state: string;
+    postal_code: string;
+    coordinates: {
+      lat: number;
+      lng: number;
+    };
+  };
+  // Likes structure: { count, users[] } where users is array of user ids
+  likes: {
+    count: number;
+    users: Array<string>;
+  };
+  // Comments structure: { count, items[] } where items contains full comment objects
+  comments: {
+    count: number;
+    items: Array<{
+      id: string;
+      content: string;
+      created_at: string;
+      updated_at?: string;
+      user: {
+        id: string;
+        name: string;
+        username: string;
+        avatar_url: string;
+      };
+    }>;
+  };
+  // Source field
+  source?: "supabase" | "ticketmaster";
+}
+export interface PostDetailResponse {
+  success: boolean;
+  data: IPost;
+  meta: {
+    total_comments: number;
+    total_likes: number;
+    has_event: boolean;
+    has_location: boolean;
+  };
+  // Legacy fields for backward compatibility
+  post?: PostDetailResponse["data"];
+  comments?: PostDetailResponse["data"]["comments"]["items"];
+  likes?: Array<{
+    created_at: string;
+    user: {
+      id: string;
+      username: string;
+      first_name: string;
+      last_name: string;
+      avatar_url: string;
+    };
+  }>;
+}
 
 // ============================================================================
 // SERVICE CLASS
@@ -214,7 +450,7 @@ export class SocialPostService {
     const { cursor, page, limit = 20, lat, lng, authToken } = params;
 
     const searchParams = new URLSearchParams();
-    
+
     // Use cursor if provided (web app style), otherwise use page
     if (cursor) {
       searchParams.set("cursor", cursor);
@@ -222,7 +458,7 @@ export class SocialPostService {
       // Fallback to page-based for backward compatibility
       searchParams.set("page", page.toString());
     }
-    
+
     if (limit) searchParams.set("limit", limit.toString());
     if (lat !== undefined) searchParams.set("lat", lat.toString());
     if (lng !== undefined) searchParams.set("lng", lng.toString());
@@ -249,12 +485,12 @@ export class SocialPostService {
       }
 
       const data = (await response.json()) as PostsApiResponse;
-      
+
       // Debug: Log first post to see actual structure
       if (data.feed_items && data.feed_items.length > 0) {
         const firstPost = data.feed_items[0];
-        if (firstPost.type === 'post') {
-          console.log('🔍 [SocialPostService] First post structure:', {
+        if (firstPost.type === "post") {
+          console.log("🔍 [SocialPostService] First post structure:", {
             like_count: (firstPost as PostFeedItem).like_count,
             comment_count: (firstPost as PostFeedItem).comment_count,
             likes: (firstPost as PostFeedItem).likes,
@@ -262,7 +498,7 @@ export class SocialPostService {
           });
         }
       }
-      
+
       return data;
     } catch (error) {
       console.error("❌ [SocialPostService] Fetch posts error:", error);
@@ -331,7 +567,7 @@ export class SocialPostService {
       if (!response.ok) {
         const errorText = await response.text();
         let errorMessage = `Failed to create post: ${response.statusText}`;
-        
+
         try {
           const errorData = JSON.parse(errorText);
           errorMessage = errorData.error || errorData.message || errorMessage;
@@ -339,7 +575,7 @@ export class SocialPostService {
           // If not JSON, use the text as error message
           if (errorText) errorMessage = errorText;
         }
-        
+
         throw new Error(errorMessage);
       }
 
@@ -413,7 +649,57 @@ export class SocialPostService {
   transformPostsToMobileFormat(posts: PostFeedItem[]): any[] {
     return posts.map((post) => this.transformPostToMobileFormat(post));
   }
-
+  async getPostDetails(postId: string, authToken: string) {
+    if (!authToken) {
+      return null;
+    }
+    try {
+      const response = await fetch(`${BASE_URL}/api/posts/${postId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+      if (!response.ok) {
+        // Don't spam logs for 404s - these are expected for non-existent posts
+        if (response.status === 404) {
+          console.log(`Post ${postId} not found (404) - skipping`);
+          return null;
+        }
+        return null;
+      }
+      const responseData = (await response.json()) as PostDetailResponse;
+      if (responseData.data && !responseData.post) {
+        // Convert new structure to legacy structure for backward compatibility
+        const normalizedResponse: PostDetailResponse = {
+          ...responseData,
+          post: responseData.data,
+          // Convert comments.items array to legacy comments array
+          comments: responseData.data.comments?.items || [],
+          // Convert likes.users (array of IDs) to legacy likes array format
+          // Note: We can't get full user details from just IDs, so we'll use empty objects
+          // Components should use likes_preview or fetch user details separately
+          likes:
+            responseData.data.likes?.users.map((userId) => ({
+              created_at: "",
+              user: {
+                id: userId,
+                username: "",
+                first_name: "",
+                last_name: "",
+                avatar_url: "",
+              },
+            })) || [],
+        };
+        return normalizedResponse;
+      }
+      return responseData;
+    } catch (error) {
+      console.error("Error fetching post details:", error);
+      return null;
+    }
+  }
   /**
    * Delete a post
    */
@@ -430,14 +716,14 @@ export class SocialPostService {
       if (!response.ok) {
         const errorText = await response.text();
         let errorMessage = `Failed to delete post: ${response.statusText}`;
-        
+
         try {
           const errorData = JSON.parse(errorText);
           errorMessage = errorData.error || errorData.message || errorMessage;
         } catch {
           if (errorText) errorMessage = errorText;
         }
-        
+
         throw new Error(errorMessage);
       }
     } catch (error) {
@@ -449,4 +735,3 @@ export class SocialPostService {
 
 // Export singleton instance
 export const socialPostService = new SocialPostService(BASE_URL);
-
