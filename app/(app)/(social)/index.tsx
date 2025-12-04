@@ -3,7 +3,6 @@ import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { set } from "lodash";
 import {
   Bell,
-  Flag,
   Heart,
   MapPin,
   MessageCircle,
@@ -22,10 +21,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { BlurView } from "expo-blur";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { Channel } from "stream-chat";
-import { useFlagging } from "~/hooks/useFlagging";
+import { FlagReason, useFlagging } from "~/hooks/useFlagging";
 import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 import { IProposal } from "~/hooks/useProposals";
 import {
@@ -33,8 +31,9 @@ import {
   UnifiedDetailsSheet,
 } from "~/src/components/map/UnifiedDetailsSheet";
 import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
-import FlagContentModal from "~/src/components/modals/FlagContentModal";
+import FlagContentModal, { Flags } from "~/src/components/modals/FlagContentModal";
 import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
+import { PostMenuDropdown } from "~/src/components/social/PostMenuDropdown";
 import { SocialEventCard } from "~/src/components/social/SocialEventCard";
 import { useTheme } from "~/src/components/ThemeProvider";
 import NotificationBadge from "~/src/components/ui/NotificationBadge";
@@ -161,6 +160,57 @@ export default function SocialFeed() {
 
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const { createFlag } = useFlagging();
+
+  const handleFlagPost = async ({
+    reason,
+    explanation,
+  }: {
+    reason: string;
+    explanation: string;
+  }) => {
+    console.log("🚩 [SocialFeed] Starting flag post process", {
+      postId: flagOpen.id,
+      reason,
+      hasExplanation: !!explanation,
+    });
+
+    if (!flagOpen.id) {
+      console.error("❌ [SocialFeed] No post ID provided for flagging");
+      return;
+    }
+
+    if (!session?.access_token) {
+      console.error("❌ [SocialFeed] No access token available for flagging");
+      return;
+    }
+
+    try {
+      console.log("🚩 [SocialFeed] Calling createFlag API", {
+        post_id: flagOpen.id,
+        reason,
+      });
+
+      const result = await createFlag({
+        reason: reason as FlagReason,
+        explanation: explanation.trim(),
+        post_id: flagOpen.id,
+      });
+
+      console.log("✅ [SocialFeed] Flag created successfully", { result });
+
+      // Refresh posts after flagging
+      await loadPosts(true);
+    } catch (error) {
+      console.error("❌ [SocialFeed] Error flagging post:", error);
+      if (error instanceof Error) {
+        console.error("❌ [SocialFeed] Error message:", error.message);
+        console.error("❌ [SocialFeed] Error stack:", error.stack);
+      }
+      // Re-throw to let FlagContentModal handle the error display
+      throw error;
+    }
+  };
+
   const loadPosts = async (isRefresh = false) => {
     if (loading || (!hasMore && !isRefresh)) {
       return;
@@ -410,36 +460,11 @@ export default function SocialFeed() {
               </Text>
             </View>
           </TouchableOpacity>
-          {post.user.id !== session?.user.id && (
-            <TouchableOpacity
-              onPress={() => setFlagOpen({ open: true, id: post.id })}
-              style={styles.flagButton}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <View
-                style={[
-                  styles.flagIconContainer,
-                  {
-                    backgroundColor: isDarkMode
-                      ? "rgba(255, 255, 255, 0.1)"
-                      : "rgba(0, 0, 0, 0.05)",
-                  },
-                ]}
-              >
-                {isDarkMode && (
-                  <BlurView
-                    intensity={20}
-                    tint="dark"
-                    style={StyleSheet.absoluteFillObject}
-                  />
-                )}
-                <Flag
-                  color={isDarkMode ? "#ef4444" : "#dc2626"}
-                  size={16}
-                />
-              </View>
-            </TouchableOpacity>
-          )}
+          <PostMenuDropdown
+            postId={post.id}
+            isOwner={post.user.id === session?.user.id}
+            onReport={(postId) => setFlagOpen({ open: true, id: postId })}
+          />
         </View>
 
         {/* Post Content */}
@@ -924,32 +949,9 @@ export default function SocialFeed() {
         contentTitle={"Post"}
         variant="sheet"
         onClose={() => setFlagOpen({ open: false, id: "" })}
-        onSubmit={async ({ reason, explanation }) => {
-          await createFlag({
-            reason,
-            explanation,
-            post_id: flagOpen.id,
-          });
-          loadPosts(true);
-        }}
+        onSubmit={handleFlagPost}
       />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  flagButton: {
-    marginLeft: 8,
-    marginRight: -4,
-  },
-  flagIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(239, 68, 68, 0.2)",
-  },
-});
