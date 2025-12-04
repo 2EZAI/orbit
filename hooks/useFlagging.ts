@@ -2,10 +2,13 @@ import Toast from "react-native-toast-message";
 import { useAuth } from "~/src/lib/auth";
 
 export type FlagReason =
-  | "inappropriate_content"
-  | "spam"
+  | "sexual_adult_content"
+  | "hate_speech_harassment_bullying"
+  | "violence_threats_self_harm"
+  | "illegal_activity"
+  | "spam_scam_fraud"
+  | "copyright_ip_violation"
   | "misinformation"
-  | "harassment"
   | "fake_event"
   | "wrong_location"
   | "other";
@@ -16,6 +19,8 @@ export interface CreateFlagRequest {
   reason: FlagReason;
   explanation?: string;
   post_id?: string;
+  comment_id?: string;
+  user_id?: string;
 }
 export function useFlagging() {
   const { session } = useAuth();
@@ -25,11 +30,18 @@ export function useFlagging() {
       return null;
     }
 
-    // Validate that either event_id or static_location_id is provided
-    if (!data.event_id && !data.static_location_id && !data.post_id) {
+    // Validate that at least one content type ID is provided
+    const hasContentId = 
+      data.event_id || 
+      data.static_location_id || 
+      data.post_id || 
+      data.comment_id || 
+      data.user_id;
+    
+    if (!hasContentId) {
       Toast.show({
         type: "error",
-        text1: "Event Id or Location Id required to flag",
+        text1: "Content ID required to flag",
         position: "top",
         visibilityTime: 3000,
         autoHide: true,
@@ -38,10 +50,19 @@ export function useFlagging() {
       return;
     }
 
-    if (data.event_id && data.static_location_id && data.post_id) {
+    // Count how many content types are provided (should be exactly one)
+    const contentTypeCount = [
+      data.event_id,
+      data.static_location_id,
+      data.post_id,
+      data.comment_id,
+      data.user_id,
+    ].filter(Boolean).length;
+
+    if (contentTypeCount > 1) {
       Toast.show({
         type: "error",
-        text1: "Cannot provide both Event Id, Location Id and Post Id to flag",
+        text1: "Can only flag one content type at a time",
         position: "top",
         visibilityTime: 3000,
         autoHide: true,
@@ -60,6 +81,7 @@ export function useFlagging() {
         body: JSON.stringify(data),
       }
     );
+    console.log("response>", response);
 
     if (!response.ok) {
       Toast.show({
