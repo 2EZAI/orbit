@@ -38,39 +38,24 @@ export interface Flags {
 }
 const REASON_OPTIONS: Flags[] = [
   {
-    value: "sexual_adult_content",
-    label: "Sexual / Adult Content",
-    description: "Objectionable material & age compliance",
+    value: "inappropriate_content",
+    label: "Inappropriate Content",
+    description: "Content violates community guidelines",
   },
   {
-    value: "hate_speech_harassment_bullying",
-    label: "Hate Speech / Harassment / Bullying",
-    description: "Safety & anti-abuse protections",
-  },
-  {
-    value: "violence_threats_self_harm",
-    label: "Violence / Threats / Self-harm",
-    description: "User safety & legal responsibility",
-  },
-  {
-    value: "illegal_activity",
-    label: "Illegal Activity",
-    description: "Prohibited conduct (drugs, weapons, crime)",
-  },
-  {
-    value: "spam_scam_fraud",
-    label: "Spam / Scam / Fraud",
-    description: "Platform abuse & user protection",
-  },
-  {
-    value: "copyright_ip_violation",
-    label: "Copyright / IP Violation",
-    description: "Legal compliance under DMCA/IP",
+    value: "spam",
+    label: "Spam",
+    description: "Spam or repetitive content",
   },
   {
     value: "misinformation",
     label: "Misinformation",
     description: "False or misleading information",
+  },
+  {
+    value: "harassment",
+    label: "Harassment",
+    description: "Content promotes harassment",
   },
   {
     value: "fake_event",
@@ -247,11 +232,11 @@ export const FlagContentModal: React.FC<FlagContentModalProps> = ({
                     activeOpacity={0.8}
                   >
                     <Text
-                      style={{ 
-                        color: reason 
-                          ? theme.colors.text 
-                          : theme.colors.text + "60", 
-                        fontWeight: "600" 
+                      style={{
+                        color: reason
+                          ? theme.colors.text
+                          : theme.colors.text + "60",
+                        fontWeight: "600",
                       }}
                     >
                       {REASON_OPTIONS.find((r) => r.value === reason)?.label ||
