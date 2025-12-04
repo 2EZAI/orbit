@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import * as Haptics from "expo-haptics";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { ArrowLeft, Heart, MapPin, MessageCircle } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
@@ -16,12 +17,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import * as Haptics from "expo-haptics";
 import { Icon } from "react-native-elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { Channel } from "stream-chat";
 import { useFlagging } from "~/hooks/useFlagging";
-import { MapEvent } from "~/hooks/useMapEvents";
 import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 import { IProposal } from "~/hooks/useProposals";
 import {
