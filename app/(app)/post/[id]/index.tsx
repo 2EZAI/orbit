@@ -940,17 +940,29 @@ export default function PostView() {
         onClose={() => setFlagOpen({ open: false, id: "", type: "post" })}
         onSubmit={async ({ reason, explanation }) => {
           if (flagOpen.type === "comment") {
-            await createFlag({
+            const response = await createFlag({
               reason,
               explanation,
               post_comment_id: flagOpen.id,
             });
+            if (response.ok) {
+              await fetchComments();
+            }
           } else {
-            await createFlag({
+            const response = await createFlag({
               reason,
               explanation,
               post_id: flagOpen.id,
             });
+            console.log("response>", response);
+            if (response.ok) {
+              router.push({
+                pathname: "/(app)/(social)",
+                params: {
+                  refreshRequired: "true",
+                },
+              });
+            }
           }
           setFlagOpen({ open: false, id: "", type: "post" });
         }}
