@@ -189,8 +189,6 @@ export default function PostView() {
     }
 
     fetchPost();
-
-    checkIfLiked();
   }, [id]);
 
   useEffect(() => {
@@ -284,6 +282,15 @@ export default function PostView() {
       setLikeCount(postData.like_count ?? 0);
       setCommentCount(postData.comment_count ?? 0);
       
+      if (postData.is_liked !== null && postData.is_liked !== undefined) {
+        setLiked(postData.is_liked);
+        console.log("✅ [PostDetail] Using API is_liked:", postData.is_liked);
+      } else {
+        // Fallback: check Supabase directly if API doesn't provide is_liked
+        console.log("⚠️ [PostDetail] API didn't provide is_liked, checking Supabase");
+        checkIfLiked();
+      }
+      
       setError(null);
     } catch (error) {
       console.error("❌ [PostView] Error fetching post:", error);
@@ -349,6 +356,9 @@ export default function PostView() {
           postId: id || undefined,
         });
       }
+      
+      // Notify list screen to refresh when navigating back
+      setRefreshRequired(true);
     } catch (error) {
       console.error("Error toggling like:", error);
       Alert.alert("Error", "Failed to update like");
