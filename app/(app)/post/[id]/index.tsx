@@ -320,31 +320,23 @@ export default function PostView() {
   };
 
   const toggleLike = async () => {
-    if (!session?.user.id) {
+    if (!session?.user.id || !session?.access_token) {
       Alert.alert("Error", "Please sign in to like posts");
       return;
     }
 
+    if (!id) return;
+
     try {
       if (liked) {
-        const { error } = await supabase
-          .from("post_likes")
-          .delete()
-          .eq("post_id", id)
-          .eq("user_id", session.user.id);
-
-        if (error) throw error;
+        await socialPostService.unlikePost(id, session.access_token);
         setLiked(false);
         setLikeCount((prev) => prev - 1);
         setPost((post) =>
           post ? { ...post, like_count: post.like_count - 1 } : null
         );
       } else {
-        const { error } = await supabase
-          .from("post_likes")
-          .insert([{ post_id: id, user_id: session.user.id }]);
-
-        if (error) throw error;
+        await socialPostService.likePost(id, session.access_token);
         setLiked(true);
         setLikeCount((prev) => prev + 1);
         setPost((post) =>
@@ -353,7 +345,7 @@ export default function PostView() {
         sendNotification({
           type: "like",
           userId: post?.user?.id,
-          postId: id || undefined,
+          postId: id,
         });
       }
       

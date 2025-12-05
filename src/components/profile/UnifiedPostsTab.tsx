@@ -244,51 +244,38 @@ export default function UnifiedPostsTab({
   };
 
   const toggleLike = async (postId: string) => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.id || !session?.access_token) return;
 
     try {
       const post = posts.find((p) => p.id === postId);
       if (!post) return;
 
       if (post.isLiked) {
-        const { error } = await supabase
-          .from("post_likes")
-          .delete()
-          .eq("post_id", postId)
-          .eq("user_id", session.user.id);
-
-        if (!error) {
-          setPosts((prevPosts) =>
-            prevPosts.map((p) =>
-              p.id === postId
-                ? {
-                    ...p,
-                    like_count: Math.max(0, p.like_count - 1),
-                    isLiked: false,
-                  }
-                : p
-            )
-          );
-        }
+        await socialPostService.unlikePost(postId, session.access_token);
+        setPosts((prevPosts) =>
+          prevPosts.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  like_count: Math.max(0, p.like_count - 1),
+                  isLiked: false,
+                }
+              : p
+          )
+        );
       } else {
-        const { error } = await supabase.from("post_likes").insert({
-          post_id: postId,
-          user_id: session.user.id,
-        });
-
-        if (!error) {
-          setPosts((prevPosts) =>
-            prevPosts.map((p) =>
-              p.id === postId
-                ? {
-                    ...p,
-                    like_count: Math.max(0, p.like_count + 1),
-                    isLiked: true,
-                  }
-                : p
-            )
-          );
-        }
+        await socialPostService.likePost(postId, session.access_token);
+        setPosts((prevPosts) =>
+          prevPosts.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  like_count: Math.max(0, p.like_count + 1),
+                  isLiked: true,
+                }
+              : p
+          )
+        );
       }
     } catch (error) {
       console.error("Error toggling like:", error);
