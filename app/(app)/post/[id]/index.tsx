@@ -75,6 +75,7 @@ export default function PostView() {
   const insets = useSafeAreaInsets();
   const [post, setPost] = useState<IPost | null>(null);
   const [likeCount, setLikeCount] = useState(0);
+  const [commentCount, setCommentCount] = useState(0);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState(false);
@@ -82,7 +83,7 @@ export default function PostView() {
   const [submittingComment, setSubmittingComment] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isShowEvent, setIsShowEvent] = useState(false);
-  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [refreshing] = useState<boolean>(false);
   const [shareData, setShareData] = useState<{
     data: UnifiedData;
     isEventType: boolean;
@@ -106,7 +107,7 @@ export default function PostView() {
       // Ensure channel is watched before sending
       await channel.watch();
       if (chatShareSelection.proposal) {
-        const message = await channel.sendMessage({
+         await channel.sendMessage({
           text: "Check out this proposal!",
           type: "regular",
           data: {
@@ -231,61 +232,61 @@ export default function PostView() {
     if (!id) return;
 
     try {
-      //     const { data: rawData, error } = await supabase
-      //       .from("posts")
-      //       .select(
-      //         `
-      //   id,
-      //   content,
-      //   address,
-      //   media_urls,
-      //   created_at,
-      //   like_count,
-      //   comment_count,
-      //   event_id,
-      //   user:users!posts_user_id_fkey (
-      //     id,
-      //     username,
-      //     avatar_url
-      //   )
-      // `
-      //       )
-      //       .eq("id", id)
-      //       .single();
+      // Get fresh session token
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const authToken = currentSession?.access_token || session?.access_token || "";
+      
+      if (!authToken) {
+        console.warn("⚠️ [PostView] No auth token available for fetching post details");
+        setError("Please sign in to view post details");
+        setLoading(false);
+        return;
+      }
 
-      //     if (error) throw error;
-      //     if (!rawData) throw new Error("Post not found");
-
-      //     // Handle both array and object cases from Supabase query
-      //     const userData = Array.isArray(rawData.user)
-      //       ? rawData.user[0]
-      //       : rawData.user;
-
-      //     const transformedPost: Post = {
-      //       id: rawData.id,
-      //       content: rawData.content,
-      //       address: rawData.address,
-      //       media_urls: rawData.media_urls || [],
-      //       created_at: rawData.created_at,
-      //       like_count: rawData.like_count || 0,
-      //       comment_count: rawData.comment_count || 0,
-      //       user: {
-      //         id: userData?.id || "",
-      //         username: userData?.username || null,
-      //         avatar_url: userData?.avatar_url || null,
-      //       },
-      //       event: null, // Set to null by default, can be populated later if needed
-      //     };
       const postDetails = await socialPostService.getPostDetails(
         id,
-        session?.access_token || ""
+        authToken
       );
-      setPost(postDetails?.data || null);
-      setComments(postDetails?.data?.comments?.items || []);
-      setLikeCount(postDetails?.data?.likes?.count || 0);
+      
+      if (!postDetails) {
+        console.error("❌ [PostView] Post details returned null");
+        setError("Failed to load post");
+        setPost(null);
+        setLoading(false);
+        return;
+      }
+      
+      // Handle both new API structure (data) and legacy structure (post) - matching web app
+      const postData = postDetails?.data || postDetails?.post || null;
+      
+      if (!postData) {
+        setError("Failed to load post");
+        setPost(null);
+        setLoading(false);
+        return;
+      }
+      
+      setPost(postData);
+      
+      // Extract comments exactly like web app CommentSection does:
+      // if (postData?.post?.comments?.items) return postData.post.comments.items
+      // if (postData?.comments && Array.isArray(postData.comments)) return postData.comments
+      let commentsData: Comment[] = [];
+      if (postDetails?.post?.comments?.items) {
+        commentsData = postDetails.post.comments.items;
+      } else if (postDetails?.comments && Array.isArray(postDetails.comments)) {
+        commentsData = postDetails.comments;
+      } else if (postDetails?.data?.comments?.items) {
+        commentsData = postDetails.data.comments.items;
+      }
+      
+      setComments(commentsData);
+      setLikeCount(postData.like_count ?? 0);
+      setCommentCount(postData.comment_count ?? 0);
+      
       setError(null);
     } catch (error) {
-      console.error("[PostView] Error fetching post:", error);
+      console.error("❌ [PostView] Error fetching post:", error);
       setError("Failed to load post");
       setPost(null);
     } finally {
@@ -373,6 +374,7 @@ export default function PostView() {
       if (!isRefreshRequired) {
         setRefreshRequired(true);
       }
+      // Refresh post data to get updated comments and counts
       fetchPost();
 
       sendNotification({
@@ -677,7 +679,7 @@ export default function PostView() {
                   />
                 )}
                 <Text style={{ marginLeft: 8, color: theme.colors.text }}>
-                  {comments?.length}
+                  {commentCount}
                 </Text>
               </View>
             </View>
