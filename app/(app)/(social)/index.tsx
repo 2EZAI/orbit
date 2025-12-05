@@ -9,7 +9,7 @@ import {
   Plus,
   Send,
 } from "lucide-react-native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -17,7 +17,6 @@ import {
   RefreshControl,
   ScrollView,
   StatusBar,
-  StyleSheet,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -43,7 +42,6 @@ import { UserAvatar } from "~/src/components/ui/user-avatar";
 import { useAuth } from "~/src/lib/auth";
 import { useChat } from "~/src/lib/chat";
 import { usePostRefresh } from "~/src/lib/postProvider";
-import { supabase } from "~/src/lib/supabase";
 import { useUser } from "~/src/lib/UserProvider";
 import { socialPostService } from "~/src/services/socialPostService";
 
@@ -160,6 +158,8 @@ export default function SocialFeed() {
 
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const { createFlag } = useFlagging();
+  const isLoadingRef = useRef(false);
+  const loadPostsRef = useRef<((isRefresh?: boolean) => Promise<void>) | null>(null);
 
   const handleFlagPost = async ({
     reason,
@@ -211,8 +211,8 @@ export default function SocialFeed() {
     }
   };
 
-  const loadPosts = async (isRefresh = false) => {
-    if (loading || (!hasMore && !isRefresh)) {
+  const loadPosts = useCallback(async (isRefresh = false) => {
+    if (isLoadingRef.current || (!hasMore && !isRefresh)) {
       return;
     }
 
@@ -224,10 +224,10 @@ export default function SocialFeed() {
       setNextCursor(null);
     }
 
+    isLoadingRef.current = true;
     setLoading(true);
 
     try {
-      // Use web API via service
       const response = await socialPostService.fetchPosts({
         cursor: isRefresh ? undefined : nextCursor || undefined,
         page: isRefresh ? 1 : currentPage, // Fallback for backward compatibility
@@ -235,7 +235,6 @@ export default function SocialFeed() {
         authToken: session?.access_token,
       });
 
-      // Transform web API response to mobile format
       const postsData = response.feed_items || [];
       const transformedPosts = socialPostService.transformPostsToMobileFormat(
         postsData.filter((item) => item.type === "post") as any[]
@@ -264,19 +263,7 @@ export default function SocialFeed() {
           setPosts((prev) => {
             const existingIds = new Set(prev.map((p) => p.id));
             const newPosts = transformedPosts.filter((p) => !existingIds.has(p.id));
-            const combined = [...prev, ...newPosts];
-            
-            console.log("📋 [SocialFeed] Merging posts:", {
-              existingCount: prev.length,
-              newPostsCount: transformedPosts.length,
-              deduplicatedNewPosts: newPosts.length,
-              finalCount: combined.length,
-              duplicateIds: transformedPosts
-                .filter((p) => existingIds.has(p.id))
-                .map((p) => p.id),
-            });
-            
-            return combined;
+            return [...prev, ...newPosts];
           });
         }
       }
@@ -284,10 +271,14 @@ export default function SocialFeed() {
       console.error("Error fetching posts:", error);
       setHasMore(false);
     } finally {
+      isLoadingRef.current = false;
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [hasMore, page, nextCursor, session?.access_token]);
+
+  // Store loadPosts in ref to keep stable reference for useFocusEffect
+  loadPostsRef.current = loadPosts;
   
   useEffect(() => {
     loadPosts(true);
@@ -295,12 +286,12 @@ export default function SocialFeed() {
   
   useFocusEffect(
     useCallback(() => {
-      if (isRefreshRequired) {
-        loadPosts(true).then(() => {
-          setRefreshRequired(false);
-        });
+      if (isRefreshRequired && loadPostsRef.current) {
+        // Set to false immediately to prevent multiple calls
+        setRefreshRequired(false);
+        loadPostsRef.current(true);
       }
-    }, [isRefreshRequired])
+    }, [isRefreshRequired, setRefreshRequired])
   );
   const onRefresh = () => {
     setRefreshing(true);
@@ -311,57 +302,44 @@ export default function SocialFeed() {
   };
 
   const toggleLike = async (postId: string) => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.id || !session?.access_token) return;
 
     try {
       const post = posts.find((p) => p.id === postId);
       if (!post) return;
 
       if (post.isLiked) {
-        const { error } = await supabase
-          .from("post_likes")
-          .delete()
-          .eq("post_id", postId)
-          .eq("user_id", session.user.id);
-
-        if (!error) {
-          setPosts((prevPosts) =>
-            prevPosts.map((p) =>
-              p.id === postId
-                ? {
-                    ...p,
-                    like_count: Math.max(0, p.like_count - 1),
-                    isLiked: false,
-                  }
-                : p
-            )
-          );
-        }
+        await socialPostService.unlikePost(postId, session.access_token);
+        setPosts((prevPosts) =>
+          prevPosts.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  like_count: Math.max(0, p.like_count - 1),
+                  isLiked: false,
+                }
+              : p
+          )
+        );
       } else {
-        const { error } = await supabase.from("post_likes").insert({
-          post_id: postId,
-          user_id: session.user.id,
+        await socialPostService.likePost(postId, session.access_token);
+        setPosts((prevPosts) =>
+          prevPosts.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  like_count: Math.max(0, p.like_count + 1),
+                  isLiked: true,
+                }
+              : p
+          )
+        );
+        // Send notification when liking
+        sendNotification({
+          type: "like",
+          userId: post.user.id,
+          postId: postId,
         });
-
-        if (!error) {
-          setPosts((prevPosts) =>
-            prevPosts.map((p) =>
-              p.id === postId
-                ? {
-                    ...p,
-                    like_count: Math.max(0, p.like_count + 1),
-                    isLiked: true,
-                  }
-                : p
-            )
-          );
-          // Send notification when liking
-          sendNotification({
-            type: "like",
-            userId: post.user.id,
-            postId: postId,
-          });
-        }
       }
     } catch (error) {
       console.error("Error toggling like:", error);
