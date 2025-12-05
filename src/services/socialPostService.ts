@@ -486,19 +486,6 @@ export class SocialPostService {
 
       const data = (await response.json()) as PostsApiResponse;
 
-      // Debug: Log first post to see actual structure
-      if (data.feed_items && data.feed_items.length > 0) {
-        const firstPost = data.feed_items[0];
-        if (firstPost.type === "post") {
-          console.log("🔍 [SocialPostService] First post structure:", {
-            like_count: (firstPost as PostFeedItem).like_count,
-            comment_count: (firstPost as PostFeedItem).comment_count,
-            likes: (firstPost as PostFeedItem).likes,
-            comments: (firstPost as PostFeedItem).comments,
-          });
-        }
-      }
-
       return data;
     } catch (error) {
       console.error("❌ [SocialPostService] Fetch posts error:", error);
@@ -733,6 +720,74 @@ export class SocialPostService {
       }
     } catch (error) {
       console.error("❌ [SocialPostService] Delete post error:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Like a post
+   */
+  async likePost(postId: string, authToken: string): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/${postId}/like`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = `Failed to like post: ${response.statusText}`;
+
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          if (errorText) errorMessage = errorText;
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error("❌ [SocialPostService] Like post error:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Unlike a post
+   */
+  async unlikePost(postId: string, authToken: string): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/${postId}/like`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = `Failed to unlike post: ${response.statusText}`;
+
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          if (errorText) errorMessage = errorText;
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error("❌ [SocialPostService] Unlike post error:", error);
       throw error;
     }
   }
