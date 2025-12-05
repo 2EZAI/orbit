@@ -237,7 +237,6 @@ export default function SocialFeed() {
 
       // Transform web API response to mobile format
       const postsData = response.feed_items || [];
-      console.log({ postsData });
       const transformedPosts = socialPostService.transformPostsToMobileFormat(
         postsData.filter((item) => item.type === "post") as any[]
       );
@@ -255,14 +254,30 @@ export default function SocialFeed() {
           setPage((prev) => prev + 1);
         }
       }
-      console.log({ transformedPosts });
       if (transformedPosts.length === 0) {
         setHasMore(false);
       } else {
         if (isRefresh) {
           setPosts(transformedPosts);
         } else {
-          setPosts((prev) => [...prev, ...transformedPosts]);
+          // Deduplicate posts by ID to prevent duplicate key errors
+          setPosts((prev) => {
+            const existingIds = new Set(prev.map((p) => p.id));
+            const newPosts = transformedPosts.filter((p) => !existingIds.has(p.id));
+            const combined = [...prev, ...newPosts];
+            
+            console.log("📋 [SocialFeed] Merging posts:", {
+              existingCount: prev.length,
+              newPostsCount: transformedPosts.length,
+              deduplicatedNewPosts: newPosts.length,
+              finalCount: combined.length,
+              duplicateIds: transformedPosts
+                .filter((p) => existingIds.has(p.id))
+                .map((p) => p.id),
+            });
+            
+            return combined;
+          });
         }
       }
     } catch (error) {
@@ -273,18 +288,13 @@ export default function SocialFeed() {
       setRefreshing(false);
     }
   };
-  useEffect(() => {
-    console.log("refreshRequired>", refreshRequired);
-    if (refreshRequired) {
-      setRefreshRequired(true);
-    }
-  }, [refreshRequired]);
+  
   useEffect(() => {
     loadPosts(true);
-  }, []);
+  }, []); // Only run on mount
+  
   useFocusEffect(
     useCallback(() => {
-      console.log("isRefreshRequired>", isRefreshRequired);
       if (isRefreshRequired) {
         loadPosts(true).then(() => {
           setRefreshRequired(false);
@@ -802,7 +812,11 @@ export default function SocialFeed() {
         data={posts}
         renderItem={renderPost}
         onScroll={() => setIsScrolled(true)}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => {
+          // Ensure unique keys - use index as fallback if ID is missing or duplicate
+          const key = item.id || `post-${index}`;
+          return key;
+        }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
