@@ -649,6 +649,7 @@ export class SocialPostService {
   transformPostsToMobileFormat(posts: PostFeedItem[]): any[] {
     return posts.map((post) => this.transformPostToMobileFormat(post));
   }
+
   async getPostDetails(postId: string, authToken: string) {
     if (!authToken) {
       return null;
@@ -670,16 +671,17 @@ export class SocialPostService {
         return null;
       }
       const responseData = (await response.json()) as PostDetailResponse;
+      
+      // Normalize response structure - matching web app pattern
+      // API returns { success, data, meta } but we want backward compatibility with { post, comments, likes }
       if (responseData.data && !responseData.post) {
-        // Convert new structure to legacy structure for backward compatibility
+        // Convert new structure to legacy structure for backward compatibility (same as web app)
         const normalizedResponse: PostDetailResponse = {
           ...responseData,
           post: responseData.data,
           // Convert comments.items array to legacy comments array
           comments: responseData.data.comments?.items || [],
           // Convert likes.users (array of IDs) to legacy likes array format
-          // Note: We can't get full user details from just IDs, so we'll use empty objects
-          // Components should use likes_preview or fetch user details separately
           likes:
             responseData.data.likes?.users.map((userId) => ({
               created_at: "",
@@ -692,8 +694,11 @@ export class SocialPostService {
               },
             })) || [],
         };
+        
         return normalizedResponse;
       }
+      
+      // Return response as-is if already normalized or legacy structure
       return responseData;
     } catch (error) {
       console.error("Error fetching post details:", error);
