@@ -7,6 +7,7 @@ import {
   Send,
   UserMinus,
   UserPlus,
+  Flag,
 } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
@@ -41,6 +42,8 @@ import FollowerSheet from "./FollowerSheet";
 import FollowingSheet from "./FollowingSheet";
 import { useBlocking } from "~/hooks/useBlocking";
 import { set } from "lodash";
+import { FlagContentModal } from "~/src/components/modals/FlagContentModal";
+import { useFlagging, FlagReason } from "~/hooks/useFlagging";
 
 type Tab = "Posts" | "Events" | "Info";
 
@@ -82,6 +85,7 @@ export function UnifiedProfilePage({
   const { followUser, unfollowUser, getFollowCounts } = useFollow();
   const { client } = useChat();
   const { getBlockStatus, blockUser, unblockUser } = useBlocking();
+  const { createFlag } = useFlagging();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("Posts");
   const [isLoading, setIsLoading] = useState(true);
@@ -91,6 +95,7 @@ export function UnifiedProfilePage({
   const [isFollowerSheetOpen, setIsFollowerSheetOpen] = useState(false);
   const [isFollowingSheetOpen, setIsFollowingSheetOpen] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const isCurrentUser = !userId || userId === session?.user?.id;
   const targetUserId = userId || session?.user?.id;
 
@@ -431,6 +436,47 @@ export function UnifiedProfilePage({
     } catch (error) {
       console.error("Error toggling block:", error);
       Toast.show({ type: "error", text1: "Error updating block status" });
+    }
+  };
+
+  const handleReportUser = async ({
+    reason,
+    explanation,
+  }: {
+    reason: FlagReason;
+    explanation: string;
+  }) => {
+    if (!profile || !targetUserId) return;
+
+    try {
+      await createFlag({
+        user_id: targetUserId,
+        reason,
+        explanation: explanation || undefined,
+      });
+
+      Toast.show({
+        type: "success",
+        text1: "Report submitted",
+        text2: "Thank you for helping keep our community safe.",
+        position: "top",
+        visibilityTime: 3000,
+        autoHide: true,
+        topOffset: 50,
+      });
+
+      setIsReportModalOpen(false);
+    } catch (error) {
+      console.error("Error reporting user:", error);
+      Toast.show({
+        type: "error",
+        text1: "Failed to submit report",
+        text2: "Please try again later.",
+        position: "top",
+        visibilityTime: 3000,
+        autoHide: true,
+        topOffset: 50,
+      });
     }
   };
 
@@ -963,6 +1009,40 @@ export function UnifiedProfilePage({
                       Block
                     </Text>
                   </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => setIsReportModalOpen(true)}
+                    disabled={isBlocked}
+                    style={{
+                      flex: 1,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      paddingVertical: 14,
+                      borderRadius: 24,
+                      backgroundColor: theme.colors.card,
+                      borderWidth: 1,
+                      borderColor: theme.colors.border,
+                      opacity: isBlocked ? 0.5 : 1,
+                      marginTop: 12,
+                    }}
+                  >
+                    <Flag
+                      size={18}
+                      color={theme.colors.text}
+                      strokeWidth={2.5}
+                    />
+                    <Text
+                      style={{
+                        marginLeft: 8,
+                        fontSize: 16,
+                        fontWeight: "700",
+                        color: theme.colors.text,
+                      }}
+                    >
+                      Report User
+                    </Text>
+                  </TouchableOpacity>
                 </>
               )}
             </View>
@@ -1054,6 +1134,13 @@ export function UnifiedProfilePage({
         isOpen={isFollowingSheetOpen}
         onClose={handleCloseFollowingSheet}
         userId={profile.id}
+      />
+      <FlagContentModal
+        visible={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        onSubmit={handleReportUser}
+        contentTitle={`Report ${getDisplayName()}`}
+        variant="sheet"
       />
     </SafeAreaView>
   );
