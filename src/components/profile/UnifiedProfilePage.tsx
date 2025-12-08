@@ -450,23 +450,25 @@ export function UnifiedProfilePage({
     if (!profile || !targetUserId) return;
 
     try {
-      await createFlag({
+      const res = await createFlag({
         user_id: targetUserId,
         reason,
         explanation: explanation || undefined,
       });
 
-      Toast.show({
-        type: "success",
-        text1: "Report submitted",
-        text2: "Thank you for helping keep our community safe.",
-        position: "top",
-        visibilityTime: 3000,
-        autoHide: true,
-        topOffset: 50,
-      });
 
-      setIsReportModalOpen(false);
+      if (res.ok) {
+        Toast.show({
+          type: "success",
+          text1: "Report submitted",
+          text2: "Thank you for helping keep our community safe.",
+          position: "top",
+          visibilityTime: 3000,
+          autoHide: true,
+          topOffset: 50,
+        });
+        setIsReportModalOpen(false);
+      } 
     } catch (error) {
       console.error("Error reporting user:", error);
       Toast.show({

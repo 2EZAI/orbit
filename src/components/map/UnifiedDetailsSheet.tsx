@@ -25,6 +25,7 @@ import { UnifiedDetailsSheetContent } from "./UnifiedDetailsSheetContent";
 import { UnifiedSheetButtons } from "./UnifiedSheetButtons";
 import FlagContentModal from "../modals/FlagContentModal";
 import { useFlagging } from "~/hooks/useFlagging";
+import Toast from "react-native-toast-message";
 
 // Additional types that were in the old hook
 export interface Category {
@@ -991,12 +992,34 @@ export const UnifiedDetailsSheet = React.memo(
             }
             onSubmit={async ({ reason, explanation }) => {
               const idToFlag = data.id;
-              await createFlag({
+              const response = await createFlag({
                 reason,
                 explanation,
                 event_id: isEventType ? idToFlag : "",
                 static_location_id: isEventType ? "" : idToFlag,
               });
+              if (response.ok) {
+                setFlagOpen({ open: false, eventId: "", locationId: "" });
+                Toast.show({
+                  type: "success",
+                  text1: "Report submitted",
+                  text2: "Thank you for helping keep our community safe.",
+                  position: "top",
+                  visibilityTime: 3000,
+                  autoHide: true,
+                  topOffset: 50,
+                });
+              } else {
+                Toast.show({
+                  type: "error",
+                  text1: "Failed to report",
+                  text2: "Please try again.",
+                  position: "top",
+                  visibilityTime: 3000,
+                  autoHide: true,
+                  topOffset: 50,
+                });
+              }
             }}
           />
         </Modal>

@@ -976,12 +976,34 @@ export const UnifiedCard = React.memo(
             onSubmit={async ({ reason, explanation }) => {
               const isEventFlag = isEvent(data);
               const idToFlag = data.id;
-              await createFlag({
+              const response = await createFlag({
                 reason,
                 explanation,
                 event_id: isEventFlag ? idToFlag : "",
                 static_location_id: isEventFlag ? "" : idToFlag,
               });
+              if (response.ok) {
+                setFlagOpen({ open: false, eventId: "", locationId: "" });
+                Toast.show({
+                  type: "success",
+                  text1: "Report submitted",
+                  text2: "Thank you for helping keep our community safe.",
+                  position: "top",
+                  visibilityTime: 3000,
+                  autoHide: true,
+                  topOffset: 50,
+                });
+              } else {
+                Toast.show({
+                  type: "error",
+                  text1: "Failed to report",
+                  text2: "Please try again.",
+                  position: "top",
+                  visibilityTime: 3000,
+                  autoHide: true,
+                  topOffset: 50,
+                });
+              }
             }}
           />
         </View>

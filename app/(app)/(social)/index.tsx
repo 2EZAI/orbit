@@ -30,7 +30,9 @@ import {
   UnifiedDetailsSheet,
 } from "~/src/components/map/UnifiedDetailsSheet";
 import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
-import FlagContentModal, { Flags } from "~/src/components/modals/FlagContentModal";
+import FlagContentModal, {
+  Flags,
+} from "~/src/components/modals/FlagContentModal";
 import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
 import { PostMenuDropdown } from "~/src/components/social/PostMenuDropdown";
 import { SocialEventCard } from "~/src/components/social/SocialEventCard";
@@ -159,7 +161,9 @@ export default function SocialFeed() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const { createFlag } = useFlagging();
   const isLoadingRef = useRef(false);
-  const loadPostsRef = useRef<((isRefresh?: boolean) => Promise<void>) | null>(null);
+  const loadPostsRef = useRef<((isRefresh?: boolean) => Promise<void>) | null>(
+    null
+  );
 
   const handleFlagPost = async ({
     reason,
@@ -197,9 +201,11 @@ export default function SocialFeed() {
       });
 
       console.log("✅ [SocialFeed] Flag created successfully", { result });
-
+      if (result?.ok) {
+        await loadPosts(true);
+        setFlagOpen({ open: false, id: "" });
+      }
       // Refresh posts after flagging
-      await loadPosts(true);
     } catch (error) {
       console.error("❌ [SocialFeed] Error flagging post:", error);
       if (error instanceof Error) {
@@ -211,79 +217,84 @@ export default function SocialFeed() {
     }
   };
 
-  const loadPosts = useCallback(async (isRefresh = false) => {
-    if (isLoadingRef.current || (!hasMore && !isRefresh)) {
-      return;
-    }
+  const loadPosts = useCallback(
+    async (isRefresh = false) => {
+      if (isLoadingRef.current || (!hasMore && !isRefresh)) {
+        return;
+      }
 
-    const currentPage = isRefresh ? 1 : page;
+      const currentPage = isRefresh ? 1 : page;
 
-    if (isRefresh) {
-      setPage(1);
-      setHasMore(true);
-      setNextCursor(null);
-    }
+      if (isRefresh) {
+        setPage(1);
+        setHasMore(true);
+        setNextCursor(null);
+      }
 
-    isLoadingRef.current = true;
-    setLoading(true);
+      isLoadingRef.current = true;
+      setLoading(true);
 
-    try {
-      const response = await socialPostService.fetchPosts({
-        cursor: isRefresh ? undefined : nextCursor || undefined,
-        page: isRefresh ? 1 : currentPage, // Fallback for backward compatibility
-        limit: PAGE_SIZE,
-        authToken: session?.access_token,
-      });
+      try {
+        const response = await socialPostService.fetchPosts({
+          cursor: isRefresh ? undefined : nextCursor || undefined,
+          page: isRefresh ? 1 : currentPage, // Fallback for backward compatibility
+          limit: PAGE_SIZE,
+          authToken: session?.access_token,
+        });
 
-      const postsData = response.feed_items || [];
-      const transformedPosts = socialPostService.transformPostsToMobileFormat(
-        postsData.filter((item) => item.type === "post") as any[]
-      );
+        const postsData = response.feed_items || [];
+        const transformedPosts = socialPostService.transformPostsToMobileFormat(
+          postsData.filter((item) => item.type === "post") as any[]
+        );
 
-      // Update pagination cursor
-      if (response.pagination?.next_cursor) {
-        setNextCursor(response.pagination.next_cursor);
-        setHasMore(response.pagination.has_more);
-      } else {
-        // Fallback to page-based pagination
+        // Update pagination cursor
+        if (response.pagination?.next_cursor) {
+          setNextCursor(response.pagination.next_cursor);
+          setHasMore(response.pagination.has_more);
+        } else {
+          // Fallback to page-based pagination
+          if (transformedPosts.length === 0) {
+            setHasMore(false);
+          } else {
+            setHasMore(true);
+            setPage((prev) => prev + 1);
+          }
+        }
         if (transformedPosts.length === 0) {
           setHasMore(false);
         } else {
-          setHasMore(true);
-          setPage((prev) => prev + 1);
+          if (isRefresh) {
+            setPosts(transformedPosts);
+          } else {
+            // Deduplicate posts by ID to prevent duplicate key errors
+            setPosts((prev) => {
+              const existingIds = new Set(prev.map((p) => p.id));
+              const newPosts = transformedPosts.filter(
+                (p) => !existingIds.has(p.id)
+              );
+              return [...prev, ...newPosts];
+            });
+          }
         }
-      }
-      if (transformedPosts.length === 0) {
+      } catch (error) {
+        console.error("Error fetching posts:", error);
         setHasMore(false);
-      } else {
-        if (isRefresh) {
-          setPosts(transformedPosts);
-        } else {
-          // Deduplicate posts by ID to prevent duplicate key errors
-          setPosts((prev) => {
-            const existingIds = new Set(prev.map((p) => p.id));
-            const newPosts = transformedPosts.filter((p) => !existingIds.has(p.id));
-            return [...prev, ...newPosts];
-          });
-        }
+      } finally {
+        isLoadingRef.current = false;
+        setLoading(false);
+        setRefreshing(false);
       }
-    } catch (error) {
-      console.error("Error fetching posts:", error);
-      setHasMore(false);
-    } finally {
-      isLoadingRef.current = false;
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [hasMore, page, nextCursor, session?.access_token]);
+    },
+    [hasMore, page, nextCursor, session?.access_token]
+  );
 
   // Store loadPosts in ref to keep stable reference for useFocusEffect
   loadPostsRef.current = loadPosts;
-  
+
   useEffect(() => {
     loadPosts(true);
   }, []); // Only run on mount
-  
+
   useFocusEffect(
     useCallback(() => {
       if (isRefreshRequired && loadPostsRef.current) {
@@ -946,4 +957,3 @@ export default function SocialFeed() {
     </SafeAreaView>
   );
 }
-

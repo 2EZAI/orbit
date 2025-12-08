@@ -107,7 +107,7 @@ export default function PostView() {
       // Ensure channel is watched before sending
       await channel.watch();
       if (chatShareSelection.proposal) {
-         await channel.sendMessage({
+        await channel.sendMessage({
           text: "Check out this proposal!",
           type: "regular",
           data: {
@@ -231,21 +231,23 @@ export default function PostView() {
 
     try {
       // Get fresh session token
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      const authToken = currentSession?.access_token || session?.access_token || "";
-      
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
+      const authToken =
+        currentSession?.access_token || session?.access_token || "";
+
       if (!authToken) {
-        console.warn("⚠️ [PostView] No auth token available for fetching post details");
+        console.warn(
+          "⚠️ [PostView] No auth token available for fetching post details"
+        );
         setError("Please sign in to view post details");
         setLoading(false);
         return;
       }
 
-      const postDetails = await socialPostService.getPostDetails(
-        id,
-        authToken
-      );
-      
+      const postDetails = await socialPostService.getPostDetails(id, authToken);
+
       if (!postDetails) {
         console.error("❌ [PostView] Post details returned null");
         setError("Failed to load post");
@@ -253,19 +255,19 @@ export default function PostView() {
         setLoading(false);
         return;
       }
-      
+
       // Handle both new API structure (data) and legacy structure (post) - matching web app
       const postData = postDetails?.data || postDetails?.post || null;
-      
+
       if (!postData) {
         setError("Failed to load post");
         setPost(null);
         setLoading(false);
         return;
       }
-      
+
       setPost(postData);
-      
+
       // Extract comments exactly like web app CommentSection does:
       // if (postData?.post?.comments?.items) return postData.post.comments.items
       // if (postData?.comments && Array.isArray(postData.comments)) return postData.comments
@@ -277,20 +279,22 @@ export default function PostView() {
       } else if (postDetails?.data?.comments?.items) {
         commentsData = postDetails.data.comments.items;
       }
-      
+
       setComments(commentsData);
       setLikeCount(postData.like_count ?? 0);
       setCommentCount(postData.comment_count ?? 0);
-      
+
       if (postData.is_liked !== null && postData.is_liked !== undefined) {
         setLiked(postData.is_liked);
         console.log("✅ [PostDetail] Using API is_liked:", postData.is_liked);
       } else {
         // Fallback: check Supabase directly if API doesn't provide is_liked
-        console.log("⚠️ [PostDetail] API didn't provide is_liked, checking Supabase");
+        console.log(
+          "⚠️ [PostDetail] API didn't provide is_liked, checking Supabase"
+        );
         checkIfLiked();
       }
-      
+
       setError(null);
     } catch (error) {
       console.error("❌ [PostView] Error fetching post:", error);
@@ -348,7 +352,7 @@ export default function PostView() {
           postId: id,
         });
       }
-      
+
       // Notify list screen to refresh when navigating back
       setRefreshRequired(true);
     } catch (error) {
@@ -902,9 +906,10 @@ export default function PostView() {
               post_comment_id: flagOpen.id,
             });
 
-            // if (response.ok) {
-            await fetchPost();
-            // }
+            if (response.ok) {
+              await fetchPost();
+              setFlagOpen({ open: false, id: "", type: "post" });
+            }
           } else {
             const response = await createFlag({
               reason,
@@ -913,6 +918,7 @@ export default function PostView() {
             });
             console.log("response>", response);
             if (response.ok) {
+              setFlagOpen({ open: false, id: "", type: "post" });
               router.push({
                 pathname: "/(app)/(social)",
                 params: {
@@ -921,7 +927,6 @@ export default function PostView() {
               });
             }
           }
-          setFlagOpen({ open: false, id: "", type: "post" });
         }}
       />
 

@@ -124,7 +124,6 @@ export const FlagContentModal: React.FC<FlagContentModalProps> = ({
       setSubmitting(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
       await onSubmit({ reason, explanation: trimmedDetails });
-      onClose();
     } catch (err) {
       console.error("Flag submit failed", err);
     } finally {
