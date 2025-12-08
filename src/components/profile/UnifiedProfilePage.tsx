@@ -8,6 +8,7 @@ import {
   UserMinus,
   UserPlus,
   Flag,
+  Ban,
 } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
@@ -910,140 +911,174 @@ export function UnifiedProfilePage({
                   </TouchableOpacity>
                 </View>
               ) : (
-                <>
-                  <TouchableOpacity
-                    onPress={handleFollowToggle}
-                    disabled={isBlocked}
+                <View
+                  style={{
+                    flexGrow: 1,
+                    flexBasis: "100%",
+                    gap: 10,
+                  }}
+                >
+                  {/* Primary Row - Follow + Actions */}
+                  <View
                     style={{
-                      flex: 1,
                       flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      paddingVertical: 14,
-                      borderRadius: 24,
-                      backgroundColor: isFollowing
-                        ? theme.colors.card
-                        : theme.colors.primary,
-                      borderWidth: isFollowing ? 1 : 0,
-                      borderColor: theme.colors.border,
-                      opacity: isBlocked ? 0.5 : 1,
+                      gap: 10,
                     }}
                   >
-                    {isFollowing ? (
-                      <UserMinus
+                    <TouchableOpacity
+                      onPress={handleFollowToggle}
+                      disabled={isBlocked}
+                      style={{
+                        flex: 1,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        paddingVertical: 14,
+                        borderRadius: 24,
+                        backgroundColor: isFollowing
+                          ? theme.colors.card
+                          : theme.colors.primary,
+                        borderWidth: 1,
+                        borderColor: isFollowing
+                          ? theme.colors.border
+                          : theme.colors.primary,
+                        opacity: isBlocked ? 0.5 : 1,
+                      }}
+                    >
+                      {isFollowing ? (
+                        <UserMinus
+                          size={18}
+                          color={theme.colors.text}
+                          strokeWidth={2.5}
+                        />
+                      ) : (
+                        <UserPlus size={18} color="white" strokeWidth={2.5} />
+                      )}
+                      <Text
+                        style={{
+                          marginLeft: 8,
+                          fontSize: 16,
+                          fontWeight: "700",
+                          color: isFollowing ? theme.colors.text : "white",
+                        }}
+                      >
+                        {isFollowing ? "Following" : "Follow"}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={handleDirectMessage}
+                      disabled={isBlocked}
+                      style={{
+                        paddingHorizontal: 20,
+                        paddingVertical: 14,
+                        borderRadius: 24,
+                        backgroundColor: theme.colors.card,
+                        borderWidth: 1,
+                        borderColor: theme.colors.border,
+                        opacity: isBlocked ? 0.5 : 1,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <MessageCircle
                         size={18}
                         color={theme.colors.text}
                         strokeWidth={2.5}
                       />
-                    ) : (
-                      <UserPlus size={18} color="white" strokeWidth={2.5} />
-                    )}
-                    <Text
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={handleShareProfile}
+                      disabled={isBlocked}
                       style={{
-                        marginLeft: 8,
-                        fontSize: 16,
-                        fontWeight: "700",
-                        color: isFollowing ? theme.colors.text : "white",
+                        paddingHorizontal: 20,
+                        paddingVertical: 14,
+                        borderRadius: 24,
+                        backgroundColor: theme.colors.card,
+                        borderWidth: 1,
+                        borderColor: theme.colors.border,
+                        opacity: isBlocked ? 0.5 : 1,
+                        alignItems: "center",
+                        justifyContent: "center",
                       }}
                     >
-                      {isFollowing ? "Following" : "Follow"}
-                    </Text>
-                  </TouchableOpacity>
+                      <Send
+                        size={18}
+                        color={theme.colors.text}
+                        strokeWidth={2.5}
+                      />
+                    </TouchableOpacity>
+                  </View>
 
-                  <TouchableOpacity
-                    onPress={handleDirectMessage}
-                    disabled={isBlocked}
+                  {/* Secondary Row - Block + Report */}
+                  <View
                     style={{
-                      paddingHorizontal: 20,
-                      paddingVertical: 14,
-                      borderRadius: 24,
-                      backgroundColor: theme.colors.card,
-                      borderWidth: 1,
-                      borderColor: theme.colors.border,
-                      opacity: isBlocked ? 0.5 : 1,
-                    }}
-                  >
-                    <MessageCircle
-                      size={18}
-                      color={theme.colors.text}
-                      strokeWidth={2.5}
-                    />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={handleShareProfile}
-                    disabled={isBlocked}
-                    style={{
-                      paddingHorizontal: 20,
-                      paddingVertical: 14,
-                      borderRadius: 24,
-                      backgroundColor: theme.colors.card,
-                      borderWidth: 1,
-                      borderColor: theme.colors.border,
-                      opacity: isBlocked ? 0.5 : 1,
-                    }}
-                  >
-                    <Send
-                      size={18}
-                      color={theme.colors.text}
-                      strokeWidth={2.5}
-                    />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={handleBlockToggle}
-                    style={{
-                      paddingHorizontal: 20,
-                      paddingVertical: 14,
-                      borderRadius: 24,
-                      backgroundColor: "#ff2d55" + "60",
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 16,
-                        fontWeight: "700",
-                        color: "white",
-                      }}
-                    >
-                      Block
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => setIsReportModalOpen(true)}
-                    disabled={isBlocked}
-                    style={{
-                      flex: 1,
                       flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      paddingVertical: 14,
-                      borderRadius: 24,
-                      backgroundColor: theme.colors.card,
-                      borderWidth: 1,
-                      borderColor: theme.colors.border,
-                      opacity: isBlocked ? 0.5 : 1,
-                      marginTop: 12,
+                      gap: 10,
                     }}
                   >
-                    <Flag
-                      size={18}
-                      color={theme.colors.text}
-                      strokeWidth={2.5}
-                    />
-                    <Text
+                    <TouchableOpacity
+                      onPress={handleBlockToggle}
                       style={{
-                        marginLeft: 8,
-                        fontSize: 16,
-                        fontWeight: "700",
-                        color: theme.colors.text,
+                        flex: 1,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        paddingVertical: 14,
+                        borderRadius: 24,
+                        backgroundColor: "#ff2d55",
+                        borderWidth: 1,
+                        borderColor: "#ff2d55",
                       }}
                     >
-                      Report User
-                    </Text>
-                  </TouchableOpacity>
-                </>
+                      <Ban size={18} color="white" strokeWidth={2.5} />
+                      <Text
+                        style={{
+                          marginLeft: 8,
+                          fontSize: 16,
+                          fontWeight: "700",
+                          color: "white",
+                        }}
+                      >
+                        Block
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => setIsReportModalOpen(true)}
+                      disabled={isBlocked}
+                      style={{
+                        flex: 1,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        paddingVertical: 14,
+                        borderRadius: 24,
+                        backgroundColor: theme.colors.card,
+                        borderWidth: 1,
+                        borderColor: theme.colors.border,
+                        opacity: isBlocked ? 0.5 : 1,
+                      }}
+                    >
+                      <Flag
+                        size={18}
+                        color={theme.colors.text}
+                        strokeWidth={2.5}
+                      />
+                      <Text
+                        style={{
+                          marginLeft: 8,
+                          fontSize: 16,
+                          fontWeight: "700",
+                          color: theme.colors.text,
+                        }}
+                      >
+                        Report User
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               )}
             </View>
           )}
