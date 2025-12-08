@@ -456,8 +456,7 @@ export function UnifiedProfilePage({
         explanation: explanation || undefined,
       });
 
-
-      if (res.ok) {
+      if (res) {
         Toast.show({
           type: "success",
           text1: "Report submitted",
@@ -468,7 +467,7 @@ export function UnifiedProfilePage({
           topOffset: 50,
         });
         setIsReportModalOpen(false);
-      } 
+      }
     } catch (error) {
       console.error("Error reporting user:", error);
       Toast.show({

@@ -906,7 +906,7 @@ export default function PostView() {
               post_comment_id: flagOpen.id,
             });
 
-            if (response.ok) {
+            if (response) {
               await fetchPost();
               setFlagOpen({ open: false, id: "", type: "post" });
             }

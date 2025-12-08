@@ -1,51 +1,41 @@
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Alert,
-  ScrollView,
-  TextInput,
-  Switch,
-  Modal,
-  FlatList,
-  Image,
-} from "react-native";
-import {
-  useLocalSearchParams,
-  useRouter,
-  Stack,
-  useFocusEffect,
-} from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useTheme } from "~/src/components/ThemeProvider";
-import { useChat } from "~/src/lib/chat";
+import * as ImagePicker from "expo-image-picker";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowLeft,
-  Users,
-  UserPlus,
-  Edit3,
-  Trash2,
-  Image as ImageIcon,
   Bell,
   BellOff,
-  Shield,
-  UserMinus,
-  LogOut,
-  Volume2,
-  VolumeX,
   Camera,
+  Edit3,
+  Image as ImageIcon,
+  LogOut,
+  Trash2,
+  UserMinus,
+  UserPlus,
+  Users,
 } from "lucide-react-native";
-import { Button } from "~/src/components/ui/button";
-import { Card, CardContent } from "~/src/components/ui/card";
-import { Input } from "~/src/components/ui/input";
+import React, { useEffect, useState } from "react";
+import {
+  Alert,
+  FlatList,
+  Image,
+  Modal,
+  ScrollView,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useTheme } from "~/src/components/ThemeProvider";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "~/src/components/ui/avatar";
+import { Button } from "~/src/components/ui/button";
+import { Card, CardContent } from "~/src/components/ui/card";
+import { Input } from "~/src/components/ui/input";
+import { useChat } from "~/src/lib/chat";
 import { ImagePickerService } from "~/src/lib/imagePicker";
-import * as ImagePicker from "expo-image-picker";
 
 export default function ChatSettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

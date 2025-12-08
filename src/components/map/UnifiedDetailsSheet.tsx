@@ -998,22 +998,12 @@ export const UnifiedDetailsSheet = React.memo(
                 event_id: isEventType ? idToFlag : "",
                 static_location_id: isEventType ? "" : idToFlag,
               });
-              if (response.ok) {
+              if (response) {
                 setFlagOpen({ open: false, eventId: "", locationId: "" });
                 Toast.show({
                   type: "success",
                   text1: "Report submitted",
                   text2: "Thank you for helping keep our community safe.",
-                  position: "top",
-                  visibilityTime: 3000,
-                  autoHide: true,
-                  topOffset: 50,
-                });
-              } else {
-                Toast.show({
-                  type: "error",
-                  text1: "Failed to report",
-                  text2: "Please try again.",
                   position: "top",
                   visibilityTime: 3000,
                   autoHide: true,

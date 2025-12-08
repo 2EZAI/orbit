@@ -201,7 +201,7 @@ export default function SocialFeed() {
       });
 
       console.log("✅ [SocialFeed] Flag created successfully", { result });
-      if (result?.ok) {
+      if (result) {
         await loadPosts(true);
         setFlagOpen({ open: false, id: "" });
       }

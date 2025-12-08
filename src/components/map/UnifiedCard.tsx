@@ -982,7 +982,7 @@ export const UnifiedCard = React.memo(
                 event_id: isEventFlag ? idToFlag : "",
                 static_location_id: isEventFlag ? "" : idToFlag,
               });
-              if (response.ok) {
+              if (response) {
                 setFlagOpen({ open: false, eventId: "", locationId: "" });
                 Toast.show({
                   type: "success",
@@ -993,17 +993,7 @@ export const UnifiedCard = React.memo(
                   autoHide: true,
                   topOffset: 50,
                 });
-              } else {
-                Toast.show({
-                  type: "error",
-                  text1: "Failed to report",
-                  text2: "Please try again.",
-                  position: "top",
-                  visibilityTime: 3000,
-                  autoHide: true,
-                  topOffset: 50,
-                });
-              }
+              } 
             }}
           />
         </View>
