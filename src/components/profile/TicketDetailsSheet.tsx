@@ -1,5 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
   Modal,
@@ -7,13 +9,23 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { ArrowLeft, Flag } from "lucide-react-native";
+import {
+  ArrowLeft,
+  ArrowRightLeft,
+  Flag,
+  Wallet,
+  X,
+} from "lucide-react-native";
 import QRCode from "react-native-qrcode-svg";
 import { Ticket } from "~/hooks/useMyTickets";
 import { useTheme } from "../ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { Sheet } from "../ui/sheet";
 import { UnifiedData } from "../map/UnifiedDetailsSheet";
+import { useAuth } from "~/src/lib/auth";
+import { useUserData } from "~/hooks/useUserData";
+import { useCancelTransfer } from "~/hooks/useTicketTransfer";
+import { TransferTicketModal } from "../modals/TransferTicketModal";
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 interface TicketDetailsSheetProps {
@@ -58,12 +70,44 @@ export const TicketDetailsSheet: React.FC<TicketDetailsSheetProps> = ({
   eventData,
 }) => {
   const { theme, isDarkMode } = useTheme();
-  console.log("🔍 [TicketDetailsSheet] ticket:😅😅😅😅😅😅🥶🥶🥶", ticket);
+  const { user } = useUserData();
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const { cancelTransfer, isLoading: isCancelLoading } = useCancelTransfer();
+
   if (!ticket) return null;
 
   const eventDate = formatDate(ticket.event_start_datetime || ticket.issued_at);
   const eventTime = formatTime(ticket.event_start_datetime || ticket.issued_at);
   const issuedDate = formatDate(ticket.issued_at);
+  const isTransferred = ticket.owner_id !== ticket.purchaser_id;
+  const isOwner = ticket.owner_id === user?.id;
+  const isPurchaser = ticket.purchaser_id === user?.id;
+  const canTransfer = ticket.status === "active" && isOwner;
+  const canCancelTransfer =
+    ticket.status === "active" &&
+    ticket.transfer_count > 0 &&
+    isTransferred &&
+    (isPurchaser || isOwner);
+
+  const handleCancelTransfer = () => {
+    Alert.alert(
+      "Cancel Transfer",
+      "Are you sure you want to cancel this transfer and return the ticket to the previous owner?",
+      [
+        {
+          text: "No",
+          style: "cancel",
+        },
+        {
+          text: "Yes, Cancel",
+          style: "destructive",
+          onPress: async () => {
+            await cancelTransfer(ticket.id);
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <Sheet isOpen={visible} onClose={onClose}>
@@ -304,8 +348,211 @@ export const TicketDetailsSheet: React.FC<TicketDetailsSheetProps> = ({
               Present this QR code at the event entrance for scanning
             </Text>
           </View>
+          {/* Transfers section */}
+          {isTransferred ? (
+            <View style={{ marginVertical: 20 }}>
+              {/* Section header */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginBottom: 12,
+                  gap: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: "800",
+                    color: theme.colors.text,
+                  }}
+                >
+                  Transfers
+                </Text>
+                {ticket.transfer_count > 0 ? (
+                  <View
+                    style={{
+                      backgroundColor: isDarkMode ? "#78716c" : "#a8a29e",
+                      paddingHorizontal: 8,
+                      paddingVertical: 2,
+                      borderRadius: 12,
+                      minWidth: 24,
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: "700",
+                        color: "#1c1917",
+                      }}
+                    >
+                      {ticket.transfer_count}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+
+              {/* Transfer status card */}
+              <View
+                style={{
+                  borderRadius: 16,
+                  backgroundColor: isDarkMode ? "#44403c" : "#78716c",
+                  borderWidth: 1,
+                  borderColor: isDarkMode ? "#57534e" : "#a8a29e",
+                  padding: 16,
+                  flexDirection: "row",
+                  gap: 12,
+                }}
+              >
+                {/* Icon */}
+                <View
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: isDarkMode
+                      ? "rgba(251, 146, 60, 0.15)"
+                      : "rgba(251, 146, 60, 0.2)",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <ArrowRightLeft size={18} color="#fb923c" strokeWidth={2.5} />
+                </View>
+
+                {/* Content */}
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: "700",
+                      color: "#fef3c7",
+                      marginBottom: 4,
+                    }}
+                  >
+                    Transferred
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      lineHeight: 20,
+                      color: "#e7e5e4",
+                    }}
+                  >
+                    {"This ticket has been transferred from another user"}
+                  </Text>
+
+                  {/* Optional: Show transfer details */}
+                </View>
+              </View>
+            </View>
+          ) : null}
+
+          {/* Action Buttons */}
+          {ticket.status === "active" ? (
+            <View style={{ marginTop: 24, marginBottom: 16, gap: 12 }}>
+              {/* Transfer Button */}
+              {canTransfer && (
+                <TouchableOpacity
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    paddingVertical: 16,
+                    borderRadius: 16,
+                    backgroundColor: "#fbbf24",
+                    gap: 8,
+                  }}
+                  onPress={() => setIsTransferModalOpen(true)}
+                >
+                  <ArrowRightLeft size={20} color="#1c1917" strokeWidth={2.5} />
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: "700",
+                      color: "#1c1917",
+                    }}
+                  >
+                    Transfer
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Buy More Button */}
+              <TouchableOpacity
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingVertical: 16,
+                  borderRadius: 16,
+                  backgroundColor: "#7c3aed",
+                  gap: 8,
+                }}
+                onPress={() => {
+                  // Handle buy more action
+                  console.log("Buy more tickets");
+                }}
+              >
+                <Wallet size={20} color="white" strokeWidth={2.5} />
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: "white",
+                  }}
+                >
+                  Buy More
+                </Text>
+              </TouchableOpacity>
+
+              {/* Cancel Transfer Button */}
+              {canCancelTransfer && (
+                <TouchableOpacity
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    paddingVertical: 16,
+                    borderRadius: 16,
+                    backgroundColor: "#ef4444",
+                    opacity: isCancelLoading ? 0.6 : 1,
+                    gap: 8,
+                  }}
+                  onPress={handleCancelTransfer}
+                  disabled={isCancelLoading}
+                >
+                  {isCancelLoading ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <>
+                      <X size={20} color="white" strokeWidth={2.5} />
+                      <Text
+                        style={{
+                          fontSize: 16,
+                          fontWeight: "700",
+                          color: "white",
+                        }}
+                      >
+                        Cancel Transfer
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : null}
         </ScrollView>
       </View>
+
+      {/* Transfer Modal */}
+      <TransferTicketModal
+        visible={isTransferModalOpen}
+        onClose={() => setIsTransferModalOpen(false)}
+        ticketId={ticket.id}
+        eventName={ticket.event_name || "Orbit Event"}
+      />
     </Sheet>
   );
 };
