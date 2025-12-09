@@ -1240,7 +1240,8 @@ export default function ChannelScreen() {
                     flex: 1,
                     justifyContent: "flex-end", // align children to bottom
                     alignItems: "flex-start", // align to the left
-                    padding: 16,
+                    paddingHorizontal: 16,
+                    paddingBottom: 30,
                     backgroundColor: theme.colors.card,
                   }}
                 >
