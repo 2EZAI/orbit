@@ -8,6 +8,7 @@ const API_BASE_URL = "https://orbit-stripe-backend.onrender.com/api/";
 type CreateCheckoutParams = {
   eventId: string;
   idempotencyKey: string;
+  quantity: number;
 };
 
 type CheckoutResult = {
@@ -58,7 +59,11 @@ export const useCheckoutSession = () => {
       try {
         // 1. Ask your backend to create a PaymentIntent & ephemeral key
         const response = await fetch(
-          `${API_BASE_URL}stripe/payment-intent/${params.eventId}?idempotencyKey=${params.idempotencyKey}`,
+          `${API_BASE_URL}stripe/payment-intent/${
+            params.eventId
+          }?idempotencyKey=${params.idempotencyKey}&quantity=${
+            params.quantity || 1
+          }`,
           {
             method: "POST",
             headers: {

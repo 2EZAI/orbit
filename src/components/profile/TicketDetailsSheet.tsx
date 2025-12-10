@@ -1,31 +1,30 @@
+import {
+  initPaymentSheet,
+  presentPaymentSheet,
+} from "@stripe/stripe-react-native";
+import { ArrowLeft, ArrowRightLeft, Wallet, X } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
   Image,
-  Modal,
   ScrollView,
   TouchableOpacity,
   View,
 } from "react-native";
-import {
-  ArrowLeft,
-  ArrowRightLeft,
-  Flag,
-  Wallet,
-  X,
-} from "lucide-react-native";
 import QRCode from "react-native-qrcode-svg";
+import Toast from "react-native-toast-message";
+import { useCheckoutSession } from "~/hooks/useCheckoutSession";
 import { Ticket } from "~/hooks/useMyTickets";
-import { useTheme } from "../ThemeProvider";
-import { Text } from "~/src/components/ui/text";
-import { Sheet } from "../ui/sheet";
-import { UnifiedData } from "../map/UnifiedDetailsSheet";
-import { useAuth } from "~/src/lib/auth";
-import { useUserData } from "~/hooks/useUserData";
 import { useCancelTransfer } from "~/hooks/useTicketTransfer";
+import { useUserData } from "~/hooks/useUserData";
+import { Text } from "~/src/components/ui/text";
+import { UnifiedData } from "../map/UnifiedDetailsSheet";
+import { PurchaseTicketsModal } from "../modals/PurchaseTicketsModal";
 import { TransferTicketModal } from "../modals/TransferTicketModal";
+import { useTheme } from "../ThemeProvider";
+import { Sheet } from "../ui/sheet";
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 interface TicketDetailsSheetProps {
@@ -71,8 +70,11 @@ export const TicketDetailsSheet: React.FC<TicketDetailsSheetProps> = ({
 }) => {
   const { theme, isDarkMode } = useTheme();
   const { user } = useUserData();
+
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const { cancelTransfer, isLoading: isCancelLoading } = useCancelTransfer();
+  const { createCheckoutSession, loading } = useCheckoutSession();
 
   if (!ticket) return null;
 
@@ -108,7 +110,49 @@ export const TicketDetailsSheet: React.FC<TicketDetailsSheetProps> = ({
       ]
     );
   };
+  const handleTicketPurchase = async (qty: number) => {
+    const key = `${user?.id}-${ticket.event_id}-${Date.now()}`;
+    const checkoutSessionData = await createCheckoutSession({
+      eventId: ticket.event_id,
+      idempotencyKey: key,
+      quantity: qty,
+    });
 
+    if (
+      checkoutSessionData.success &&
+      checkoutSessionData.paymentIntent?.clientSecret
+    ) {
+      const { error: initError } = await initPaymentSheet({
+        merchantDisplayName: "Orbit",
+
+        paymentIntentClientSecret:
+          checkoutSessionData.paymentIntent?.clientSecret.trim(),
+        style: "automatic",
+        returnURL: "com.dovydmcnugget.orbit://payment-success",
+        // Only include customerId / customerEphemeralKeySecret if your backend
+        // actually returns valid Stripe values for them.
+      });
+      console.log("🔍 [EventDetailsSection] initError:", initError);
+      if (initError) {
+        Toast.show({
+          type: "error",
+          text1: "Payment error",
+          text2: initError.message,
+        });
+      } else {
+        const { error: presentError } = await presentPaymentSheet();
+        if (presentError) {
+          console.error("Error presenting payment sheet:", presentError);
+          return;
+        } else {
+          Toast.show({
+            type: "success",
+            text1: "Payment successful",
+          });
+        }
+      }
+    }
+  };
   return (
     <Sheet isOpen={visible} onClose={onClose}>
       <View
@@ -491,8 +535,7 @@ export const TicketDetailsSheet: React.FC<TicketDetailsSheetProps> = ({
                   gap: 8,
                 }}
                 onPress={() => {
-                  // Handle buy more action
-                  console.log("Buy more tickets");
+                  setIsPurchaseModalOpen(true);
                 }}
               >
                 <Wallet size={20} color="white" strokeWidth={2.5} />
@@ -552,6 +595,16 @@ export const TicketDetailsSheet: React.FC<TicketDetailsSheetProps> = ({
         onClose={() => setIsTransferModalOpen(false)}
         ticketId={ticket.id}
         eventName={ticket.event_name || "Orbit Event"}
+      />
+      {/* Purchase Tickets Modal */}
+      <PurchaseTicketsModal
+        visible={isPurchaseModalOpen}
+        onClose={() => setIsPurchaseModalOpen(false)}
+        eventName={ticket.event_name || "Orbit Event"}
+        onContinue={async (qty) => {
+          setIsPurchaseModalOpen(false);
+          await handleTicketPurchase(qty);
+        }}
       />
     </Sheet>
   );
