@@ -3,7 +3,7 @@ import {
   presentPaymentSheet,
 } from "@stripe/stripe-react-native";
 import { Calendar, MapPin, Navigation, User } from "lucide-react-native";
-import React from "react";
+import React, { useState } from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import Toast from "react-native-toast-message";
 import Payment from "~/assets/svg/Payment";
@@ -12,6 +12,7 @@ import { useUserData } from "~/hooks/useUserData";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { openMapDirections } from "~/src/lib/nativeActions";
+import { PurchaseTicketsModal } from "../../modals/PurchaseTicketsModal";
 interface EventDetailsSectionProps {
   data: any;
   isCreator: boolean;
@@ -28,6 +29,7 @@ export function EventDetailsSection({
   const { theme, isDarkMode } = useTheme();
   const { createCheckoutSession, loading } = useCheckoutSession();
   const { user } = useUserData();
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const formatEventDateTime = () => {
     const startDate = new Date(data.start_datetime);
     const endDate = data.end_datetime ? new Date(data.end_datetime) : null;
@@ -83,11 +85,12 @@ export function EventDetailsSection({
       await openMapDirections(lat, lng, data.address || data.venue_name);
     }
   };
-  const handleTicketPurchase = async () => {
+  const handleTicketPurchase = async (qty: number) => {
     const key = `${user?.id}-${data.id}-${Date.now()}`;
     const checkoutSessionData = await createCheckoutSession({
       eventId: data.id,
       idempotencyKey: key,
+      quantity: qty,
     });
 
     if (
@@ -272,7 +275,7 @@ export function EventDetailsSection({
         {data?.ticket_status === "sales_live" && (
           <View className="flex-row mt-4" style={{ gap: 8 }}>
             <TouchableOpacity
-              onPress={handleTicketPurchase}
+              onPress={() => setIsPurchaseModalOpen(true)}
               className="flex-1 flex-row items-center justify-center py-2.5 px-3 rounded-lg bg-green-500"
             >
               <Payment width={16} height={16} fill={"white"} />
@@ -297,6 +300,15 @@ export function EventDetailsSection({
           </TouchableOpacity>
         </View>
       </View>
+      <PurchaseTicketsModal
+        visible={isPurchaseModalOpen}
+        onClose={() => setIsPurchaseModalOpen(false)}
+        eventName={data.name || "Orbit Event"}
+        onContinue={async (qty) => {
+          setIsPurchaseModalOpen(false);
+          await handleTicketPurchase(qty);
+        }}
+      />
     </View>
   );
 }
