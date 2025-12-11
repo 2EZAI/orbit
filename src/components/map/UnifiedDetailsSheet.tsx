@@ -1,6 +1,6 @@
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { router } from "expo-router";
-import { ArrowLeft, Flag, Heart, Tag, ThumbsDown, ThumbsUp, UserCheck, Users, X } from "lucide-react-native";
+import { ArrowLeft, Bookmark, Flag, Tag, ThumbsDown, ThumbsUp, UserCheck, Users, X } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   DeviceEventEmitter,
@@ -13,7 +13,9 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 import { useEventJoinStatus } from "~/hooks/useEventJoinStatus";
+import { useFlagging } from "~/hooks/useFlagging";
 import { useJoinEvent } from "~/hooks/useJoinEvent";
 import { useLocationEvents } from "~/hooks/useLocationEvents";
 import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
@@ -21,11 +23,10 @@ import { useTheme } from "~/src/components/ThemeProvider";
 import { ConfettiAnimation } from "~/src/components/ui/ConfettiAnimation";
 import { Text } from "~/src/components/ui/text";
 import { haptics } from "~/src/lib/haptics";
+import FlagContentModal from "../modals/FlagContentModal";
+import { BookmarkCollectionsSheet } from "./BookmarkCollectionsSheet";
 import { UnifiedDetailsSheetContent } from "./UnifiedDetailsSheetContent";
 import { UnifiedSheetButtons } from "./UnifiedSheetButtons";
-import FlagContentModal from "../modals/FlagContentModal";
-import { useFlagging } from "~/hooks/useFlagging";
-import Toast from "react-native-toast-message";
 
 // Additional types that were in the old hook
 export interface Category {
@@ -133,6 +134,8 @@ export const UnifiedDetailsSheet = React.memo(
     }, [selectedImage]);
     const [manuallyUpdated, setManuallyUpdated] = useState(false);
     const [showConfetti, setShowConfetti] = useState(false);
+    const [isBookmarked, setIsBookmarked] = useState(false);
+    const [isBookmarkSheetVisible, setIsBookmarkSheetVisible] = useState(false);
     const { createFlag } = useFlagging();
     
     // Like/Dislike state (ready for API integration)
@@ -199,6 +202,12 @@ export const UnifiedDetailsSheet = React.memo(
       }
     }, [isOpen, data?.id]);
 
+    // Reset bookmark UI when the underlying item changes
+    useEffect(() => {
+      setIsBookmarked(false);
+      setIsBookmarkSheetVisible(false);
+    }, [data?.id]);
+
     // Location events are now handled by the useLocationEvents hook above
 
     // PanResponder for swipe to close modal
@@ -227,6 +236,11 @@ export const UnifiedDetailsSheet = React.memo(
     const handleShare = async () => {
       const currentData = detailData || data;
       onShare(currentData, isEventType);
+    };
+
+    const handleToggleBookmark = () => {
+      haptics.light();
+      setIsBookmarkSheetVisible(true);
     };
 
     const handleTicketPurchase = () => {
@@ -700,6 +714,8 @@ export const UnifiedDetailsSheet = React.memo(
 
     // Use database creator check (isCreator from hook) - already defined above
 
+    const primaryImage = currentData?.image_urls?.[0];
+
     return (
       <>
         <Modal
@@ -730,7 +746,6 @@ export const UnifiedDetailsSheet = React.memo(
                 height: "100%",
               }}
             />
-
             <BottomSheet
               snapPoints={["75%", "95%"]}
               handleIndicatorStyle={{
@@ -794,18 +809,32 @@ export const UnifiedDetailsSheet = React.memo(
                     >
                       <ArrowLeft size={20} color="#000" />
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => {
-                        setFlagOpen({
-                          open: true,
-                          eventId: isEventType ? currentData.id : "",
-                          locationId: isEventType ? "" : currentData.id,
-                        });
-                      }}
-                      className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
-                    >
-                      <Flag size={20} color="#000" />
-                    </TouchableOpacity>
+                    <View className="flex-row items-center gap-2">
+                      <TouchableOpacity
+                        onPress={() => {
+                          setFlagOpen({
+                            open: true,
+                            eventId: isEventType ? currentData.id : "",
+                            locationId: isEventType ? "" : currentData.id,
+                          });
+                        }}
+                        className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
+                      >
+                        <Flag size={20} color="#000" />
+                      </TouchableOpacity>
+                      {isUserEvent || isGoogleApiEvent ? (
+                        <TouchableOpacity
+                          onPress={handleToggleBookmark}
+                          className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
+                        >
+                          <Bookmark
+                            size={20}
+                            color={isBookmarked ? "#8B5CF6" : "#000"}
+                            fill={isBookmarked ? "#8B5CF6" : "transparent"}
+                          />
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
                   </View>
 
                   {/* Floating Stats - Show attendee count prominently for events */}
@@ -1042,9 +1071,7 @@ export const UnifiedDetailsSheet = React.memo(
                 from={from}
               />
             </BottomSheet>
-
             {/* Enhanced Image Viewer Modal with Swiping */}
-
             <Modal
               visible={!!selectedImage}
               transparent={true}
@@ -1162,7 +1189,15 @@ export const UnifiedDetailsSheet = React.memo(
                 </View>
               </View>
             </Modal>
-
+            {detailData && (
+              <BookmarkCollectionsSheet
+                visible={isBookmarkSheetVisible}
+                onClose={() => setIsBookmarkSheetVisible(false)}
+                isBookmarked={isBookmarked}
+                primaryImage={primaryImage}
+                eventData={detailData}
+              />
+            )}
             {/* Location Event Details Sheet */}
             {selectedLocationEvent && (
               <UnifiedDetailsSheet
