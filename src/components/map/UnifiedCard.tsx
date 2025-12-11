@@ -1,8 +1,9 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Calendar, Flag, MapPin, Star, Users, X } from "lucide-react-native";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Animated,
   DeviceEventEmitter,
   Image,
   PanResponder,
@@ -11,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Dimensions } from "react-native";
 import Toast from "react-native-toast-message";
 import type { Channel } from "stream-chat";
 import { useEventJoinStatus } from "~/hooks/useEventJoinStatus";
@@ -351,6 +353,15 @@ export const UnifiedCard = React.memo(
       event: null,
       isEventType: false,
     });
+
+    // Track recently visited items to prevent cycling back
+    const visitedItemsRef = useRef<string[]>([]);
+    const swipeCountRef = useRef(0);
+    const lastSelectedIdRef = useRef<string | null>(null);
+    
+    // Animation values for glass shimmer effect
+    const shimmerPosition = useRef(new Animated.Value(-1)).current;
+    const shimmerOpacity = useRef(new Animated.Value(0)).current;
     const handleChatSelect = async (channel: Channel) => {
       if (!channel) return;
       try {
@@ -448,27 +459,88 @@ export const UnifiedCard = React.memo(
       refetch: refetchJoinStatus,
     } = useEventJoinStatus(treatAsEvent ? data.id : undefined, createdById);
 
-    // Helper: Find nearest item in nearbyData (excluding current)
-    const findNearestItem = () => {
+    const findNearestItem = (swipeDirection: "left" | "right") => {
       const current = detailData || data;
       if (!current?.location?.coordinates) return null;
-      const [currLng, currLat] = current.location.coordinates;
-      let minDist = Infinity;
-      let nearest = null;
-      for (const item of nearbyData) {
-        if (item.id === current.id || !item?.location?.coordinates) continue;
-        const [lng, lat] = item.location.coordinates;
-        // Use Haversine formula for geographic distance
-        const dist = calculateDistance(currLat, currLng, lat, lng);
-        if (dist < minDist) {
-          minDist = dist;
-          nearest = item;
-        }
+      
+      const allAvailableItems = nearbyData.filter(
+        (item) =>
+          item.id !== current.id && item?.location?.coordinates
+      );
+      
+      if (allAvailableItems.length === 0) return null;
+      
+      // Filter out recently visited items (last 10 items to prevent cycling)
+      const availableItems = allAvailableItems.filter(
+        (item) => !visitedItemsRef.current.includes(item.id)
+      );
+      
+      // If we've visited most/all items, reset history but keep last selected excluded
+      if (availableItems.length === 0) {
+        // Reset history but exclude the last selected item
+        visitedItemsRef.current = [];
+        const itemsToChooseFrom = allAvailableItems.filter(
+          (item) => item.id !== lastSelectedIdRef.current
+        );
+        const items = itemsToChooseFrom.length > 0 ? itemsToChooseFrom : allAvailableItems;
+        const randomIndex = Math.floor(Math.random() * items.length);
+        const selected = items[randomIndex];
+        visitedItemsRef.current.push(selected.id);
+        lastSelectedIdRef.current = selected.id;
+        return selected;
       }
-      return nearest;
+      
+      // Always pick randomly from available items (not recently visited)
+      // This ensures variety and prevents cycling
+      const randomIndex = Math.floor(Math.random() * availableItems.length);
+      const selected = availableItems[randomIndex];
+      
+      if (selected) {
+        visitedItemsRef.current.push(selected.id);
+        // Keep history of last 10 items to prevent cycling
+        if (visitedItemsRef.current.length > 10) {
+          visitedItemsRef.current.shift();
+        }
+        lastSelectedIdRef.current = selected.id;
+      }
+      
+      return selected;
     };
 
-    // PanResponder for swipe gesture
+    // Trigger glass shimmer animation
+    const triggerShimmer = (direction: "left" | "right") => {
+      // Reset shimmer position based on direction
+      shimmerPosition.setValue(direction === "right" ? -1 : 1);
+      shimmerOpacity.setValue(0);
+      
+      // Animate shimmer across the card
+      Animated.parallel([
+        Animated.timing(shimmerPosition, {
+          toValue: direction === "right" ? 1 : -1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.sequence([
+          Animated.timing(shimmerOpacity, {
+            toValue: 0.8,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+          Animated.timing(shimmerOpacity, {
+            toValue: 0.8,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(shimmerOpacity, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start();
+    };
+
+    // PanResponder for swipe gesture with glass shimmer animation
     const panResponder = React.useMemo(
       () =>
         PanResponder.create({
@@ -479,17 +551,36 @@ export const UnifiedCard = React.memo(
             );
           },
           onPanResponderRelease: (_evt, gestureState) => {
-            if (Math.abs(gestureState.dx) > 40) {
-              // On swipe left or right, open nearest pin
-              const nearest = findNearestItem();
-              if (nearest) {
-                onDataSelect(nearest);
-              }
+            const swipeThreshold = 40;
+            const swipeDistance = Math.abs(gestureState.dx);
+            
+            if (swipeDistance > swipeThreshold) {
+              const swipeDirection = gestureState.dx > 0 ? "right" : "left";
+              
+              // Trigger glass shimmer effect
+              triggerShimmer(swipeDirection);
+              
+              // Small delay to let shimmer start, then select next item
+              setTimeout(() => {
+                const nearest = findNearestItem(swipeDirection);
+                if (nearest) {
+                  onDataSelect(nearest);
+                }
+              }, 100);
             }
           },
         }),
       [nearbyData, detailData, data]
     );
+    
+    // Reset visited items when data changes
+    useEffect(() => {
+      visitedItemsRef.current = [];
+      swipeCountRef.current = 0;
+      lastSelectedIdRef.current = null;
+      shimmerPosition.setValue(-1);
+      shimmerOpacity.setValue(0);
+    }, [data.id]);
     // Get theme colors and context based on data - ULTRA OPTIMIZED
     const theme = useMemo(
       () => getThemeColors(detailData || data),
@@ -785,6 +876,17 @@ export const UnifiedCard = React.memo(
         };
       }
     }, [detailData, data, treatAsEvent]); // Removed userLocation dependencies
+    
+    // Get screen width for shimmer animation
+    const screenWidth = Dimensions.get('window').width;
+    const cardWidth = screenWidth - 32; // Account for left/right padding (16 each)
+    
+    // Interpolate shimmer position for gradient (from -cardWidth to +cardWidth)
+    const shimmerTranslateX = shimmerPosition.interpolate({
+      inputRange: [-1, 1],
+      outputRange: [-cardWidth, cardWidth],
+    });
+
     return (
       <>
         <View
@@ -821,6 +923,46 @@ export const UnifiedCard = React.memo(
                 bottom: 0,
               }}
             />
+
+            {/* Glass Shimmer Effect */}
+            <Animated.View
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 0,
+                overflow: "hidden",
+                opacity: shimmerOpacity,
+              }}
+              pointerEvents="none"
+            >
+              <Animated.View
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  bottom: 0,
+                  width: "40%",
+                  transform: [{ translateX: shimmerTranslateX }],
+                }}
+              >
+                <LinearGradient
+                  colors={[
+                    "transparent",
+                    "rgba(255, 255, 255, 0.3)",
+                    "rgba(255, 255, 255, 0.5)",
+                    "rgba(255, 255, 255, 0.3)",
+                    "transparent",
+                  ]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{
+                    flex: 1,
+                    width: "100%",
+                  }}
+                />
+              </Animated.View>
+            </Animated.View>
 
             {/* Close Button */}
             <View
