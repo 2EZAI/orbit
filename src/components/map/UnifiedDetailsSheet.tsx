@@ -1,6 +1,16 @@
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { router } from "expo-router";
-import { ArrowLeft, Bookmark, Flag, Tag, ThumbsDown, ThumbsUp, UserCheck, Users, X } from "lucide-react-native";
+import {
+  ArrowLeft,
+  Bookmark,
+  Flag,
+  Tag,
+  ThumbsDown,
+  ThumbsUp,
+  UserCheck,
+  Users,
+  X,
+} from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   DeviceEventEmitter,
@@ -137,7 +147,7 @@ export const UnifiedDetailsSheet = React.memo(
     const [isBookmarked, setIsBookmarked] = useState(false);
     const [isBookmarkSheetVisible, setIsBookmarkSheetVisible] = useState(false);
     const { createFlag } = useFlagging();
-    
+
     // Like/Dislike state (ready for API integration)
     const [isLiked, setIsLiked] = useState<boolean>(
       (data as any)?.is_liked || false
@@ -366,7 +376,7 @@ export const UnifiedDetailsSheet = React.memo(
       // Optimistic update
       setIsLiked(newLikedState);
       setIsDisliked(false);
-      
+
       if (newLikedState) {
         setLikeCount((prev) => prev + 1);
         if (wasDisliked) {
@@ -413,7 +423,7 @@ export const UnifiedDetailsSheet = React.memo(
       // Optimistic update
       setIsDisliked(newDislikedState);
       setIsLiked(false);
-      
+
       if (newDislikedState) {
         setDislikeCount((prev) => prev + 1);
         if (wasLiked) {
@@ -485,13 +495,13 @@ export const UnifiedDetailsSheet = React.memo(
     // Use data directly like web app (backend should return complete data)
     const hitDetailApi = async () => {
       setDetailData(data as UnifiedData);
-      
+
       // Initialize like/dislike state from data
       setIsLiked((data as any)?.is_liked || false);
       setIsDisliked((data as any)?.is_disliked || false);
       setLikeCount((data as any)?.like_count || 0);
       setDislikeCount((data as any)?.dislike_count || 0);
-      
+
       setLoading(false);
     };
 
@@ -822,7 +832,7 @@ export const UnifiedDetailsSheet = React.memo(
                       >
                         <Flag size={20} color="#000" />
                       </TouchableOpacity>
-                      {isUserEvent || isGoogleApiEvent ? (
+                      {detailData?.source !== "ticketmaster" ? (
                         <TouchableOpacity
                           onPress={handleToggleBookmark}
                           className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"

@@ -25,58 +25,58 @@ import { supabaseIntegration } from "@supabase/sentry-js-integration";
 import { supabase } from "~/src/lib/supabase";
 import { PostRefreshProvider } from "~/src/lib/postProvider";
 
-Sentry.init({
-  dsn: "https://d49231e6742e5638c77f98c0c7691b77@o4510307919462400.ingest.us.sentry.io/4510308014882816",
-  tracesSampleRate: 1.0,
-  profilesSampleRate: 1.0,
-  replaysSessionSampleRate: 0.1, // this means 10% of sessions are sent to Sentry, sessions are used to track user behavior
-  replaysOnErrorSampleRate: 1.0, // this means 100% of sessions with errors are sent to Sentry, sessions are used to track user behavior
-  attachScreenshot: true,
-  attachViewHierarchy: true,
+// Sentry.init({
+//   dsn: "https://d49231e6742e5638c77f98c0c7691b77@o4510307919462400.ingest.us.sentry.io/4510308014882816",
+//   tracesSampleRate: 1.0,
+//   profilesSampleRate: 1.0,
+//   replaysSessionSampleRate: 0.1, // this means 10% of sessions are sent to Sentry, sessions are used to track user behavior
+//   replaysOnErrorSampleRate: 1.0, // this means 100% of sessions with errors are sent to Sentry, sessions are used to track user behavior
+//   attachScreenshot: true,
+//   attachViewHierarchy: true,
 
-  sendDefaultPii: true,
-  enableLogs: true,
-  debug: false,
-  integrations: [
-    supabaseIntegration(supabase, Sentry, {
-      tracing: true,
-      breadcrumbs: true,
-      errors: true,
-    }),
+//   sendDefaultPii: true,
+//   enableLogs: true,
+//   debug: false,
+//   integrations: [
+//     supabaseIntegration(supabase, Sentry, {
+//       tracing: true,
+//       breadcrumbs: true,
+//       errors: true,
+//     }),
 
-    Sentry.reactNativeTracingIntegration({
-      shouldCreateSpanForRequest: (url: string) => {
-        const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl as
-          | string
-          | undefined;
-        if (supabaseUrl && url.startsWith(`${supabaseUrl}/rest`)) {
-          return false;
-        }
-        return true;
-      },
-    }),
-    // React Navigation instrumentation is automatically wired by Sentry.wrap with Expo Router,
-    // but keeping the integration here ensures performance spans for navigation in all cases.
-    Sentry.reactNavigationIntegration(),
-    Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] }),
-    Sentry.breadcrumbsIntegration({
-      // Disable console breadcrumbs since we have consoleLoggingIntegration for structured logs
-      console: false,
-      // Enable DOM breadcrumbs to track user interactions (clicks, keypresses)
-      dom: {
-        serializeAttribute: ["data-testid", "aria-label", "data-cy"],
-      },
-      // Enable fetch breadcrumbs to track API calls
-      fetch: true,
-      // Enable history breadcrumbs to track navigation
-      history: true,
-      // Enable XHR breadcrumbs (if you use XMLHttpRequest)
-      xhr: true,
-      // Enable Sentry breadcrumbs to see when events are sent
-      sentry: true,
-    }),
-  ],
-});
+//     Sentry.reactNativeTracingIntegration({
+//       shouldCreateSpanForRequest: (url: string) => {
+//         const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl as
+//           | string
+//           | undefined;
+//         if (supabaseUrl && url.startsWith(`${supabaseUrl}/rest`)) {
+//           return false;
+//         }
+//         return true;
+//       },
+//     }),
+//     // React Navigation instrumentation is automatically wired by Sentry.wrap with Expo Router,
+//     // but keeping the integration here ensures performance spans for navigation in all cases.
+//     Sentry.reactNavigationIntegration(),
+//     Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] }),
+//     Sentry.breadcrumbsIntegration({
+//       // Disable console breadcrumbs since we have consoleLoggingIntegration for structured logs
+//       console: false,
+//       // Enable DOM breadcrumbs to track user interactions (clicks, keypresses)
+//       dom: {
+//         serializeAttribute: ["data-testid", "aria-label", "data-cy"],
+//       },
+//       // Enable fetch breadcrumbs to track API calls
+//       fetch: true,
+//       // Enable history breadcrumbs to track navigation
+//       history: true,
+//       // Enable XHR breadcrumbs (if you use XMLHttpRequest)
+//       xhr: true,
+//       // Enable Sentry breadcrumbs to see when events are sent
+//       sentry: true,
+//     }),
+//   ],
+// });
 
 const toastConfig = {
   success: (props: any) => (

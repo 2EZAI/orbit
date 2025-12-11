@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  ScrollView,
   TextInput,
   TouchableOpacity,
   View,
@@ -16,6 +17,12 @@ import { Text } from "~/src/components/ui/text";
 import { UnifiedData } from "./UnifiedDetailsSheet";
 
 const MOCK_BOOKMARK_COLLECTIONS = [
+  { id: "test", name: "Test", subtitle: "Private" },
+  { id: "useful", name: "Useful", subtitle: "with WarriorEx" },
+  { id: "test", name: "Test", subtitle: "Private" },
+  { id: "useful", name: "Useful", subtitle: "with WarriorEx" },
+  { id: "test", name: "Test", subtitle: "Private" },
+  { id: "useful", name: "Useful", subtitle: "with WarriorEx" },
   { id: "test", name: "Test", subtitle: "Private" },
   { id: "useful", name: "Useful", subtitle: "with WarriorEx" },
 ];
@@ -148,7 +155,12 @@ export const BookmarkCollectionsSheet: React.FC<
           </View>
 
           {/* Collections list */}
-          <View className="mt-1">
+          <ScrollView
+            className="mt-1"
+            style={{ minHeight: 250, maxHeight: 340 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
             {collections.map((collection) => (
               <TouchableOpacity
                 key={collection.id}
@@ -191,7 +203,7 @@ export const BookmarkCollectionsSheet: React.FC<
                 </View>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
         </View>
       </View>
       {/* New collection sheet */}
