@@ -171,6 +171,32 @@ function RootLayoutContent() {
       }
     }
 
+    // Handle Quick Action shortcuts
+    if (parsed.hostname === "create-event") {
+      router.navigate("/(app)/(create)");
+      return true;
+    }
+
+    if (parsed.hostname === "create-post") {
+      router.navigate("/(app)/post/create");
+      return true;
+    }
+
+    if (parsed.hostname === "dms") {
+      router.navigate("/(app)/(chat)");
+      return true;
+    }
+
+    if (parsed.hostname === "view-tickets") {
+      router.navigate("/(app)/(home)");
+      return true;
+    }
+
+    if (parsed.hostname === "view-notifications") {
+      router.navigate("/(app)/(notification)");
+      return true;
+    }
+
     return false;
   }
   useEffect(() => {

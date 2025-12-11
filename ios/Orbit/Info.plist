@@ -104,5 +104,48 @@
     <string>Automatic</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <false/>
+    <key>UIApplicationShortcutItems</key>
+    <array>
+      <dict>
+        <key>UIApplicationShortcutItemType</key>
+        <string>com.dovydmcnugget.orbit.create-event</string>
+        <key>UIApplicationShortcutItemTitle</key>
+        <string>Create Event</string>
+        <key>UIApplicationShortcutItemIconType</key>
+        <string>UIApplicationShortcutIconTypeAdd</string>
+      </dict>
+      <dict>
+        <key>UIApplicationShortcutItemType</key>
+        <string>com.dovydmcnugget.orbit.create-post</string>
+        <key>UIApplicationShortcutItemTitle</key>
+        <string>Create Post</string>
+        <key>UIApplicationShortcutItemIconType</key>
+        <string>UIApplicationShortcutIconTypeCompose</string>
+      </dict>
+      <dict>
+        <key>UIApplicationShortcutItemType</key>
+        <string>com.dovydmcnugget.orbit.dms</string>
+        <key>UIApplicationShortcutItemTitle</key>
+        <string>DMs</string>
+        <key>UIApplicationShortcutItemIconType</key>
+        <string>UIApplicationShortcutIconTypeMessage</string>
+      </dict>
+      <dict>
+        <key>UIApplicationShortcutItemType</key>
+        <string>com.dovydmcnugget.orbit.view-tickets</string>
+        <key>UIApplicationShortcutItemTitle</key>
+        <string>View Tickets</string>
+        <key>UIApplicationShortcutItemIconType</key>
+        <string>UIApplicationShortcutIconTypeTask</string>
+      </dict>
+      <dict>
+        <key>UIApplicationShortcutItemType</key>
+        <string>com.dovydmcnugget.orbit.view-notifications</string>
+        <key>UIApplicationShortcutItemTitle</key>
+        <string>View Notifications</string>
+        <key>UIApplicationShortcutItemIconType</key>
+        <string>UIApplicationShortcutIconTypeMessage</string>
+      </dict>
+    </array>
   </dict>
 </plist>
