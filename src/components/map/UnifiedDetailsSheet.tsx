@@ -1,6 +1,6 @@
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { router } from "expo-router";
-import { ArrowLeft, Flag, Tag, UserCheck, Users, X } from "lucide-react-native";
+import { ArrowLeft, Flag, Heart, Tag, ThumbsDown, ThumbsUp, UserCheck, Users, X } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   DeviceEventEmitter,
@@ -134,6 +134,20 @@ export const UnifiedDetailsSheet = React.memo(
     const [manuallyUpdated, setManuallyUpdated] = useState(false);
     const [showConfetti, setShowConfetti] = useState(false);
     const { createFlag } = useFlagging();
+    
+    // Like/Dislike state (ready for API integration)
+    const [isLiked, setIsLiked] = useState<boolean>(
+      (data as any)?.is_liked || false
+    );
+    const [isDisliked, setIsDisliked] = useState<boolean>(
+      (data as any)?.is_disliked || false
+    );
+    const [likeCount, setLikeCount] = useState<number>(
+      (data as any)?.like_count || 0
+    );
+    const [dislikeCount, setDislikeCount] = useState<number>(
+      (data as any)?.dislike_count || 0
+    );
     // Memoize the event type check to prevent repeated calculations
     const isEventType = useMemo(() => {
       const result = isEventData(data, isEvent);
@@ -327,6 +341,100 @@ export const UnifiedDetailsSheet = React.memo(
       onClose();
     };
 
+    // Handle like (ready for API integration)
+    const handleLike = async () => {
+      if (!isEventType) return;
+
+      // If already disliked, remove dislike first
+      const wasDisliked = isDisliked;
+      const newLikedState = !isLiked;
+
+      // Optimistic update
+      setIsLiked(newLikedState);
+      setIsDisliked(false);
+      
+      if (newLikedState) {
+        setLikeCount((prev) => prev + 1);
+        if (wasDisliked) {
+          setDislikeCount((prev) => Math.max(0, prev - 1));
+        }
+      } else {
+        setLikeCount((prev) => Math.max(0, prev - 1));
+      }
+
+      // TODO: Replace with actual API call when backend is ready
+      // Example:
+      // try {
+      //   if (newLikedState) {
+      //     await likeEvent(data.id);
+      //     if (wasDisliked) {
+      //       await removeDislikeEvent(data.id);
+      //     }
+      //   } else {
+      //     await unlikeEvent(data.id);
+      //   }
+      // } catch (error) {
+      //   // Revert on error
+      //   setIsLiked(!newLikedState);
+      //   setIsDisliked(wasDisliked);
+      //   setLikeCount((prev) => (newLikedState ? Math.max(0, prev - 1) : prev + 1));
+      //   if (wasDisliked) {
+      //     setDislikeCount((prev) => prev + 1);
+      //   }
+      //   console.error("Error toggling like:", error);
+      // }
+
+      // Light haptic feedback
+      haptics.light();
+    };
+
+    // Handle dislike (ready for API integration)
+    const handleDislike = async () => {
+      if (!isEventType) return;
+
+      // If already liked, remove like first
+      const wasLiked = isLiked;
+      const newDislikedState = !isDisliked;
+
+      // Optimistic update
+      setIsDisliked(newDislikedState);
+      setIsLiked(false);
+      
+      if (newDislikedState) {
+        setDislikeCount((prev) => prev + 1);
+        if (wasLiked) {
+          setLikeCount((prev) => Math.max(0, prev - 1));
+        }
+      } else {
+        setDislikeCount((prev) => Math.max(0, prev - 1));
+      }
+
+      // TODO: Replace with actual API call when backend is ready
+      // Example:
+      // try {
+      //   if (newDislikedState) {
+      //     await dislikeEvent(data.id);
+      //     if (wasLiked) {
+      //       await removeLikeEvent(data.id);
+      //     }
+      //   } else {
+      //     await removeDislikeEvent(data.id);
+      //   }
+      // } catch (error) {
+      //   // Revert on error
+      //   setIsDisliked(!newDislikedState);
+      //   setIsLiked(wasLiked);
+      //   setDislikeCount((prev) => (newDislikedState ? Math.max(0, prev - 1) : prev + 1));
+      //   if (wasLiked) {
+      //     setLikeCount((prev) => prev + 1);
+      //   }
+      //   console.error("Error toggling dislike:", error);
+      // }
+
+      // Light haptic feedback
+      haptics.light();
+    };
+
     // COMMENTED OUT: Old detail API calls - now using unified API data directly
     /*
   const hitDetailApi = async () => {
@@ -363,6 +471,13 @@ export const UnifiedDetailsSheet = React.memo(
     // Use data directly like web app (backend should return complete data)
     const hitDetailApi = async () => {
       setDetailData(data as UnifiedData);
+      
+      // Initialize like/dislike state from data
+      setIsLiked((data as any)?.is_liked || false);
+      setIsDisliked((data as any)?.is_disliked || false);
+      setLikeCount((data as any)?.like_count || 0);
+      setDislikeCount((data as any)?.dislike_count || 0);
+      
       setLoading(false);
     };
 
@@ -507,6 +622,12 @@ export const UnifiedDetailsSheet = React.memo(
 
       // Reset manual update flag when opening with new data
       setManuallyUpdated(false);
+
+      // Sync like/dislike state from data when sheet opens
+      setIsLiked((data as any)?.is_liked || false);
+      setIsDisliked((data as any)?.is_disliked || false);
+      setLikeCount((data as any)?.like_count || 0);
+      setDislikeCount((data as any)?.dislike_count || 0);
 
       // Fetch full details if needed
       hitDetailApi();
@@ -754,12 +875,85 @@ export const UnifiedDetailsSheet = React.memo(
                 {/* Content Section */}
                 <View className="px-6 pt-6">
                   {/* Title */}
-                  <Text
-                    className="mb-6 text-3xl font-bold"
-                    style={{ color: theme.colors.text }}
-                  >
-                    {currentData?.name}
-                  </Text>
+                  <View className="mb-6">
+                    <Text
+                      className="mb-4 text-3xl font-bold"
+                      style={{ color: theme.colors.text }}
+                    >
+                      {currentData?.name}
+                    </Text>
+
+                    {/* Like/Dislike Section - Only for Events */}
+                    {isEventType && (
+                      <View className="flex-row items-center gap-3">
+                        {/* Like Button */}
+                        <TouchableOpacity
+                          onPress={handleLike}
+                          activeOpacity={0.7}
+                          className="flex-row items-center px-4 py-2.5 rounded-full flex-1"
+                          style={{
+                            backgroundColor: isLiked
+                              ? "rgba(34, 197, 94, 0.15)"
+                              : isDarkMode
+                              ? "rgba(255, 255, 255, 0.1)"
+                              : "rgba(0, 0, 0, 0.05)",
+                            borderWidth: 1.5,
+                            borderColor: isLiked
+                              ? "#22c55e"
+                              : theme.colors.border,
+                          }}
+                        >
+                          <ThumbsUp
+                            size={20}
+                            color={isLiked ? "#22c55e" : theme.colors.text}
+                            fill={isLiked ? "#22c55e" : "none"}
+                            strokeWidth={2.5}
+                          />
+                          <Text
+                            className="ml-2 text-sm font-semibold"
+                            style={{
+                              color: isLiked ? "#22c55e" : theme.colors.text,
+                            }}
+                          >
+                            {likeCount > 0 ? likeCount : "Like"}
+                          </Text>
+                        </TouchableOpacity>
+
+                        {/* Dislike Button */}
+                        <TouchableOpacity
+                          onPress={handleDislike}
+                          activeOpacity={0.7}
+                          className="flex-row items-center px-4 py-2.5 rounded-full flex-1"
+                          style={{
+                            backgroundColor: isDisliked
+                              ? "rgba(239, 68, 68, 0.15)"
+                              : isDarkMode
+                              ? "rgba(255, 255, 255, 0.1)"
+                              : "rgba(0, 0, 0, 0.05)",
+                            borderWidth: 1.5,
+                            borderColor: isDisliked
+                              ? "#ef4444"
+                              : theme.colors.border,
+                          }}
+                        >
+                          <ThumbsDown
+                            size={20}
+                            color={isDisliked ? "#ef4444" : theme.colors.text}
+                            fill={isDisliked ? "#ef4444" : "none"}
+                            strokeWidth={2.5}
+                          />
+                          <Text
+                            className="ml-2 text-sm font-semibold"
+                            style={{
+                              color: isDisliked ? "#ef4444" : theme.colors.text,
+                            }}
+                          >
+                            {dislikeCount > 0 ? dislikeCount : "Dislike"}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
 
                   {/* Conditional Content Based on Type */}
                   <UnifiedDetailsSheetContent
