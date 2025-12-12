@@ -19,6 +19,7 @@ import {
   Clock,
   Image as ImageIcon,
   ExternalLink,
+  Bookmark,
 } from "lucide-react-native";
 import { IProposal } from "../../../hooks/useProposals";
 import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
@@ -401,6 +402,13 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleBookmarkCollectionsPress = () => {
+    router.back();
+    router.push({
+      pathname: "/(app)/(bookmarks)",
+    });
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.card }}>
       {/* Header */}
@@ -516,6 +524,12 @@ export default function SettingsScreen() {
           icon={<ClipboardList size={20} color={theme.colors.primary} />}
           title="Proposals"
           onPress={handleProposalsPress}
+        />
+        <SectionHeader title="Bookmarks" />
+        <SettingItem
+          icon={<Bookmark size={20} color={theme.colors.primary} />}
+          title="Bookmark Collections"
+          onPress={handleBookmarkCollectionsPress}
         />
         {/* Privacy & more */}
         <SectionHeader title="Privacy & more" />
