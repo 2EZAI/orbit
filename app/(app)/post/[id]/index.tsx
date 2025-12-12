@@ -281,8 +281,9 @@ export default function PostView() {
       }
 
       setComments(commentsData);
+
       setLikeCount(postData.like_count ?? 0);
-      setCommentCount(postData.comment_count ?? 0);
+      setCommentCount(commentsData.length ?? 0);
 
       if (postData.is_liked !== null && postData.is_liked !== undefined) {
         setLiked(postData.is_liked);
