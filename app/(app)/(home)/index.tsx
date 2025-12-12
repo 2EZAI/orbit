@@ -57,6 +57,7 @@ import NotificationBadge from "~/src/components/ui/NotificationBadge";
 import { useAuth } from "~/src/lib/auth";
 import { handleSectionViewMore } from "~/src/lib/utils/sectionViewMore";
 import { IProposal } from "../../../hooks/useProposals";
+import { usePostHog } from "posthog-react-native";
 
 const { width: screenWidth } = Dimensions.get("window");
 const STORY_CARD_WIDTH = screenWidth * 0.8;
@@ -234,6 +235,7 @@ export default function Home() {
   const { user } = useUser();
   const { session } = useAuth();
   const router = useRouter();
+  const posthog = usePostHog();
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
   const { eventId = null, eventType = null } = useLocalSearchParams<{
     eventId: string;
@@ -378,6 +380,11 @@ export default function Home() {
       handleEventSelect(result);
     }
   };
+
+  useEffect(() => {
+    posthog.capture("MyComponent loaded", { foo: "bar" });
+  }, []);
+
   // Initialize filters when data changes
   useEffect(() => {
     if (data.allContent.length > 0 && Object.keys(filters).length === 0) {

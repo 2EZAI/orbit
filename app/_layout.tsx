@@ -24,6 +24,7 @@ import Constants from "expo-constants";
 import { supabaseIntegration } from "@supabase/sentry-js-integration";
 import { supabase } from "~/src/lib/supabase";
 import { PostRefreshProvider } from "~/src/lib/postProvider";
+import { PostHogProvider } from "posthog-react-native";
 
 // Sentry.init({
 //   dsn: "https://d49231e6742e5638c77f98c0c7691b77@o4510307919462400.ingest.us.sentry.io/4510308014882816",
@@ -257,21 +258,28 @@ function RootLayoutContent() {
 export default Sentry.wrap(function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider>
-        <AuthProvider>
-          <UserProvider>
-            <ChatProvider>
-              <VideoProvider>
-                <ActionSheetProvider>
-                  <PostRefreshProvider>
-                    <RootLayoutContent />
-                  </PostRefreshProvider>
-                </ActionSheetProvider>
-              </VideoProvider>
-            </ChatProvider>
-          </UserProvider>
-        </AuthProvider>
-      </ThemeProvider>
+      <PostHogProvider
+        apiKey="phc_rR9BxCFLRJHBxBVi5rkRllgdIOjZ2q8R5kZnmtcJkJC"
+        options={{
+          host: "https://us.i.posthog.com",
+        }}
+      >
+        <ThemeProvider>
+          <AuthProvider>
+            <UserProvider>
+              <ChatProvider>
+                <VideoProvider>
+                  <ActionSheetProvider>
+                    <PostRefreshProvider>
+                      <RootLayoutContent />
+                    </PostRefreshProvider>
+                  </ActionSheetProvider>
+                </VideoProvider>
+              </ChatProvider>
+            </UserProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </PostHogProvider>
     </GestureHandlerRootView>
   );
 });

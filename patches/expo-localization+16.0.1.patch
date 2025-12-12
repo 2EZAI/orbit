@@ -1,0 +1,14 @@
+diff --git a/node_modules/expo-localization/ios/LocalizationModule.swift b/node_modules/expo-localization/ios/LocalizationModule.swift
+index 73b2b9d..6da350a 100644
+--- a/node_modules/expo-localization/ios/LocalizationModule.swift
++++ b/node_modules/expo-localization/ios/LocalizationModule.swift
+@@ -123,6 +123,9 @@ public class LocalizationModule: Module {
+       return "roc"
+     case .iso8601:
+       return "iso8601"
++    @unknown default:
++      // Handle new calendar identifiers added in iOS 26+ (e.g., .bangla, .gujarati, .kannada)
++      return "gregory"
+     }
+   }
+ 

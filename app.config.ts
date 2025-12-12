@@ -49,6 +49,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           iosStyle: "streets",
         },
       ],
+       "expo-localization",
     ],
     ios: {
       bundleIdentifier: "com.dovydmcnugget.orbit",
