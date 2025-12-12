@@ -37,6 +37,9 @@ import FlagContentModal from "../modals/FlagContentModal";
 import { BookmarkCollectionsSheet } from "./BookmarkCollectionsSheet";
 import { UnifiedDetailsSheetContent } from "./UnifiedDetailsSheetContent";
 import { UnifiedSheetButtons } from "./UnifiedSheetButtons";
+import { isLocationOutsideRadius } from "~/src/lib/distance";
+import { getCurrentMapCenter } from "~/src/lib/mapCenter";
+import { LocationChangeModal } from "./LocationChangeModal";
 
 // Additional types that were in the old hook
 export interface Category {
@@ -146,6 +149,15 @@ export const UnifiedDetailsSheet = React.memo(
     const [showConfetti, setShowConfetti] = useState(false);
     const [isBookmarked, setIsBookmarked] = useState(false);
     const [isBookmarkSheetVisible, setIsBookmarkSheetVisible] = useState(false);
+    const [showLocationChangeModal, setShowLocationChangeModal] =
+      useState(false);
+    const [eventLocation, setEventLocation] = useState<{
+      latitude: number;
+      longitude: number;
+      name?: string;
+      address?: string;
+    } | null>(null);
+    const [distance, setDistance] = useState(0);
     const { createFlag } = useFlagging();
 
     // Like/Dislike state (ready for API integration)
@@ -725,7 +737,90 @@ export const UnifiedDetailsSheet = React.memo(
     // Use database creator check (isCreator from hook) - already defined above
 
     const primaryImage = currentData?.image_urls?.[0];
+    const handleConfirm = () => {
+      const mapCenter = getCurrentMapCenter();
+      // Check if the event is outside the currently loaded data area
+      const currentCenter = {
+        latitude: parseFloat(`${mapCenter?.latitude || "0"}`) || 0,
+        longitude: parseFloat(`${mapCenter?.longitude || "0"}`) || 0,
+      };
 
+      const eventLocation = {
+        latitude: data.location.latitude as any,
+        longitude: data.location.longitude as any,
+        name: data.name,
+        address: data.address || "",
+      };
+
+      // Check if event is outside the loaded data radius (100km)
+      const { isOutside, distance } = isLocationOutsideRadius(
+        eventLocation,
+        currentCenter,
+        100 // 100km radius
+      );
+
+      if (
+        isOutside &&
+        currentCenter.latitude !== 0 &&
+        currentCenter.longitude !== 0
+      ) {
+        // Show location change modal
+        setEventLocation(eventLocation);
+        setDistance(distance);
+        setShowLocationChangeModal(true);
+      } else {
+        // Navigate directly to map
+        navigateToMap();
+      }
+    };
+    const navigateToMap = () => {
+      onClose();
+      router.navigate({
+        pathname: "/(app)/(map)",
+        params: {
+          lat: data.location.latitude,
+          lng: data.location.longitude,
+          zoom: 15,
+          showEventCard: "true",
+          eventId: data.id,
+          reload: Date.now().toString(),
+        },
+      });
+      DeviceEventEmitter.emit("mapReload", true);
+      DeviceEventEmitter.emit("showEventCard", {
+        eventId: data.id as string,
+        lat: data.location.latitude,
+        lng: data.location.longitude,
+      });
+    };
+    const handleLocationChangeConfirm = () => {
+      // Close the modal first
+      setShowLocationChangeModal(false);
+
+      // Navigate to map with location change flag
+      router.push({
+        pathname: "/(app)/(map)",
+        params: {
+          lat: data.location.latitude,
+          lng: data.location.longitude,
+          zoom: 15,
+          showEventCard: "true",
+          eventId: data.id as string,
+          // Add a timestamp to force map reload
+          reload: Date.now().toString(),
+          // Flag to indicate location change
+          changeLocation: "true",
+        },
+      });
+      onClose();
+      // Emit event to reload map and show event card
+      DeviceEventEmitter.emit("mapReload", true);
+      DeviceEventEmitter.emit("showEventCard", {
+        eventId: data.id as string,
+        lat: data.location.latitude,
+        lng: data.location.longitude,
+      });
+    };
     return (
       <>
         <Modal
@@ -1079,6 +1174,7 @@ export const UnifiedDetailsSheet = React.memo(
                 onShare={handleShare}
                 onDelete={handleDelete}
                 from={from}
+                onViewOnMap={handleConfirm}
               />
             </BottomSheet>
             {/* Enhanced Image Viewer Modal with Swiping */}
@@ -1222,6 +1318,21 @@ export const UnifiedDetailsSheet = React.memo(
               />
             )}
           </View>
+          {eventLocation && (
+            <LocationChangeModal
+              isOpen={showLocationChangeModal}
+              onClose={() => setShowLocationChangeModal(false)}
+              onConfirm={handleLocationChangeConfirm}
+              eventLocation={eventLocation}
+              currentCenter={{
+                latitude:
+                  parseFloat(`${getCurrentMapCenter()?.latitude || "0"}`) || 0,
+                longitude:
+                  parseFloat(`${getCurrentMapCenter()?.longitude || "0"}`) || 0,
+              }}
+              distance={distance}
+            />
+          )}
           <FlagContentModal
             visible={flagOpen.open}
             contentTitle={data.name}

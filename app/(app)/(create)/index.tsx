@@ -1544,17 +1544,6 @@ export default function CreateEvent() {
           ...(eventID && { event_id: eventID }),
         };
 
-        console.log("🔧 [CreateEvent] State values when building eventData:", {
-          locationId,
-          locationType,
-          latitude,
-          longitude,
-          finalLatitude,
-          finalLongitude,
-          paramsLatitude: params.latitude,
-          paramsLongitude: params.longitude,
-          address: address1,
-        });
         //         if (eventID !== undefined) {
         //   eventData.event_id = eventID;
         // }

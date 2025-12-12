@@ -27,6 +27,7 @@ export interface UnifiedSheetButtonsProps {
   onLeaveEvent: () => void;
   onCreateOrbit: () => void;
   onCreateEvent: () => void;
+  onViewOnMap: () => void;
   onEdit: () => void;
   onShare: () => void;
   onDelete?: () => void;
@@ -48,6 +49,7 @@ export function UnifiedSheetButtons({
   onEdit,
   onShare,
   onDelete,
+  onViewOnMap,
   from,
 }: UnifiedSheetButtonsProps) {
   const { theme } = useTheme();
@@ -87,7 +89,7 @@ export function UnifiedSheetButtons({
           onPress: async () => {
             // Use event_id if available, otherwise use id
             const eventId = data?.event_id || data?.id;
-            
+
             if (!session || !eventId) {
               Toast.show({
                 type: "error",
@@ -99,7 +101,6 @@ export function UnifiedSheetButtons({
 
             setIsDeleting(true);
             try {
-              
               if (!eventId) {
                 throw new Error("Event ID not found");
               }
@@ -127,7 +128,7 @@ export function UnifiedSheetButtons({
               if (onDelete) {
                 onDelete();
               }
-              
+
               // Navigate back to the screen user came from
               if (from) {
                 // Navigate to specific screen based on 'from' parameter
@@ -156,7 +157,8 @@ export function UnifiedSheetButtons({
               Toast.show({
                 type: "error",
                 text1: "Error",
-                text2: error?.message || "Failed to delete event. Please try again.",
+                text2:
+                  error?.message || "Failed to delete event. Please try again.",
               });
             } finally {
               setIsDeleting(false);
@@ -251,7 +253,15 @@ export function UnifiedSheetButtons({
         >
           <View className="flex-col gap-3">
             {/* Primary Action Row - Edit for creators, Join/Leave for others */}
-
+            <TouchableOpacity
+              style={!session ? styles.disabledButton : {}}
+              onPress={() => onViewOnMap()}
+              className="flex-1 items-center py-4 bg-white rounded-2xl"
+            >
+              <Text className="text-lg font-semibold text-purple-600">
+                View on Map
+              </Text>
+            </TouchableOpacity>
             <View className="flex-row gap-3">
               {isCreator ? (
                 // CREATOR: Show Edit button
@@ -334,42 +344,57 @@ export function UnifiedSheetButtons({
   } else {
     // LOCATION BUTTONS
     return (
-      <View
-        className="absolute right-0 bottom-0 left-0 px-6 py-4 border-t"
-        style={{
-          paddingBottom: insets.bottom + 16,
-          backgroundColor: theme.colors.card,
-          borderTopColor: theme.colors.border,
-        }}
-      >
-        <View className="flex-col gap-3">
-          {/* Primary Action Row */}
+      <>
+        <View
+          className="absolute right-0 bottom-0 left-0 px-6 py-4 border-t"
+          style={{
+            paddingBottom: insets.bottom + 16,
+            backgroundColor: theme.colors.card,
+            borderTopColor: theme.colors.border,
+          }}
+        >
+          <View className="flex-col gap-3">
+            {/* Primary Action Row */}
 
-          <TouchableOpacity
-            style={!session ? styles.disabledButton : {}}
-            onPress={() => (session ? onCreateEvent() : onUnAuth())}
-            className="items-center py-4 bg-purple-600 rounded-2xl"
-          >
-            <Text className="text-lg font-semibold text-white">
-              Create Event
-            </Text>
-          </TouchableOpacity>
-
-          {/* Secondary Action Row */}
-          <View className="flex-row gap-3">
             <TouchableOpacity
-              onPress={onShare}
-              style={{ backgroundColor: theme.colors.card }}
-              className="flex-1 items-center py-4 rounded-2xl border-2 border-purple-600"
+              style={!session ? styles.disabledButton : {}}
+              onPress={() => (session ? onCreateEvent() : onUnAuth())}
+              className="items-center py-4 bg-purple-600 rounded-2xl"
             >
-              <Text className="text-lg font-semibold text-purple-600">
-                Share
+              <Text className="text-lg font-semibold text-white">
+                Create Event
               </Text>
             </TouchableOpacity>
+
+            {/* Secondary Action Row */}
+            <View className="flex-row gap-3">
+              <TouchableOpacity
+                onPress={onShare}
+                style={{ backgroundColor: theme.colors.card }}
+                className="flex-1 items-center py-4 rounded-2xl border-2 border-purple-600"
+              >
+                <Text className="text-lg font-semibold text-purple-600">
+                  Share
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
+          <Toast />
         </View>
-        <Toast />
-      </View>
+        {/* {eventLocation && (
+          <LocationChangeModal
+            isOpen={showLocationChangeModal}
+            onClose={() => setShowLocationChangeModal(false)}
+            onConfirm={handleLocationChangeConfirm}
+            eventLocation={eventLocation}
+            currentCenter={{
+              latitude: parseFloat(params.currentLat as string) || 0,
+              longitude: parseFloat(params.currentLng as string) || 0,
+            }}
+            distance={distance}
+          />
+        )} */}
+      </>
     );
   }
 }
