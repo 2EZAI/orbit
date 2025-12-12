@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Bookmark,
   Flag,
+  Map,
   Tag,
   ThumbsDown,
   ThumbsUp,
@@ -928,16 +929,26 @@ export const UnifiedDetailsSheet = React.memo(
                         <Flag size={20} color="#000" />
                       </TouchableOpacity>
                       {detailData?.source !== "ticketmaster" ? (
-                        <TouchableOpacity
-                          onPress={handleToggleBookmark}
-                          className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
-                        >
-                          <Bookmark
-                            size={20}
-                            color={isBookmarked ? "#8B5CF6" : "#000"}
-                            fill={isBookmarked ? "#8B5CF6" : "transparent"}
-                          />
-                        </TouchableOpacity>
+                        <>
+                          <TouchableOpacity
+                            onPress={() => {
+                              handleConfirm();
+                            }}
+                            className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
+                          >
+                            <Map size={20} color="#000" />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={handleToggleBookmark}
+                            className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
+                          >
+                            <Bookmark
+                              size={20}
+                              color={isBookmarked ? "#8B5CF6" : "#000"}
+                              fill={isBookmarked ? "#8B5CF6" : "transparent"}
+                            />
+                          </TouchableOpacity>
+                        </>
                       ) : null}
                     </View>
                   </View>
@@ -1174,7 +1185,6 @@ export const UnifiedDetailsSheet = React.memo(
                 onShare={handleShare}
                 onDelete={handleDelete}
                 from={from}
-                onViewOnMap={handleConfirm}
               />
             </BottomSheet>
             {/* Enhanced Image Viewer Modal with Swiping */}

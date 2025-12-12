@@ -27,7 +27,7 @@ export interface UnifiedSheetButtonsProps {
   onLeaveEvent: () => void;
   onCreateOrbit: () => void;
   onCreateEvent: () => void;
-  onViewOnMap: () => void;
+
   onEdit: () => void;
   onShare: () => void;
   onDelete?: () => void;
@@ -49,7 +49,7 @@ export function UnifiedSheetButtons({
   onEdit,
   onShare,
   onDelete,
-  onViewOnMap,
+
   from,
 }: UnifiedSheetButtonsProps) {
   const { theme } = useTheme();
@@ -252,16 +252,6 @@ export function UnifiedSheetButtons({
           }}
         >
           <View className="flex-col gap-3">
-            {/* Primary Action Row - Edit for creators, Join/Leave for others */}
-            <TouchableOpacity
-              style={!session ? styles.disabledButton : {}}
-              onPress={() => onViewOnMap()}
-              className="flex-1 items-center py-4 bg-white rounded-2xl"
-            >
-              <Text className="text-lg font-semibold text-purple-600">
-                View on Map
-              </Text>
-            </TouchableOpacity>
             <View className="flex-row gap-3">
               {isCreator ? (
                 // CREATOR: Show Edit button
