@@ -15,7 +15,7 @@ import {
   useBookmark,
 } from "~/hooks/useBookmark";
 import { IProposal } from "~/hooks/useProposals";
-import BookmarkDetailSheet from "~/src/components/bookmark/BookmarkDetailSheet";
+import BookmarkDetailSheet from "~/src/components/modals/BookmarkDetailSheet";
 import {
   UnifiedData,
   UnifiedDetailsSheet,
