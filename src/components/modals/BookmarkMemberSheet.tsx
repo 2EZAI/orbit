@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Users, UserPlus } from "lucide-react-native";
+import { Users, UserPlus, ArrowLeft } from "lucide-react-native";
 import { Sheet } from "../ui/sheet";
 import { useTheme } from "../ThemeProvider";
 import { Text } from "../ui/text";
@@ -73,29 +73,36 @@ const BookmarkMemberSheet: React.FC<BookmarkMemberSheetProps> = ({
   return (
     <Sheet isOpen={isOpen} onClose={onClose} expanded>
       {/* Header */}
-      <View
-        style={{
-          paddingHorizontal: 16,
-          paddingBottom: 12,
-          paddingTop: 4,
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
+      <View style={styles.header}>
         <View style={styles.headerContent}>
           <View style={styles.rowSpaceBetween}>
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "700",
-                color: theme.colors.text,
-                marginBottom: 2,
-              }}
-              numberOfLines={1}
-            >
-              {folder?.name || ""} members
-            </Text>
+            <View style={styles.titleContent}>
+              <TouchableOpacity
+                onPress={onClose}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: theme.colors.card,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  borderWidth: 1,
+                  borderColor: theme.colors.border,
+                }}
+              >
+                <ArrowLeft size={18} color={theme.colors.text} />
+              </TouchableOpacity>
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: "700",
+                  color: theme.colors.text,
+                  marginBottom: 2,
+                }}
+              >
+                {folder?.name || ""}
+              </Text>
+            </View>
             <View
               style={{
                 flexDirection: "row",
@@ -324,5 +331,18 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    paddingTop: 4,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  titleContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
 });

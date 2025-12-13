@@ -2,10 +2,11 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  StyleSheet,
   TouchableOpacity,
   View,
 } from "react-native";
-import { Search } from "lucide-react-native";
+import { ArrowLeft, Search } from "lucide-react-native";
 import { useUserSearch, UserListItem } from "~/hooks/useUserList";
 import { UserAvatar } from "../ui/user-avatar";
 import { Text } from "../ui/text";
@@ -154,13 +155,31 @@ const BookmarkAddMemberSheet: React.FC<BookmarkAddMemberSheetProps> = ({
   return (
     <Sheet isOpen={isOpen} onClose={onClose} expanded isScrollable={false}>
       {/* Search field */}
-      <View
-        style={{
-          paddingHorizontal: 16,
-          paddingTop: 4,
-          paddingBottom: 12,
-        }}
-      >
+      <View style={styles.topContainer}>
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            onPress={onClose}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: theme.colors.card,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <ArrowLeft size={18} color={theme.colors.text} />
+          </TouchableOpacity>
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: "700",
+              color: theme.colors.text,
+            }}
+          >
+            Add Members
+          </Text>
+        </View>
         <View
           style={{
             flexDirection: "row",
@@ -327,3 +346,16 @@ const BookmarkAddMemberSheet: React.FC<BookmarkAddMemberSheetProps> = ({
 };
 
 export default BookmarkAddMemberSheet;
+
+const styles = StyleSheet.create({
+  headerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  topContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 12,
+  },
+});

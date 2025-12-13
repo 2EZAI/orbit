@@ -220,7 +220,7 @@ const BookmarkDetailSheet: React.FC<IProps> = ({
           </TouchableOpacity>
         </View>
         <View style={styles.rowSpaceBetween}>
-          <View style={{ flex: 1 }}>
+          <View>
             {folderState?.description ? (
               <Text
                 style={{
@@ -239,7 +239,7 @@ const BookmarkDetailSheet: React.FC<IProps> = ({
                 style={{
                   marginTop: 8,
                   alignSelf: "flex-start",
-                  paddingHorizontal: 10,
+
                   paddingVertical: 4,
                   borderRadius: 999,
                   backgroundColor: theme.colors.border + "40",
@@ -302,7 +302,7 @@ const BookmarkDetailSheet: React.FC<IProps> = ({
       <FlatList
         data={folderEvents}
         keyExtractor={(f) => f.id}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
+        contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
           <View style={{ paddingBottom: 12 }}>
             <SocialEventCard
@@ -428,5 +428,8 @@ const styles = StyleSheet.create({
   titleContent: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  listContent: {
+    paddingHorizontal: 16,
   },
 });
