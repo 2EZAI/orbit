@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   View,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -172,7 +173,7 @@ export default function BookmarksScreen() {
                           fontWeight: "500",
                         }}
                       >
-                        {itemCount} item{itemCount === 1 ? "" : "s"}
+                        {itemCount} event{itemCount === 1 ? "" : "s"}
                       </Text>
                     </View>
 
@@ -233,6 +234,22 @@ export default function BookmarksScreen() {
         showEventsSheet={showEventsSheet}
         onClose={() => setShowEventsSheet(false)}
       />
+      {loadingFolderEvents && (
+        <View style={styles.loader}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      )}
     </SafeAreaView>
   );
 }
+const styles = StyleSheet.create({
+  loader: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+});
