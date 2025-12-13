@@ -1,16 +1,21 @@
 import { View, Text, FlatList, TouchableOpacity } from "react-native";
 import { Sheet } from "../ui/sheet";
-import { Bookmark, Users } from "lucide-react-native";
+import { Bookmark, Users, UserPlus } from "lucide-react-native";
 import { SocialEventCard } from "../social/SocialEventCard";
 import { UnifiedData, UnifiedDetailsSheet } from "../map/UnifiedDetailsSheet";
 import UnifiedShareSheet from "../map/UnifiedShareSheet";
 import { ChatSelectionModal } from "../social/ChatSelectionModal";
-import { BookmarkFolder, LocationBookmark } from "~/hooks/useBookmark";
+import {
+  BookmarkFolder,
+  LocationBookmark,
+  useBookmark,
+} from "~/hooks/useBookmark";
 import { useTheme } from "../ThemeProvider";
 import type { Channel } from "stream-chat";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { IProposal } from "~/hooks/useProposals";
 import BookmarkMemberSheet from "./BookmarkMemberSheet";
+import BookmarkAddMemberSheet from "./BookmarkAddMemberSheet";
 interface IProps {
   selectedFolder: BookmarkFolder | null;
   folderEvents: LocationBookmark[];
@@ -24,6 +29,7 @@ const BookmarkDetailSheet: React.FC<IProps> = ({
   onClose,
 }) => {
   const { theme } = useTheme();
+  const { addFolderMember, getFolder } = useBookmark();
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isEventSheetOpen, setIsEventSheetOpen] = useState(false);
   const [shareData, setShareData] = useState<{
@@ -43,6 +49,15 @@ const BookmarkDetailSheet: React.FC<IProps> = ({
   });
 
   const [showMembersSheet, setShowMembersSheet] = useState(false);
+  const [showAddMemberSheet, setShowAddMemberSheet] = useState(false);
+  const [folderState, setFolderState] = useState<BookmarkFolder | null>(
+    selectedFolder
+  );
+
+  // Keep local folder state in sync when parent passes a new folder
+  useEffect(() => {
+    setFolderState(selectedFolder);
+  }, [selectedFolder?.id]);
 
   const handleEventPress = (event: Event) => {
     setSelectedEvent(event);
@@ -178,11 +193,11 @@ const BookmarkDetailSheet: React.FC<IProps> = ({
                 }}
                 numberOfLines={1}
               >
-                {selectedFolder?.name || "Collection"}
+                {folderState?.name || "Collection"}
               </Text>
             </View>
 
-            {selectedFolder?.description ? (
+            {folderState?.description ? (
               <Text
                 style={{
                   fontSize: 13,
@@ -190,12 +205,12 @@ const BookmarkDetailSheet: React.FC<IProps> = ({
                 }}
                 numberOfLines={2}
               >
-                {selectedFolder.description}
+                {folderState.description}
               </Text>
             ) : null}
 
             {/* Privacy chip */}
-            {selectedFolder && (
+            {folderState && (
               <View
                 style={{
                   marginTop: 8,
@@ -213,7 +228,7 @@ const BookmarkDetailSheet: React.FC<IProps> = ({
                     color: theme.colors.text + "90",
                   }}
                 >
-                  {selectedFolder.is_public
+                  {folderState.is_public
                     ? "Public collection"
                     : "Private collection"}
                 </Text>
@@ -221,42 +236,74 @@ const BookmarkDetailSheet: React.FC<IProps> = ({
             )}
           </View>
 
-          {/* Stats card – tap to view members */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setShowMembersSheet(true)}
-            style={{
-              paddingHorizontal: 10,
-              paddingVertical: 8,
-              borderRadius: 12,
-              backgroundColor: theme.colors.card,
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-              minWidth: 96,
-            }}
-          >
-            <View
+          {/* Stats + actions */}
+          <View style={{ alignItems: "flex-end", gap: 8 }}>
+            {/* Stats card – tap to view members */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setShowMembersSheet(true)}
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 8,
+                borderRadius: 12,
+                backgroundColor: theme.colors.card,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                minWidth: 96,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
+              >
+                <Users
+                  size={14}
+                  color={theme.colors.text + "80"}
+                  style={{ marginRight: 4 }}
+                />
+                <Text
+                  style={{
+                    fontSize: 11,
+                    color: theme.colors.text + "80",
+                  }}
+                >
+                  {folderState?.member_count ?? 1} member
+                  {(folderState?.member_count ?? 1) === 1 ? "" : "s"}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Add member button */}
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => setShowAddMemberSheet(true)}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 999,
+                backgroundColor: theme.colors.primary + "15",
               }}
             >
-              <Users
+              <UserPlus
                 size={14}
-                color={theme.colors.text + "80"}
+                color={theme.colors.primary}
                 style={{ marginRight: 4 }}
               />
               <Text
                 style={{
                   fontSize: 11,
-                  color: theme.colors.text + "80",
+                  fontWeight: "600",
+                  color: theme.colors.primary,
                 }}
               >
-                {selectedFolder?.member_count ?? 1} member
-                {(selectedFolder?.member_count ?? 1) === 1 ? "" : "s"}
+                Add member
               </Text>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Section label */}
@@ -353,9 +400,30 @@ const BookmarkDetailSheet: React.FC<IProps> = ({
         onSelectChat={handleChatSelect}
       />
       <BookmarkMemberSheet
-        folder={selectedFolder}
+        folder={folderState}
         isOpen={showMembersSheet}
         onClose={() => setShowMembersSheet(false)}
+      />
+      <BookmarkAddMemberSheet
+        isOpen={showAddMemberSheet}
+        onClose={() => setShowAddMemberSheet(false)}
+        confirmLabel="Add member"
+        onConfirm={async (user) => {
+          if (!selectedFolder) return;
+          try {
+            await addFolderMember(selectedFolder.id, {
+              user_id: user.id,
+              role: "editor",
+            });
+            // Refetch folder details so member count & info stay in sync
+            const refreshed = await getFolder(selectedFolder.id);
+            if (refreshed) {
+              setFolderState(refreshed);
+            }
+          } catch (e) {
+            console.error("Error adding folder member:", e);
+          }
+        }}
       />
     </Sheet>
   );

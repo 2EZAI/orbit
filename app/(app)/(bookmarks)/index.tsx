@@ -8,23 +8,13 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import type { Channel } from "stream-chat";
 import {
   BookmarkFolder,
   LocationBookmark,
   useBookmark,
 } from "~/hooks/useBookmark";
-import { IProposal } from "~/hooks/useProposals";
 import BookmarkDetailSheet from "~/src/components/modals/BookmarkDetailSheet";
-import {
-  UnifiedData,
-  UnifiedDetailsSheet,
-} from "~/src/components/map/UnifiedDetailsSheet";
-import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
-import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
-import { SocialEventCard } from "~/src/components/social/SocialEventCard";
 import { useTheme } from "~/src/components/ThemeProvider";
-import { Sheet } from "~/src/components/ui/sheet";
 import { Text } from "~/src/components/ui/text";
 
 export default function BookmarksScreen() {
@@ -40,23 +30,6 @@ export default function BookmarksScreen() {
   const [loadingFolderEvents, setLoadingFolderEvents] = useState(false);
   const [showEventsSheet, setShowEventsSheet] = useState(false);
 
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const [isEventSheetOpen, setIsEventSheetOpen] = useState(false);
-  const [shareData, setShareData] = useState<{
-    data: UnifiedData;
-    isEventType: boolean;
-  } | null>(null);
-  const [chatShareSelection, setChatShareSelection] = useState<{
-    proposal: IProposal | null;
-    show: boolean;
-    event: UnifiedData | null;
-    isEventType: boolean;
-  }>({
-    proposal: null,
-    show: false,
-    event: null,
-    isEventType: false,
-  });
   useEffect(() => {
     (async () => {
       const data = await getFolders();
@@ -73,11 +46,7 @@ export default function BookmarksScreen() {
         location_type: "event",
       });
       setFolderEvents(bookmarks);
-      // Default to first event in the folder
-      //   const firstEvent = bookmarks.find((b) => b.event)?.event;
-      //   if (firstEvent) {
-      //     setActiveEvent(firstEvent);
-      //   }
+
       setShowEventsSheet(true);
     } finally {
       setLoadingFolderEvents(false);
@@ -118,7 +87,7 @@ export default function BookmarksScreen() {
           }}
           renderItem={({ item }) => {
             const itemCount = item.bookmark_count ?? 0;
-            const memberCount = item.member_count ?? 1;
+            const memberCount = item.member_count || 1;
             return (
               <TouchableOpacity
                 onPress={() => loadFolderEvents(item)}

@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, TouchableOpacity, View } from "react-native";
-import { Users } from "lucide-react-native";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { Users, UserPlus } from "lucide-react-native";
 import { Sheet } from "../ui/sheet";
 import { useTheme } from "../ThemeProvider";
 import { Text } from "../ui/text";
@@ -10,6 +15,7 @@ import {
   useBookmark,
 } from "~/hooks/useBookmark";
 import { UserAvatar } from "../ui/user-avatar";
+import BookmarkAddMemberSheet from "./BookmarkAddMemberSheet";
 
 interface BookmarkMemberSheetProps {
   folder: BookmarkFolder | null;
@@ -23,9 +29,10 @@ const BookmarkMemberSheet: React.FC<BookmarkMemberSheetProps> = ({
   onClose,
 }) => {
   const { theme } = useTheme();
-  const { getFolderMembers } = useBookmark();
+  const { getFolderMembers, addFolderMember } = useBookmark();
   const [members, setMembers] = useState<BookmarkFolderMember[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showAddMemberSheet, setShowAddMemberSheet] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !folder?.id) return;
@@ -76,192 +83,246 @@ const BookmarkMemberSheet: React.FC<BookmarkMemberSheetProps> = ({
           alignItems: "center",
         }}
       >
-        <View style={{ flex: 1, paddingRight: 12 }}>
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: "700",
-              color: theme.colors.text,
-              marginBottom: 2,
-            }}
-            numberOfLines={1}
-          >
-            Collection members
-          </Text>
-          {folder?.name ? (
+        <View style={styles.headerContent}>
+          <View style={styles.rowSpaceBetween}>
             <Text
               style={{
-                fontSize: 13,
-                color: theme.colors.text + "80",
+                fontSize: 18,
+                fontWeight: "700",
+                color: theme.colors.text,
+                marginBottom: 2,
               }}
               numberOfLines={1}
             >
-              {folder.name}
+              {folder?.name || ""} members
             </Text>
-          ) : null}
-        </View>
-
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            paddingHorizontal: 10,
-            paddingVertical: 6,
-            borderRadius: 999,
-            backgroundColor: theme.colors.border + "40",
-          }}
-        >
-          <Users
-            size={14}
-            color={theme.colors.text + "80"}
-            style={{ marginRight: 4 }}
-          />
-          <Text
-            style={{
-              fontSize: 12,
-              color: theme.colors.text + "90",
-              fontWeight: "500",
-            }}
-          >
-            {renderMemberCount()}
-          </Text>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 999,
+                backgroundColor: theme.colors.border + "40",
+              }}
+            >
+              <Users
+                size={14}
+                color={theme.colors.text + "80"}
+                style={{ marginRight: 4 }}
+              />
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: theme.colors.text + "90",
+                  fontWeight: "500",
+                }}
+              >
+                {renderMemberCount()}
+              </Text>
+            </View>
+          </View>
         </View>
       </View>
 
       {/* List */}
-      {loading ? (
-        <View
-          style={{
-            alignItems: "center",
-            justifyContent: "center",
-            paddingVertical: 32,
-          }}
-        >
-          <ActivityIndicator size="small" color={theme.colors.primary} />
-          <Text
+      <View style={styles.content}>
+        {loading ? (
+          <View
             style={{
-              marginTop: 8,
-              color: theme.colors.text + "80",
-              fontSize: 13,
+              alignItems: "center",
+              justifyContent: "center",
+              paddingVertical: 32,
             }}
           >
-            Loading members...
-          </Text>
-        </View>
-      ) : members.length === 0 ? (
-        <View
-          style={{
-            alignItems: "center",
-            justifyContent: "center",
-            paddingVertical: 40,
-            paddingHorizontal: 32,
-          }}
-        >
-          <Users
-            size={32}
-            color={theme.colors.text + "40"}
-            style={{ marginBottom: 8 }}
-          />
-          <Text
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+            <Text
+              style={{
+                marginTop: 8,
+                color: theme.colors.text + "80",
+                fontSize: 13,
+              }}
+            >
+              Loading members...
+            </Text>
+          </View>
+        ) : members.length === 0 ? (
+          <View
             style={{
-              color: theme.colors.text,
-              fontSize: 15,
-              fontWeight: "600",
-              marginBottom: 4,
+              alignItems: "center",
+              justifyContent: "center",
+              paddingVertical: 40,
+              paddingHorizontal: 32,
             }}
           >
-            No members yet
-          </Text>
-          <Text
-            style={{
-              color: theme.colors.text + "80",
-              fontSize: 13,
-              textAlign: "center",
-            }}
-          >
-            Only you can see this collection until you invite others to
-            collaborate.
-          </Text>
-        </View>
-      ) : (
-        <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
-          {members.map((member) => {
-            const displayName =
-              member.user?.first_name || member.user?.last_name
-                ? `${member.user?.first_name || ""} ${
-                    member.user?.last_name || ""
-                  }`.trim()
-                : member.user?.username || "Orbit user";
+            <Users
+              size={32}
+              color={theme.colors.text + "40"}
+              style={{ marginBottom: 8 }}
+            />
+            <Text
+              style={{
+                color: theme.colors.text,
+                fontSize: 15,
+                fontWeight: "600",
+                marginBottom: 4,
+              }}
+            >
+              No members yet
+            </Text>
+            <Text
+              style={{
+                color: theme.colors.text + "80",
+                fontSize: 13,
+                textAlign: "center",
+              }}
+            >
+              Only you can see this collection until you invite others to
+              collaborate.
+            </Text>
+          </View>
+        ) : (
+          <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+            {members.map((member) => {
+              const displayName =
+                member.user?.first_name || member.user?.last_name
+                  ? `${member.user?.first_name || ""} ${
+                      member.user?.last_name || ""
+                    }`.trim()
+                  : member.user?.username || "Orbit user";
 
-            return (
-              <View
-                key={member.id}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  paddingVertical: 10,
-                  borderBottomWidth: 1,
-                  borderBottomColor: theme.colors.border,
-                  gap: 12,
-                }}
-              >
-                <UserAvatar
-                  size={40}
-                  user={{
-                    id: member.user?.id || member.user_id,
-                    name: displayName,
-                    image: member.user?.avatar_url || null,
-                  }}
-                />
-
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      color: theme.colors.text,
-                      fontSize: 15,
-                      fontWeight: "600",
-                    }}
-                    numberOfLines={1}
-                  >
-                    {displayName}
-                  </Text>
-                  <Text
-                    style={{
-                      color: theme.colors.text + "80",
-                      fontSize: 12,
-                      marginTop: 2,
-                    }}
-                    numberOfLines={1}
-                  >
-                    @{member.user?.username || "anonymous"}
-                  </Text>
-                </View>
-
+              return (
                 <View
+                  key={member.id}
                   style={{
-                    paddingHorizontal: 10,
-                    paddingVertical: 4,
-                    borderRadius: 999,
-                    backgroundColor: theme.colors.border + "40",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingVertical: 10,
+                    borderBottomWidth: 1,
+                    borderBottomColor: theme.colors.border,
+                    gap: 12,
                   }}
                 >
-                  <Text
+                  <UserAvatar
+                    size={40}
+                    user={{
+                      id: member.user?.id || member.user_id,
+                      name: displayName,
+                      image: member.user?.avatar_url || null,
+                    }}
+                  />
+
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        color: theme.colors.text,
+                        fontSize: 15,
+                        fontWeight: "600",
+                      }}
+                      numberOfLines={1}
+                    >
+                      {displayName}
+                    </Text>
+                    <Text
+                      style={{
+                        color: theme.colors.text + "80",
+                        fontSize: 12,
+                        marginTop: 2,
+                      }}
+                      numberOfLines={1}
+                    >
+                      @{member.user?.username || "anonymous"}
+                    </Text>
+                  </View>
+
+                  <View
                     style={{
-                      fontSize: 11,
-                      fontWeight: "600",
-                      color: theme.colors.text + "90",
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                      borderRadius: 999,
+                      backgroundColor: theme.colors.border + "40",
                     }}
                   >
-                    {renderRoleLabel(member)}
-                  </Text>
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: "600",
+                        color: theme.colors.text + "90",
+                      }}
+                    >
+                      {renderRoleLabel(member)}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            );
-          })}
-        </View>
-      )}
+              );
+            })}
+          </View>
+        )}
+      </View>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => setShowAddMemberSheet(true)}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          marginHorizontal: 20,
+          paddingVertical: 10,
+          borderRadius: 999,
+          backgroundColor: theme.colors.primary + "30",
+        }}
+      >
+        <UserPlus
+          size={14}
+          color={theme.colors.primary}
+          style={{ marginRight: 4 }}
+        />
+        <Text
+          style={{
+            fontSize: 11,
+            fontWeight: "600",
+            color: theme.colors.primary,
+          }}
+        >
+          Add member
+        </Text>
+      </TouchableOpacity>
+      <BookmarkAddMemberSheet
+        isOpen={showAddMemberSheet}
+        onClose={() => setShowAddMemberSheet(false)}
+        confirmLabel="Add member"
+        onConfirm={async (user) => {
+          if (!folder?.id) return;
+          try {
+            await addFolderMember(folder.id, {
+              user_id: user.id,
+              role: "editor",
+            });
+            // Refresh members list so it reflects the new member
+            const updated = await getFolderMembers(folder.id);
+            setMembers(updated);
+          } catch (error) {
+            console.error("Error adding member from member sheet:", error);
+          }
+        }}
+      />
     </Sheet>
   );
 };
 
 export default BookmarkMemberSheet;
+const styles = StyleSheet.create({
+  rowSpaceBetween: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerContent: {
+    flex: 1,
+    paddingRight: 12,
+    gap: 10,
+  },
+  content: {
+    flex: 1,
+  },
+});
