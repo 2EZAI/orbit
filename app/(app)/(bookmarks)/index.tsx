@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { ArrowLeft } from "lucide-react-native";
+import { ArrowLeft, Bookmark, Users } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -15,6 +15,7 @@ import {
   useBookmark,
 } from "~/hooks/useBookmark";
 import { IProposal } from "~/hooks/useProposals";
+import BookmarkDetailSheet from "~/src/components/bookmark/BookmarkDetailSheet";
 import {
   UnifiedData,
   UnifiedDetailsSheet,
@@ -62,85 +63,7 @@ export default function BookmarksScreen() {
       setFolders(data);
     })();
   }, []);
-  const handleChatSelect = async (channel: Channel) => {
-    if (!channel) return;
-    try {
-      // Ensure channel is watched before sending
-      await channel.watch();
-      if (chatShareSelection.proposal) {
-        const message = await channel.sendMessage({
-          text: "Check out this proposal!",
-          type: "regular",
-          data: {
-            proposal: chatShareSelection.proposal,
-            type: "proposal/share",
-          },
-        });
-        // router.push(`/(app)/(chat)/channel/${channel.id}`);
-      }
-      if (chatShareSelection.event) {
-        const attachmentType =
-          chatShareSelection.event?.source === "ticketmaster"
-            ? "ticketmaster"
-            : chatShareSelection.isEventType
-            ? "event"
-            : "location";
-        const createPostShareAttachment = (
-          type: "event" | "location" | "ticketmaster"
-        ) => {
-          switch (type) {
-            case "event":
-              const eventData = chatShareSelection.event;
-              return {
-                type: "event_share",
-                event_id: eventData?.id || "",
-                event_data: eventData,
-              };
-            case "location":
-              const locationData = chatShareSelection.event;
-              return {
-                type: "location_share",
-                location_id: locationData?.id || "",
-                location_data: locationData,
-              };
-            case "ticketmaster":
-              const ticketmasterData = chatShareSelection.event;
-              return {
-                type: "ticketmaster_share",
-                event_id: ticketmasterData?.id || "",
-                event_data: {
-                  id: ticketmasterData?.id,
-                  name: ticketmasterData?.name,
-                  description: ticketmasterData?.description,
-                  image_urls: ticketmasterData?.image_urls,
-                  start_datetime: ticketmasterData?.start_datetime,
-                  venue_name: ticketmasterData?.venue_name,
-                  address: ticketmasterData?.address,
-                  city: ticketmasterData?.city,
-                  state: ticketmasterData?.state,
-                  source: "ticketmaster",
-                },
-              };
-            default:
-              return null;
-          }
-        };
-        const attachment = createPostShareAttachment(attachmentType);
-        await channel.sendMessage({
-          text: `Check out ${chatShareSelection.event?.name} on Orbit!`,
-          type: "regular",
-          // Send attachment (like web app) for cross-platform compatibility
-          attachments: attachment ? [attachment] : [],
-        });
-      }
-      // Send the post as a custom message with attachment
 
-      // Navigate to the chat
-    } catch (error) {
-      console.error("Error sharing post:", error);
-      // You could show a toast or alert here
-    }
-  };
   const loadFolderEvents = async (folder: BookmarkFolder) => {
     setSelectedFolder(folder);
     setLoadingFolderEvents(true);
@@ -160,15 +83,7 @@ export default function BookmarksScreen() {
       setLoadingFolderEvents(false);
     }
   };
-  const handleEventPress = (event: Event) => {
-    setSelectedEvent(event);
-    setIsEventSheetOpen(true);
-  };
 
-  const handleCloseSheet = () => {
-    setSelectedEvent(null);
-    setIsEventSheetOpen(false);
-  };
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.card }}>
       {/* Header */}
@@ -186,7 +101,7 @@ export default function BookmarksScreen() {
         </Text>
       </View>
 
-      {/* Folders list */}
+      {/* Collections list */}
       {loading ? (
         <ActivityIndicator
           style={{ marginTop: 32 }}
@@ -196,126 +111,159 @@ export default function BookmarksScreen() {
         <FlatList
           data={folders}
           keyExtractor={(f) => f.id}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              onPress={() => loadFolderEvents(item)}
-              style={{
-                paddingVertical: 12,
-                borderBottomWidth: 1,
-                borderBottomColor: theme.colors.border,
-              }}
-            >
-              <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
-                {item.name}
-              </Text>
-              <Text style={{ color: theme.colors.text + "80", fontSize: 12 }}>
-                {(item.bookmark_count ?? 0) + " items"} •{" "}
-                {item.is_public ? "Public" : "Private"}
-              </Text>
-            </TouchableOpacity>
-          )}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingBottom: 16,
+            paddingTop: 4,
+          }}
+          renderItem={({ item }) => {
+            const itemCount = item.bookmark_count ?? 0;
+            const memberCount = item.member_count ?? 1;
+            return (
+              <TouchableOpacity
+                onPress={() => loadFolderEvents(item)}
+                activeOpacity={0.9}
+                style={{
+                  marginBottom: 12,
+                  borderRadius: 18,
+                  borderWidth: 1,
+                  borderColor: theme.colors.border,
+                  backgroundColor: theme.colors.card,
+                  paddingVertical: 12,
+                  paddingHorizontal: 14,
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
+              >
+                {/* Icon bubble */}
+                <View
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    backgroundColor: theme.colors.primary + "20",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    marginRight: 12,
+                  }}
+                >
+                  <Bookmark size={20} color={theme.colors.primary} />
+                </View>
+
+                {/* Text content */}
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      color: theme.colors.text,
+                      fontWeight: "700",
+                      fontSize: 16,
+                    }}
+                    numberOfLines={1}
+                  >
+                    {item.name}
+                  </Text>
+                  {item.description ? (
+                    <Text
+                      style={{
+                        color: theme.colors.text + "80",
+                        fontSize: 12,
+                        marginTop: 2,
+                      }}
+                      numberOfLines={2}
+                    >
+                      {item.description}
+                    </Text>
+                  ) : null}
+
+                  {/* Meta row */}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      marginTop: 6,
+                    }}
+                  >
+                    {/* Items */}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        marginRight: 12,
+                      }}
+                    >
+                      <Bookmark
+                        size={12}
+                        color={theme.colors.text + "80"}
+                        style={{ marginRight: 4 }}
+                      />
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          color: theme.colors.text + "80",
+                          fontWeight: "500",
+                        }}
+                      >
+                        {itemCount} item{itemCount === 1 ? "" : "s"}
+                      </Text>
+                    </View>
+
+                    {/* Members */}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        marginRight: 12,
+                      }}
+                    >
+                      <Users
+                        size={12}
+                        color={theme.colors.text + "80"}
+                        style={{ marginRight: 4 }}
+                      />
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          color: theme.colors.text + "80",
+                          fontWeight: "500",
+                        }}
+                      >
+                        {memberCount} member{memberCount === 1 ? "" : "s"}
+                      </Text>
+                    </View>
+
+                    {/* Visibility pill */}
+                    <View
+                      style={{
+                        paddingHorizontal: 8,
+                        paddingVertical: 3,
+                        borderRadius: 999,
+                        backgroundColor: theme.colors.border + "40",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: "600",
+                          color: theme.colors.text + "80",
+                        }}
+                      >
+                        {item.is_public ? "Public" : "Private"}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
         />
       )}
 
-      <Sheet isOpen={showEventsSheet} onClose={() => setShowEventsSheet(false)}>
-        <View
-          style={{
-            paddingHorizontal: 16,
-            paddingBottom: 16,
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <View>
-            <Text>{selectedFolder?.name}</Text>
-            <Text>{selectedFolder?.description}</Text>
-          </View>
-          <Text>{folderEvents.length} items</Text>
-        </View>
-        <FlatList
-          data={folderEvents}
-          keyExtractor={(f) => f.id}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
-          renderItem={({ item }) => (
-            <View style={{ paddingBottom: 12 }}>
-              <SocialEventCard
-                data={item.event as any}
-                onDataSelect={(data) => {
-                  handleEventPress(item.event as any);
-                }}
-                onShowDetails={() => {
-                  handleEventPress(item.event as any);
-                }}
-                treatAsEvent={true}
-                isCustomEvent={false}
-              />
-            </View>
-          )}
-        />
-        {selectedEvent && (
-          <UnifiedDetailsSheet
-            data={selectedEvent as any}
-            isOpen={isEventSheetOpen}
-            onClose={handleCloseSheet}
-            nearbyData={[]} // Empty for now, could add similar events later
-            onDataSelect={(data) => {
-              // Handle if user selects a different event from within the sheet
-              handleCloseSheet();
-            }}
-            onShare={(data, isEvent) => {
-              setSelectedEvent(null);
-              setShareData({ data, isEventType: isEvent });
-            }}
-            onShowControler={() => {
-              // Handle controller show
-            }}
-            isEvent={true}
-          />
-        )}
-        {shareData && (
-          <UnifiedShareSheet
-            isOpen={!!shareData}
-            onClose={() => {
-              setSelectedEvent(shareData?.data as any);
-              setShareData(null);
-            }}
-            data={shareData?.data}
-            isEventType={shareData?.isEventType}
-            onProposalShare={(proposal: IProposal) => {
-              setShareData(null);
-              setChatShareSelection({
-                show: true,
-                proposal: proposal || null,
-                event: null,
-                isEventType: false,
-              });
-            }}
-            onEventShare={(event) => {
-              setShareData(null);
-              setChatShareSelection({
-                show: true,
-                proposal: null,
-                event: event || null,
-                isEventType: shareData?.isEventType,
-              });
-            }}
-          />
-        )}
-        <ChatSelectionModal
-          isOpen={chatShareSelection.show}
-          onClose={() => {
-            setChatShareSelection({
-              show: false,
-              proposal: null,
-              event: null,
-              isEventType: false,
-            });
-          }}
-          onSelectChat={handleChatSelect}
-        />
-      </Sheet>
+      <BookmarkDetailSheet
+        selectedFolder={selectedFolder}
+        folderEvents={folderEvents}
+        showEventsSheet={showEventsSheet}
+        onClose={() => setShowEventsSheet(false)}
+      />
     </SafeAreaView>
   );
 }
