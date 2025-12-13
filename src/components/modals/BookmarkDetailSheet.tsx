@@ -1,4 +1,10 @@
-import { View, Text, FlatList, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+} from "react-native";
 import { Sheet } from "../ui/sheet";
 import { Bookmark, Users, UserPlus } from "lucide-react-native";
 import { SocialEventCard } from "../social/SocialEventCard";
@@ -150,53 +156,71 @@ const BookmarkDetailSheet: React.FC<IProps> = ({
 
   return (
     <Sheet isOpen={showEventsSheet} onClose={() => onClose()}>
-      <View
-        style={{
-          paddingHorizontal: 16,
-          paddingTop: 8,
-          paddingBottom: 16,
-        }}
-      >
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-          }}
-        >
-          <View style={{ flex: 1, paddingRight: 12 }}>
+      <View style={styles.headerContent}>
+        <View style={styles.rowSpaceBetween}>
+          <View style={styles.titleContent}>
+            <View
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: theme.colors.primary + "20",
+                justifyContent: "center",
+                alignItems: "center",
+                marginRight: 10,
+              }}
+            >
+              <Bookmark size={18} color={theme.colors.primary} />
+            </View>
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "700",
+                color: theme.colors.text,
+              }}
+              numberOfLines={1}
+            >
+              {folderState?.name || "Collection"}
+            </Text>
+          </View>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setShowMembersSheet(true)}
+            style={{
+              paddingHorizontal: 10,
+              paddingVertical: 8,
+              borderRadius: 12,
+              backgroundColor: theme.colors.card,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              minWidth: 96,
+            }}
+          >
             <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                marginBottom: 4,
               }}
             >
-              <View
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  backgroundColor: theme.colors.primary + "20",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  marginRight: 10,
-                }}
-              >
-                <Bookmark size={18} color={theme.colors.primary} />
-              </View>
+              <Users
+                size={14}
+                color={theme.colors.text + "80"}
+                style={{ marginRight: 4 }}
+              />
               <Text
                 style={{
-                  fontSize: 18,
-                  fontWeight: "700",
-                  color: theme.colors.text,
+                  fontSize: 11,
+                  color: theme.colors.text + "80",
                 }}
-                numberOfLines={1}
               >
-                {folderState?.name || "Collection"}
+                {folderState?.member_count ?? 1} member
+                {(folderState?.member_count ?? 1) === 1 ? "" : "s"}
               </Text>
             </View>
-
+          </TouchableOpacity>
+        </View>
+        <View style={styles.rowSpaceBetween}>
+          <View style={{ flex: 1 }}>
             {folderState?.description ? (
               <Text
                 style={{
@@ -235,78 +259,35 @@ const BookmarkDetailSheet: React.FC<IProps> = ({
               </View>
             )}
           </View>
-
-          {/* Stats + actions */}
-          <View style={{ alignItems: "flex-end", gap: 8 }}>
-            {/* Stats card – tap to view members */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setShowMembersSheet(true)}
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => setShowAddMemberSheet(true)}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderRadius: 999,
+              backgroundColor: theme.colors.primary + "15",
+            }}
+          >
+            <UserPlus
+              size={14}
+              color={theme.colors.primary}
+              style={{ marginRight: 4 }}
+            />
+            <Text
               style={{
-                paddingHorizontal: 10,
-                paddingVertical: 8,
-                borderRadius: 12,
-                backgroundColor: theme.colors.card,
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-                minWidth: 96,
+                fontSize: 11,
+                fontWeight: "600",
+                color: theme.colors.primary,
               }}
             >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                }}
-              >
-                <Users
-                  size={14}
-                  color={theme.colors.text + "80"}
-                  style={{ marginRight: 4 }}
-                />
-                <Text
-                  style={{
-                    fontSize: 11,
-                    color: theme.colors.text + "80",
-                  }}
-                >
-                  {folderState?.member_count ?? 1} member
-                  {(folderState?.member_count ?? 1) === 1 ? "" : "s"}
-                </Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* Add member button */}
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => setShowAddMemberSheet(true)}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                paddingHorizontal: 10,
-                paddingVertical: 6,
-                borderRadius: 999,
-                backgroundColor: theme.colors.primary + "15",
-              }}
-            >
-              <UserPlus
-                size={14}
-                color={theme.colors.primary}
-                style={{ marginRight: 4 }}
-              />
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontWeight: "600",
-                  color: theme.colors.primary,
-                }}
-              >
-                Add member
-              </Text>
-            </TouchableOpacity>
-          </View>
+              Add member
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Section label */}
         <Text
           style={{
             marginTop: 4,
@@ -429,3 +410,23 @@ const BookmarkDetailSheet: React.FC<IProps> = ({
   );
 };
 export default BookmarkDetailSheet;
+const styles = StyleSheet.create({
+  rowSpaceBetween: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  headerContent: {
+    flex: 1,
+    paddingRight: 12,
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  titleContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+});
