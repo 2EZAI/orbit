@@ -40,6 +40,8 @@ import { Text } from "~/src/components/ui/text";
 import { supabase } from "~/src/lib/supabase";
 import { draftService } from "~/src/services/draftService";
 import { EventDraft } from "~/src/types/draftTypes";
+import { MapCacheService } from "~/src/services/mapCacheService";
+import { MapNavigationStorage } from "~/src/services/mapNavigationStorage";
 import { MotiView } from "moti";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
@@ -230,8 +232,9 @@ export default function SettingsScreen() {
     try {
       console.log("Initiating logout...");
 
-      // Clear any navigation state first to prevent navigation errors
-      // router.dismissAll?.();
+      // Clear map caches so new user gets fresh data
+      await MapCacheService.clearCache();
+      await MapNavigationStorage.clear();
 
       // Sign out from Supabase
       await supabase.auth.signOut();
