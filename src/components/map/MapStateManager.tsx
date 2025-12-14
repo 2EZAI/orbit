@@ -266,7 +266,6 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
     error,
     forceRefresh: forceRefresh,
     fetchTimeframeData,
-    debugBackendPerformance,
   } = useUnifiedMapData({
     center: calculatedCenter,
     radius: 50000, // 50 miles radius
@@ -292,12 +291,6 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
     [fetchTimeframeData]
   );
 
-  // Debug zoom level changes
-  useEffect(() => {
-    console.log(
-      `🗺️ [MapStateManager] Zoom level changed to: ${currentZoomLevel}`
-    );
-  }, [currentZoomLevel]);
 
   // Get current location function
   const getCurrentLocation = useCallback(async () => {
