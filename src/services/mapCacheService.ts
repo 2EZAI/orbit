@@ -9,7 +9,7 @@ interface CachedMapData {
 }
 
 const CACHE_KEY = "mapDataCache";
-const CACHE_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
+const CACHE_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 
 export class MapCacheService {
   static async getCachedData(): Promise<CachedMapData | null> {
