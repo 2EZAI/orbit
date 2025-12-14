@@ -25,10 +25,6 @@ export function LocationSimilarSection({
   const { theme, isDarkMode } = useTheme();
   const { userlocation } = useUser();
 
-  console.log("🔍 [LocationSimilarSection] Data:", data);
-
-  let locationLat = null;
-  let locationLng = null;
 
   // Use the similar items API like web app
   // Get coordinates from userlocation or fallback to event location coordinates
@@ -66,24 +62,6 @@ export function LocationSimilarSection({
     enabled: !!data.id && !!latitude && !!longitude, // Use coordinates when available
   });
 
-  // Debug logging for similar locations
-  console.log("📍 [LocationSimilarSection] Debug:", {
-    dataId: data.id,
-    dataName: data.name,
-    dataCategory: data.category,
-    dataType: data.type,
-    userlocation,
-    locationLat,
-    locationLng,
-    finalLatitude: latitude,
-    finalLongitude: longitude,
-    enabled: !!data.id && !!latitude && !!longitude,
-    isLoading,
-    error,
-    hasResults,
-    similarLocationsCount: similarLocations.length,
-    similarLocationsIds: similarLocations.map((item: any) => item.id),
-  });
 
   if (isLoading) {
     return (
@@ -145,15 +123,6 @@ export function LocationSimilarSection({
             <TouchableOpacity
               key={`${item.id}-${index}`}
               onPress={() => {
-                console.log(
-                  "📍 [LocationSimilarSection] Similar location clicked:",
-                  {
-                    locationId: item.id,
-                    locationName: item.name,
-                    locationType: item.type,
-                    hasOnDataSelect: !!onDataSelect,
-                  }
-                );
                 if (onDataSelect) {
                   onDataSelect(item);
                 }
