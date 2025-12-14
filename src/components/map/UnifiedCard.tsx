@@ -979,7 +979,7 @@ export const UnifiedCard = React.memo(
                   });
                 }}
               >
-                <Flag size={20} color="red" />
+                <Flag size={20} color="#000" />
               </TouchableOpacity>
               <TouchableOpacity
                 className=" justify-center items-center w-8 h-8 rounded-full bg-black/30"
