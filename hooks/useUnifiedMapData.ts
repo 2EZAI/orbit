@@ -789,12 +789,16 @@ export function useUnifiedMapData({
           Math.min(validLocations.length, MAX_MARKERS - limitedEvents.length)
         );
         
-        // Save to persistent cache (after limiting)
-        await MapCacheService.saveCachedData(
-          limitedEvents,
-          limitedLocations,
-          [centerCoords[0], centerCoords[1]] as [number, number]
-        );
+        // Save to persistent cache (after limiting) - only if session exists
+        if (session) {
+          await MapCacheService.saveCachedData(
+            limitedEvents,
+            limitedLocations,
+            [centerCoords[0], centerCoords[1]] as [number, number]
+          );
+        } else {
+          console.log("[UnifiedMapData] ⚠️ Skipping cache save - no session");
+        }
 
         // Show data immediately
         setEvents(limitedEvents);
@@ -1022,69 +1026,111 @@ export function useUnifiedMapData({
   // EFFECTS
   // ============================================================================
 
-  // IMMEDIATE: Load cache synchronously on mount for instant pins
-  useEffect(() => {
-    const loadCacheImmediately = async () => {
-      const cachedData = await MapCacheService.getCachedData();
-      if (cachedData) {
-        const cacheAge = Date.now() - cachedData.timestamp;
-        const isCacheFresh = cacheAge < 15 * 60 * 1000; // 15 minutes
-        
-        if (isCacheFresh) {
-          console.log("[UnifiedMapData] ⚡ IMMEDIATE: Loading cached data for instant pins");
-          console.log(`[UnifiedMapData] Cache age: ${Math.round(cacheAge / 1000)}s`);
-          
-          // Update state with cached data IMMEDIATELY (synchronously)
-          setEvents(cachedData.events);
-          setLocations(cachedData.locations);
-          
-          // Process clusters from cached data
-          const nowEvents = filterEventsByTime(cachedData.events, "today");
-          const todayEvents = filterEventsByTime(cachedData.events, "today");
-          const tomorrowEvents = filterEventsByTime(cachedData.events, "weekend");
-          
-          setEventsNow(nowEvents);
-          setEventsToday(todayEvents);
-          setEventsTomorrow(tomorrowEvents);
-          
-          // Process clusters
-          await processClusters(
-            cachedData.events,
-            cachedData.locations,
-            nowEvents,
-            todayEvents,
-            tomorrowEvents
-          );
-          
-          setIsLoading(false);
-          setIsLoadingComplete(true);
-          
-          console.log("[UnifiedMapData] ✅ IMMEDIATE: Cached data loaded, pins should appear instantly");
-        }
+    // IMMEDIATE: Load cache synchronously on mount for instant pins (only if session exists)
+    useEffect(() => {
+      // Don't load cache if no session (user logged out)
+      if (!session) {
+        return;
       }
-    };
-    
-    // Load cache immediately on mount
-    loadCacheImmediately();
-  }, []); // Only run once on mount
+      
+      const loadCacheImmediately = async () => {
+        const cachedData = await MapCacheService.getCachedData();
+        if (cachedData) {
+          const cacheAge = Date.now() - cachedData.timestamp;
+          const isCacheFresh = cacheAge < 15 * 60 * 1000; // 15 minutes
+          
+          if (isCacheFresh) {
+            console.log("[UnifiedMapData] ⚡ IMMEDIATE: Loading cached data for instant pins");
+            console.log(`[UnifiedMapData] Cache age: ${Math.round(cacheAge / 1000)}s`);
+            
+            // Update state with cached data IMMEDIATELY (synchronously)
+            setEvents(cachedData.events);
+            setLocations(cachedData.locations);
+            
+            // Process clusters from cached data
+            const nowEvents = filterEventsByTime(cachedData.events, "today");
+            const todayEvents = filterEventsByTime(cachedData.events, "today");
+            const tomorrowEvents = filterEventsByTime(cachedData.events, "weekend");
+            
+            setEventsNow(nowEvents);
+            setEventsToday(todayEvents);
+            setEventsTomorrow(tomorrowEvents);
+            
+            // Process clusters
+            await processClusters(
+              cachedData.events,
+              cachedData.locations,
+              nowEvents,
+              todayEvents,
+              tomorrowEvents
+            );
+            
+            setIsLoading(false);
+            setIsLoadingComplete(true);
+            
+            console.log("[UnifiedMapData] ✅ IMMEDIATE: Cached data loaded, pins should appear instantly");
+          }
+        }
+      };
+      
+      // Load cache immediately on mount
+      loadCacheImmediately();
+    }, [session]); // Re-run when session changes
 
   // CRITICAL FIX: SINGLE API CALL ON MOUNT - PREVENT MULTIPLE CALLS
   const hasInitializedRef = useRef(false);
 
+  // Clear all data when session becomes null (logout)
   useEffect(() => {
-    // Skip if we already have data from cache
-    if (events.length > 0 || locations.length > 0) {
-      console.log("[UnifiedMapData] ✅ Data already loaded from cache, skipping API call");
+    if (!session) {
+      console.log("[UnifiedMapData] 🚪 Session cleared, resetting all map data");
+      setEvents([]);
+      setLocations([]);
+      setEventsNow([]);
+      setEventsToday([]);
+      setEventsTomorrow([]);
+      setClusters([]);
+      setClustersLocations([]);
+      setClustersNow([]);
+      setClustersToday([]);
+      setClustersTomorrow([]);
+      setIsLoading(false);
+      setIsLoadingComplete(false);
+      hasInitializedRef.current = false;
+      cachedEventsRef.current = [];
+      cachedLocationsRef.current = [];
+      lastFetchTimeRef.current = 0;
+      return;
+    }
+  }, [session]);
+
+  useEffect(() => {
+    // Skip if no session
+    if (!session) {
       return;
     }
     
+    // Skip if we already have data (could be from cache or API)
+    if (events.length > 0 || locations.length > 0) {
+      // Only log if we haven't initialized yet (meaning data came from immediate cache load)
+      if (!hasInitializedRef.current && session) {
+        console.log("[UnifiedMapData] ✅ Data already loaded (from cache), skipping API call");
+      }
+      // If hasInitializedRef is true, data was just loaded from API, so don't log anything
+      return;
+    }
+    
+    // Allow API call even without session (for browsing), but only once
     if (
-      session &&
       center[0] !== 0 &&
       center[1] !== 0 &&
       !hasInitializedRef.current
     ) {
-      console.log("[UnifiedMapData] 🚀 SINGLE API CALL (ONCE ONLY)");
+      if (session) {
+        console.log("[UnifiedMapData] 🚀 SINGLE API CALL (ONCE ONLY) - Authenticated");
+      } else {
+        console.log("[UnifiedMapData] 🚀 SINGLE API CALL (ONCE ONLY) - Browsing (no session)");
+      }
       hasInitializedRef.current = true;
       fetchUnifiedData(center);
     }
