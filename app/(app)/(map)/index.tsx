@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useIsFocused } from "@react-navigation/native";
 import { View } from "react-native";
 import { Text } from "~/src/components/ui/text";
@@ -11,6 +11,7 @@ import { MapboxMarkers } from "~/src/components/map/MapboxMarkers";
 import { MapStateManager } from "~/src/components/map/MapStateManager";
 import { MapEventHandlers } from "~/src/components/map/MapEventHandlers";
 import { MapPerformanceOptimizer } from "~/src/components/map/MapPerformanceOptimizer";
+import { MapNavigationStorage } from "~/src/services/mapNavigationStorage";
 
 // Import existing components
 import { MapControls } from "~/src/components/map/MapControls";
@@ -40,6 +41,21 @@ export default function Map() {
   const { user, userlocation } = useUser();
   const { cameraRef, isFollowingUser, handleZoomIn, handleZoomOut } =
     useMapCamera();
+
+  // Clear stored navigation when map loses focus (but only after a delay to allow navigation to complete)
+  useEffect(() => {
+    if (!isFocused) {
+      // Map lost focus - clear stored navigation after a delay
+      // This delay ensures that if we're navigating TO the map, the storage won't be cleared before MapStateManager reads it
+      const timeoutId = setTimeout(() => {
+        MapNavigationStorage.clear().then(() => {
+          console.log("🗺️ [Map] Cleared stored navigation (map lost focus)");
+        });
+      }, 3000); // 3 second delay to ensure navigation completes
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isFocused]);
 
   // Viewport state for performance optimization
   const [mapBounds, setMapBounds] = useState<{
@@ -176,12 +192,11 @@ export default function Map() {
     }
   };
   // Mount heavy map tree only when this screen is focused.
-  if (!isFocused) {
-    return <View className="flex-1" />;
-  }
-
+  // Keep map mounted even when not focused to preserve rendered pins
+  // Only hide visually if needed, but keep MapStateManager mounted
   return (
-    <MapStateManager cameraRef={cameraRef}>
+    <View style={{ flex: 1, display: isFocused ? 'flex' : 'none' }}>
+      <MapStateManager cameraRef={cameraRef} isFocused={isFocused}>
       {(state) => (
         <MapEventHandlers cameraRef={cameraRef}>
           {(eventHandlers) => (
@@ -539,5 +554,6 @@ export default function Map() {
         </MapEventHandlers>
       )}
     </MapStateManager>
+    </View>
   );
 }

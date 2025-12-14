@@ -11,6 +11,7 @@ import { haptics } from "~/src/lib/haptics";
 import { useAuth } from "~/src/lib/auth";
 import { LocationChangeModal } from "~/src/components/map/LocationChangeModal";
 import { isLocationOutsideRadius } from "~/src/lib/distance";
+import { MapNavigationStorage } from "~/src/services/mapNavigationStorage";
 
 
 
@@ -116,56 +117,89 @@ console.log("params>>",params);
   };
 
 
-  const navigateToMap = () => {
-    // Navigate to the map view centered on the event location
-    router.push({
-      pathname: "/(app)/(map)",
-      params: {
-        lat: eventData.eventLocation.lat,
-        lng: eventData.eventLocation.lng,
-        zoom: 15,
-        showEventCard: "true",
-        eventId: params.eventId as string,
-        // Add a timestamp to force map reload
-        reload: Date.now().toString(),
+  const navigateToMap = async () => {
+    // Store event data for immediate card display (same approach as UnifiedDetailsSheet)
+    const eventDataForStorage = {
+      id: params.eventId as string,
+      name: eventData.name,
+      description: eventData.description,
+      start_datetime: eventData.startDate.toISOString(),
+      end_datetime: eventData.endDate.toISOString(),
+      location: {
+        type: "Point",
+        coordinates: [eventData.eventLocation.lng, eventData.eventLocation.lat],
       },
-    });
+      coordinates: {
+        latitude: eventData.eventLocation.lat,
+        longitude: eventData.eventLocation.lng,
+      },
+      address: eventData.locationDetails?.address1 || "",
+      city: eventData.locationDetails?.city || "",
+      state: eventData.locationDetails?.state || "",
+      zip: eventData.locationDetails?.zip || "",
+      image_urls: eventData.images.map(img => img.uri),
+      external_url: eventData.externalUrl,
+      is_private: eventData.isPrivate,
+    };
 
-    // Emit event to reload map and show event card
-    DeviceEventEmitter.emit("mapReload", true);
-    DeviceEventEmitter.emit("showEventCard", {
+    await MapNavigationStorage.store({
       eventId: params.eventId as string,
       lat: eventData.eventLocation.lat,
       lng: eventData.eventLocation.lng,
+      data: eventDataForStorage,
+      timestamp: Date.now(),
+    });
+    console.log("✅ [Summary] Stored navigation data:", params.eventId);
+
+    // Navigate to map - MapStateManager will handle showing the card
+    router.push({
+      pathname: "/(app)/(map)",
     });
   };
 
-  const handleLocationChangeConfirm = () => {
+  const handleLocationChangeConfirm = async () => {
     // Close the modal first
     setShowLocationChangeModal(false);
     
-    // Navigate to map with location change flag
-    router.push({
-      pathname: "/(app)/(map)",
-      params: {
-        lat: eventData.eventLocation.lat,
-        lng: eventData.eventLocation.lng,
-        zoom: 15,
-        showEventCard: "true",
-        eventId: params.eventId as string,
-        // Add a timestamp to force map reload
-        reload: Date.now().toString(),
-        // Flag to indicate location change
-        changeLocation: "true",
+    // Store event data for immediate card display
+    const eventDataForStorage = {
+      id: params.eventId as string,
+      name: eventData.name,
+      description: eventData.description,
+      start_datetime: eventData.startDate.toISOString(),
+      end_datetime: eventData.endDate.toISOString(),
+      location: {
+        type: "Point",
+        coordinates: [eventData.eventLocation.lng, eventData.eventLocation.lat],
       },
-    });
+      coordinates: {
+        latitude: eventData.eventLocation.lat,
+        longitude: eventData.eventLocation.lng,
+      },
+      address: eventData.locationDetails?.address1 || "",
+      city: eventData.locationDetails?.city || "",
+      state: eventData.locationDetails?.state || "",
+      zip: eventData.locationDetails?.zip || "",
+      image_urls: eventData.images.map(img => img.uri),
+      external_url: eventData.externalUrl,
+      is_private: eventData.isPrivate,
+    };
 
-    // Emit event to reload map and show event card
-    DeviceEventEmitter.emit("mapReload", true);
-    DeviceEventEmitter.emit("showEventCard", {
+    await MapNavigationStorage.store({
       eventId: params.eventId as string,
       lat: eventData.eventLocation.lat,
       lng: eventData.eventLocation.lng,
+      data: eventDataForStorage,
+      timestamp: Date.now(),
+    });
+    console.log("✅ [Summary] Stored navigation data (location change):", params.eventId);
+    
+    // Navigate to map with location change flag - MapStateManager will handle showing the card
+    router.push({
+      pathname: "/(app)/(map)",
+      params: {
+        changeLocation: "true",
+      },
     });
   };
 

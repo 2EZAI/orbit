@@ -28,6 +28,7 @@ import Toast from "react-native-toast-message";
 import { useEventJoinStatus } from "~/hooks/useEventJoinStatus";
 import { useFlagging } from "~/hooks/useFlagging";
 import { useJoinEvent } from "~/hooks/useJoinEvent";
+import { MapNavigationStorage } from "~/src/services/mapNavigationStorage";
 import { useLocationEvents } from "~/hooks/useLocationEvents";
 import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
 import { useTheme } from "~/src/components/ThemeProvider";
@@ -691,98 +692,151 @@ export const UnifiedDetailsSheet = React.memo(
 
     const primaryImage = currentData?.image_urls?.[0];
     
-    const handleConfirm = () => {
-      const mapCenter = getCurrentMapCenter();
-      const currentCenter = {
-        latitude: parseFloat(`${mapCenter?.latitude || "0"}`) || 0,
-        longitude: parseFloat(`${mapCenter?.longitude || "0"}`) || 0,
-      };
+    const handleConfirm = async () => {
+      console.log("🗺️ [UnifiedDetailsSheet] handleConfirm called");
+      try {
+        const mapCenter = getCurrentMapCenter();
+        const currentCenter = {
+          latitude: parseFloat(`${mapCenter?.latitude || "0"}`) || 0,
+          longitude: parseFloat(`${mapCenter?.longitude || "0"}`) || 0,
+        };
 
-      // Extract coordinates from location
-      const coords = getLocationCoordinates(currentData.location);
-      if (!coords) {
+        console.log("🗺️ [UnifiedDetailsSheet] Current center:", currentCenter);
+        console.log("🗺️ [UnifiedDetailsSheet] Current data location:", currentData.location);
+        console.log("🗺️ [UnifiedDetailsSheet] Current data coordinates:", (currentData as any).coordinates);
+        console.log("🗺️ [UnifiedDetailsSheet] Full currentData:", JSON.stringify(currentData, null, 2));
+
+        // Extract coordinates - check multiple sources
+        let coords = getLocationCoordinates(currentData.location);
+        
+        // If location is a string, check coordinates directly on data
+        if (!coords && (currentData as any).coordinates) {
+          console.log("🗺️ [UnifiedDetailsSheet] Checking coordinates property directly");
+          coords = getLocationCoordinates((currentData as any).coordinates);
+        }
+        
+        // If still not found, check nearbyData for original data
+        if (!coords) {
+          console.log("🗺️ [UnifiedDetailsSheet] Checking nearbyData for original data");
+          const originalData = nearbyData.find(item => item.id === currentData.id);
+          if (originalData) {
+            console.log("🗺️ [UnifiedDetailsSheet] Found original data in nearbyData");
+            coords = getLocationCoordinates(originalData.location);
+            if (!coords && (originalData as any).coordinates) {
+              coords = getLocationCoordinates((originalData as any).coordinates);
+            }
+          }
+        }
+        
+        // If still not found, check original data prop
+        if (!coords) {
+          console.log("🗺️ [UnifiedDetailsSheet] Checking original data prop");
+          coords = getLocationCoordinates(data.location);
+          if (!coords && (data as any).coordinates) {
+            coords = getLocationCoordinates((data as any).coordinates);
+          }
+        }
+        
+        console.log("🗺️ [UnifiedDetailsSheet] Final extracted coordinates:", coords);
+        
+        if (!coords) {
+          console.error("❌ [UnifiedDetailsSheet] No coordinates found in any source");
+          Toast.show({
+            type: "error",
+            text1: "Invalid location data",
+            text2: "Cannot navigate to map",
+          });
+          return;
+        }
+
+        const eventLocationData = {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          name: currentData.name,
+          address: currentData.address || "",
+        };
+
+        // Check if event is outside the loaded data radius (100km)
+        const { isOutside, distance: dist } = isLocationOutsideRadius(
+          eventLocationData,
+          currentCenter,
+          100 // 100km radius
+        );
+
+        console.log("🗺️ [UnifiedDetailsSheet] Location check:", { isOutside, distance: dist });
+
+        if (
+          isOutside &&
+          currentCenter.latitude !== 0 &&
+          currentCenter.longitude !== 0
+        ) {
+          console.log("🗺️ [UnifiedDetailsSheet] Showing location change modal");
+          setEventLocation(eventLocationData);
+          setDistance(dist);
+          setShowLocationChangeModal(true);
+        } else {
+          console.log("🗺️ [UnifiedDetailsSheet] Navigating directly to map");
+          await navigateToMap(coords.latitude, coords.longitude);
+        }
+      } catch (error) {
+        console.error("❌ [UnifiedDetailsSheet] Error in handleConfirm:", error);
         Toast.show({
           type: "error",
-          text1: "Invalid location data",
-          text2: "Cannot navigate to map",
+          text1: "Navigation error",
+          text2: "Could not navigate to map",
         });
-        return;
-      }
-
-      const eventLocationData = {
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        name: currentData.name,
-        address: currentData.address || "",
-      };
-
-      // Check if event is outside the loaded data radius (100km)
-      const { isOutside, distance: dist } = isLocationOutsideRadius(
-        eventLocationData,
-        currentCenter,
-        100 // 100km radius
-      );
-
-      if (
-        isOutside &&
-        currentCenter.latitude !== 0 &&
-        currentCenter.longitude !== 0
-      ) {
-        setEventLocation(eventLocationData);
-        setDistance(dist);
-        setShowLocationChangeModal(true);
-      } else {
-        navigateToMap(coords.latitude, coords.longitude);
       }
     };
 
-    const navigateToMap = (lat: number, lng: number) => {
-      onClose();
-      
-      router.push({
-        pathname: "/(app)/(map)",
-        params: {
-          lat: lat.toString(),
-          lng: lng.toString(),
-          zoom: "15",
-          showEventCard: "true",
+    const navigateToMap = async (lat: number, lng: number) => {
+      console.log("🗺️ [UnifiedDetailsSheet] navigateToMap called with:", { lat, lng, eventId: data.id });
+      try {
+        // Store event/location data for immediate card display
+        await MapNavigationStorage.store({
           eventId: data.id as string,
-          reload: Date.now().toString(),
-        },
-      });
-      
-      DeviceEventEmitter.emit("mapReload", true);
-      DeviceEventEmitter.emit("showEventCard", {
-        eventId: data.id as string,
-        lat: lat,
-        lng: lng,
-      });
+          lat: lat,
+          lng: lng,
+          data: currentData,
+          timestamp: Date.now(),
+        });
+        console.log("✅ [UnifiedDetailsSheet] Stored navigation data:", data.id);
+        
+        onClose();
+        
+        console.log("🗺️ [UnifiedDetailsSheet] Navigating to map...");
+        // Simple navigation - storage handles the rest
+        router.push({
+          pathname: "/(app)/(map)",
+        });
+        console.log("✅ [UnifiedDetailsSheet] Navigation complete");
+      } catch (error) {
+        console.error("❌ [UnifiedDetailsSheet] Error in navigateToMap:", error);
+        throw error;
+      }
     };
 
-    const handleLocationChangeConfirm = () => {
+    const handleLocationChangeConfirm = async () => {
       setShowLocationChangeModal(false);
       
       const coords = getLocationCoordinates((detailData || data).location);
       if (!coords) return;
 
-      router.push({
-        pathname: "/(app)/(map)",
-        params: {
-          lat: coords.latitude.toString(),
-          lng: coords.longitude.toString(),
-          zoom: "15",
-          showEventCard: "true",
-          eventId: data.id as string,
-          reload: Date.now().toString(),
-          changeLocation: "true",
-        },
-      });
-      onClose();
-      DeviceEventEmitter.emit("mapReload", true);
-      DeviceEventEmitter.emit("showEventCard", {
+      // Store event/location data
+      await MapNavigationStorage.store({
         eventId: data.id as string,
         lat: coords.latitude,
         lng: coords.longitude,
+        data: currentData,
+        timestamp: Date.now(),
+      });
+      
+      onClose();
+      
+      router.push({
+        pathname: "/(app)/(map)",
+        params: {
+          changeLocation: "true",
+        },
       });
     };
 
@@ -791,6 +845,11 @@ export const UnifiedDetailsSheet = React.memo(
       location: any
     ): { latitude: number; longitude: number } | null => {
       if (!location) return null;
+
+      // Skip if location is a string (address)
+      if (typeof location === "string") {
+        return null;
+      }
 
       // Handle GeoJSON format
       if (
@@ -804,12 +863,25 @@ export const UnifiedDetailsSheet = React.memo(
         }
       }
 
-      // Handle old format
+      // Handle object with latitude/longitude properties
       if (
-        typeof location.latitude === "number" &&
-        typeof location.longitude === "number"
+        typeof location === "object" &&
+        (typeof location.latitude === "number" || typeof location.latitude === "string") &&
+        (typeof location.longitude === "number" || typeof location.longitude === "string")
       ) {
-        return { latitude: location.latitude, longitude: location.longitude };
+        const lat = parseFloat(String(location.latitude));
+        const lng = parseFloat(String(location.longitude));
+        if (!isNaN(lat) && !isNaN(lng)) {
+          return { latitude: lat, longitude: lng };
+        }
+      }
+
+      // Handle array format [longitude, latitude]
+      if (Array.isArray(location) && location.length >= 2) {
+        const [longitude, latitude] = location;
+        if (typeof latitude === "number" && typeof longitude === "number") {
+          return { latitude, longitude };
+        }
       }
 
       return null;
@@ -921,7 +993,7 @@ export const UnifiedDetailsSheet = React.memo(
                       >
                         <Flag size={20} color="#000" />
                       </TouchableOpacity>
-                      {detailData?.source !== "ticketmaster" ? (
+                      {(currentData as any)?.source !== "ticketmaster" ? (
                         <>
                           <TouchableOpacity
                             onPress={handleConfirm}

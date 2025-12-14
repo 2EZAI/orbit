@@ -5,7 +5,7 @@ import React, {
   useEffect,
   useRef,
 } from "react";
-import { View } from "react-native";
+import { View, DeviceEventEmitter } from "react-native";
 import MapboxGL from "@rnmapbox/maps";
 import { useRouter } from "expo-router";
 import {
@@ -256,6 +256,8 @@ export function MapboxMarkers({
   // OPTIMIZATION: Progressive rendering with proper dependency tracking to prevent continuous re-renders
   const lastMarkerCountRef = useRef(0);
   const isRenderingRef = useRef(false);
+  const hasRenderedBeforeRef = useRef(false); // Track if we've rendered these markers before
+  const dataHashRef = useRef<string>(""); // Track data identity to detect cache vs new data
 
   useEffect(() => {
     if (allMarkerData.length === 0) {
@@ -263,10 +265,32 @@ export function MapboxMarkers({
       setIsRendering(false);
       isRenderingRef.current = false;
       lastMarkerCountRef.current = 0;
+      hasRenderedBeforeRef.current = false;
+      dataHashRef.current = "";
       return;
     }
 
-    // Start progressive rendering if marker count changed
+    // Create a simple hash of the data to detect if it's the same dataset
+    const firstMarker = allMarkerData[0];
+    const lastMarker = allMarkerData[allMarkerData.length - 1];
+    const firstId = firstMarker?.mainEvent?.id || firstMarker?.key || "";
+    const lastId = lastMarker?.mainEvent?.id || lastMarker?.key || "";
+    const currentDataHash = `${allMarkerData.length}-${firstId}-${lastId}`;
+    
+    // If this is the same data we've rendered before (cache restored), show all immediately
+    if (hasRenderedBeforeRef.current && currentDataHash === dataHashRef.current && allMarkerData.length === lastMarkerCountRef.current) {
+      console.log(
+        `[MapboxMarkers] ⚡ INSTANT: Showing all ${allMarkerData.length} markers immediately (cached/restored state)`
+      );
+      setVisibleMarkers(allMarkerData.length);
+      setIsRendering(false);
+      isRenderingRef.current = false;
+      // Emit event that rendering is complete
+      DeviceEventEmitter.emit("progressiveRenderingComplete");
+      return;
+    }
+
+    // Start progressive rendering if marker count changed (new data)
     if (allMarkerData.length !== lastMarkerCountRef.current) {
       console.log(
         `[MapboxMarkers] 🚀 Starting progressive rendering for ${allMarkerData.length} markers (was ${lastMarkerCountRef.current})`
@@ -274,14 +298,27 @@ export function MapboxMarkers({
       setIsRendering(true);
       isRenderingRef.current = true;
       lastMarkerCountRef.current = allMarkerData.length;
+      dataHashRef.current = currentDataHash;
 
-      // If we have more data than currently visible, continue from current position
-      // Otherwise start from initial batch size
-      const currentVisible = visibleMarkers;
-      const startFrom =
-        currentVisible < allMarkerData.length
-          ? currentVisible
-          : PROGRESSIVE_RENDERING_CONFIG.INITIAL_BATCH_SIZE;
+      // Check if we're restoring state (already had markers visible)
+      const isRestoringState = visibleMarkers > 0 && visibleMarkers === allMarkerData.length;
+      
+      if (isRestoringState) {
+        // Restoring state - show all immediately
+        console.log(
+          `[MapboxMarkers] ⚡ INSTANT: Restoring ${allMarkerData.length} markers (state preserved)`
+        );
+        setVisibleMarkers(allMarkerData.length);
+        setIsRendering(false);
+        isRenderingRef.current = false;
+        hasRenderedBeforeRef.current = true;
+        DeviceEventEmitter.emit("progressiveRenderingComplete");
+        return;
+      }
+
+      // New data - start progressive rendering
+      hasRenderedBeforeRef.current = false; // Reset flag for new data
+      const startFrom = PROGRESSIVE_RENDERING_CONFIG.INITIAL_BATCH_SIZE;
       setVisibleMarkers(Math.min(startFrom, allMarkerData.length));
 
       // Start progressive rendering immediately
@@ -296,9 +333,12 @@ export function MapboxMarkers({
             if (nextBatch >= allMarkerData.length) {
               setIsRendering(false);
               isRenderingRef.current = false;
+              hasRenderedBeforeRef.current = true; // Mark as rendered
               console.log(
                 `[MapboxMarkers] ✅ Progressive rendering complete: ${allMarkerData.length} markers`
               );
+              // Emit event that rendering is complete
+              DeviceEventEmitter.emit("progressiveRenderingComplete");
             }
 
             return nextBatch;
@@ -306,6 +346,7 @@ export function MapboxMarkers({
             clearInterval(interval);
             setIsRendering(false);
             isRenderingRef.current = false;
+            hasRenderedBeforeRef.current = true; // Mark as rendered
             return prev;
           }
         });
@@ -313,7 +354,7 @@ export function MapboxMarkers({
 
       return () => clearInterval(interval);
     }
-  }, [allMarkerData.length]);
+  }, [allMarkerData.length]); // Removed visibleMarkers from dependencies to prevent loops
 
   // Get currently visible markers
   const visibleMarkerData = useMemo(() => {

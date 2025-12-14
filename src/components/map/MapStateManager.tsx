@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useLocalSearchParams } from "expo-router";
 import { DeviceEventEmitter, Image } from "react-native";
 import * as Location from "expo-location";
@@ -12,6 +12,7 @@ import {
   type MapLocation,
   type UnifiedCluster,
 } from "~/hooks/useUnifiedMapData";
+import { MapNavigationStorage } from "~/src/services/mapNavigationStorage";
 import {
   FilterState,
   generateDefaultFilters,
@@ -22,6 +23,7 @@ type TimeFrame = "Today" | "Week" | "Weekend";
 interface MapStateManagerProps {
   children: (state: MapState) => React.ReactNode;
   cameraRef: React.RefObject<any>;
+  isFocused?: boolean; // Track if map screen is focused
 }
 
 interface MapState {
@@ -94,7 +96,7 @@ interface MapState {
   forceRefresh: () => void;
 }
 
-export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
+export function MapStateManager({ children, cameraRef, isFocused = true }: MapStateManagerProps) {
   const params = useLocalSearchParams();
   const { session } = useAuth();
   const { user, userlocation, updateUserLocations } = useUser();
@@ -773,10 +775,13 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
         eventType: event.categories?.[0]?.name || event.type || "Unknown",
       });
 
-      console.log(JSON.stringify(event, null, 2));
+      console.log("🎯 [MapStateManager] Full event data:", JSON.stringify(event, null, 2));
+      
+      // ALWAYS set the event first to show the card
       setSelectedEvent(event);
       setShowDetails(false);
       setIsEvent(true);
+      console.log("✅ [MapStateManager] selectedEvent set, card should show");
 
       // Focus camera on the selected event
       const coords = getLocationCoordinates(event.location);
@@ -785,6 +790,8 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
         eventLocation: event.location,
         extractedCoords: coords,
         eventName: event.name,
+        hasLocation: !!event.location,
+        locationType: typeof event.location,
       });
 
       if (cameraRef.current && coords) {
@@ -801,20 +808,25 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
             animationMode: "flyTo",
           });
           console.log(
-            "🎯 [MapStateManager] Camera focused on event:",
+            "✅ [MapStateManager] Camera focused on event:",
             event.name
           );
         } catch (error) {
-          console.error("🎯 [MapStateManager] Camera focus error:", error);
+          console.error("❌ [MapStateManager] Camera focus error:", error);
         }
       } else {
-        console.log(
-          "🎯 [MapStateManager] Camera focus skipped - missing camera ref or coordinates"
+        console.warn(
+          "⚠️ [MapStateManager] Camera focus skipped - missing camera ref or coordinates",
+          {
+            cameraRefExists: !!cameraRef.current,
+            coords,
+            eventLocation: event.location,
+          }
         );
       }
 
       console.log(
-        "🎯 [MapStateManager] selectedEvent state updated, UnifiedCard should show"
+        "✅ [MapStateManager] selectedEvent state updated, UnifiedCard should show"
       );
     },
     [cameraRef]
@@ -822,7 +834,17 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
 
   const handleLocationClick = useCallback(
     (location: MapLocation) => {
+      console.log("🎯 [MapStateManager] handleLocationClick called!", {
+        locationId: location.id,
+        locationName: location.name,
+        locationType: location.type,
+      });
+      
+      // ALWAYS set the location first to show the card
       setIsEvent(false);
+      setSelectedEvent(location);
+      setShowDetails(false);
+      console.log("✅ [MapStateManager] selectedEvent set to location, card should show");
 
       // Focus camera on the selected location
       const coords = getLocationCoordinates(location.location);
@@ -831,6 +853,8 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
         locationData: location.location,
         extractedCoords: coords,
         locationName: location.name,
+        hasLocation: !!location.location,
+        locationType: typeof location.location,
       });
 
       if (cameraRef.current && coords) {
@@ -847,29 +871,27 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
             animationMode: "flyTo",
           });
           console.log(
-            "🎯 [MapStateManager] Camera focused on location:",
+            "✅ [MapStateManager] Camera focused on location:",
             location.name
           );
         } catch (error) {
           console.error(
-            "🎯 [MapStateManager] Location camera focus error:",
+            "❌ [MapStateManager] Location camera focus error:",
             error
           );
         }
       } else {
-        console.log(
-          "🎯 [MapStateManager] Location camera focus skipped - missing camera ref or coordinates"
+        console.warn(
+          "⚠️ [MapStateManager] Location camera focus skipped - missing camera ref or coordinates",
+          {
+            cameraRefExists: !!cameraRef.current,
+            coords,
+            locationLocation: location.location,
+          }
         );
       }
 
-      // Set the location directly without converting to event
-      console.log("🎯 [MapStateManager] Setting selectedEvent to location:", {
-        locationId: location.id,
-        locationName: location.name,
-        locationType: location.type,
-      });
-      setSelectedEvent(location);
-      setShowDetails(false);
+      console.log("✅ [MapStateManager] Location card should be visible");
     },
     [cameraRef]
   );
@@ -1036,6 +1058,186 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
     }
   }, [session?.user.id]);
 
+  // Track if we've processed stored navigation to prevent duplicate processing
+  const processedStoredNavigationRef = useRef(false);
+  const handleEventClickRef = useRef(handleEventClick);
+  const handleLocationClickRef = useRef(handleLocationClick);
+
+  // Keep refs updated
+  useEffect(() => {
+    handleEventClickRef.current = handleEventClick;
+    handleLocationClickRef.current = handleLocationClick;
+  }, [handleEventClick, handleLocationClick]);
+
+  // IMMEDIATE: Check for stored navigation when map gains focus - move camera and show card instantly
+  useEffect(() => {
+    // Only check when map is focused (not when it loses focus)
+    if (!isFocused) {
+      console.log("🗺️ [MapStateManager] Map not focused, skipping stored navigation check");
+      return;
+    }
+    
+    console.log("🗺️ [MapStateManager] useEffect triggered for stored navigation check (map focused)");
+    
+    // Reset processed flag when map gains focus (allows re-processing if user navigates away and back)
+    if (isFocused) {
+      processedStoredNavigationRef.current = false;
+    }
+    
+    // Skip if already processed
+    if (processedStoredNavigationRef.current) {
+      console.log("🗺️ [MapStateManager] Already processed, skipping");
+      return;
+    }
+    
+    const handleStoredNavigation = async () => {
+      try {
+        console.log("🗺️ [MapStateManager] Reading from storage...");
+        const stored = await MapNavigationStorage.get();
+        console.log("🗺️ [MapStateManager] Checking for stored navigation:", stored ? "Found" : "Not found");
+        if (stored) {
+          console.log("🗺️ [MapStateManager] Stored data details:", {
+            eventId: stored.eventId,
+            lat: stored.lat,
+            lng: stored.lng,
+            hasData: !!stored.data,
+            timestamp: stored.timestamp,
+          });
+        }
+        
+        if (stored && stored.data) {
+          console.log("🗺️ [MapStateManager] IMMEDIATE: Found stored navigation, moving camera and showing card");
+          console.log("🗺️ [MapStateManager] Stored data:", { 
+            eventId: stored.eventId, 
+            lat: stored.lat, 
+            lng: stored.lng, 
+            hasData: !!stored.data,
+            dataKeys: stored.data ? Object.keys(stored.data) : []
+          });
+          
+          // Mark as processed to prevent duplicate calls
+          processedStoredNavigationRef.current = true;
+          
+          // FIRST: Clear any existing selected event to reset the card
+          setSelectedEvent(null);
+          setShowDetails(false);
+          console.log("🗺️ [MapStateManager] Cleared previous selected event");
+          
+          // IMMEDIATE: Move camera to stored coordinates FIRST (before showing card)
+          if (cameraRef.current && stored.lat && stored.lng) {
+            const cameraCoords: [number, number] = [stored.lng, stored.lat];
+            console.log("🗺️ [MapStateManager] IMMEDIATE: Moving camera to stored coordinates:", cameraCoords);
+            try {
+              cameraRef.current.setCamera({
+                centerCoordinate: cameraCoords,
+                zoomLevel: 16,
+                animationDuration: 800,
+                animationMode: "flyTo",
+              });
+              console.log("✅ [MapStateManager] Camera moved to stored coordinates");
+            } catch (error) {
+              console.error("❌ [MapStateManager] Camera movement error:", error);
+            }
+          }
+          
+          // Determine if it's an event or location
+          const isEvent = "start_datetime" in stored.data;
+          
+          console.log("🗺️ [MapStateManager] Is event?", isEvent);
+          console.log("🗺️ [MapStateManager] Stored data structure:", {
+            hasLocation: !!(stored.data as any).location,
+            hasCoordinates: !!(stored.data as any).coordinates,
+            locationType: typeof (stored.data as any).location,
+          });
+          
+          // Ensure the stored data has proper location format for handlers
+          // Handlers expect location in GeoJSON format: { type: "Point", coordinates: [lng, lat] }
+          const dataWithLocation = {
+            ...stored.data,
+            location: stored.data.location || {
+              type: "Point",
+              coordinates: [stored.lng, stored.lat],
+            },
+            coordinates: stored.data.coordinates || {
+              latitude: stored.lat,
+              longitude: stored.lng,
+            },
+          };
+          
+          console.log("🗺️ [MapStateManager] Data with location:", {
+            hasLocation: !!dataWithLocation.location,
+            locationType: dataWithLocation.location?.type,
+            coordinates: dataWithLocation.location?.coordinates,
+          });
+          
+          // Small delay to ensure camera movement starts, then show card
+          setTimeout(() => {
+            // Call handlers to show the card (they will also ensure camera is focused)
+            if (isEvent && handleEventClickRef.current) {
+              console.log("✅ [MapStateManager] IMMEDIATE: Calling handleEventClick with stored data");
+              handleEventClickRef.current(dataWithLocation as MapEvent);
+              
+              // Check if this is a newly created event that might not be in loaded data yet
+              // Try to find it in current data (check after a small delay to ensure data is loaded)
+              setTimeout(() => {
+                const foundInData = 
+                  eventsNow.find((e: MapEvent) => e.id === stored.eventId) ||
+                  eventsToday.find((e: MapEvent) => e.id === stored.eventId) ||
+                  eventsTomorrow.find((e: MapEvent) => e.id === stored.eventId);
+                
+                if (!foundInData) {
+                  console.log("🔄 [MapStateManager] Event not found in loaded data, triggering refresh to fetch new event");
+                  // Trigger a refresh to fetch the newly created event
+                  if (forceRefresh) {
+                    forceRefresh();
+                    console.log("✅ [MapStateManager] Triggered data refresh for new event");
+                  }
+                } else {
+                  console.log("✅ [MapStateManager] Event found in loaded data, no refresh needed");
+                }
+              }, 1000); // Check after 1 second to see if event appears
+            } else if (!isEvent && handleLocationClickRef.current) {
+              console.log("✅ [MapStateManager] IMMEDIATE: Calling handleLocationClick with stored data");
+              handleLocationClickRef.current(dataWithLocation as MapLocation);
+              
+              // Check if location is in loaded data
+              setTimeout(() => {
+                const foundInData = locations.find((l: MapLocation) => l.id === stored.eventId);
+                
+                if (!foundInData) {
+                  console.log("🔄 [MapStateManager] Location not found in loaded data, triggering refresh");
+                  if (forceRefresh) {
+                    forceRefresh();
+                    console.log("✅ [MapStateManager] Triggered data refresh for new location");
+                  }
+                } else {
+                  console.log("✅ [MapStateManager] Location found in loaded data, no refresh needed");
+                }
+              }, 1000); // Check after 1 second
+            } else {
+              console.error("❌ [MapStateManager] Handlers not available!");
+            }
+          }, 100); // Small delay to let camera movement start
+          
+          // Clear stored navigation after a longer delay to allow refresh to complete
+          // Don't clear too early if we're refreshing data for newly created events
+          setTimeout(async () => {
+            await MapNavigationStorage.clear();
+            console.log("🗺️ [MapStateManager] Cleared stored navigation after navigation complete");
+          }, 5000); // Increased to 5 seconds to allow refresh to complete for new events
+        } else {
+          console.log("⚠️ [MapStateManager] No stored navigation found or missing data");
+        }
+      } catch (error) {
+        console.error("❌ [MapStateManager] Error handling stored navigation:", error);
+      }
+    };
+    
+    // Run immediately when map gains focus
+    console.log("🗺️ [MapStateManager] Calling handleStoredNavigation...");
+    handleStoredNavigation();
+  }, [isFocused]); // Run when map gains focus - use refs to access handlers
+
   // Helper function for nearby follower counts
   const getNearbyFollowerCounts = (followerList: any[], radius = 10) => {
     return followerList.map((user: any, index: number) => {
@@ -1086,6 +1288,16 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
       console.log("👤 [MapStateManager] ===================================");
     }
   }, [session?.user?.id]);
+
+  // Clear selected event when map loses focus
+  useEffect(() => {
+    if (!isFocused) {
+      console.log("🗺️ [MapStateManager] Map lost focus, clearing selected event");
+      setSelectedEvent(null);
+      setShowDetails(false);
+      setSelectedCluster(null);
+    }
+  }, [isFocused]);
 
   // Initialize follower data
   useEffect(() => {
@@ -1185,27 +1397,36 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
       }
     );
 
-    const showEventCardListener = DeviceEventEmitter.addListener(
-      "showEventCard",
-      (data: { eventId: string; lat: number; lng: number }) => {
-        console.log("🗺️ [MapStateManager] showEventCard received:", data);
-        setMapCenter([data.lat, data.lng]);
-
-        // Try to find the event in existing data
-        const event =
-          eventsNow.find((e: MapEvent) => e.id === data.eventId) ||
-          eventsToday.find((e: MapEvent) => e.id === data.eventId) ||
-          eventsTomorrow.find((e: MapEvent) => e.id === data.eventId);
-
-        if (event) {
-          console.log(
-            "🗺️ [MapStateManager] Found event for showEventCard:",
-            event.name
-          );
-          setIsEvent(true);
-          handleEventClick(event as MapEvent);
-        } else {
-          console.log("🗺️ [MapStateManager] Event not found in current data");
+    // Listen for progressive rendering completion
+    const progressiveRenderingListener = DeviceEventEmitter.addListener(
+      "progressiveRenderingComplete",
+      async () => {
+        console.log("🗺️ [MapStateManager] Progressive rendering complete, checking stored navigation");
+        const stored = await MapNavigationStorage.get();
+        if (stored) {
+          console.log("🗺️ [MapStateManager] Found stored navigation, zooming to:", stored.eventId);
+          
+          // Try to find in loaded data
+          const event =
+            eventsNow.find((e: MapEvent) => e.id === stored.eventId) ||
+            eventsToday.find((e: MapEvent) => e.id === stored.eventId) ||
+            eventsTomorrow.find((e: MapEvent) => e.id === stored.eventId);
+          
+          const location = !event ? locations.find((l: MapLocation) => l.id === stored.eventId) : null;
+          
+          if (location) {
+            console.log("✅ [MapStateManager] Found location after rendering:", location.name);
+            setIsEvent(false);
+            handleLocationClick(location);
+            await MapNavigationStorage.clear();
+          } else if (event) {
+            console.log("✅ [MapStateManager] Found event after rendering:", event.name);
+            setIsEvent(true);
+            handleEventClick(event);
+            await MapNavigationStorage.clear();
+          } else {
+            console.log("⚠️ [MapStateManager] Not found in data, keeping stored card");
+          }
         }
       }
     );
@@ -1303,7 +1524,7 @@ export function MapStateManager({ children, cameraRef }: MapStateManagerProps) {
 
     return () => {
       eventListener.remove();
-      showEventCardListener.remove();
+      progressiveRenderingListener.remove();
       mapReloadListener.remove();
       locationPreferenceListener.remove();
     };

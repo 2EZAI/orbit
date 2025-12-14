@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "~/src/lib/supabase";
 import { useAuth } from "~/src/lib/auth";
 import { mapDataService } from "~/src/services/mapDataService";
+import { MapCacheService } from "~/src/services/mapCacheService";
 
 // ============================================================================
 // TYPES
@@ -647,8 +648,11 @@ export function useUnifiedMapData({
 
       if (!isMountedRef.current || isLoadingRef.current) return;
 
-      // CRITICAL FIX: DISABLE CACHING TO PREVENT API DELAYS
-      // Always fetch fresh data immediately
+      // Skip if we already have data (from immediate cache load)
+      if (events.length > 0 || locations.length > 0) {
+        console.log("[UnifiedMapData] ⚠️ Data already exists, skipping fetch (likely from cache)");
+        return;
+      }
 
       // Start loading
       console.log("[UnifiedMapData] Fetching fresh data from API");
@@ -769,7 +773,7 @@ export function useUnifiedMapData({
 
         if (!isMountedRef.current) return;
 
-        // Update cache
+        // Update cache refs
         cachedEventsRef.current = validEvents || [];
         cachedLocationsRef.current = validLocations || [];
         lastFetchTimeRef.current = Date.now();
@@ -783,6 +787,13 @@ export function useUnifiedMapData({
         const limitedLocations = (validLocations || []).slice(
           0,
           Math.min(validLocations.length, MAX_MARKERS - limitedEvents.length)
+        );
+        
+        // Save to persistent cache (after limiting)
+        await MapCacheService.saveCachedData(
+          limitedEvents,
+          limitedLocations,
+          [centerCoords[0], centerCoords[1]] as [number, number]
         );
 
         // Show data immediately
@@ -1011,10 +1022,62 @@ export function useUnifiedMapData({
   // EFFECTS
   // ============================================================================
 
+  // IMMEDIATE: Load cache synchronously on mount for instant pins
+  useEffect(() => {
+    const loadCacheImmediately = async () => {
+      const cachedData = await MapCacheService.getCachedData();
+      if (cachedData) {
+        const cacheAge = Date.now() - cachedData.timestamp;
+        const isCacheFresh = cacheAge < 15 * 60 * 1000; // 15 minutes
+        
+        if (isCacheFresh) {
+          console.log("[UnifiedMapData] ⚡ IMMEDIATE: Loading cached data for instant pins");
+          console.log(`[UnifiedMapData] Cache age: ${Math.round(cacheAge / 1000)}s`);
+          
+          // Update state with cached data IMMEDIATELY (synchronously)
+          setEvents(cachedData.events);
+          setLocations(cachedData.locations);
+          
+          // Process clusters from cached data
+          const nowEvents = filterEventsByTime(cachedData.events, "today");
+          const todayEvents = filterEventsByTime(cachedData.events, "today");
+          const tomorrowEvents = filterEventsByTime(cachedData.events, "weekend");
+          
+          setEventsNow(nowEvents);
+          setEventsToday(todayEvents);
+          setEventsTomorrow(tomorrowEvents);
+          
+          // Process clusters
+          await processClusters(
+            cachedData.events,
+            cachedData.locations,
+            nowEvents,
+            todayEvents,
+            tomorrowEvents
+          );
+          
+          setIsLoading(false);
+          setIsLoadingComplete(true);
+          
+          console.log("[UnifiedMapData] ✅ IMMEDIATE: Cached data loaded, pins should appear instantly");
+        }
+      }
+    };
+    
+    // Load cache immediately on mount
+    loadCacheImmediately();
+  }, []); // Only run once on mount
+
   // CRITICAL FIX: SINGLE API CALL ON MOUNT - PREVENT MULTIPLE CALLS
   const hasInitializedRef = useRef(false);
 
   useEffect(() => {
+    // Skip if we already have data from cache
+    if (events.length > 0 || locations.length > 0) {
+      console.log("[UnifiedMapData] ✅ Data already loaded from cache, skipping API call");
+      return;
+    }
+    
     if (
       session &&
       center[0] !== 0 &&
@@ -1025,17 +1088,9 @@ export function useUnifiedMapData({
       hasInitializedRef.current = true;
       fetchUnifiedData(center);
     }
-  }, [session, center, fetchUnifiedData]);
+  }, [session, center, fetchUnifiedData, events.length, locations.length]);
 
-  useEffect(() => {
-    if (center && center[0] !== 0 && center[1] !== 0) {
-      const timeoutId = setTimeout(() => {
-        fetchUnifiedData(center);
-      }, 2000); // 2 second debounce to reduce API calls
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [center, fetchUnifiedData]);
+  // REMOVED: Duplicate useEffect that was causing refetches
 
   useEffect(() => {
     return () => {
