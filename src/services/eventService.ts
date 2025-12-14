@@ -5,7 +5,6 @@
  */
 
 const BASE_URL = "https://orbit-web-backend.onrender.com";
-const API_BASE_URL = `${BASE_URL}/api/events`;
 
 export interface EventInterestResponse {
   success: boolean;
@@ -31,7 +30,7 @@ export class EventService {
    * GET /api/events/:id/interest
    */
   async getInterestStatus(eventId: string, authToken: string): Promise<EventInterestResponse> {
-    const url = `${API_BASE_URL}/${eventId}/interest`;
+    const url = `${this.baseUrl}/api/events/${eventId}/interest`;
     console.log("🔍 [EventService] Getting interest status - URL:", url);
     
     try {
@@ -84,7 +83,7 @@ export class EventService {
    * Requires body: { status: "interested" | "not_interested" }
    */
   async setInterest(eventId: string, authToken: string): Promise<EventInterestResponse> {
-    const url = `${API_BASE_URL}/${eventId}/interest`;
+    const url = `${this.baseUrl}/api/events/${eventId}/interest`;
     console.log("🔍 [EventService] Setting interest - URL:", url);
     console.log("🔍 [EventService] Base URL:", BASE_URL);
     console.log("🔍 [EventService] API Base URL:", API_BASE_URL);
@@ -141,8 +140,11 @@ export class EventService {
    * DELETE /api/events/:id/interest
    */
   async removeInterest(eventId: string, authToken: string): Promise<EventInterestResponse> {
+    const url = `${this.baseUrl}/api/events/${eventId}/interest`;
+    console.log("🔍 [EventService] Removing interest - URL:", url);
+    
     try {
-      const response = await fetch(`${API_BASE_URL}/${eventId}/interest`, {
+      const response = await fetch(url, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -150,9 +152,13 @@ export class EventService {
         },
       });
 
+      console.log("🔍 [EventService] DELETE Response status:", response.status, response.statusText);
+      console.log("🔍 [EventService] DELETE Response headers:", Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
         const errorText = await response.text();
-        let errorMessage = `Failed to remove interest: ${response.statusText}`;
+        console.error("❌ [EventService] Error response:", errorText);
+        let errorMessage = `Failed to remove interest: ${response.status} ${response.statusText}`;
 
         try {
           const errorData = JSON.parse(errorText);
@@ -161,12 +167,22 @@ export class EventService {
           if (errorText) errorMessage = errorText;
         }
 
+        // Check if it's a 404 (route doesn't exist)
+        if (response.status === 404) {
+          errorMessage = `Endpoint not found. Backend DELETE route may not be deployed: ${url}`;
+        }
+
         throw new Error(errorMessage);
       }
 
-      return await response.json();
+      const result = await response.json();
+      console.log("✅ [EventService] Remove interest success:", result);
+      return result;
     } catch (error) {
       console.error("❌ [EventService] Remove interest error:", error);
+      if (error instanceof TypeError && error.message.includes("fetch")) {
+        console.error("❌ [EventService] Network error - backend may be down or unreachable");
+      }
       throw error;
     }
   }
