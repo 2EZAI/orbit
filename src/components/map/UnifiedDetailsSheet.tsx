@@ -991,7 +991,7 @@ export const UnifiedDetailsSheet = React.memo(
                         }}
                         className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
                       >
-                        <Flag size={20} color="#000" />
+                        <Flag size={20} color={theme.colors.black} />
                       </TouchableOpacity>
                       {(currentData as any)?.source !== "ticketmaster" ? (
                         <>
@@ -999,7 +999,7 @@ export const UnifiedDetailsSheet = React.memo(
                             onPress={handleConfirm}
                             className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
                           >
-                            <Map size={20} color="#000" />
+                            <Map size={20} color={theme.colors.primary} />
                           </TouchableOpacity>
                           <TouchableOpacity
                             onPress={handleToggleBookmark}
@@ -1007,8 +1007,8 @@ export const UnifiedDetailsSheet = React.memo(
                           >
                             <Bookmark
                               size={20}
-                              color={isBookmarked ? "#8B5CF6" : "#000"}
-                              fill={isBookmarked ? "#8B5CF6" : "transparent"}
+                              color={theme.colors.warning}
+                              fill={isBookmarked ? theme.colors.warning : "transparent"}
                             />
                           </TouchableOpacity>
                         </>

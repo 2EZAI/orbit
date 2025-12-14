@@ -6,6 +6,8 @@ export const NAV_THEME = {
     notification: "#FF3B30", // Red for notifications
     primary: "#8B5CF6", // Your main purple
     text: "#000000", // Black text
+    warning: "#F59E0B", // Amber/yellow for warnings/bookmarks
+    black: "#000000", // Black color
   },
   dark: {
     background: "#222831", // Your dark background
@@ -14,5 +16,7 @@ export const NAV_THEME = {
     notification: "#FF453A", // Slightly brighter red for dark mode
     primary: "#8B5CF6", // Same main purple
     text: "#FFFFFF", // White text
+    warning: "#F59E0B", // Amber/yellow for warnings/bookmarks
+    black: "#000000", // Black color
   },
 };
