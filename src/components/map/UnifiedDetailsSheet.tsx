@@ -5,9 +5,9 @@ import {
   Bookmark,
   Flag,
   Map,
+  Heart,
+  Sparkles,
   Tag,
-  ThumbsDown,
-  ThumbsUp,
   UserCheck,
   Users,
   X,
@@ -34,6 +34,8 @@ import { useTheme } from "~/src/components/ThemeProvider";
 import { ConfettiAnimation } from "~/src/components/ui/ConfettiAnimation";
 import { Text } from "~/src/components/ui/text";
 import { haptics } from "~/src/lib/haptics";
+import { useAuth } from "~/src/lib/auth";
+import { eventService } from "~/src/services/eventService";
 import FlagContentModal from "../modals/FlagContentModal";
 import { BookmarkCollectionsSheet } from "./BookmarkCollectionsSheet";
 import { UnifiedDetailsSheetContent } from "./UnifiedDetailsSheetContent";
@@ -160,20 +162,10 @@ export const UnifiedDetailsSheet = React.memo(
     } | null>(null);
     const [distance, setDistance] = useState(0);
     const { createFlag } = useFlagging();
+    const { session } = useAuth();
 
-    // Like/Dislike state (ready for API integration)
-    const [isLiked, setIsLiked] = useState<boolean>(
-      (data as any)?.is_liked || false
-    );
-    const [isDisliked, setIsDisliked] = useState<boolean>(
-      (data as any)?.is_disliked || false
-    );
-    const [likeCount, setLikeCount] = useState<number>(
-      (data as any)?.like_count || 0
-    );
-    const [dislikeCount, setDislikeCount] = useState<number>(
-      (data as any)?.dislike_count || 0
-    );
+    // Interest state - fetched from GET /api/events/:id/interest endpoint
+    const [isInterested, setIsInterested] = useState<boolean>(false);
     // Memoize the event type check to prevent repeated calculations
     const isEventType = useMemo(() => {
       const result = isEventData(data, isEvent);
@@ -378,95 +370,40 @@ export const UnifiedDetailsSheet = React.memo(
       onClose();
     };
 
-    // Handle like (ready for API integration)
-    const handleLike = async () => {
-      if (!isEventType) return;
+    // Handle interest toggle (API integrated)
+    const handleToggleInterest = async () => {
+      if (!isEventType || !session?.access_token) return;
 
-      // If already disliked, remove dislike first
-      const wasDisliked = isDisliked;
-      const newLikedState = !isLiked;
-
-      // Optimistic update
-      setIsLiked(newLikedState);
-      setIsDisliked(false);
-
-      if (newLikedState) {
-        setLikeCount((prev) => prev + 1);
-        if (wasDisliked) {
-          setDislikeCount((prev) => Math.max(0, prev - 1));
-        }
-      } else {
-        setLikeCount((prev) => Math.max(0, prev - 1));
-      }
-
-      // TODO: Replace with actual API call when backend is ready
-      // Example:
-      // try {
-      //   if (newLikedState) {
-      //     await likeEvent(data.id);
-      //     if (wasDisliked) {
-      //       await removeDislikeEvent(data.id);
-      //     }
-      //   } else {
-      //     await unlikeEvent(data.id);
-      //   }
-      // } catch (error) {
-      //   // Revert on error
-      //   setIsLiked(!newLikedState);
-      //   setIsDisliked(wasDisliked);
-      //   setLikeCount((prev) => (newLikedState ? Math.max(0, prev - 1) : prev + 1));
-      //   if (wasDisliked) {
-      //     setDislikeCount((prev) => prev + 1);
-      //   }
-      //   console.error("Error toggling like:", error);
-      // }
-
-      // Light haptic feedback
-      haptics.light();
-    };
-
-    // Handle dislike (ready for API integration)
-    const handleDislike = async () => {
-      if (!isEventType) return;
-
-      // If already liked, remove like first
-      const wasLiked = isLiked;
-      const newDislikedState = !isDisliked;
+      const newInterestedState = !isInterested;
+      const previousInterestedState = isInterested;
 
       // Optimistic update
-      setIsDisliked(newDislikedState);
-      setIsLiked(false);
+      setIsInterested(newInterestedState);
 
-      if (newDislikedState) {
-        setDislikeCount((prev) => prev + 1);
-        if (wasLiked) {
-          setLikeCount((prev) => Math.max(0, prev - 1));
+      try {
+        if (newInterestedState) {
+          // Set interest
+          const response = await eventService.setInterest(data.id, session.access_token);
+          // Update with actual response data
+          if (response.data?.status === "interested") {
+            setIsInterested(true);
+          }
+        } else {
+          // Remove interest
+          await eventService.removeInterest(data.id, session.access_token);
+          setIsInterested(false);
         }
-      } else {
-        setDislikeCount((prev) => Math.max(0, prev - 1));
+      } catch (error) {
+        // Revert on error
+        setIsInterested(previousInterestedState);
+        console.error("Error toggling interest:", error);
+        Toast.show({
+          type: "error",
+          text1: "Failed to update interest",
+          text2: "Please try again",
+          position: "top",
+        });
       }
-
-      // TODO: Replace with actual API call when backend is ready
-      // Example:
-      // try {
-      //   if (newDislikedState) {
-      //     await dislikeEvent(data.id);
-      //     if (wasLiked) {
-      //       await removeLikeEvent(data.id);
-      //     }
-      //   } else {
-      //     await removeDislikeEvent(data.id);
-      //   }
-      // } catch (error) {
-      //   // Revert on error
-      //   setIsDisliked(!newDislikedState);
-      //   setIsLiked(wasLiked);
-      //   setDislikeCount((prev) => (newDislikedState ? Math.max(0, prev - 1) : prev + 1));
-      //   if (wasLiked) {
-      //     setLikeCount((prev) => prev + 1);
-      //   }
-      //   console.error("Error toggling dislike:", error);
-      // }
 
       // Light haptic feedback
       haptics.light();
@@ -509,11 +446,9 @@ export const UnifiedDetailsSheet = React.memo(
     const hitDetailApi = async () => {
       setDetailData(data as UnifiedData);
 
-      // Initialize like/dislike state from data
-      setIsLiked((data as any)?.is_liked || false);
-      setIsDisliked((data as any)?.is_disliked || false);
-      setLikeCount((data as any)?.like_count || 0);
-      setDislikeCount((data as any)?.dislike_count || 0);
+      // Interest status will be fetched via GET /api/events/:id/interest endpoint
+      // Don't initialize from data - fetch it separately
+      setIsInterested(false);
 
       setLoading(false);
     };
@@ -660,11 +595,28 @@ export const UnifiedDetailsSheet = React.memo(
       // Reset manual update flag when opening with new data
       setManuallyUpdated(false);
 
-      // Sync like/dislike state from data when sheet opens
-      setIsLiked((data as any)?.is_liked || false);
-      setIsDisliked((data as any)?.is_disliked || false);
-      setLikeCount((data as any)?.like_count || 0);
-      setDislikeCount((data as any)?.dislike_count || 0);
+      // Fetch interest status using GET /api/events/:id/interest endpoint
+      const fetchInterestStatus = async () => {
+        if (!isEventType || !session?.access_token) {
+          // Not an event or no session - set default state
+          setIsInterested(false);
+          return;
+        }
+
+        try {
+          const response = await eventService.getInterestStatus(data.id, session.access_token);
+          // Check if user is interested (data.status === "interested")
+          const isInterested = response.data?.status === "interested";
+          setIsInterested(isInterested);
+        } catch (error) {
+          console.error("Error fetching interest status:", error);
+          // Default to not interested on error
+          setIsInterested(false);
+        }
+      };
+
+      // Fetch interest status
+      fetchInterestStatus();
 
       // Fetch full details if needed
       hitDetailApi();
@@ -674,7 +626,7 @@ export const UnifiedDetailsSheet = React.memo(
       return () => {
         onShowControler();
       };
-    }, [data?.id, isOpen]); // Only depend on data ID
+    }, [data?.id, isOpen, isEventType, session?.access_token]); // Only depend on data ID
 
     useEffect(() => {
       const eventName = isEventType
@@ -738,24 +690,35 @@ export const UnifiedDetailsSheet = React.memo(
     // Use database creator check (isCreator from hook) - already defined above
 
     const primaryImage = currentData?.image_urls?.[0];
+    
     const handleConfirm = () => {
       const mapCenter = getCurrentMapCenter();
-      // Check if the event is outside the currently loaded data area
       const currentCenter = {
         latitude: parseFloat(`${mapCenter?.latitude || "0"}`) || 0,
         longitude: parseFloat(`${mapCenter?.longitude || "0"}`) || 0,
       };
 
-      const eventLocation = {
-        latitude: data.location.latitude as any,
-        longitude: data.location.longitude as any,
-        name: data.name,
-        address: data.address || "",
+      // Extract coordinates from location
+      const coords = getLocationCoordinates(currentData.location);
+      if (!coords) {
+        Toast.show({
+          type: "error",
+          text1: "Invalid location data",
+          text2: "Cannot navigate to map",
+        });
+        return;
+      }
+
+      const eventLocationData = {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        name: currentData.name,
+        address: currentData.address || "",
       };
 
       // Check if event is outside the loaded data radius (100km)
-      const { isOutside, distance } = isLocationOutsideRadius(
-        eventLocation,
+      const { isOutside, distance: dist } = isLocationOutsideRadius(
+        eventLocationData,
         currentCenter,
         100 // 100km radius
       );
@@ -765,63 +728,93 @@ export const UnifiedDetailsSheet = React.memo(
         currentCenter.latitude !== 0 &&
         currentCenter.longitude !== 0
       ) {
-        // Show location change modal
-        setEventLocation(eventLocation);
-        setDistance(distance);
+        setEventLocation(eventLocationData);
+        setDistance(dist);
         setShowLocationChangeModal(true);
       } else {
-        // Navigate directly to map
-        navigateToMap();
+        navigateToMap(coords.latitude, coords.longitude);
       }
     };
-    const navigateToMap = () => {
-      onClose();
-      router.navigate({
-        pathname: "/(app)/(map)",
-        params: {
-          lat: data.location.latitude,
-          lng: data.location.longitude,
-          zoom: 15,
-          showEventCard: "true",
-          eventId: data.id,
-          reload: Date.now().toString(),
-        },
-      });
-      DeviceEventEmitter.emit("mapReload", true);
-      DeviceEventEmitter.emit("showEventCard", {
-        eventId: data.id as string,
-        lat: data.location.latitude,
-        lng: data.location.longitude,
-      });
-    };
-    const handleLocationChangeConfirm = () => {
-      // Close the modal first
-      setShowLocationChangeModal(false);
 
-      // Navigate to map with location change flag
+    const navigateToMap = (lat: number, lng: number) => {
+      onClose();
+      
       router.push({
         pathname: "/(app)/(map)",
         params: {
-          lat: data.location.latitude,
-          lng: data.location.longitude,
-          zoom: 15,
+          lat: lat.toString(),
+          lng: lng.toString(),
+          zoom: "15",
           showEventCard: "true",
           eventId: data.id as string,
-          // Add a timestamp to force map reload
           reload: Date.now().toString(),
-          // Flag to indicate location change
+        },
+      });
+      
+      DeviceEventEmitter.emit("mapReload", true);
+      DeviceEventEmitter.emit("showEventCard", {
+        eventId: data.id as string,
+        lat: lat,
+        lng: lng,
+      });
+    };
+
+    const handleLocationChangeConfirm = () => {
+      setShowLocationChangeModal(false);
+      
+      const coords = getLocationCoordinates((detailData || data).location);
+      if (!coords) return;
+
+      router.push({
+        pathname: "/(app)/(map)",
+        params: {
+          lat: coords.latitude.toString(),
+          lng: coords.longitude.toString(),
+          zoom: "15",
+          showEventCard: "true",
+          eventId: data.id as string,
+          reload: Date.now().toString(),
           changeLocation: "true",
         },
       });
       onClose();
-      // Emit event to reload map and show event card
       DeviceEventEmitter.emit("mapReload", true);
       DeviceEventEmitter.emit("showEventCard", {
         eventId: data.id as string,
-        lat: data.location.latitude,
-        lng: data.location.longitude,
+        lat: coords.latitude,
+        lng: coords.longitude,
       });
     };
+
+    // Helper function to extract coordinates from location object
+    const getLocationCoordinates = (
+      location: any
+    ): { latitude: number; longitude: number } | null => {
+      if (!location) return null;
+
+      // Handle GeoJSON format
+      if (
+        location.type === "Point" &&
+        location.coordinates &&
+        Array.isArray(location.coordinates)
+      ) {
+        const [longitude, latitude] = location.coordinates;
+        if (typeof latitude === "number" && typeof longitude === "number") {
+          return { latitude, longitude };
+        }
+      }
+
+      // Handle old format
+      if (
+        typeof location.latitude === "number" &&
+        typeof location.longitude === "number"
+      ) {
+        return { latitude: location.latitude, longitude: location.longitude };
+      }
+
+      return null;
+    };
+
     return (
       <>
         <Modal
@@ -931,9 +924,7 @@ export const UnifiedDetailsSheet = React.memo(
                       {detailData?.source !== "ticketmaster" ? (
                         <>
                           <TouchableOpacity
-                            onPress={() => {
-                              handleConfirm();
-                            }}
+                            onPress={handleConfirm}
                             className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
                           >
                             <Map size={20} color="#000" />
@@ -1028,73 +1019,67 @@ export const UnifiedDetailsSheet = React.memo(
                       {currentData?.name}
                     </Text>
 
-                    {/* Like/Dislike Section - Only for Events */}
+                    {/* Interested Section - Only for Events */}
                     {isEventType && (
-                      <View className="flex-row items-center gap-3">
-                        {/* Like Button */}
+                      <View className="mb-4">
                         <TouchableOpacity
-                          onPress={handleLike}
-                          activeOpacity={0.7}
-                          className="flex-row items-center px-4 py-2.5 rounded-full flex-1"
+                          onPress={handleToggleInterest}
+                          activeOpacity={0.8}
+                          className="flex-row items-center justify-center px-6 py-3.5 rounded-2xl"
                           style={{
-                            backgroundColor: isLiked
-                              ? "rgba(34, 197, 94, 0.15)"
+                            backgroundColor: isInterested
+                              ? isDarkMode
+                                ? "rgba(139, 92, 246, 0.2)"
+                                : "rgba(139, 92, 246, 0.15)"
                               : isDarkMode
                               ? "rgba(255, 255, 255, 0.1)"
                               : "rgba(0, 0, 0, 0.05)",
-                            borderWidth: 1.5,
-                            borderColor: isLiked
-                              ? "#22c55e"
+                            borderWidth: 2,
+                            borderColor: isInterested
+                              ? "#8B5CF6"
                               : theme.colors.border,
+                            shadowColor: isInterested ? "#8B5CF6" : "transparent",
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: isInterested ? 0.3 : 0,
+                            shadowRadius: 8,
+                            elevation: isInterested ? 4 : 0,
                           }}
                         >
-                          <ThumbsUp
-                            size={20}
-                            color={isLiked ? "#22c55e" : theme.colors.text}
-                            fill={isLiked ? "#22c55e" : "none"}
-                            strokeWidth={2.5}
-                          />
-                          <Text
-                            className="ml-2 text-sm font-semibold"
-                            style={{
-                              color: isLiked ? "#22c55e" : theme.colors.text,
-                            }}
-                          >
-                            {likeCount > 0 ? likeCount : "Like"}
-                          </Text>
-                        </TouchableOpacity>
-
-                        {/* Dislike Button */}
-                        <TouchableOpacity
-                          onPress={handleDislike}
-                          activeOpacity={0.7}
-                          className="flex-row items-center px-4 py-2.5 rounded-full flex-1"
-                          style={{
-                            backgroundColor: isDisliked
-                              ? "rgba(239, 68, 68, 0.15)"
-                              : isDarkMode
-                              ? "rgba(255, 255, 255, 0.1)"
-                              : "rgba(0, 0, 0, 0.05)",
-                            borderWidth: 1.5,
-                            borderColor: isDisliked
-                              ? "#ef4444"
-                              : theme.colors.border,
-                          }}
-                        >
-                          <ThumbsDown
-                            size={20}
-                            color={isDisliked ? "#ef4444" : theme.colors.text}
-                            fill={isDisliked ? "#ef4444" : "none"}
-                            strokeWidth={2.5}
-                          />
-                          <Text
-                            className="ml-2 text-sm font-semibold"
-                            style={{
-                              color: isDisliked ? "#ef4444" : theme.colors.text,
-                            }}
-                          >
-                            {dislikeCount > 0 ? dislikeCount : "Dislike"}
-                          </Text>
+                          {isInterested ? (
+                            <>
+                              <Sparkles
+                                size={22}
+                                color="#8B5CF6"
+                                fill="#8B5CF6"
+                                strokeWidth={2}
+                              />
+                              <Text
+                                className="ml-3 text-base font-bold"
+                                style={{
+                                  color: "#8B5CF6",
+                                }}
+                              >
+                                Interested
+                              </Text>
+                            </>
+                          ) : (
+                            <>
+                              <Heart
+                                size={22}
+                                color={theme.colors.text}
+                                fill="none"
+                                strokeWidth={2.5}
+                              />
+                              <Text
+                                className="ml-3 text-base font-semibold"
+                                style={{
+                                  color: theme.colors.text,
+                                }}
+                              >
+                                Mark as Interested
+                              </Text>
+                            </>
+                          )}
                         </TouchableOpacity>
                       </View>
                     )}
