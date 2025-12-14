@@ -330,19 +330,6 @@ export function useUnifiedMapData({
         return [];
       }
 
-      // console.log(
-      //   `[UnifiedMapData] createClusters: Starting with ${items.length} ${type}s at zoom level ${zoomLevel}`
-      // );
-
-      // Debug: Log first few items to see their structure
-      // if (items.length > 0) {
-      //   console.log(`[UnifiedMapData] createClusters: First ${type} item:`, {
-      //     id: items[0].id,
-      //     name: items[0].name,
-      //     location: items[0].location,
-      //   });
-      // }
-
       // LESS AGGRESSIVE CLUSTERING: Only cluster when really close together
       const clusters: UnifiedCluster[] = [];
       const CLUSTER_RADIUS =
@@ -1080,29 +1067,6 @@ export function useUnifiedMapData({
   // CRITICAL FIX: SINGLE API CALL ON MOUNT - PREVENT MULTIPLE CALLS
   const hasInitializedRef = useRef(false);
 
-  // Clear all data when session becomes null (logout)
-  useEffect(() => {
-    if (!session) {
-      console.log("[UnifiedMapData] 🚪 Session cleared, resetting all map data");
-      setEvents([]);
-      setLocations([]);
-      setEventsNow([]);
-      setEventsToday([]);
-      setEventsTomorrow([]);
-      setClusters([]);
-      setClustersLocations([]);
-      setClustersNow([]);
-      setClustersToday([]);
-      setClustersTomorrow([]);
-      setIsLoading(false);
-      setIsLoadingComplete(false);
-      hasInitializedRef.current = false;
-      cachedEventsRef.current = [];
-      cachedLocationsRef.current = [];
-      lastFetchTimeRef.current = 0;
-      return;
-    }
-  }, [session]);
 
   useEffect(() => {
     // Skip if no session
