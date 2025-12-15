@@ -93,6 +93,7 @@ export interface UseUnifiedMapDataProps {
   radius?: number;
   timeRange?: "today" | "week" | "weekend";
   zoomLevel?: number;
+  isFocused?: boolean; // Only fetch when screen is focused
 }
 
 // ============================================================================
@@ -104,6 +105,7 @@ export function useUnifiedMapData({
   radius = 500000,
   timeRange = "today", // Always default to 'today' - tab clicks use fetchTimeframeData
   zoomLevel = 10,
+  isFocused = true, // Default to true for backward compatibility
 }: UseUnifiedMapDataProps) {
   const { session } = useAuth();
 
@@ -636,6 +638,12 @@ export function useUnifiedMapData({
 
       if (!isMountedRef.current || isLoadingRef.current) return;
 
+      // Only fetch if screen is focused (unless it's a background refetch)
+      if (!isFocused && !isBackgroundRefetch) {
+        console.log("[UnifiedMapData] ⚠️ Screen not focused, skipping fetch");
+        return;
+      }
+
       // Check if cache expired - allow refetch even if data exists
       const cacheExpired = cacheLoadTimeRef.current 
         ? Date.now() - cacheLoadTimeRef.current >= 10 * 60 * 1000 
@@ -872,7 +880,7 @@ export function useUnifiedMapData({
         }
       }
     },
-    [session, radius, validateData, filterEventsByTime, createClusters]
+    [session, radius, validateData, filterEventsByTime, createClusters, isFocused, events.length, locations.length]
   );
 
   // ============================================================================
@@ -1092,6 +1100,12 @@ export function useUnifiedMapData({
       return;
     }
     
+    // Only fetch if screen is focused
+    if (!isFocused) {
+      console.log("[UnifiedMapData] ⚠️ Screen not focused, skipping initial fetch");
+      return;
+    }
+
     // Skip if we already have data (could be from cache or API)
     if (events.length > 0 || locations.length > 0) {
       // Only log if we haven't initialized yet (meaning data came from immediate cache load)
@@ -1116,7 +1130,7 @@ export function useUnifiedMapData({
       hasInitializedRef.current = true;
       fetchUnifiedData(center);
     }
-  }, [session, center, fetchUnifiedData, events.length, locations.length]);
+  }, [session, center, fetchUnifiedData, events.length, locations.length, isFocused]);
 
   // REMOVED: Duplicate useEffect that was causing refetches
 

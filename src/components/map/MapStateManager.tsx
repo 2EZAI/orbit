@@ -273,6 +273,7 @@ export function MapStateManager({ children, cameraRef, isFocused = true }: MapSt
     radius: 50000, // 50 miles radius
     timeRange: "today", // Always load 'today' data - tab clicks use fetchTimeframeData
     zoomLevel: currentZoomLevel,
+    isFocused: isFocused, // Only fetch when screen is focused
   });
 
   // Handle tab clicks efficiently - only fetch additional data for week/weekend

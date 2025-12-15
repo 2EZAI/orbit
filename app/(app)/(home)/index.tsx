@@ -22,6 +22,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useIsFocused } from "@react-navigation/native";
 import type { Channel } from "stream-chat";
 import { useHomeFeed } from "~/hooks/useHomeFeed";
 import { useTheme } from "~/src/components/ThemeProvider";
@@ -230,6 +231,7 @@ const TikTokLocationSection = ({
 };
 
 export default function Home() {
+  const isFocused = useIsFocused();
   const { theme, isDarkMode } = useTheme();
   const { user } = useUser();
   const { session } = useAuth();
@@ -241,8 +243,8 @@ export default function Home() {
   }>();
 
   const { getEventDetails } = useEventDetails();
-  // Home feed data
-  const { data, loading, error, refetch } = useHomeFeed();
+  // Home feed data - only fetch when screen is focused
+  const { data, loading, error, refetch } = useHomeFeed(isFocused);
   const [shareData, setShareData] = useState<{
     data: UnifiedData;
     isEventType: boolean;
