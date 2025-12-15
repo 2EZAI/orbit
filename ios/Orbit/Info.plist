@@ -132,14 +132,6 @@
       </dict>
       <dict>
         <key>UIApplicationShortcutItemType</key>
-        <string>com.dovydmcnugget.orbit.view-tickets</string>
-        <key>UIApplicationShortcutItemTitle</key>
-        <string>View Tickets</string>
-        <key>UIApplicationShortcutItemIconType</key>
-        <string>UIApplicationShortcutIconTypeTask</string>
-      </dict>
-      <dict>
-        <key>UIApplicationShortcutItemType</key>
         <string>com.dovydmcnugget.orbit.view-notifications</string>
         <key>UIApplicationShortcutItemTitle</key>
         <string>View Notifications</string>
