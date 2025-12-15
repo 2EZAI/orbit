@@ -195,7 +195,7 @@ export function AIDescriptionModal({
       <View
         style={{
           flex: 1,
-          backgroundColor: theme.colors.background,
+          backgroundColor: theme.colors.card,
           paddingTop: insets.top,
         }}
       >
