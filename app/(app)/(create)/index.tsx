@@ -1100,17 +1100,16 @@ export default function CreateEvent() {
 
               // Parse components
               const [month, day, year] = text.split("/");
-              const date = new Date(`${year}-${month}-${day}T00:00:00Z`); // UTC start of day
+              // Create date in local timezone at midnight local time
+              const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
 
               if (isNaN(date.getTime())) {
                 Alert.alert("Invalid Date", "Please enter a valid date");
                 return;
               }
 
-              // Convert to ISO string
-              const isoString = date.toISOString(); // e.g., 2025-08-09T00:00:00.000Z
-              console.log("ISO date>", isoString);
-              const dateObject = new Date(isoString);
+              console.log("Local date>", date);
+              const dateObject = date;
               // Set state
               if (isStart) {
                 setStartDate(dateObject);
@@ -1169,17 +1168,16 @@ export default function CreateEvent() {
 
     // Parse components
     const [month, day, year] = input.split("/");
-    const date = new Date(`${year}-${month}-${day}T00:00:00Z`); // UTC start of day
+    // Create date in local timezone at midnight local time
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
 
     if (isNaN(date.getTime())) {
       Alert.alert("Invalid Date", "Please enter a valid date");
       return;
     }
 
-    // Convert to ISO string
-    const isoString = date.toISOString(); // e.g., 2025-08-09T00:00:00.000Z
-    console.log("ISO date>", isoString);
-    const dateObject = new Date(isoString);
+    console.log("Local date>", date);
+    const dateObject = date;
     setInput("");
     setShowDateModal(false);
     // Set state
