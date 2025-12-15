@@ -15,7 +15,7 @@ export interface HomeFeedData {
   dynamicCategories: string[];
 }
 
-export function useHomeFeed() {
+export function useHomeFeed(isFocused: boolean = true) {
   const { user, userlocation, loading: userLoading } = useUser();
   const [data, setData] = useState<HomeFeedData>({
     allContent: [],
@@ -188,6 +188,12 @@ export function useHomeFeed() {
   // Add debounced refresh to prevent rapid successive calls
   const debouncedRefresh = useCallback(
     debounce(() => {
+      // Only fetch if screen is focused
+      if (!isFocused) {
+        console.log("📱 Home feed screen not focused, skipping fetch");
+        return;
+      }
+
       // Create cache key based on user data (or default if no user)
       const userId = user?.id || "anonymous";
       const locationPreference = user?.event_location_preference || 0;
@@ -223,13 +229,16 @@ export function useHomeFeed() {
       setLastFetchTime(now);
       fetchHomeFeedData();
     }, 500), // 500ms debounce
-    [user, userlocation, userLoading, cacheKey, lastFetchTime, data.allContent.length]
+    [user, userlocation, userLoading, cacheKey, lastFetchTime, data.allContent.length, isFocused]
   );
 
   // Warm cache on app startup and fetch data when user or location changes
+  // Only fetch when screen is focused
   useEffect(() => {
-    debouncedRefresh();
-  }, [user, userlocation]); // Re-fetch when user or location changes
+    if (isFocused) {
+      debouncedRefresh();
+    }
+  }, [user, userlocation, isFocused]); // Re-fetch when user or location changes, or when focus changes
 
   return {
     data,

@@ -2,8 +2,6 @@
 
 #import <React/RCTBundleURLProvider.h>
 #import <React/RCTLinkingManager.h>
-#import <React/RCTBridge.h>
-#import <React/RCTEventEmitter.h>
 
 @implementation AppDelegate
 
@@ -14,15 +12,6 @@
   // You can add your custom initial props in the dictionary below.
   // They will be passed down to the ViewController used by React Native.
   self.initialProps = @{};
-
-  // Handle Quick Action shortcut if app was launched from shortcut
-  UIApplicationShortcutItem *shortcutItem = [launchOptions objectForKey:UIApplicationLaunchOptionsShortcutItemKey];
-  if (shortcutItem) {
-    // Delay handling until bridge is ready
-    dispatch_async(dispatch_get_main_queue(), ^{
-      [self handleShortcutItem:shortcutItem];
-    });
-  }
 
   return [super application:application didFinishLaunchingWithOptions:launchOptions];
 }
@@ -68,37 +57,6 @@
 - (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
 {
   return [super application:application didReceiveRemoteNotification:userInfo fetchCompletionHandler:completionHandler];
-}
-
-// Handle Quick Action shortcuts when app is already running
-- (void)application:(UIApplication *)application performActionForShortcutItem:(UIApplicationShortcutItem *)shortcutItem completionHandler:(void (^)(BOOL))completionHandler
-{
-  [self handleShortcutItem:shortcutItem];
-  completionHandler(YES);
-}
-
-// Helper method to handle shortcut items
-- (void)handleShortcutItem:(UIApplicationShortcutItem *)shortcutItem
-{
-  NSString *shortcutType = shortcutItem.type;
-  NSString *deepLink = nil;
-
-  if ([shortcutType isEqualToString:@"com.dovydmcnugget.orbit.create-event"]) {
-    deepLink = @"orbit://create-event";
-  } else if ([shortcutType isEqualToString:@"com.dovydmcnugget.orbit.create-post"]) {
-    deepLink = @"orbit://create-post";
-  } else if ([shortcutType isEqualToString:@"com.dovydmcnugget.orbit.dms"]) {
-    deepLink = @"orbit://dms";
-  } else if ([shortcutType isEqualToString:@"com.dovydmcnugget.orbit.view-tickets"]) {
-    deepLink = @"orbit://view-tickets";
-  } else if ([shortcutType isEqualToString:@"com.dovydmcnugget.orbit.view-notifications"]) {
-    deepLink = @"orbit://view-notifications";
-  }
-
-  if (deepLink) {
-    NSURL *url = [NSURL URLWithString:deepLink];
-    [RCTLinkingManager application:[UIApplication sharedApplication] openURL:url options:@{}];
-  }
 }
 
 @end
