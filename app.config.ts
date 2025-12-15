@@ -25,7 +25,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     name: "Orbit",
     slug: "orbit-social-app",
     scheme: "orbit-social-app",
-    version: "1.0.0",
+    version: "1.0.1",
     orientation: "portrait",
     userInterfaceStyle: "automatic",
     extra: {
@@ -52,7 +52,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ],
     ios: {
       bundleIdentifier: "com.dovydmcnugget.orbit",
-      buildNumber: "35",
+      buildNumber: "1",
       supportsTablet: true,
       config: {
         usesNonExemptEncryption: false,
