@@ -487,7 +487,7 @@ export default function UnifiedEventsTab({
         });
 
       setJoinedEvents(transformedEvents);
-      
+
       // Preload images for faster rendering
       preloadEventImages(transformedEvents);
     } catch (error) {
@@ -536,17 +536,17 @@ export default function UnifiedEventsTab({
 
   const renderEvent = ({ item: event }: { item: Event }) => {
     // Preload image if available for faster rendering
-    
+
     return (
       <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
         <SocialEventCard
           data={event as any}
           onDataSelect={(data) => {
-            handleEventPress(event);
+            handleEventPress(data as any);
           }}
-          onShowDetails={() => {
-            handleEventPress(event);
-          }}
+          // onShowDetails={() => {
+          //   handleEventPress(event);
+          // }}
           treatAsEvent={true}
           isCustomEvent={false}
         />

@@ -1,5 +1,5 @@
-import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import { Calendar, MapPin, Star, Users } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
@@ -14,9 +14,9 @@ import { formatDate, formatTime } from "~/src/lib/date";
 import { Text } from "../ui/text";
 
 import { useRouter } from "expo-router";
+import { useEventDetails } from "~/hooks/useEventDetails";
 import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 import { useTheme } from "~/src/components/ThemeProvider";
-import { supabase } from "~/src/lib/supabase";
 import { useUser } from "~/src/lib/UserProvider";
 import { captureError } from "~/src/lib/utils/sentry";
 
@@ -260,8 +260,7 @@ export function SocialEventCard({
   treatAsEvent = true,
   isCustomEvent = false,
 }: SocialEventCardProps) {
-  const { UpdateEventStatus, fetchEventDetail, fetchLocationDetail } =
-    useUpdateEvents();
+  const { getItemDetails } = useEventDetails();
   const router = useRouter();
   const { user } = useUser();
   const { theme, isDarkMode } = useTheme();
@@ -285,7 +284,7 @@ export function SocialEventCard({
   useEffect(() => {
     // Set detailData immediately with initial data to show images right away
     setDetailData(data);
-    
+
     // Only fetch detail API if we don't have image_urls in the initial data
     // For created events, we already have all the data we need, so skip the API call
     if (!data.image_urls || data.image_urls.length === 0) {
@@ -331,7 +330,6 @@ export function SocialEventCard({
 
     setLoading(true);
     try {
-      // await UpdateEventStatus(data);
       setTimeout(() => {
         setLoading(false);
         hitDetailApi(); // This will update the join_status and change button to "Create Orbit"
@@ -352,41 +350,16 @@ export function SocialEventCard({
         return;
       }
       if (treatAsEvent) {
-        await fetchEventDetail(data as any);
-
-        // Manually fetch the event details to get the updated data with join_status
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          const response = await fetch(
-            `${process.env.BACKEND_MAP_URL}/api/events/${data.id}`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              body: JSON.stringify({
-                source: (data as any).is_ticketmaster
-                  ? "ticketmaster"
-                  : "supabase",
-              }),
-            }
-          );
-
-          if (response.ok) {
-            const eventDetails = await response.json();
-            // Preserve image_urls from original data if API response doesn't have them
-            const updatedDetails = {
-              ...eventDetails,
-              image_urls: eventDetails.image_urls || data.image_urls,
-            };
-            setDetailData(updatedDetails);
-          }
-        }
+        const itemDetails = await getItemDetails(
+          data.id,
+          (data as any).is_ticketmaster ? "ticketmaster" : "database"
+        );
+        console.log("🔍 [SocialEventCard] Item details:", itemDetails);
+        setDetailData(itemDetails);
       } else {
-        await fetchLocationDetail(data as any);
+        const itemDetails = await getItemDetails(data.id, "location");
+        setDetailData(itemDetails);
+        return;
       }
     } catch (error) {
       console.error("Error fetching details:", error);
@@ -442,7 +415,7 @@ export function SocialEventCard({
 
   const handleShowDetails = () => {
     if (onDataSelect) {
-      onDataSelect(data);
+      onDataSelect(detailData);
     }
     if (onShowDetails) {
       onShowDetails();

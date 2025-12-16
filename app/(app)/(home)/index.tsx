@@ -242,7 +242,7 @@ export default function Home() {
     eventType: string;
   }>();
 
-  const { getEventDetails } = useEventDetails();
+  const { getItemDetails } = useEventDetails();
   // Home feed data - only fetch when screen is focused
   const { data, loading, error, refetch } = useHomeFeed(isFocused);
   const [shareData, setShareData] = useState<{
@@ -376,7 +376,10 @@ export default function Home() {
     console.log("handling deep link event>", eventId, eventType);
     if (!session) return;
     if (eventId && eventType) {
-      const result = await getEventDetails(eventId, eventType);
+      const result = await getItemDetails(
+        eventId,
+        eventType === "supabase" ? "database" : eventType
+      );
       handleEventSelect(result);
     }
   };

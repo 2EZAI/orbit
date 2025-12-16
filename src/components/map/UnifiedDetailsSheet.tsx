@@ -384,7 +384,10 @@ export const UnifiedDetailsSheet = React.memo(
       try {
         if (newInterestedState) {
           // Set interest
-          const response = await eventService.setInterest(data.id, session.access_token);
+          const response = await eventService.setInterest(
+            data.id,
+            session.access_token
+          );
           // Update with actual response data
           if (response.data?.status === "interested") {
             setIsInterested(true);
@@ -605,7 +608,10 @@ export const UnifiedDetailsSheet = React.memo(
         }
 
         try {
-          const response = await eventService.getInterestStatus(data.id, session.access_token);
+          const response = await eventService.getInterestStatus(
+            data.id,
+            session.access_token
+          );
           // Check if user is interested (data.status === "interested")
           const isInterested = response.data?.status === "interested";
           setIsInterested(isInterested);
@@ -691,7 +697,7 @@ export const UnifiedDetailsSheet = React.memo(
     // Use database creator check (isCreator from hook) - already defined above
 
     const primaryImage = currentData?.image_urls?.[0];
-    
+
     const handleConfirm = async () => {
       console.log("🗺️ [UnifiedDetailsSheet] handleConfirm called");
       try {
@@ -702,32 +708,51 @@ export const UnifiedDetailsSheet = React.memo(
         };
 
         console.log("🗺️ [UnifiedDetailsSheet] Current center:", currentCenter);
-        console.log("🗺️ [UnifiedDetailsSheet] Current data location:", currentData.location);
-        console.log("🗺️ [UnifiedDetailsSheet] Current data coordinates:", (currentData as any).coordinates);
-        console.log("🗺️ [UnifiedDetailsSheet] Full currentData:", JSON.stringify(currentData, null, 2));
+        console.log(
+          "🗺️ [UnifiedDetailsSheet] Current data location:",
+          currentData.location
+        );
+        console.log(
+          "🗺️ [UnifiedDetailsSheet] Current data coordinates:",
+          (currentData as any).coordinates
+        );
+        console.log(
+          "🗺️ [UnifiedDetailsSheet] Full currentData:",
+          JSON.stringify(currentData, null, 2)
+        );
 
         // Extract coordinates - check multiple sources
         let coords = getLocationCoordinates(currentData.location);
-        
+
         // If location is a string, check coordinates directly on data
         if (!coords && (currentData as any).coordinates) {
-          console.log("🗺️ [UnifiedDetailsSheet] Checking coordinates property directly");
+          console.log(
+            "🗺️ [UnifiedDetailsSheet] Checking coordinates property directly"
+          );
           coords = getLocationCoordinates((currentData as any).coordinates);
         }
-        
+
         // If still not found, check nearbyData for original data
         if (!coords) {
-          console.log("🗺️ [UnifiedDetailsSheet] Checking nearbyData for original data");
-          const originalData = nearbyData.find(item => item.id === currentData.id);
+          console.log(
+            "🗺️ [UnifiedDetailsSheet] Checking nearbyData for original data"
+          );
+          const originalData = nearbyData.find(
+            (item) => item.id === currentData.id
+          );
           if (originalData) {
-            console.log("🗺️ [UnifiedDetailsSheet] Found original data in nearbyData");
+            console.log(
+              "🗺️ [UnifiedDetailsSheet] Found original data in nearbyData"
+            );
             coords = getLocationCoordinates(originalData.location);
             if (!coords && (originalData as any).coordinates) {
-              coords = getLocationCoordinates((originalData as any).coordinates);
+              coords = getLocationCoordinates(
+                (originalData as any).coordinates
+              );
             }
           }
         }
-        
+
         // If still not found, check original data prop
         if (!coords) {
           console.log("🗺️ [UnifiedDetailsSheet] Checking original data prop");
@@ -736,11 +761,16 @@ export const UnifiedDetailsSheet = React.memo(
             coords = getLocationCoordinates((data as any).coordinates);
           }
         }
-        
-        console.log("🗺️ [UnifiedDetailsSheet] Final extracted coordinates:", coords);
-        
+
+        console.log(
+          "🗺️ [UnifiedDetailsSheet] Final extracted coordinates:",
+          coords
+        );
+
         if (!coords) {
-          console.error("❌ [UnifiedDetailsSheet] No coordinates found in any source");
+          console.error(
+            "❌ [UnifiedDetailsSheet] No coordinates found in any source"
+          );
           Toast.show({
             type: "error",
             text1: "Invalid location data",
@@ -763,7 +793,10 @@ export const UnifiedDetailsSheet = React.memo(
           100 // 100km radius
         );
 
-        console.log("🗺️ [UnifiedDetailsSheet] Location check:", { isOutside, distance: dist });
+        console.log("🗺️ [UnifiedDetailsSheet] Location check:", {
+          isOutside,
+          distance: dist,
+        });
 
         if (
           isOutside &&
@@ -779,7 +812,10 @@ export const UnifiedDetailsSheet = React.memo(
           await navigateToMap(coords.latitude, coords.longitude);
         }
       } catch (error) {
-        console.error("❌ [UnifiedDetailsSheet] Error in handleConfirm:", error);
+        console.error(
+          "❌ [UnifiedDetailsSheet] Error in handleConfirm:",
+          error
+        );
         Toast.show({
           type: "error",
           text1: "Navigation error",
@@ -789,7 +825,11 @@ export const UnifiedDetailsSheet = React.memo(
     };
 
     const navigateToMap = async (lat: number, lng: number) => {
-      console.log("🗺️ [UnifiedDetailsSheet] navigateToMap called with:", { lat, lng, eventId: data.id });
+      console.log("🗺️ [UnifiedDetailsSheet] navigateToMap called with:", {
+        lat,
+        lng,
+        eventId: data.id,
+      });
       try {
         // Store event/location data for immediate card display
         await MapNavigationStorage.store({
@@ -799,10 +839,13 @@ export const UnifiedDetailsSheet = React.memo(
           data: currentData,
           timestamp: Date.now(),
         });
-        console.log("✅ [UnifiedDetailsSheet] Stored navigation data:", data.id);
-        
+        console.log(
+          "✅ [UnifiedDetailsSheet] Stored navigation data:",
+          data.id
+        );
+
         onClose();
-        
+
         console.log("🗺️ [UnifiedDetailsSheet] Navigating to map...");
         // Simple navigation - storage handles the rest
         router.push({
@@ -810,14 +853,17 @@ export const UnifiedDetailsSheet = React.memo(
         });
         console.log("✅ [UnifiedDetailsSheet] Navigation complete");
       } catch (error) {
-        console.error("❌ [UnifiedDetailsSheet] Error in navigateToMap:", error);
+        console.error(
+          "❌ [UnifiedDetailsSheet] Error in navigateToMap:",
+          error
+        );
         throw error;
       }
     };
 
     const handleLocationChangeConfirm = async () => {
       setShowLocationChangeModal(false);
-      
+
       const coords = getLocationCoordinates((detailData || data).location);
       if (!coords) return;
 
@@ -829,9 +875,9 @@ export const UnifiedDetailsSheet = React.memo(
         data: currentData,
         timestamp: Date.now(),
       });
-      
+
       onClose();
-      
+
       router.push({
         pathname: "/(app)/(map)",
         params: {
@@ -866,8 +912,10 @@ export const UnifiedDetailsSheet = React.memo(
       // Handle object with latitude/longitude properties
       if (
         typeof location === "object" &&
-        (typeof location.latitude === "number" || typeof location.latitude === "string") &&
-        (typeof location.longitude === "number" || typeof location.longitude === "string")
+        (typeof location.latitude === "number" ||
+          typeof location.latitude === "string") &&
+        (typeof location.longitude === "number" ||
+          typeof location.longitude === "string")
       ) {
         const lat = parseFloat(String(location.latitude));
         const lng = parseFloat(String(location.longitude));
@@ -1008,7 +1056,11 @@ export const UnifiedDetailsSheet = React.memo(
                             <Bookmark
                               size={20}
                               color={theme.colors.warning}
-                              fill={isBookmarked ? theme.colors.warning : "transparent"}
+                              fill={
+                                isBookmarked
+                                  ? theme.colors.warning
+                                  : "transparent"
+                              }
                             />
                           </TouchableOpacity>
                         </>
@@ -1110,7 +1162,9 @@ export const UnifiedDetailsSheet = React.memo(
                             borderColor: isInterested
                               ? "#8B5CF6"
                               : theme.colors.border,
-                            shadowColor: isInterested ? "#8B5CF6" : "transparent",
+                            shadowColor: isInterested
+                              ? "#8B5CF6"
+                              : "transparent",
                             shadowOffset: { width: 0, height: 2 },
                             shadowOpacity: isInterested ? 0.3 : 0,
                             shadowRadius: 8,

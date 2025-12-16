@@ -273,157 +273,6 @@ export function useMapEvents({
     return clusters;
   };
 
-  const hitEventsApi = async (
-    page: number | string,
-    pageSize: number | string,
-    selectedCat: string,
-    currentDeviceLocation?: { latitude: number; longitude: number } | null
-  ): Promise<MapEvent[]> => {
-    setIsLoading(true);
-
-    ///fetch user
-    try {
-      if (!session?.user?.id) {
-        return [] as MapEvent[];
-      }
-
-      const { data, error: supabaseError } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", session.user.id)
-        .single();
-
-      if (supabaseError) throw supabaseError;
-      user = data;
-    } catch (e) {
-    } finally {
-    }
-
-    ///fetch location
-    try {
-      if (!session?.user?.id) {
-        return [] as MapEvent[];
-      }
-
-      const { data, error: supabaseError } = await supabase
-        .from("user_locations")
-        .select("*")
-        .eq("user_id", session.user.id)
-        .order("last_updated", { ascending: false })
-        .limit(1);
-
-      if (supabaseError) throw supabaseError;
-      userLocation = (data as any[])?.[0] ?? null;
-    } catch (e) {
-    } finally {
-    }
-
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error("No valid auth session");
-      }
-
-      // 2. get event using our API
-      const eventData = {
-        latitude:
-          currentDeviceLocation?.latitude != null
-            ? currentDeviceLocation.latitude
-            : user != null &&
-              user?.event_location_preference == 1 &&
-              userLocation?.latitude != null
-            ? parseFloat(userLocation.latitude)
-            : center && center[0] && center[0] !== 0
-            ? center[0]
-            : 25.7617, // Fallback to Miami
-        longitude:
-          currentDeviceLocation?.longitude != null
-            ? currentDeviceLocation.longitude
-            : user != null &&
-              user?.event_location_preference == 1 &&
-              userLocation?.longitude != null
-            ? parseFloat(userLocation.longitude)
-            : center && center[1] && center[1] !== 0
-            ? center[1]
-            : -80.1918, // Fallback to Miami
-        category:
-          selectedCat != null
-            ? selectedCat !== "All Events"
-              ? selectedCat
-              : ""
-            : "",
-      };
-
-      // We always have valid coordinates now (Miami fallback)
-      console.log("📍 Map events API coordinates:", `${eventData.latitude}, ${eventData.longitude}`);
-
-      try {
-        if (!session?.user?.id) {
-          return [] as MapEvent[];
-        }
-        ///fetch events
-        const response = await fetch(
-          `${process.env.BACKEND_MAP_URL}/api/events/all?page=${page}&limit=999999`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify(eventData),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(await response.text());
-        }
-
-        const data_ = await response.json();
-        const data = data_.events;
-
-        // Validate event data
-        const validEvents = (data || []).filter((event: any) => {
-          if (!event || typeof event !== "object") return false;
-          const isValid =
-            event.location &&
-            typeof event.location.latitude === "number" &&
-            typeof event.location.longitude === "number" &&
-            !isNaN(event.location.latitude) &&
-            !isNaN(event.location.longitude) &&
-            Math.abs(event.location.latitude) <= 90 &&
-            Math.abs(event.location.longitude) <= 180;
-
-          if (!isValid) {
-          } else {
-          }
-          return isValid;
-        });
-
-        if (!isMountedRef.current) return [] as MapEvent[];
-
-        // Update cache and state
-        cachedEventsRef.current = validEvents;
-        lastFetchTimeRef.current = Date.now();
-        setEventsHome(validEvents);
-        // setEventsHome(prevEvents => [...prevEvents, ...validEvents]);
-        return validEvents;
-      } catch (e) {
-        return [] as MapEvent[];
-      } finally {
-      }
-    } catch (err) {
-      if (!isMountedRef.current) return [] as MapEvent[];
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      if (!isMountedRef.current) return [] as MapEvent[];
-      setIsLoading(false);
-    }
-
-    return [] as MapEvent[];
-  };
-
   const fetchCategories = useCallback(async () => {
     try {
       const {
@@ -432,7 +281,7 @@ export function useMapEvents({
       if (!session?.access_token) {
         throw new Error("No valid auth session");
       }
-console.log("session.access_token>",session.access_token);
+      console.log("session.access_token>", session.access_token);
       const response = await fetch(
         `${process.env.BACKEND_MAP_URL}/api/events/categories`,
         {
@@ -1189,7 +1038,6 @@ console.log("session.access_token>",session.access_token);
   }, [center, fetchAllEvents]);
 
   return {
-    hitEventsApi,
     eventsHome,
     categories,
     events,
