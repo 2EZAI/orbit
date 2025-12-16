@@ -12,6 +12,7 @@ import {
   UserMinus,
   UserPlus,
   Users,
+  X,
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
@@ -339,6 +340,39 @@ export default function ChatSettingsScreen() {
     <View
       style={{ flex: 1, backgroundColor: theme.colors.card, paddingTop: 16 }}
     >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingHorizontal: 16,
+        }}
+      >
+        <TouchableOpacity
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingLeft: 8,
+          }}
+          onPress={() => router.back()}
+        >
+          <X size={24} color={theme.colors.primary} />
+        </TouchableOpacity>
+        <View style={{ alignItems: "center" }}>
+          <Text
+            style={{
+              fontSize: 17,
+              fontWeight: "600",
+              color: theme.colors.text,
+              textAlign: "center",
+            }}
+          >
+            Chat Settings
+          </Text>
+        </View>
+
+        <View style={{ flexDirection: "row", paddingRight: 8, gap: 12 }}></View>
+      </View>
       {loading ? (
         <View
           style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
