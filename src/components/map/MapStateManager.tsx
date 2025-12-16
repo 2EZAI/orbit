@@ -540,17 +540,12 @@ export function MapStateManager({ children, cameraRef, isFocused = true }: MapSt
 
   // Handle route params for showing event/location cards
   useEffect(() => {
-    // console.log("🗺️ [MapStateManager] Checking params:", params);
-
     if (params.eventId) {
-      console.log(
-        "🗺️ [MapStateManager] Looking for event with ID:",
-        params.eventId
-      );
       let event =
         eventsNow.find((e: MapEvent) => e.id === params.eventId) ||
         eventsToday.find((e: MapEvent) => e.id === params.eventId) ||
-        eventsTomorrow.find((e: MapEvent) => e.id === params.eventId);
+        eventsTomorrow.find((e: MapEvent) => e.id === params.eventId) ||
+        events.find((e: MapEvent) => e.id === params.eventId);
 
       // If event not found in existing data, check if we have eventData from params
       if (!event && params.eventData) {
@@ -588,6 +583,23 @@ export function MapStateManager({ children, cameraRef, isFocused = true }: MapSt
             : params.longitude
         );
 
+        // Parse image_urls from params if available
+        let imageUrls: string[] = [];
+        if (params.image_urls) {
+          try {
+            const imageUrlsParam = Array.isArray(params.image_urls)
+              ? params.image_urls[0]
+              : params.image_urls;
+            if (typeof imageUrlsParam === "string") {
+              imageUrls = JSON.parse(imageUrlsParam);
+            } else if (Array.isArray(imageUrlsParam)) {
+              imageUrls = imageUrlsParam;
+            }
+          } catch (error) {
+            // Silently handle parsing errors
+          }
+        }
+
         event = {
           id: Array.isArray(params.eventId)
             ? params.eventId[0]
@@ -609,6 +621,7 @@ export function MapStateManager({ children, cameraRef, isFocused = true }: MapSt
               : params.type
             : "event",
           is_ticketmaster: params.source === "ticketmaster",
+          image_urls: imageUrls.length > 0 ? imageUrls : undefined,
           created_by: params.created_by
             ? Array.isArray(params.created_by)
               ? JSON.parse(params.created_by[0])
@@ -631,9 +644,6 @@ export function MapStateManager({ children, cameraRef, isFocused = true }: MapSt
       }
 
       if (event) {
-        console.log(
-          "🗺️ [MapStateManager] Setting event and showing card first"
-        );
         handleEventClick(event);
         // setIsEvent(true);
         // setSelectedEvent(event);
@@ -641,9 +651,6 @@ export function MapStateManager({ children, cameraRef, isFocused = true }: MapSt
 
         // Focus the map on the newly created event
         if (params.eventData && event.location) {
-          console.log(
-            "🗺️ [MapStateManager] Focusing map on newly created event"
-          );
           const coords = getLocationCoordinates(event.location);
           // if (coords) {
           //   setMapCenter([coords.longitude, coords.latitude]);
@@ -1095,26 +1102,8 @@ export function MapStateManager({ children, cameraRef, isFocused = true }: MapSt
       try {
         console.log("🗺️ [MapStateManager] Reading from storage...");
         const stored = await MapNavigationStorage.get();
-        console.log("🗺️ [MapStateManager] Checking for stored navigation:", stored ? "Found" : "Not found");
-        if (stored) {
-          console.log("🗺️ [MapStateManager] Stored data details:", {
-            eventId: stored.eventId,
-            lat: stored.lat,
-            lng: stored.lng,
-            hasData: !!stored.data,
-            timestamp: stored.timestamp,
-          });
-        }
         
         if (stored && stored.data) {
-          console.log("🗺️ [MapStateManager] IMMEDIATE: Found stored navigation, moving camera and showing card");
-          console.log("🗺️ [MapStateManager] Stored data:", { 
-            eventId: stored.eventId, 
-            lat: stored.lat, 
-            lng: stored.lng, 
-            hasData: !!stored.data,
-            dataKeys: stored.data ? Object.keys(stored.data) : []
-          });
           
           // Mark as processed to prevent duplicate calls
           processedStoredNavigationRef.current = true;
@@ -1144,13 +1133,6 @@ export function MapStateManager({ children, cameraRef, isFocused = true }: MapSt
           // Determine if it's an event or location
           const isEvent = "start_datetime" in stored.data;
           
-          console.log("🗺️ [MapStateManager] Is event?", isEvent);
-          console.log("🗺️ [MapStateManager] Stored data structure:", {
-            hasLocation: !!(stored.data as any).location,
-            hasCoordinates: !!(stored.data as any).coordinates,
-            locationType: typeof (stored.data as any).location,
-          });
-          
           // Ensure the stored data has proper location format for handlers
           // Handlers expect location in GeoJSON format: { type: "Point", coordinates: [lng, lat] }
           const dataWithLocation = {
@@ -1165,17 +1147,10 @@ export function MapStateManager({ children, cameraRef, isFocused = true }: MapSt
             },
           };
           
-          console.log("🗺️ [MapStateManager] Data with location:", {
-            hasLocation: !!dataWithLocation.location,
-            locationType: dataWithLocation.location?.type,
-            coordinates: dataWithLocation.location?.coordinates,
-          });
-          
           // Small delay to ensure camera movement starts, then show card
           setTimeout(() => {
             // Call handlers to show the card (they will also ensure camera is focused)
             if (isEvent && handleEventClickRef.current) {
-              console.log("✅ [MapStateManager] IMMEDIATE: Calling handleEventClick with stored data");
               handleEventClickRef.current(dataWithLocation as MapEvent);
               
               // Check if this is a newly created event that might not be in loaded data yet
