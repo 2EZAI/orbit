@@ -525,6 +525,8 @@ export function UnifiedProfilePage({
               (() => {
                 if (from === "social") {
                   router.push("/(app)/(social)");
+                } else if (from === "home") {
+                  router.push("/(app)/(home)");
                 } else {
                   router.back();
                 }

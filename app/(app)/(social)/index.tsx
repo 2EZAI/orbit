@@ -391,8 +391,8 @@ export default function SocialFeed() {
 
       console.log("Post shared successfully:", message);
 
-      // Navigate to the chat
-      router.push(`/(app)/(chat)/channel/${channel.id}`);
+      // Don't navigate to chat - stay on social feed
+      // router.push(`/(app)/(chat)/channel/${channel.id}`);
     } catch (error) {
       console.error("Error sharing post:", error);
       // You could show a toast or alert here
