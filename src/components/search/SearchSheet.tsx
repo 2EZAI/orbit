@@ -177,6 +177,7 @@ export function SearchSheet({
             venue_name: event.venue_name || "",
             description: event.description || "",
             type: event.type || "event",
+            image_urls: event.image_urls ? JSON.stringify(event.image_urls) : "",
             created_by:
               typeof event.created_by === "string"
                 ? event.created_by

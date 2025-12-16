@@ -1457,58 +1457,58 @@ export default function Home() {
           contentContainerStyle={styles.quickFiltersContainer}
         >
           {[
-            "All",
-            "Today",
-            "This Weekend",
-            "Free",
-            "Music",
-            "Food",
-            "Outdoor",
-            "Art",
-          ].map((filter) => (
+            { label: "All", emoji: "📋" },
+            { label: "Today", emoji: "📅" },
+            { label: "This Weekend", emoji: "🎉" },
+            { label: "Free", emoji: "🆓" },
+            { label: "Music", emoji: "🎵" },
+            { label: "Food", emoji: "🍽️" },
+            { label: "Outdoor", emoji: "🌳" },
+            { label: "Art", emoji: "🎨" },
+          ].map(({ label, emoji }) => (
             <TouchableOpacity
-              key={filter}
+              key={label}
               style={[
                 styles.quickFilterChip,
                 {
                   backgroundColor:
-                    filter === activeQuickFilter
+                    label === activeQuickFilter
                       ? theme.colors.primary
                       : theme.colors.card,
                   borderColor:
-                    filter === activeQuickFilter
+                    label === activeQuickFilter
                       ? theme.colors.primary
                       : theme.colors.border,
                 },
               ]}
-              onPress={() => applyQuickFilter(filter)}
+              onPress={() => applyQuickFilter(label)}
             >
               <Text
                 style={[
                   styles.quickFilterText,
                   {
                     color:
-                      filter === activeQuickFilter
+                      label === activeQuickFilter
                         ? "white"
                         : theme.colors.text,
                   },
                 ]}
               >
-                {filter}
-                {filter !== "All" && (
+                {emoji} {label}
+                {label !== "All" && (
                   <Text
                     style={[
                       styles.filterCount,
                       {
                         color:
-                          filter === activeQuickFilter
+                          label === activeQuickFilter
                             ? "white"
                             : theme.colors.text + "60",
                       },
                     ]}
                   >
                     {" "}
-                    ({getQuickFilterCount(filter)})
+                    ({getQuickFilterCount(label)})
                   </Text>
                 )}
               </Text>
