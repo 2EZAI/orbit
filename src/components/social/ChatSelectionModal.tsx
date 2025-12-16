@@ -122,12 +122,19 @@ export function ChatSelectionModal({
   };
 
   const handleSelectChat = async (channel: Channel) => {
-    await onSelectChat(channel);
-    setShowSuccessModal(true);
-    setTimeout(() => {
-      onClose();
-      setShowSuccessModal(false);
-    }, 1000);
+    try {
+      await onSelectChat(channel);
+      // Show success message
+      setShowSuccessModal(true);
+      // Close the chat selection modal and hide success message after showing it
+      setTimeout(() => {
+        setShowSuccessModal(false);
+        onClose();
+      }, 1500); // Show success message for 1.5 seconds before closing
+    } catch (error) {
+      console.error("Error selecting chat:", error);
+      // Don't close modal on error
+    }
   };
 
   const renderChannel = ({ item: channel }: { item: Channel }) => {
