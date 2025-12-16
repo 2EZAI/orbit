@@ -1,17 +1,15 @@
-import { useEffect, useRef, useState } from "react";
-import { Platform, DeviceEventEmitter } from "react-native";
-import * as Notifications from "expo-notifications";
 import type { EventSubscription } from "expo-modules-core";
-import registerForPushNotificationsAsync from "~/app/notificationHelper";
-import { supabase } from "~/src/lib/supabase";
-import { useAuth } from "~/src/lib/auth";
-import { platform } from "os";
+import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
-import { MapEvent } from "~/hooks/useMapEvents";
-import { useChat } from "~/src/lib/chat";
+import { useEffect, useRef } from "react";
+import { DeviceEventEmitter, Platform } from "react-native";
 import { DefaultGenerics, StreamChat } from "stream-chat";
-let clientLocal: StreamChat<DefaultGenerics> | null = null;
+import registerForPushNotificationsAsync from "~/app/notificationHelper";
 import { useNotificationsApi } from "~/hooks/useNotificationsApi";
+import { useAuth } from "~/src/lib/auth";
+import { useChat } from "~/src/lib/chat";
+import { supabase } from "~/src/lib/supabase";
+let clientLocal: StreamChat<DefaultGenerics> | null = null;
 
 export default function useNotifications() {
   const notificationListener = useRef<EventSubscription | undefined>(undefined);
@@ -42,19 +40,20 @@ export default function useNotifications() {
         if (isLocal) return; // 🛡 prevent infinite loop
 
         // Show as a local notification
-        // if (Platform.OS === 'ios') {
-        // showLocalNotification(notification);
-        // }
+        if (Platform.OS === "ios") {
+          showLocalNotification(notification);
+        }
         hitNotificationCount();
       });
 
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
-      
         const content = response.notification.request.content;
         const notificationId = content?.data?.notification_id;
-        console.log("addNotificationResponseReceivedListener>>>",
-        content?.data)
+        console.log(
+          "addNotificationResponseReceivedListener>>>",
+          content?.data
+        );
         readNoificationsApi(notificationId);
         if (
           content?.data?.type === "comment" ||
@@ -66,7 +65,7 @@ export default function useNotifications() {
           content?.data?.type === "event_reminder_60" ||
           content?.data?.type === "event_reminder_5" ||
           content?.data?.type === "event_started" ||
-          content?.data?.type === "event_invite" 
+          content?.data?.type === "event_invite"
         ) {
           const eventId = content?.data.event_id;
           let isTicketmaster = content?.data?.is_ticketmaster ?? false;
@@ -174,14 +173,14 @@ export default function useNotifications() {
           body: JSON.stringify(requestData),
         }
       );
-      console.log("requestData>>",requestData);
+      console.log("requestData>>", requestData);
       // console.log("session.access_token>>",
       // session.access_token);
       if (!response.ok) {
         throw new Error(await response.text());
       }
       const data = await response.json();
-      console.log("data>>",data);
+      console.log("data>>", data);
       router.replace("/(app)/(map)");
       const mapEvent = {
         id: data?.id,
@@ -266,7 +265,7 @@ export default function useNotifications() {
   async function hitPushToken() {
     console.log("hitPushToken>");
     const pushToken = await registerForPushNotificationsAsync();
-    console.log("pushToken>",pushToken);
+    console.log("pushToken>", pushToken);
     if (pushToken != null) {
       upsertDeviceToken(pushToken);
     }
