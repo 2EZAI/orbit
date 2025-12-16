@@ -112,10 +112,20 @@ export default function ChatLayout() {
                 name="channel/[id]/settings"
                 options={{
                   title: "Chat Settings",
-                  headerShown: true,
+                  headerShown: false,
                   headerTitleAlign: "center",
 
                   headerBackVisible: true,
+                }}
+              />
+              <Stack.Screen
+                name="channel/[id]/media"
+                options={{
+                  title: "Chat Settings",
+                  headerShown: false,
+                  headerTitleAlign: "center",
+
+                  headerBackVisible: false,
                 }}
               />
             </Stack>
