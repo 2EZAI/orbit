@@ -16,7 +16,7 @@ const SuccessMessageModal = ({ message }: { message: string }) => {
       style={styles.successOverlay}
     >
       <LinearGradient
-        colors={["rgba(16, 185, 129, 0.9)", "rgba(34, 197, 94, 0.9)"]}
+        colors={["rgba(139, 92, 246, 0.95)", "rgba(168, 85, 247, 0.95)"]}
         style={styles.successGradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -33,7 +33,7 @@ const SuccessMessageModal = ({ message }: { message: string }) => {
             loop: true,
           }}
         >
-          <CheckCircle2 size={48} color="white" />
+          <CheckCircle2 size={48} color="white" strokeWidth={2.5} />
         </MotiView>
         <Text style={styles.successText}>{message}</Text>
       </LinearGradient>
@@ -43,18 +43,24 @@ const SuccessMessageModal = ({ message }: { message: string }) => {
 export default SuccessMessageModal;
 const styles = StyleSheet.create({
   successGradient: {
-    width: 200,
-    height: 120,
-    borderRadius: 24,
+    width: 220,
+    height: 130,
+    borderRadius: 28,
     justifyContent: "center",
     alignItems: "center",
     gap: 12,
+    shadowColor: "#8B5CF6",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 12,
   },
   successText: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
     color: "white",
     textAlign: "center",
+    letterSpacing: 0.3,
   },
   successOverlay: {
     position: "absolute",
