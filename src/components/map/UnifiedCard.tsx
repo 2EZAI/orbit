@@ -317,14 +317,6 @@ export const UnifiedCard = React.memo(
     treatAsEvent = true, // Default to true to maintain existing behavior
     mapCenter,
   }: UnifiedCardProps) => {
-    // Debug logging for UnifiedCard data
-    console.log("🎴 [UnifiedCard] Component rendered with data:", {
-      dataId: data?.id,
-      dataName: data?.name,
-      dataType: data?.type,
-      treatAsEvent,
-      timestamp: Date.now(),
-    });
 
     const router = useRouter();
 
@@ -368,7 +360,7 @@ export const UnifiedCard = React.memo(
         // Ensure channel is watched before sending
         await channel.watch();
         if (chatShareSelection.proposal) {
-          const message = await channel.sendMessage({
+           await channel.sendMessage({
             text: "Check out this proposal!",
             type: "regular",
             data: {
