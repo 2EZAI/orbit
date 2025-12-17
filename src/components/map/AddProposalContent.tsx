@@ -7,7 +7,6 @@ import { MotiView } from "moti";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   Keyboard,
   Platform,
   StyleSheet,
@@ -21,7 +20,6 @@ import { useTheme } from "../ThemeProvider";
 import { Input } from "../ui/input";
 import { UnifiedData } from "./UnifiedDetailsSheet";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 interface IProps {
   onBack: () => void;
   data: UnifiedData | undefined;
@@ -74,9 +72,9 @@ const AddProposalContent: React.FC<IProps> = ({ onBack, data }) => {
   };
 
   const onOpenDatePicker = async () => {
+    setShowDatePicker(true);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Keyboard.dismiss();
-    setShowDatePicker(true);
   };
 
   const onOpenTimePicker = async () => {
@@ -202,7 +200,7 @@ const AddProposalContent: React.FC<IProps> = ({ onBack, data }) => {
           <View style={styles.pickerRow}>
             {/* Date Picker */}
             <TouchableOpacity
-              onPress={onOpenDatePicker}
+              onPress={() => onOpenDatePicker()}
               style={[
                 styles.pickerButton,
                 {
@@ -278,7 +276,37 @@ const AddProposalContent: React.FC<IProps> = ({ onBack, data }) => {
             </TouchableOpacity>
           </View>
         </MotiView>
+        <View>
+          {/* Date Picker Modal */}
+          {showDatePicker && (
+            <DateTimePicker
+              value={startDate}
+              mode="date"
+              display={"default"}
+              onChange={(event, selectedDate) => {
+                setShowDatePicker(Platform.OS === "ios");
+                if (selectedDate) {
+                  setStartDate(selectedDate);
+                }
+              }}
+            />
+          )}
 
+          {/* Time Picker Modal */}
+          {showTimePicker && (
+            <DateTimePicker
+              value={startDate}
+              mode="time"
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              onChange={(event, selectedTime) => {
+                setShowTimePicker(false);
+                if (selectedTime) {
+                  setStartDate(selectedTime);
+                }
+              }}
+            />
+          )}
+        </View>
         {/* Create Button */}
         <MotiView
           from={{ opacity: 0, translateY: 30 }}
@@ -321,36 +349,6 @@ const AddProposalContent: React.FC<IProps> = ({ onBack, data }) => {
             </MotiView>
           </TouchableOpacity>
         </MotiView>
-
-        {/* Date Picker Modal */}
-        {showDatePicker && (
-          <DateTimePicker
-            value={startDate}
-            mode="date"
-            display={Platform.OS === "ios" ? "spinner" : "default"}
-            onChange={(event, selectedDate) => {
-              setShowDatePicker(false);
-              if (selectedDate) {
-                setStartDate(selectedDate);
-              }
-            }}
-          />
-        )}
-
-        {/* Time Picker Modal */}
-        {showTimePicker && (
-          <DateTimePicker
-            value={startDate}
-            mode="time"
-            display={Platform.OS === "ios" ? "spinner" : "default"}
-            onChange={(event, selectedTime) => {
-              setShowTimePicker(false);
-              if (selectedTime) {
-                setStartDate(selectedTime);
-              }
-            }}
-          />
-        )}
       </View>
     </View>
   );
@@ -421,11 +419,12 @@ const styles = StyleSheet.create({
   inputWrapper: {
     borderRadius: 16,
     borderWidth: 1,
-    overflow: "hidden",
+    paddingVertical: 5,
+    // overflow: "hidden",
   },
   input: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    // paddingVertical: 16,
     fontSize: 16,
     backgroundColor: "transparent",
     borderWidth: 0,

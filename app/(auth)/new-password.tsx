@@ -1,5 +1,11 @@
-import { router, useLocalSearchParams } from "expo-router";
-import { AlertTriangle, ArrowLeft, Eye, EyeOff, Lock } from "lucide-react-native";
+import { router } from "expo-router";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  Lock,
+} from "lucide-react-native";
 import { MotiView } from "moti";
 import { useState } from "react";
 import {
@@ -24,10 +30,10 @@ export default function NewPassword(): JSX.Element {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] =
+    useState<boolean>(false);
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams();
 
   const handleBack = () => {
     router.back();
@@ -229,7 +235,9 @@ export default function NewPassword(): JSX.Element {
 
               {/* Confirm Password Input */}
               <View className="mb-6">
-                <Text className="mb-4 text-lg font-medium">Confirm Password</Text>
+                <Text className="mb-4 text-lg font-medium">
+                  Confirm Password
+                </Text>
                 <View className="flex-row items-center h-14 bg-input rounded-xl">
                   <View className="px-4">
                     <Lock size={22} className="text-primary" />
@@ -265,28 +273,36 @@ export default function NewPassword(): JSX.Element {
                 <View className="space-y-1">
                   <Text
                     className={`text-xs ${
-                      password.length >= 8 ? "text-green-600" : "text-muted-foreground"
+                      password.length >= 8
+                        ? "text-green-600"
+                        : "text-muted-foreground"
                     }`}
                   >
                     • At least 8 characters
                   </Text>
                   <Text
                     className={`text-xs ${
-                      /[A-Z]/.test(password) ? "text-green-600" : "text-muted-foreground"
+                      /[A-Z]/.test(password)
+                        ? "text-green-600"
+                        : "text-muted-foreground"
                     }`}
                   >
                     • One uppercase letter
                   </Text>
                   <Text
                     className={`text-xs ${
-                      /[a-z]/.test(password) ? "text-green-600" : "text-muted-foreground"
+                      /[a-z]/.test(password)
+                        ? "text-green-600"
+                        : "text-muted-foreground"
                     }`}
                   >
                     • One lowercase letter
                   </Text>
                   <Text
                     className={`text-xs ${
-                      /\d/.test(password) ? "text-green-600" : "text-muted-foreground"
+                      /\d/.test(password)
+                        ? "text-green-600"
+                        : "text-muted-foreground"
                     }`}
                   >
                     • One number
@@ -332,4 +348,3 @@ export default function NewPassword(): JSX.Element {
     </TouchableWithoutFeedback>
   );
 }
-

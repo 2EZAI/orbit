@@ -1,4 +1,4 @@
-import { ArrowLeft, Calendar, Share2 } from "lucide-react-native";
+import { ArrowLeft, Calendar, Share2, Send } from "lucide-react-native";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { IProposal } from "~/hooks/useProposals";
 import { useTheme } from "../ThemeProvider";
@@ -106,7 +106,7 @@ const ProposalDetail: React.FC<IProps> = ({
             onProposalShare(proposal);
           }}
         >
-          <Share2 size={20} color={theme.colors.background} />
+          <Send size={20} color={theme.colors.background} />
         </TouchableOpacity>
       </View>
       <View className="pt-6">

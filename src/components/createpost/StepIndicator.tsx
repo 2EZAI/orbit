@@ -1,18 +1,15 @@
+import { LinearGradient } from "expo-linear-gradient";
+import { MotiView } from "moti";
 import React from "react";
 import { View } from "react-native";
-import { Text } from "~/src/components/ui/text";
-import { Check } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
-import { MotiView } from "moti";
-import { LinearGradient } from "expo-linear-gradient";
-import * as Haptics from "expo-haptics";
+import { Text } from "~/src/components/ui/text";
 
 interface Step {
   id: string;
   title: string;
   description: string;
 }
-
 interface StepIndicatorProps {
   steps: Step[];
   currentStep: number;
@@ -114,7 +111,7 @@ export default function StepIndicator({
               {steps[currentStep]?.title || "Step"}
             </Text>
           </View>
-          
+
           <View
             style={{
               backgroundColor: theme.dark

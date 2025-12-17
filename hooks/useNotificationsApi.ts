@@ -50,6 +50,14 @@ interface useNotificationsReturn {
     pageSize: Partial<number>
   ) => Promise<NotificationResponse>;
   readNoifications: (notifId: Partial<string>) => Promise<void>;
+  sendNotification: (params: {
+    type: string;
+    userId?: string;
+    senderId?: string;
+    postId?: string;
+    chatId?: string;
+    groupName?: string;
+  }) => Promise<void>;
   unReadCount: number | null;
 }
 const saveUnReadNotifCount = async (count: string) => {
@@ -122,11 +130,68 @@ export function useNotificationsApi(): useNotificationsReturn {
     } catch (error) {}
   };
 
+  const sendNotification = async (params: {
+    type: string;
+    userId?: string;
+    senderId?: string;
+    postId?: string;
+    chatId?: string;
+    groupName?: string;
+  }) => {
+    if (!session?.user?.id) return;
+    try {
+      const requestData: any = {
+        type: params.type,
+      };
+
+      if (params.userId) {
+        requestData.userId = params.userId;
+      }
+      if (params.senderId) {
+        requestData.senderId = params.senderId;
+      } else {
+        requestData.senderId = session.user.id;
+      }
+
+      requestData.data = {};
+      if (params.postId) {
+        requestData.data.post_id = params.postId;
+      }
+      if (params.chatId) {
+        requestData.data.chat_id = params.chatId;
+      }
+      if (params.groupName) {
+        requestData.data.group_name = params.groupName;
+      }
+
+      const response = await fetch(
+        `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(requestData),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      await response.json();
+    } catch (e) {
+      console.log("error_catch>", e);
+    }
+  };
+
   return {
     loading,
     error,
     fetchAllNoifications,
     readNoifications,
+    sendNotification,
     unReadCount,
   };
 }

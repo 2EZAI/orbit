@@ -1,8 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useIsFocused } from "@react-navigation/native";
 import { router } from "expo-router";
-import { ChevronRight } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
-import { useFocusEffect } from "expo-router";
 import {
   Animated,
   Dimensions,
@@ -12,7 +11,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Icon } from "react-native-elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Google from "~/assets/svg/Google";
 import { useSocialLoginsApi } from "~/hooks/useSocialLoginsApi";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { ImageCacheManager } from "~/src/components/ui/optimized-image";
@@ -20,7 +21,6 @@ import { Text } from "~/src/components/ui/text";
 import { useAuth } from "~/src/lib/auth";
 import { cacheMonitor } from "~/src/lib/cacheMonitor";
 import { cacheWarmer } from "~/src/lib/cacheWarmer";
-import { useIsFocused } from "@react-navigation/native";
 const { width, height } = Dimensions.get("window");
 
 // Background images data
@@ -148,7 +148,7 @@ const Firefly = ({ id, theme }: { id: string; theme: any }) => {
     <Animated.View
       style={{
         position: "absolute",
-        width: size * 3, // Larger container for blur effect
+        width: size * 3,
         height: size * 3,
         transform: [
           { translateX: translateX },
@@ -504,33 +504,18 @@ const GeometricPattern = ({ rotation }: { rotation: Animated.Value }) => {
 
 export default function LandingPage() {
   const isFocused = useIsFocused();
-  const { theme } = useTheme();
+  const { theme, isDarkMode } = useTheme();
   const { session, loading } = useAuth();
   const insets = useSafeAreaInsets();
   const [isSocialLogin, setIsSocialLogin] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [orbitingImages, setOrbitingImages] = useState<any[]>([]);
   const [fireflies, setFireflies] = useState<string[]>([]);
-  const [isFirstTime, setIsFirstTime] = useState(false);
   const mainRotation = useState(() => new Animated.Value(0))[0];
   // Logo center coordinates
   const logoCenterX = width / 2;
   const logoCenterY = height * 0.3;
   const { appleLogin, googleLogin } = useSocialLoginsApi();
-  const checkIfFirstTime = async () => {
-    const isAlreadyGetStarted = await AsyncStorage.getItem("hasStarted");
-    if (isAlreadyGetStarted) {
-      setIsFirstTime(false);
-    } else {
-      setIsFirstTime(true);
-    }
-  };
-  // Redirect authenticated users to the app
-  useFocusEffect(
-    React.useCallback(() => {
-      checkIfFirstTime();
-    }, [])
-  );
 
   useEffect(() => {
     if (!loading && session && isFocused && !isSocialLogin) {
@@ -595,11 +580,6 @@ export default function LandingPage() {
     router.navigate("/(auth)/sign-in");
   };
 
-  const handleSignUp = async () => {
-    // router.push("/(auth)/sign-up");
-    await AsyncStorage.setItem("hasStarted", "true");
-    router.navigate("/(app)/(map)");
-  };
 
   // Show loading while checking authentication
   if (loading) {
@@ -607,7 +587,7 @@ export default function LandingPage() {
       <View
         style={{
           flex: 1,
-          backgroundColor: theme.colors.background,
+          backgroundColor: isDarkMode ? "#000000" : theme.colors.background,
           justifyContent: "center",
           alignItems: "center",
         }}
@@ -622,7 +602,7 @@ export default function LandingPage() {
       <View
         style={{
           flex: 1,
-          backgroundColor: theme.colors.background,
+          backgroundColor: isDarkMode ? "#000000" : theme.colors.background,
           justifyContent: "center",
           alignItems: "center",
         }}
@@ -636,7 +616,7 @@ export default function LandingPage() {
     <View
       style={{
         flex: 1,
-        backgroundColor: theme.colors.background,
+        backgroundColor: isDarkMode ? "#000000" : theme.colors.background,
       }}
     >
       <StatusBar
@@ -654,6 +634,7 @@ export default function LandingPage() {
           right: 0,
           bottom: 0,
           overflow: "hidden",
+          backgroundColor: isDarkMode ? "#000000" : "transparent",
         }}
       >
         {/* Fireflies */}
@@ -691,10 +672,7 @@ export default function LandingPage() {
       >
         <View
           style={{
-            width: 130,
-            height: 130,
-            backgroundColor: theme.colors.background,
-            borderRadius: 65,
+            borderRadius: 20,
             justifyContent: "center",
             alignItems: "center",
             shadowColor: "#8B5CF6",
@@ -702,15 +680,13 @@ export default function LandingPage() {
             shadowOpacity: 1,
             shadowRadius: 30,
             elevation: 25,
-            borderWidth: 4,
-            borderColor: "#8B5CF6",
           }}
         >
           <Image
             source={require("~/assets/bg-images/OrbitLogo.png")}
             style={{
-              width: 90,
-              height: 90,
+              width: 130,
+              height: 130,
             }}
             resizeMode="contain"
           />
@@ -742,156 +718,166 @@ export default function LandingPage() {
       >
         <Text
           style={{
-            fontSize: 32,
+            fontSize: 28,
             fontWeight: "800",
             color: theme.colors.text,
             textAlign: "center",
-            marginBottom: 16,
+            marginBottom: 30,
             lineHeight: 40,
           }}
         >
-          Where the{"\n"}moment finds you
-        </Text>
-
-        <Text
-          style={{
-            fontSize: 16,
-            color: theme.colors.text + "CC",
-            textAlign: "center",
-            marginBottom: 40,
-            lineHeight: 24,
-          }}
-        >
-          Discover spontaneous events, connect with like-minded people, and
-          create unforgettable memories wherever life takes you.
+          Discover what's{"\n"} going on near you
         </Text>
 
         <View style={{ width: "100%", gap: 12 }}>
-          {!isFirstTime ? (
-            <>
-              {Platform.OS == "ios" && (
-                <TouchableOpacity
-                  onPress={async () => {
-                    setIsSocialLogin(true);
-                    await appleLogin();
-                  }}
-                  style={{
-                    backgroundColor: "transparent",
-                    paddingVertical: 18,
-                    paddingHorizontal: 24,
-                    borderRadius: 16,
-                    borderWidth: 2,
-                    borderColor: theme.colors.border,
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: theme.colors.text,
-                      fontSize: 16,
-                      fontWeight: "600",
-                    }}
-                  >
-                    Apple Login
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity
-                onPress={async () => {
-                  setIsSocialLogin(true);
-                  await googleLogin();
-                }}
+          {Platform.OS == "ios" && (
+            <TouchableOpacity
+              onPress={async () => {
+                setIsSocialLogin(true);
+                await appleLogin();
+              }}
+              style={{
+                backgroundColor: "#FFFFFF",
+                paddingVertical: 18,
+                paddingHorizontal: 24,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                justifyContent: "center",
+                alignItems: "center",
+                flexDirection: "row",
+                gap: 10,
+              }}
+            >
+              <Icon size={24} type="antdesign" name="apple1" />
+              <Text
                 style={{
-                  backgroundColor: "transparent",
-                  paddingVertical: 18,
-                  paddingHorizontal: 24,
-                  borderRadius: 16,
-                  borderWidth: 2,
-                  borderColor: theme.colors.border,
-                  justifyContent: "center",
-                  alignItems: "center",
+                  color: "#000000",
+                  fontSize: 16,
+                  fontWeight: "600",
                 }}
               >
-                <Text
-                  style={{
-                    color: theme.colors.text,
-                    fontSize: 16,
-                    fontWeight: "600",
-                  }}
-                >
-                  Google Login
-                </Text>
-              </TouchableOpacity>
-            </>
-          ) : null}
+                Continue with Apple
+              </Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
-            onPress={handleSignUp}
+            onPress={async () => {
+              setIsSocialLogin(true);
+              await googleLogin();
+            }}
             style={{
-              backgroundColor: "#8B5CF6",
+              backgroundColor: "#000000",
               paddingVertical: 18,
               paddingHorizontal: 24,
               borderRadius: 16,
-              flexDirection: "row",
-              alignItems: "center",
               justifyContent: "center",
-              shadowColor: "#8B5CF6",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 6,
+              alignItems: "center",
+              flexDirection: "row",
+              gap: 10,
             }}
           >
+            <Google width={24} height={24} />
             <Text
               style={{
-                color: "white",
-                fontSize: 18,
-                fontWeight: "700",
-                marginRight: 8,
+                color: "#FFFFFF",
+                fontSize: 16,
+                fontWeight: "600",
               }}
             >
-              Get Started
+              Continue with Google
             </Text>
-            <View
+          </TouchableOpacity>
+          <View
+            style={{
+              flexDirection: "row",
+              gap: 12,
+              width: "100%",
+            }}
+          >
+            <TouchableOpacity
+              onPress={() => {
+                router.navigate("/(auth)/sign-up");
+              }}
               style={{
-                width: 32,
-                height: 32,
-                backgroundColor: "white",
+                flex: 1,
+                backgroundColor: "#8B5CF6",
+                paddingVertical: 18,
+                paddingHorizontal: 24,
                 borderRadius: 16,
-                justifyContent: "center",
                 alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#8B5CF6",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 6,
               }}
             >
-              <ChevronRight size={18} color="#8B5CF6" />
-            </View>
-          </TouchableOpacity>
+              <Text
+                style={{
+                  color: "white",
+                  fontSize: 18,
+                  fontWeight: "700",
+                }}
+              >
+                Sign Up
+              </Text>
+            </TouchableOpacity>
 
-          {!isFirstTime ? (
             <TouchableOpacity
-              onPress={handleGetStarted}
+              onPress={() => {
+
+                router.navigate("/(app)/(map)");
+              }}
               style={{
+                flex: 1,
                 backgroundColor: "transparent",
                 paddingVertical: 18,
                 paddingHorizontal: 24,
                 borderRadius: 16,
                 borderWidth: 2,
                 borderColor: theme.colors.border,
-                justifyContent: "center",
                 alignItems: "center",
+                justifyContent: "center",
               }}
             >
               <Text
                 style={{
                   color: theme.colors.text,
-                  fontSize: 16,
-                  fontWeight: "600",
+                  fontSize: 18,
+                  fontWeight: "700",
                 }}
               >
-                Login
+                Browse
               </Text>
             </TouchableOpacity>
-          ) : null}
+          </View>
+
+          <TouchableOpacity
+            onPress={handleGetStarted}
+            style={{
+              backgroundColor: isDarkMode ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.04)",
+              paddingVertical: 18,
+              paddingHorizontal: 24,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Text
+              style={{
+                color: theme.colors.text,
+                fontSize: 16,
+                fontWeight: "600",
+              }}
+            >
+              Login
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     </View>

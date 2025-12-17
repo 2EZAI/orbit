@@ -1,23 +1,24 @@
-import React, { useState, useEffect } from "react";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
+import { Calendar, MapPin, Star, Users } from "lucide-react-native";
+import React, { useEffect, useState } from "react";
 import {
-  View,
-  TouchableOpacity,
-  Image,
-  Dimensions,
   ActivityIndicator,
   DeviceEventEmitter,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Text } from "../ui/text";
-import { LinearGradient } from "expo-linear-gradient";
+import FastImage from "react-native-fast-image";
 import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
-import { formatTime, formatDate } from "~/src/lib/date";
-import { Users, MapPin, Calendar, Star } from "lucide-react-native";
+import { formatDate, formatTime } from "~/src/lib/date";
+import { Text } from "../ui/text";
 
 import { useRouter } from "expo-router";
-import { supabase } from "~/src/lib/supabase";
-import { useUser } from "~/src/lib/UserProvider";
+import { useEventDetails } from "~/hooks/useEventDetails";
 import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 import { useTheme } from "~/src/components/ThemeProvider";
+import { useUser } from "~/src/lib/UserProvider";
+import { captureError } from "~/src/lib/utils/sentry";
 
 type UnifiedData = MapEvent | MapLocation;
 
@@ -259,8 +260,7 @@ export function SocialEventCard({
   treatAsEvent = true,
   isCustomEvent = false,
 }: SocialEventCardProps) {
-  const { UpdateEventStatus, fetchEventDetail, fetchLocationDetail } =
-    useUpdateEvents();
+  const { getItemDetails } = useEventDetails();
   const router = useRouter();
   const { user } = useUser();
   const { theme, isDarkMode } = useTheme();
@@ -282,8 +282,22 @@ export function SocialEventCard({
   }, []);
 
   useEffect(() => {
+    // Set detailData immediately with initial data to show images right away
     setDetailData(data);
-    hitDetailApi();
+
+    // Only fetch detail API if we don't have image_urls in the initial data
+    // For created events, we already have all the data we need, so skip the API call
+    if (!data.image_urls || data.image_urls.length === 0) {
+      // Only fetch if we're missing image data
+      hitDetailApi();
+    } else {
+      // For events with images, delay the API call to not block rendering
+      // This fetches updated attendee counts, etc. in the background
+      const timer = setTimeout(() => {
+        hitDetailApi();
+      }, 500); // Delay by 500ms to let images render first
+      return () => clearTimeout(timer);
+    }
   }, [data]);
 
   const handleContextAction = (action: string) => {
@@ -316,14 +330,16 @@ export function SocialEventCard({
 
     setLoading(true);
     try {
-      // COMMENTED OUT: UpdateEventStatus - needs update for unified API
-      // await UpdateEventStatus(data);
       setTimeout(() => {
         setLoading(false);
         hitDetailApi(); // This will update the join_status and change button to "Create Orbit"
       }, 2000);
     } catch (error) {
       console.error("Error updating event status:", error);
+      captureError(error, {
+        operation: "update_event_status",
+        extra: { id: (data as any)?.id },
+      });
       setLoading(false);
     }
   };
@@ -334,39 +350,23 @@ export function SocialEventCard({
         return;
       }
       if (treatAsEvent) {
-        await fetchEventDetail(data);
-
-        // Manually fetch the event details to get the updated data with join_status
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          const response = await fetch(
-            `${process.env.BACKEND_MAP_URL}/api/events/${data.id}`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              body: JSON.stringify({
-                source: (data as any).is_ticketmaster
-                  ? "ticketmaster"
-                  : "supabase",
-              }),
-            }
-          );
-
-          if (response.ok) {
-            const eventDetails = await response.json();
-            setDetailData(eventDetails);
-          }
-        }
+        const itemDetails = await getItemDetails(
+          data.id,
+          (data as any).is_ticketmaster ? "ticketmaster" : "database"
+        );
+        console.log("🔍 [SocialEventCard] Item details:", itemDetails);
+        setDetailData(itemDetails);
       } else {
-        await fetchLocationDetail(data as MapLocation);
+        const itemDetails = await getItemDetails(data.id, "location");
+        setDetailData(itemDetails);
+        return;
       }
     } catch (error) {
       console.error("Error fetching details:", error);
+      captureError(error, {
+        operation: "fetch_detail",
+        extra: { id: (data as any)?.id, treatAsEvent },
+      });
     } finally {
       setLoading(false);
     }
@@ -415,7 +415,7 @@ export function SocialEventCard({
 
   const handleShowDetails = () => {
     if (onDataSelect) {
-      onDataSelect(data);
+      onDataSelect(detailData);
     }
     if (onShowDetails) {
       onShowDetails();
@@ -427,6 +427,20 @@ export function SocialEventCard({
     const detail = detailData || data;
 
     if (treatAsEvent) {
+      // Log image_urls for debugging
+      if (detail.id && !detail.image_urls?.[0]) {
+        console.log("🖼️ [SocialEventCard] Event missing image_urls:", {
+          id: detail.id,
+          name: detail.name,
+          image_urls: detail.image_urls,
+          image_urls_type: typeof detail.image_urls,
+          image_urls_is_array: Array.isArray(detail.image_urls),
+          has_detailData: !!detailData,
+          detailData_image_urls: detailData?.image_urls,
+          data_image_urls: data?.image_urls,
+        });
+      }
+
       return {
         title: detail.name,
         subtitle: detail.venue_name,
@@ -507,18 +521,35 @@ export function SocialEventCard({
     >
       {/* Background Image with Blur */}
       {displayValues.imageUrl && (
-        <Image
-          source={{ uri: displayValues.imageUrl }}
-          className="absolute w-full h-full"
-          resizeMode="cover"
-          blurRadius={8} // Add blur effect
-          style={{ opacity: 0.6 }}
-        />
+        <>
+          <FastImage
+            source={{
+              uri: displayValues.imageUrl,
+              priority: FastImage.priority.normal,
+              cache: FastImage.cacheControl.immutable,
+            }}
+            style={{
+              position: "absolute",
+              width: "100%",
+              height: "100%",
+            }}
+            resizeMode={FastImage.resizeMode.cover}
+          />
+          {/* Blur effect overlay */}
+          <BlurView
+            intensity={8}
+            style={{
+              position: "absolute",
+              width: "100%",
+              height: "100%",
+            }}
+          />
+        </>
       )}
 
       {/* Dark Gradient Overlay for better text readability */}
       <LinearGradient
-        colors={["rgba(0, 0, 0, 0.3)", "rgba(0, 0, 0, 0.8)"]}
+        colors={["rgba(0, 0, 0, 0.3)", "rgba(0, 0, 0, 0.6)"]}
         locations={[0, 1]}
         style={{
           position: "absolute",

@@ -5,7 +5,10 @@ import {
   ActivityIndicator,
   RefreshControl,
   Pressable,
+  Dimensions,
 } from "react-native";
+import FastImage from "react-native-fast-image";
+import type { Channel } from "stream-chat";
 import { Text } from "~/src/components/ui/text";
 import { SocialEventCard } from "~/src/components/social/SocialEventCard";
 import {
@@ -374,6 +377,8 @@ export default function UnifiedEventsTab({
         "created events"
       );
       setCreatedEvents(transformedEvents);
+      // Preload images for faster rendering
+      preloadEventImages(transformedEvents);
     } catch (error) {
       console.error(
         "❌ [UnifiedEventsTab] Error loading created events:",
@@ -482,9 +487,30 @@ export default function UnifiedEventsTab({
         });
 
       setJoinedEvents(transformedEvents);
+
+      // Preload images for faster rendering
+      preloadEventImages(transformedEvents);
     } catch (error) {
       console.error("Error loading joined events:", error);
       setJoinedEvents([]);
+    }
+  };
+
+  // Preload event images for faster rendering
+  const preloadEventImages = (events: Event[]) => {
+    const imageUrls = events
+      .filter((event) => event.image_urls && event.image_urls.length > 0)
+      .map((event) => event.image_urls![0])
+      .slice(0, 10); // Preload first 10 images
+
+    if (imageUrls.length > 0) {
+      FastImage.preload(
+        imageUrls.map((uri) => ({
+          uri,
+          priority: FastImage.priority.normal,
+          cache: FastImage.cacheControl.immutable,
+        }))
+      );
     }
   };
 
@@ -508,20 +534,25 @@ export default function UnifiedEventsTab({
     return activeTab === "Created" ? createdEvents : joinedEvents;
   };
 
-  const renderEvent = ({ item: event }: { item: Event }) => (
-    <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
-      <SocialEventCard
-        data={event as any}
-        onDataSelect={(data) => {
-          handleEventPress(event);
-        }}
-        onShowDetails={() => {
-          handleEventPress(event);
-        }}
-        treatAsEvent={true}
-      />
-    </View>
-  );
+  const renderEvent = ({ item: event }: { item: Event }) => {
+    // Preload image if available for faster rendering
+
+    return (
+      <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+        <SocialEventCard
+          data={event as any}
+          onDataSelect={(data) => {
+            handleEventPress(data as any);
+          }}
+          // onShowDetails={() => {
+          //   handleEventPress(event);
+          // }}
+          treatAsEvent={true}
+          isCustomEvent={false}
+        />
+      </View>
+    );
+  };
 
   const currentEvents = getCurrentEvents();
 
@@ -656,6 +687,7 @@ export default function UnifiedEventsTab({
               setSelectedEvent(null);
               setShareData({ data, isEventType: isEvent });
             }}
+            from="profile"
           />
         )}
         {shareData && (

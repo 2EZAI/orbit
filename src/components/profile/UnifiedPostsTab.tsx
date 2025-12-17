@@ -1,29 +1,31 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  FlatList,
-  TouchableOpacity,
-  Image,
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  Dimensions,
-} from "react-native";
-import { Text } from "~/src/components/ui/text";
-import { supabase } from "~/src/lib/supabase";
-import { useAuth } from "~/src/lib/auth";
 import { format } from "date-fns";
+import { router } from "expo-router";
 import {
   Heart,
-  MessageCircle,
-  Send,
   MapPin,
+  MessageCircle,
   MoreHorizontal,
+  Send,
 } from "lucide-react-native";
-import { router } from "expo-router";
-import { UserAvatar } from "~/src/components/ui/user-avatar";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  RefreshControl,
+  ScrollView,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { PostMenuDropdown } from "~/src/components/social/PostMenuDropdown";
 import { SocialEventCard } from "~/src/components/social/SocialEventCard";
 import { useTheme } from "~/src/components/ThemeProvider";
+import { Text } from "~/src/components/ui/text";
+import { UserAvatar } from "~/src/components/ui/user-avatar";
+import { useAuth } from "~/src/lib/auth";
+import { supabase } from "~/src/lib/supabase";
+import { socialPostService } from "~/src/services/socialPostService";
 
 interface Post {
   id: string;
@@ -52,8 +54,6 @@ interface UnifiedPostsTabProps {
   onScroll?: any;
   refreshControl?: any;
 }
-
-const { width: screenWidth } = Dimensions.get("window");
 
 const ImageGallery = ({
   images,
@@ -131,8 +131,8 @@ export default function UnifiedPostsTab({
     }
 
     // Prevent fetching if userId is invalid (empty string or null)
-    if (!userId || userId.trim() === '') {
-      console.log('Invalid userId, skipping post fetch');
+    if (!userId || userId.trim() === "") {
+      console.log("Invalid userId, skipping post fetch");
       setLoading(false);
       setRefreshing(false);
       return;
@@ -244,55 +244,82 @@ export default function UnifiedPostsTab({
   };
 
   const toggleLike = async (postId: string) => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.id || !session?.access_token) return;
 
     try {
       const post = posts.find((p) => p.id === postId);
       if (!post) return;
 
       if (post.isLiked) {
-        const { error } = await supabase
-          .from("post_likes")
-          .delete()
-          .eq("post_id", postId)
-          .eq("user_id", session.user.id);
-
-        if (!error) {
-          setPosts((prevPosts) =>
-            prevPosts.map((p) =>
-              p.id === postId
-                ? {
-                    ...p,
-                    like_count: Math.max(0, p.like_count - 1),
-                    isLiked: false,
-                  }
-                : p
-            )
-          );
-        }
+        await socialPostService.unlikePost(postId, session.access_token);
+        setPosts((prevPosts) =>
+          prevPosts.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  like_count: Math.max(0, p.like_count - 1),
+                  isLiked: false,
+                }
+              : p
+          )
+        );
       } else {
-        const { error } = await supabase.from("post_likes").insert({
-          post_id: postId,
-          user_id: session.user.id,
-        });
-
-        if (!error) {
-          setPosts((prevPosts) =>
-            prevPosts.map((p) =>
-              p.id === postId
-                ? {
-                    ...p,
-                    like_count: Math.max(0, p.like_count + 1),
-                    isLiked: true,
-                  }
-                : p
-            )
-          );
-        }
+        await socialPostService.likePost(postId, session.access_token);
+        setPosts((prevPosts) =>
+          prevPosts.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  like_count: Math.max(0, p.like_count + 1),
+                  isLiked: true,
+                }
+              : p
+          )
+        );
       }
     } catch (error) {
       console.error("Error toggling like:", error);
     }
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    if (!session?.user?.id) {
+      Alert.alert("Error", "Please sign in to delete posts");
+      return;
+    }
+
+    Alert.alert(
+      "Delete Post",
+      "Are you sure you want to delete this post? This action cannot be undone.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // Get access token from Supabase session
+              const { data: { session: currentSession } } = await supabase.auth.getSession();
+
+              if (!currentSession?.access_token) {
+                Alert.alert("Error", "Please sign in to delete posts");
+                return;
+              }
+
+              await socialPostService.deletePost(postId, currentSession.access_token);
+              // Remove post from local state
+              setPosts((prevPosts) => prevPosts.filter((p) => p.id !== postId));
+            } catch (error) {
+              console.error("Error deleting post:", error);
+              Alert.alert("Error", "Failed to delete post. Please try again.");
+            }
+          },
+        },
+      ]
+    );
   };
 
   const renderPost = ({ item: post, index }: { item: Post; index: number }) => {
@@ -311,7 +338,7 @@ export default function UnifiedPostsTab({
           <TouchableOpacity
             onPress={() => {
               if (post.user?.id) {
-                router.push(`/(app)/profile/${post.user.id}`);
+                router.push(`/profile/${post.user.id}`);
               }
             }}
             className="flex-row flex-1 items-center"
@@ -351,12 +378,13 @@ export default function UnifiedPostsTab({
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity className="p-2">
-            <MoreHorizontal
-              size={20}
-              color={isDarkMode ? "#9CA3AF" : "#6B7280"}
+          {isCurrentUser && (
+            <PostMenuDropdown
+              postId={post.id}
+              isOwner={isCurrentUser}
+              onDelete={handleDeletePost}
             />
-          </TouchableOpacity>
+          )}
         </View>
 
         {/* Post Content */}

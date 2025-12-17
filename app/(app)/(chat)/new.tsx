@@ -1,50 +1,40 @@
-import { useState, useEffect, useMemo } from "react";
-import {
-  SafeAreaView,
-  View,
-  FlatList,
-  Alert,
-  Platform,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
-import { useChat } from "~/src/lib/chat";
-import { useRouter } from "expo-router";
-import { supabase } from "~/src/lib/supabase";
 import { User as AuthUser } from "@supabase/supabase-js";
+import { useRouter } from "expo-router";
 import {
-  Users,
-  Search,
-  X,
   ArrowLeft,
-  UserPlus,
+  Search,
   UserCheck,
+  UserPlus,
+  Users,
+  X,
 } from "lucide-react-native";
-import { Input } from "~/src/components/ui/input";
-import { Button } from "~/src/components/ui/button";
-import { Text } from "~/src/components/ui/text";
-import { Card, CardContent } from "~/src/components/ui/card";
-import { useAuth } from "~/src/lib/auth";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  SafeAreaView,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useNotificationsApi } from "~/hooks/useNotificationsApi";
+import { useTheme } from "~/src/components/ThemeProvider";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "~/src/components/ui/avatar";
-import { useTheme } from "~/src/components/ThemeProvider";
-import { Icon } from "react-native-elements";
+import { Input } from "~/src/components/ui/input";
+import { Text } from "~/src/components/ui/text";
+import { useAuth } from "~/src/lib/auth";
+import { useChat } from "~/src/lib/chat";
+import { supabase } from "~/src/lib/supabase";
 
 interface User extends AuthUser {
   first_name: string | null;
   last_name: string | null;
   username: string | null;
-  avatar_url: string | null;
-}
-
-interface DatabaseUser {
-  id: string;
-  email: string | null;
-  first_name: string | null;
-  last_name: string | null;
+  a;
   avatar_url: string | null;
 }
 
@@ -64,6 +54,7 @@ export default function NewChatScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingFollows, setIsLoadingFollows] = useState(false);
   const { session } = useAuth();
+  const { sendNotification } = useNotificationsApi();
 
   const isGroupChat = selectedUsers.length > 1;
 
@@ -298,25 +289,54 @@ export default function NewChatScreen() {
     try {
       // Get all member IDs including the current user
       const memberIds = [client.userID, ...selectedUsers.map((u) => u.id)];
-      // console.log("Member IDs:", memberIds);
 
-      // Generate a unique channel ID using timestamp and random string
+      // If this is a direct message (exactly two members), check for existing channel first
+      if (memberIds.length === 2) {
+        try {
+          console.log("[NewChat] Checking for existing DM channel", memberIds);
+          const existingChannels = await client.queryChannels({
+            type: "messaging",
+            members: { $eq: memberIds }, // Exactly these two members
+          });
+          if (existingChannels.length > 0) {
+            const existing = existingChannels[0];
+            console.log(
+              "[NewChat] Existing DM found, navigating instead of creating",
+              existing.id
+            );
+            // Close modal if open
+            router.back();
+            setTimeout(() => {
+              router.push({
+                pathname: "/(app)/(chat)/channel/[id]",
+                params: {
+                  id: existing.id,
+                  name:
+                    existing.data?.name ||
+                    chatName ||
+                    defaultChatName ||
+                    "Chat",
+                },
+              });
+            }, 300);
+            return; // Prevent new channel creation
+          }
+        } catch (dmErr) {
+          console.log(
+            "[NewChat] DM existing channel check failed (continuing to create):",
+            dmErr
+          );
+        }
+      }
       const timestamp = Date.now();
       const randomStr = Math.random().toString(36).substring(7);
       const uniqueChannelId = `${timestamp}-${randomStr}`;
 
-      // Create the channel with members list and name
-      // console.log("[NewChat] Creating Stream channel with config:", {
-      //   members: memberIds,
-      //   name: chatName,
-      // });
       const channel = client.channel("messaging", uniqueChannelId, {
         members: memberIds,
         name: chatName,
       });
 
-      // This both creates the channel and subscribes to it
-      console.log("[NewChat] Watching channel...");
       await channel.watch();
 
       // Ensure all selected members (and creator) are members — handles reused DM channels
@@ -403,10 +423,18 @@ export default function NewChatScreen() {
         console.log("selectedUsers");
         if (selectedUsers.length === 1) {
           console.log("selectedUsers1");
-          hitNoificationApi("new_chat", chatChannel.id);
+          sendNotification({
+            type: "new_chat",
+            chatId: chatChannel.id,
+            groupName: chatName,
+          });
         } else {
           console.log("selectedUserselse");
-          hitNoificationApi("new_group_chat", chatChannel.id);
+          sendNotification({
+            type: "new_group_chat",
+            chatId: chatChannel.id,
+            groupName: chatName,
+          });
         }
       }
 
@@ -438,43 +466,6 @@ export default function NewChatScreen() {
         "Error",
         error?.message || "Failed to create chat. Please try again."
       );
-    }
-  };
-
-  const hitNoificationApi = async (typee: string, chatId: string) => {
-    if (!session) return;
-    try {
-      const reuestData = {
-        senderId: session.user.id,
-        type: typee,
-        data: {
-          chat_id: chatId,
-          group_name: chatName,
-        },
-      };
-      ///send notification
-      const response = await fetch(
-        `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.user.id}`,
-          },
-          body: JSON.stringify(reuestData),
-        }
-      );
-      // console.log("requestData", reuestData);
-
-      if (!response.ok) {
-        // console.log("error>", response);
-        throw new Error(await response.text());
-      }
-
-      const data_ = await response.json();
-      // console.log("response>", data_);
-    } catch (e) {
-      console.log("error_catch>", e);
     }
   };
 
@@ -630,7 +621,7 @@ export default function NewChatScreen() {
                     onChangeText={setChatName}
                     placeholder={defaultChatName}
                     style={{
-                      backgroundColor: theme.colors.card,
+                      backgroundColor: theme.colors.background,
                       borderColor: theme.colors.border,
                       color: theme.colors.text,
                     }}

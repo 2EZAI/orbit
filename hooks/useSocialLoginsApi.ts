@@ -1,17 +1,13 @@
-import { useEffect, useState } from "react";
-import { useAuth } from "~/src/lib/auth";
-import { supabase } from "../src/lib/supabase";
-import { router } from "expo-router";
-import * as AppleAuthentication from "expo-apple-authentication";
 import {
   GoogleSignin,
-  GoogleSigninButton,
-  SignInResponse,
-  statusCodes,
+  statusCodes
 } from "@react-native-google-signin/google-signin";
+import * as AppleAuthentication from "expo-apple-authentication";
+import { router } from "expo-router";
+import { useState } from "react";
+import { supabase } from "../src/lib/supabase";
 
 export function useSocialLoginsApi() {
-  const [error, setError] = useState<Error | null>(null);
 
   GoogleSignin.configure({
     scopes: ["https://www.googleapis.com/auth/drive.readonly"],
@@ -21,21 +17,7 @@ export function useSocialLoginsApi() {
       "687195339278-vf4jcpfcj0mi7r2g74mgnbo9n4frlv5l.apps.googleusercontent.com",
   });
 
-  const appleUserExistsOrNot = async (uesrId: string) => {
-    // console.error('uesr>', uesrId);
-    const { data, error } = await supabase
-      .from("users")
-      .select("id")
-      .eq("apple_id", uesrId)
-      .maybeSingle(); // Use maybeSingle() if email might not exist
 
-    if (error) {
-      console.error("❌ Error querying Supabase:", error);
-      return false;
-    }
-
-    return !!data; // true if found, false if null
-  };
 
   const checkUserOnboarded = async (userId: string): Promise<boolean> => {
     try {
@@ -84,32 +66,7 @@ export function useSocialLoginsApi() {
       throw e;
     }
   };
-  const createGoogleUser = async (newUserData: SignInResponse) => {
-    try {
-      const { data, error } = await supabase
-        .from("users")
-        .insert({
-          google_id: newUserData?.data?.user.id || "",
-          register_type: "google",
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
 
-      if (error) {
-        console.error("❌ Error creating user:", error);
-        throw error;
-      }
-
-      return data;
-    } catch (e) {
-      console.log(
-        "error>",
-        e instanceof Error ? e : new Error("An error occurred")
-      );
-      throw e;
-    }
-  };
 
   const appleLogin = async () => {
     try {
@@ -120,7 +77,7 @@ export function useSocialLoginsApi() {
         ],
       });
       // console.log("credential>", credential);
-      console.log("credential>", credential);
+      console.log("credential>", JSON.stringify(credential, null, 2));
       // Sign in via Supabase Auth.
       if (credential.identityToken) {
         // console.log("credential??>", credential);
@@ -131,6 +88,8 @@ export function useSocialLoginsApi() {
           provider: "apple",
           token: credential.identityToken,
         });
+        console.log("user>>>>", JSON.stringify(user, null, 2));
+        console.log("credential?.user>>>>", credential?.user);
         const exists = await checkUserOnboarded(user?.id || "");
         if (exists) {
           //user exsist navigate to home
@@ -141,17 +100,29 @@ export function useSocialLoginsApi() {
         } else {
           //new user
           if (!error) {
+            const appleFirstName = credential?.fullName?.givenName || "";
+            const appleLastName = credential?.fullName?.familyName || "";
+            
             await updateUser(
               {
                 apple_id: credential?.user,
                 register_type: "apple",
+                first_name: appleFirstName,
+                last_name: appleLastName,
               },
               user
             );
+            
             // User is signed in.
-            // Navigate to onboarding
+            // Navigate to onboarding with name params so they're available immediately
             setTimeout(() => {
-              router.replace("/(auth)/(onboarding)/username");
+              router.replace({
+                pathname: "/(auth)/(onboarding)/username",
+                params: {
+                  ...(appleFirstName && { firstName: appleFirstName }),
+                  ...(appleLastName && { lastName: appleLastName }),
+                },
+              });
             }, 500);
           }
         }
@@ -181,8 +152,7 @@ export function useSocialLoginsApi() {
       console.log("userInfo>", userInfo, userInfo.data?.user.id);
       if (userInfo.data && userInfo.data.idToken) {
         const {
-          data: { user },
-          error,
+          data: { user }
         } = await supabase.auth.signInWithIdToken({
           provider: "google",
           token: userInfo.data.idToken,
@@ -234,7 +204,6 @@ export function useSocialLoginsApi() {
   };
 
   return {
-    error,
     appleLogin,
     googleLogin,
   };

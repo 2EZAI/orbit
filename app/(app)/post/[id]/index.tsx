@@ -1,12 +1,7 @@
 import { format } from "date-fns";
+import * as Haptics from "expo-haptics";
 import { Stack, router, useLocalSearchParams } from "expo-router";
-import {
-  ArrowLeft,
-  Heart,
-  MapPin,
-  MessageCircle,
-  MoreHorizontal
-} from "lucide-react-native";
+import { ArrowLeft, Heart, MapPin, MessageCircle } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -15,44 +10,35 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   RefreshControl,
   ScrollView,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { Icon } from "react-native-elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { Channel } from "stream-chat";
-import { MapEvent } from "~/hooks/useMapEvents";
+import { useFlagging } from "~/hooks/useFlagging";
+import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 import { IProposal } from "~/hooks/useProposals";
 import {
   UnifiedData,
   UnifiedDetailsSheet,
 } from "~/src/components/map/UnifiedDetailsSheet";
 import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
+import FlagContentModal from "~/src/components/modals/FlagContentModal";
 import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
+import { CommentActionSheet } from "~/src/components/social/CommentActionSheet";
+import { PostMenuDropdown } from "~/src/components/social/PostMenuDropdown";
 import { SocialEventCard } from "~/src/components/social/SocialEventCard";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { useAuth } from "~/src/lib/auth";
+import { usePostRefresh } from "~/src/lib/postProvider";
 import { supabase } from "~/src/lib/supabase";
-
-interface Post {
-  id: string;
-  content: string;
-  address: string;
-  media_urls: string[];
-  created_at: string;
-  user: {
-    id: string;
-    username: string | null;
-    avatar_url: string | null;
-  };
-  like_count: number;
-  comment_count: number;
-  event?: MapEvent | null; // Make event optional
-}
+import { IPost, socialPostService } from "~/src/services/socialPostService";
 
 interface Comment {
   id: string;
@@ -85,9 +71,11 @@ export default function PostView() {
   const params = useLocalSearchParams();
   const id = typeof params.id === "string" ? params.id : null;
   const { session } = useAuth();
+  const { sendNotification } = useNotificationsApi();
   const insets = useSafeAreaInsets();
-  const [post, setPost] = useState<Post | null>(null);
+  const [post, setPost] = useState<IPost | null>(null);
   const [likeCount, setLikeCount] = useState(0);
+  const [commentCount, setCommentCount] = useState(0);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState(false);
@@ -95,7 +83,7 @@ export default function PostView() {
   const [submittingComment, setSubmittingComment] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isShowEvent, setIsShowEvent] = useState(false);
-  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [refreshing] = useState<boolean>(false);
   const [shareData, setShareData] = useState<{
     data: UnifiedData;
     isEventType: boolean;
@@ -111,13 +99,15 @@ export default function PostView() {
     event: null,
     isEventType: false,
   });
+  const { isRefreshRequired, setRefreshRequired } = usePostRefresh();
+
   const handleChatSelect = async (channel: Channel) => {
     if (!channel) return;
     try {
       // Ensure channel is watched before sending
       await channel.watch();
       if (chatShareSelection.proposal) {
-        const message = await channel.sendMessage({
+        await channel.sendMessage({
           text: "Check out this proposal!",
           type: "regular",
           data: {
@@ -199,29 +189,32 @@ export default function PostView() {
     }
 
     fetchPost();
-    getLikeCount();
-    checkIfLiked();
-    fetchComments();
   }, [id]);
 
   useEffect(() => {
     DeviceEventEmitter.addListener("refreshPost", (valueEvent) => {
       console.log("event----refreshPost");
-      getLikeCount();
+
       checkIfLiked();
-      fetchComments();
     });
   }, []);
 
   const onRefresh = async () => {
-    getLikeCount();
     checkIfLiked();
-    fetchComments();
   };
 
   const { event } = useLocalSearchParams();
   const [eventObj, setEventObj] = useState<EventObject | null>(null);
-
+  const [flagOpen, setFlagOpen] = useState({
+    open: false,
+    id: "",
+    type: "post" as "post" | "comment",
+  });
+  const [commentActionSheet, setCommentActionSheet] = useState<{
+    visible: boolean;
+    commentId: string;
+  }>({ visible: false, commentId: "" });
+  const { createFlag } = useFlagging();
   useEffect(() => {
     if (event) {
       try {
@@ -237,56 +230,75 @@ export default function PostView() {
     if (!id) return;
 
     try {
-      const { data: rawData, error } = await supabase
-        .from("posts")
-        .select(
-          `
-    id,
-    content,
-    address,
-    media_urls,
-    created_at,
-    like_count,
-    comment_count,
-    event_id,
-    user:users!posts_user_id_fkey (
-      id,
-      username,
-      avatar_url
-    )
-  `
-        )
-        .eq("id", id)
-        .single();
+      // Get fresh session token
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
+      const authToken =
+        currentSession?.access_token || session?.access_token || "";
 
-      if (error) throw error;
-      if (!rawData) throw new Error("Post not found");
+      if (!authToken) {
+        console.warn(
+          "⚠️ [PostView] No auth token available for fetching post details"
+        );
+        setError("Please sign in to view post details");
+        setLoading(false);
+        return;
+      }
 
-      // Handle both array and object cases from Supabase query
-      const userData = Array.isArray(rawData.user)
-        ? rawData.user[0]
-        : rawData.user;
+      const postDetails = await socialPostService.getPostDetails(id, authToken);
 
-      const transformedPost: Post = {
-        id: rawData.id,
-        content: rawData.content,
-        address: rawData.address,
-        media_urls: rawData.media_urls || [],
-        created_at: rawData.created_at,
-        like_count: rawData.like_count || 0,
-        comment_count: rawData.comment_count || 0,
-        user: {
-          id: userData?.id || "",
-          username: userData?.username || null,
-          avatar_url: userData?.avatar_url || null,
-        },
-        event: null, // Set to null by default, can be populated later if needed
-      };
+      if (!postDetails) {
+        console.error("❌ [PostView] Post details returned null");
+        setError("Failed to load post");
+        setPost(null);
+        setLoading(false);
+        return;
+      }
 
-      setPost(transformedPost);
+      // Handle both new API structure (data) and legacy structure (post) - matching web app
+      const postData = postDetails?.data || postDetails?.post || null;
+
+      if (!postData) {
+        setError("Failed to load post");
+        setPost(null);
+        setLoading(false);
+        return;
+      }
+
+      setPost(postData);
+
+      // Extract comments exactly like web app CommentSection does:
+      // if (postData?.post?.comments?.items) return postData.post.comments.items
+      // if (postData?.comments && Array.isArray(postData.comments)) return postData.comments
+      let commentsData: Comment[] = [];
+      if (postDetails?.post?.comments?.items) {
+        commentsData = postDetails.post.comments.items;
+      } else if (postDetails?.comments && Array.isArray(postDetails.comments)) {
+        commentsData = postDetails.comments;
+      } else if (postDetails?.data?.comments?.items) {
+        commentsData = postDetails.data.comments.items;
+      }
+
+      setComments(commentsData);
+
+      setLikeCount(postData.like_count ?? 0);
+      setCommentCount(commentsData.length ?? 0);
+
+      if (postData.is_liked !== null && postData.is_liked !== undefined) {
+        setLiked(postData.is_liked);
+        console.log("✅ [PostDetail] Using API is_liked:", postData.is_liked);
+      } else {
+        // Fallback: check Supabase directly if API doesn't provide is_liked
+        console.log(
+          "⚠️ [PostDetail] API didn't provide is_liked, checking Supabase"
+        );
+        checkIfLiked();
+      }
+
       setError(null);
     } catch (error) {
-      console.error("[PostView] Error fetching post:", error);
+      console.error("❌ [PostView] Error fetching post:", error);
       setError("Failed to load post");
       setPost(null);
     } finally {
@@ -312,79 +324,38 @@ export default function PostView() {
     }
   };
 
-  const getLikeCount = async () => {
-    try {
-      const { count, error } = await supabase
-        .from("post_likes")
-        .select("id", { count: "exact", head: true })
-        .eq("post_id", id);
-
-      if (error) throw error;
-
-      console.log("Like count:", count);
-      setLikeCount(count || 0);
-    } catch (error) {
-      console.error("Error fetching like count:", error);
-    }
-  };
-
-  const fetchComments = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("post_comments")
-        .select(
-          `
-          *,
-          user:users!inner (
-            id,
-            username,
-            avatar_url
-          )
-        `
-        )
-        .eq("post_id", id)
-        .order("created_at", { ascending: true });
-
-      if (error) throw error;
-      setComments(data || []);
-    } catch (error) {
-      console.error("Error fetching comments:", error);
-    }
-  };
-
   const toggleLike = async () => {
-    if (!session?.user.id) {
+    if (!session?.user.id || !session?.access_token) {
       Alert.alert("Error", "Please sign in to like posts");
       return;
     }
 
+    if (!id) return;
+
     try {
       if (liked) {
-        const { error } = await supabase
-          .from("post_likes")
-          .delete()
-          .eq("post_id", id)
-          .eq("user_id", session.user.id);
-
-        if (error) throw error;
+        await socialPostService.unlikePost(id, session.access_token);
         setLiked(false);
         setLikeCount((prev) => prev - 1);
         setPost((post) =>
           post ? { ...post, like_count: post.like_count - 1 } : null
         );
       } else {
-        const { error } = await supabase
-          .from("post_likes")
-          .insert([{ post_id: id, user_id: session.user.id }]);
-
-        if (error) throw error;
+        await socialPostService.likePost(id, session.access_token);
         setLiked(true);
         setLikeCount((prev) => prev + 1);
         setPost((post) =>
           post ? { ...post, like_count: post.like_count + 1 } : null
         );
-        hitNoificationApi("like");
+        sendNotification({
+          type: "like",
+          userId: post?.user?.id,
+          postId: id,
+        });
       }
+
+      // Notify list screen to refresh when navigating back
+      setRefreshRequired(true);
     } catch (error) {
       console.error("Error toggling like:", error);
       Alert.alert("Error", "Failed to update like");
@@ -407,11 +378,17 @@ export default function PostView() {
       if (error) throw error;
 
       setNewComment("");
-      fetchComments();
-      setPost((post) =>
-        post ? { ...post, comment_count: post.comment_count + 1 } : null
-      );
-      hitNoificationApi("comment");
+      if (!isRefreshRequired) {
+        setRefreshRequired(true);
+      }
+      // Refresh post data to get updated comments and counts
+      fetchPost();
+
+      sendNotification({
+        type: "comment",
+        userId: post?.user?.id,
+        postId: id || undefined,
+      });
     } catch (error) {
       console.error("Error submitting comment:", error);
       Alert.alert("Error", "Failed to submit comment");
@@ -420,48 +397,11 @@ export default function PostView() {
     }
   };
 
-  const hitNoificationApi = async (typee: string) => {
-    if (!session?.user.id) return;
-    try {
-      const reuestData = {
-        userId: post?.user?.id,
-        senderId: session?.user?.id,
-        type: typee,
-        data: {
-          post_id: id,
-        },
-      };
-
-      const response = await fetch(
-        `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.user.id}`,
-          },
-          body: JSON.stringify(reuestData),
-        }
-      );
-      console.log("eventData", reuestData);
-
-      if (!response.ok) {
-        console.log("error>", response);
-        throw new Error(await response.text());
-      }
-
-      const data_ = await response.json();
-      // console.log("response>",data_);
-    } catch (e) {
-      console.log("error_catch>", e);
-    }
-  };
-
   return (
     <View
       style={{
         flex: 1,
-        backgroundColor: theme.colors.background,
+        backgroundColor: theme.colors.card,
         paddingBottom: insets.bottom + parseInt(marginBottom_.replace("%", "")),
       }}
     >
@@ -469,6 +409,7 @@ export default function PostView() {
         options={{
           headerShown: true,
           headerTitle: "Post",
+
           headerStyle: {
             backgroundColor: theme.colors.card,
           },
@@ -478,6 +419,7 @@ export default function PostView() {
             fontWeight: "600",
           },
           headerTintColor: theme.colors.text,
+
           headerLeft: () => (
             <TouchableOpacity onPress={() => router.push("/(app)/(social)")}>
               {Platform.OS === "ios" ? (
@@ -491,6 +433,15 @@ export default function PostView() {
                 />
               )}
             </TouchableOpacity>
+          ),
+          headerRight: () => (
+            <PostMenuDropdown
+              postId={post?.id || ""}
+              isOwner={post?.user?.id === session?.user.id}
+              onReport={(postId) =>
+                setFlagOpen({ open: true, id: postId, type: "post" })
+              }
+            />
           ),
           headerShadowVisible: false,
         }}
@@ -537,7 +488,7 @@ export default function PostView() {
             >
               <TouchableOpacity
                 onPress={() => {
-                  router.push(`/(app)/profile/${post.user.id}`);
+                  router.push(`/profile/${post.user.id}`);
                 }}
                 style={{
                   flexDirection: "row",
@@ -581,10 +532,6 @@ export default function PostView() {
                   </Text>
                 </View>
               </TouchableOpacity>
-
-              <TouchableOpacity>
-                <MoreHorizontal size={24} color={theme.colors.text} />
-              </TouchableOpacity>
             </View>
 
             {/* Post Content */}
@@ -606,43 +553,50 @@ export default function PostView() {
               </Text>
             </View>
 
-            {/* Post address */}
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                paddingHorizontal: 16,
-                paddingBottom: 12,
-                backgroundColor: theme.colors.card,
-              }}
-            >
-              {Platform.OS === "ios" ? (
-                <MapPin size={20} color={theme.colors.primary || "#239ED0"} />
-              ) : (
-                <Icon
-                  name="map-marker"
-                  type="material-community"
-                  size={20}
-                  color={theme.colors.primary || "#239ED0"}
-                />
-              )}
+            {post?.location_data?.address &&
+              post?.location_data?.city &&
+              post?.location_data?.state && (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingHorizontal: 16,
+                    paddingBottom: 12,
+                    backgroundColor: theme.colors.card,
+                  }}
+                >
+                  {Platform.OS === "ios" ? (
+                    <MapPin
+                      size={20}
+                      color={theme.colors.primary || "#239ED0"}
+                    />
+                  ) : (
+                    <Icon
+                      name="map-marker"
+                      type="material-community"
+                      size={20}
+                      color={theme.colors.primary || "#239ED0"}
+                    />
+                  )}
 
-              <Text
-                style={{
-                  marginLeft: 8,
-                  fontSize: 14,
-                  color: theme.colors.text + "80",
-                }}
-              >
-                {post?.address}
-              </Text>
-            </View>
+                  <Text
+                    style={{
+                      marginLeft: 8,
+                      fontSize: 14,
+                      color: theme.colors.text + "80",
+                    }}
+                  >
+                    {post?.location_data?.address} {post?.location_data?.city}{" "}
+                    {post?.location_data?.state}
+                  </Text>
+                </View>
+              )}
 
             {/* Event Card */}
             {eventObj != null && (
               <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
                 <SocialEventCard
-                  data={eventObj as any}
+                  data={post?.event as any}
                   onDataSelect={(data) => {
                     setIsShowEvent(true);
                   }}
@@ -732,7 +686,7 @@ export default function PostView() {
                   />
                 )}
                 <Text style={{ marginLeft: 8, color: theme.colors.text }}>
-                  {comments?.length}
+                  {commentCount}
                 </Text>
               </View>
             </View>
@@ -756,14 +710,24 @@ export default function PostView() {
                 Comments
               </Text>
               {comments.map((comment) => (
-                <View
+                <Pressable
                   key={comment.id}
+                  onLongPress={() => {
+                    if (comment.user.id !== session?.user.id) {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      setCommentActionSheet({
+                        visible: true,
+                        commentId: comment.id,
+                      });
+                    }
+                  }}
+                  delayLongPress={400}
                   style={{ flexDirection: "row", marginBottom: 16 }}
                 >
                   <TouchableOpacity
                     onPress={() => {
                       router.push({
-                        pathname: "/(app)/profile/[username]",
+                        pathname: "/profile/[username]",
                         params: { username: comment.user.id },
                       });
                     }}
@@ -786,7 +750,7 @@ export default function PostView() {
                     <TouchableOpacity
                       onPress={() => {
                         router.push({
-                          pathname: "/(app)/profile/[username]",
+                          pathname: "/profile/[username]",
                           params: { username: comment.user.id },
                         });
                       }}
@@ -815,7 +779,7 @@ export default function PostView() {
                       {format(new Date(comment.created_at), "MMM d, yyyy")}
                     </Text>
                   </View>
-                </View>
+                </Pressable>
               ))}
             </View>
           </ScrollView>
@@ -929,6 +893,55 @@ export default function PostView() {
           />
         </KeyboardAvoidingView>
       )}
+      <FlagContentModal
+        visible={flagOpen.open}
+        contentTitle={flagOpen.type === "comment" ? "Comment" : "Post"}
+        variant="sheet"
+        onClose={() => setFlagOpen({ open: false, id: "", type: "post" })}
+        onSubmit={async ({ reason, explanation }) => {
+          console.log("flagOpen>", flagOpen);
+          if (flagOpen.type === "comment") {
+            const response = await createFlag({
+              reason,
+              explanation,
+              post_comment_id: flagOpen.id,
+            });
+
+            if (response) {
+              await fetchPost();
+              setFlagOpen({ open: false, id: "", type: "post" });
+            }
+          } else {
+            const response = await createFlag({
+              reason,
+              explanation,
+              post_id: flagOpen.id,
+            });
+            console.log("response>", response);
+            if (response.ok) {
+              setFlagOpen({ open: false, id: "", type: "post" });
+              router.push({
+                pathname: "/(app)/(social)",
+                params: {
+                  refreshRequired: "true",
+                },
+              });
+            }
+          }
+        }}
+      />
+
+      <CommentActionSheet
+        visible={commentActionSheet.visible}
+        onClose={() => setCommentActionSheet({ visible: false, commentId: "" })}
+        onReport={() => {
+          setFlagOpen({
+            open: true,
+            id: commentActionSheet.commentId,
+            type: "comment",
+          });
+        }}
+      />
     </View>
   );
 }

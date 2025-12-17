@@ -1,12 +1,10 @@
-import React, { useRef, useState, useCallback } from "react";
-import { StyleSheet, Dimensions, View } from "react-native";
 import MapboxGL from "@rnmapbox/maps";
+import React, { useCallback, useRef } from "react";
+import { Dimensions, StyleSheet, View } from "react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 
 // MapboxGL configuration
 MapboxGL.setAccessToken(process.env.MAPBOX_ACCESS_TOKEN || "");
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 interface MapboxContainerProps {
   children: React.ReactNode;
@@ -66,8 +64,8 @@ export function MapboxContainer({
         ref={mapRef}
         style={styles.map}
         styleURL={
-          isDarkMode 
-            ? "mapbox://styles/mapbox/dark-v11" 
+          isDarkMode
+            ? "mapbox://styles/mapbox/dark-v11"
             : "mapbox://styles/mapbox/light-v11"
         }
         onMapIdle={onRegionChange}

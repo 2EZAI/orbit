@@ -1,17 +1,14 @@
+import { Search, X } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
-  View,
-  TouchableOpacity,
   ActivityIndicator,
-  Dimensions,
   TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { supabase } from "~/src/lib/supabase";
-import { useTheme } from "~/src/components/ThemeProvider";
-import { Search, X } from "lucide-react-native";
-
-const { width } = Dimensions.get("window");
 
 interface TopicListProps {
   selectedTopics: string[];

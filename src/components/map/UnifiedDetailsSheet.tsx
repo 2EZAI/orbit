@@ -1,6 +1,17 @@
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { router } from "expo-router";
-import { ArrowLeft, Tag, UserCheck, Users, X } from "lucide-react-native";
+import {
+  ArrowLeft,
+  Bookmark,
+  Flag,
+  Map,
+  Heart,
+  Sparkles,
+  Tag,
+  UserCheck,
+  Users,
+  X,
+} from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   DeviceEventEmitter,
@@ -13,17 +24,26 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 import { useEventJoinStatus } from "~/hooks/useEventJoinStatus";
+import { useFlagging } from "~/hooks/useFlagging";
 import { useJoinEvent } from "~/hooks/useJoinEvent";
+import { MapNavigationStorage } from "~/src/services/mapNavigationStorage";
 import { useLocationEvents } from "~/hooks/useLocationEvents";
 import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
-import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { ConfettiAnimation } from "~/src/components/ui/ConfettiAnimation";
 import { Text } from "~/src/components/ui/text";
 import { haptics } from "~/src/lib/haptics";
+import { useAuth } from "~/src/lib/auth";
+import { eventService } from "~/src/services/eventService";
+import FlagContentModal from "../modals/FlagContentModal";
+import { BookmarkCollectionsSheet } from "./BookmarkCollectionsSheet";
 import { UnifiedDetailsSheetContent } from "./UnifiedDetailsSheetContent";
 import { UnifiedSheetButtons } from "./UnifiedSheetButtons";
+import { isLocationOutsideRadius } from "~/src/lib/distance";
+import { getCurrentMapCenter } from "~/src/lib/mapCenter";
+import { LocationChangeModal } from "./LocationChangeModal";
 
 // Additional types that were in the old hook
 export interface Category {
@@ -69,6 +89,7 @@ interface UnifiedDetailsSheetProps {
   onShowControler: () => void;
   isEvent?: boolean;
   onShare: (data: UnifiedData, isEventType: boolean) => void;
+  from?: string; // Track where user came from (e.g., "home", "profile", "social", "map")
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -110,11 +131,17 @@ export const UnifiedDetailsSheet = React.memo(
     onShowControler,
     isEvent,
     onShare,
+    from,
   }: UnifiedDetailsSheetProps) => {
     const [loading, setLoading] = useState(false);
     const [detailData, setDetailData] = useState<UnifiedData | undefined>(
       undefined
     );
+    const [flagOpen, setFlagOpen] = useState({
+      open: false,
+      eventId: "",
+      locationId: "",
+    });
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
     // Track viewer open state to avoid late momentum callbacks re-opening the modal
@@ -124,6 +151,22 @@ export const UnifiedDetailsSheet = React.memo(
     }, [selectedImage]);
     const [manuallyUpdated, setManuallyUpdated] = useState(false);
     const [showConfetti, setShowConfetti] = useState(false);
+    const [isBookmarked, setIsBookmarked] = useState(false);
+    const [isBookmarkSheetVisible, setIsBookmarkSheetVisible] = useState(false);
+    const [showLocationChangeModal, setShowLocationChangeModal] =
+      useState(false);
+    const [eventLocation, setEventLocation] = useState<{
+      latitude: number;
+      longitude: number;
+      name?: string;
+      address?: string;
+    } | null>(null);
+    const [distance, setDistance] = useState(0);
+    const { createFlag } = useFlagging();
+    const { session } = useAuth();
+
+    // Interest state - fetched from GET /api/events/:id/interest endpoint
+    const [isInterested, setIsInterested] = useState<boolean>(false);
     // Memoize the event type check to prevent repeated calculations
     const isEventType = useMemo(() => {
       const result = isEventData(data, isEvent);
@@ -175,12 +218,11 @@ export const UnifiedDetailsSheet = React.memo(
       }
     }, [isOpen, data?.id]);
 
-    const {
-      UpdateEventStatus,
-      fetchEventDetail,
-      fetchLocationDetail,
-      fetchLocationEvents,
-    } = useUpdateEvents();
+    // Reset bookmark UI when the underlying item changes
+    useEffect(() => {
+      setIsBookmarked(false);
+      setIsBookmarkSheetVisible(false);
+    }, [data?.id]);
 
     // Location events are now handled by the useLocationEvents hook above
 
@@ -210,19 +252,11 @@ export const UnifiedDetailsSheet = React.memo(
     const handleShare = async () => {
       const currentData = detailData || data;
       onShare(currentData, isEventType);
-      // try {
-      //   haptics.selection(); // Light haptic on share action
-      //   await Share.share({
-      //     message: `Check out ${currentData?.name} on Orbit!
-      //     ${currentData?.description}
+    };
 
-      //     https://orbit-redirects.vercel.app/?action=share&eventId=${currentData.id}
-      //     `,
-      //     title: isEventType ? "Activity on Orbit" : "Location on Orbit",
-      //   });
-      // } catch (error) {
-      //   console.error("Error sharing:", error);
-      // }
+    const handleToggleBookmark = () => {
+      haptics.light();
+      setIsBookmarkSheetVisible(true);
     };
 
     const handleTicketPurchase = () => {
@@ -332,6 +366,53 @@ export const UnifiedDetailsSheet = React.memo(
       });
     };
 
+    const handleDelete = () => {
+      // Close the sheet - UnifiedSheetButtons will handle deletion and navigation
+      onClose();
+    };
+
+    // Handle interest toggle (API integrated)
+    const handleToggleInterest = async () => {
+      if (!isEventType || !session?.access_token) return;
+
+      const newInterestedState = !isInterested;
+      const previousInterestedState = isInterested;
+
+      // Optimistic update
+      setIsInterested(newInterestedState);
+
+      try {
+        if (newInterestedState) {
+          // Set interest
+          const response = await eventService.setInterest(
+            data.id,
+            session.access_token
+          );
+          // Update with actual response data
+          if (response.data?.status === "interested") {
+            setIsInterested(true);
+          }
+        } else {
+          // Remove interest
+          await eventService.removeInterest(data.id, session.access_token);
+          setIsInterested(false);
+        }
+      } catch (error) {
+        // Revert on error
+        setIsInterested(previousInterestedState);
+        console.error("Error toggling interest:", error);
+        Toast.show({
+          type: "error",
+          text1: "Failed to update interest",
+          text2: "Please try again",
+          position: "top",
+        });
+      }
+
+      // Light haptic feedback
+      haptics.light();
+    };
+
     // COMMENTED OUT: Old detail API calls - now using unified API data directly
     /*
   const hitDetailApi = async () => {
@@ -368,6 +449,11 @@ export const UnifiedDetailsSheet = React.memo(
     // Use data directly like web app (backend should return complete data)
     const hitDetailApi = async () => {
       setDetailData(data as UnifiedData);
+
+      // Interest status will be fetched via GET /api/events/:id/interest endpoint
+      // Don't initialize from data - fetch it separately
+      setIsInterested(false);
+
       setLoading(false);
     };
 
@@ -513,6 +599,32 @@ export const UnifiedDetailsSheet = React.memo(
       // Reset manual update flag when opening with new data
       setManuallyUpdated(false);
 
+      // Fetch interest status using GET /api/events/:id/interest endpoint
+      const fetchInterestStatus = async () => {
+        if (!isEventType || !session?.access_token) {
+          // Not an event or no session - set default state
+          setIsInterested(false);
+          return;
+        }
+
+        try {
+          const response = await eventService.getInterestStatus(
+            data.id,
+            session.access_token
+          );
+          // Check if user is interested (data.status === "interested")
+          const isInterested = response.data?.status === "interested";
+          setIsInterested(isInterested);
+        } catch (error) {
+          console.error("Error fetching interest status:", error);
+          // Default to not interested on error
+          setIsInterested(false);
+        }
+      };
+
+      // Fetch interest status
+      fetchInterestStatus();
+
       // Fetch full details if needed
       hitDetailApi();
 
@@ -521,7 +633,7 @@ export const UnifiedDetailsSheet = React.memo(
       return () => {
         onShowControler();
       };
-    }, [data?.id, isOpen]); // Only depend on data ID
+    }, [data?.id, isOpen, isEventType, session?.access_token]); // Only depend on data ID
 
     useEffect(() => {
       const eventName = isEventType
@@ -584,394 +696,795 @@ export const UnifiedDetailsSheet = React.memo(
 
     // Use database creator check (isCreator from hook) - already defined above
 
-    return (
-      <Modal
-        visible={isOpen}
-        transparent={true}
-        animationType="none"
-        onRequestClose={onClose}
-        statusBarTranslucent={true}
-        presentationStyle="overFullScreen"
-      >
-        <View style={{ flex: 1 }}>
-          {/* Confetti Animation */}
-          <ConfettiAnimation
-            isActive={showConfetti}
-            onComplete={() => setShowConfetti(false)}
-          />
-          {/* Full Screen Backdrop */}
-          <View
-            className="absolute top-0 right-0 bottom-0 left-0"
-            style={{
-              backgroundColor: isDarkMode
-                ? "rgba(0,0,0,0.7)"
-                : "rgba(0,0,0,0.5)",
-              zIndex: 99998,
-              elevation: 99998, // For Android
-              position: "absolute",
-              width: "100%",
-              height: "100%",
-            }}
-          />
+    const primaryImage = currentData?.image_urls?.[0];
 
-          <BottomSheet
-            snapPoints={["75%", "95%"]}
-            handleIndicatorStyle={{
-              backgroundColor: theme.colors.border,
-              width: 40,
-            }}
-            backgroundStyle={{
-              backgroundColor: theme.colors.card,
-              borderRadius: 20,
-            }}
-            enablePanDownToClose
-            onClose={onClose}
-            style={{ zIndex: 99999, elevation: 99999 }}
-            containerStyle={{ zIndex: 99999, elevation: 99999 }}
-          >
-            <BottomSheetScrollView
-              contentContainerStyle={{ paddingBottom: 160 + insets.bottom }}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
+    const handleConfirm = async () => {
+      console.log("🗺️ [UnifiedDetailsSheet] handleConfirm called");
+      try {
+        const mapCenter = getCurrentMapCenter();
+        const currentCenter = {
+          latitude: parseFloat(`${mapCenter?.latitude || "0"}`) || 0,
+          longitude: parseFloat(`${mapCenter?.longitude || "0"}`) || 0,
+        };
+
+        console.log("🗺️ [UnifiedDetailsSheet] Current center:", currentCenter);
+        console.log(
+          "🗺️ [UnifiedDetailsSheet] Current data location:",
+          currentData.location
+        );
+        console.log(
+          "🗺️ [UnifiedDetailsSheet] Current data coordinates:",
+          (currentData as any).coordinates
+        );
+        console.log(
+          "🗺️ [UnifiedDetailsSheet] Full currentData:",
+          JSON.stringify(currentData, null, 2)
+        );
+
+        // Extract coordinates - check multiple sources
+        let coords = getLocationCoordinates(currentData.location);
+
+        // If location is a string, check coordinates directly on data
+        if (!coords && (currentData as any).coordinates) {
+          console.log(
+            "🗺️ [UnifiedDetailsSheet] Checking coordinates property directly"
+          );
+          coords = getLocationCoordinates((currentData as any).coordinates);
+        }
+
+        // If still not found, check nearbyData for original data
+        if (!coords) {
+          console.log(
+            "🗺️ [UnifiedDetailsSheet] Checking nearbyData for original data"
+          );
+          const originalData = nearbyData.find(
+            (item) => item.id === currentData.id
+          );
+          if (originalData) {
+            console.log(
+              "🗺️ [UnifiedDetailsSheet] Found original data in nearbyData"
+            );
+            coords = getLocationCoordinates(originalData.location);
+            if (!coords && (originalData as any).coordinates) {
+              coords = getLocationCoordinates(
+                (originalData as any).coordinates
+              );
+            }
+          }
+        }
+
+        // If still not found, check original data prop
+        if (!coords) {
+          console.log("🗺️ [UnifiedDetailsSheet] Checking original data prop");
+          coords = getLocationCoordinates(data.location);
+          if (!coords && (data as any).coordinates) {
+            coords = getLocationCoordinates((data as any).coordinates);
+          }
+        }
+
+        console.log(
+          "🗺️ [UnifiedDetailsSheet] Final extracted coordinates:",
+          coords
+        );
+
+        if (!coords) {
+          console.error(
+            "❌ [UnifiedDetailsSheet] No coordinates found in any source"
+          );
+          Toast.show({
+            type: "error",
+            text1: "Invalid location data",
+            text2: "Cannot navigate to map",
+          });
+          return;
+        }
+
+        const eventLocationData = {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          name: currentData.name,
+          address: currentData.address || "",
+        };
+
+        // Check if event is outside the loaded data radius (100km)
+        const { isOutside, distance: dist } = isLocationOutsideRadius(
+          eventLocationData,
+          currentCenter,
+          100 // 100km radius
+        );
+
+        console.log("🗺️ [UnifiedDetailsSheet] Location check:", {
+          isOutside,
+          distance: dist,
+        });
+
+        if (
+          isOutside &&
+          currentCenter.latitude !== 0 &&
+          currentCenter.longitude !== 0
+        ) {
+          console.log("🗺️ [UnifiedDetailsSheet] Showing location change modal");
+          setEventLocation(eventLocationData);
+          setDistance(dist);
+          setShowLocationChangeModal(true);
+        } else {
+          console.log("🗺️ [UnifiedDetailsSheet] Navigating directly to map");
+          await navigateToMap(coords.latitude, coords.longitude);
+        }
+      } catch (error) {
+        console.error(
+          "❌ [UnifiedDetailsSheet] Error in handleConfirm:",
+          error
+        );
+        Toast.show({
+          type: "error",
+          text1: "Navigation error",
+          text2: "Could not navigate to map",
+        });
+      }
+    };
+
+    const navigateToMap = async (lat: number, lng: number) => {
+      console.log("🗺️ [UnifiedDetailsSheet] navigateToMap called with:", {
+        lat,
+        lng,
+        eventId: data.id,
+      });
+      try {
+        // Store event/location data for immediate card display
+        await MapNavigationStorage.store({
+          eventId: data.id as string,
+          lat: lat,
+          lng: lng,
+          data: currentData,
+          timestamp: Date.now(),
+        });
+        console.log(
+          "✅ [UnifiedDetailsSheet] Stored navigation data:",
+          data.id
+        );
+
+        onClose();
+
+        console.log("🗺️ [UnifiedDetailsSheet] Navigating to map...");
+        // Simple navigation - storage handles the rest
+        router.push({
+          pathname: "/(app)/(map)",
+        });
+        console.log("✅ [UnifiedDetailsSheet] Navigation complete");
+      } catch (error) {
+        console.error(
+          "❌ [UnifiedDetailsSheet] Error in navigateToMap:",
+          error
+        );
+        throw error;
+      }
+    };
+
+    const handleLocationChangeConfirm = async () => {
+      setShowLocationChangeModal(false);
+
+      const coords = getLocationCoordinates((detailData || data).location);
+      if (!coords) return;
+
+      // Store event/location data
+      await MapNavigationStorage.store({
+        eventId: data.id as string,
+        lat: coords.latitude,
+        lng: coords.longitude,
+        data: currentData,
+        timestamp: Date.now(),
+      });
+
+      onClose();
+
+      router.push({
+        pathname: "/(app)/(map)",
+        params: {
+          changeLocation: "true",
+        },
+      });
+    };
+
+    // Helper function to extract coordinates from location object
+    const getLocationCoordinates = (
+      location: any
+    ): { latitude: number; longitude: number } | null => {
+      if (!location) return null;
+
+      // Skip if location is a string (address)
+      if (typeof location === "string") {
+        return null;
+      }
+
+      // Handle GeoJSON format
+      if (
+        location.type === "Point" &&
+        location.coordinates &&
+        Array.isArray(location.coordinates)
+      ) {
+        const [longitude, latitude] = location.coordinates;
+        if (typeof latitude === "number" && typeof longitude === "number") {
+          return { latitude, longitude };
+        }
+      }
+
+      // Handle object with latitude/longitude properties
+      if (
+        typeof location === "object" &&
+        (typeof location.latitude === "number" ||
+          typeof location.latitude === "string") &&
+        (typeof location.longitude === "number" ||
+          typeof location.longitude === "string")
+      ) {
+        const lat = parseFloat(String(location.latitude));
+        const lng = parseFloat(String(location.longitude));
+        if (!isNaN(lat) && !isNaN(lng)) {
+          return { latitude: lat, longitude: lng };
+        }
+      }
+
+      // Handle array format [longitude, latitude]
+      if (Array.isArray(location) && location.length >= 2) {
+        const [longitude, latitude] = location;
+        if (typeof latitude === "number" && typeof longitude === "number") {
+          return { latitude, longitude };
+        }
+      }
+
+      return null;
+    };
+
+    return (
+      <>
+        <Modal
+          visible={isOpen}
+          transparent={true}
+          animationType="none"
+          onRequestClose={onClose}
+          statusBarTranslucent={true}
+          presentationStyle="overFullScreen"
+        >
+          <View style={{ flex: 1 }}>
+            {/* Confetti Animation */}
+            <ConfettiAnimation
+              isActive={showConfetti}
+              onComplete={() => setShowConfetti(false)}
+            />
+            {/* Full Screen Backdrop */}
+            <View
+              className="absolute top-0 right-0 bottom-0 left-0"
+              style={{
+                backgroundColor: isDarkMode
+                  ? "rgba(0,0,0,0.7)"
+                  : "rgba(0,0,0,0.5)",
+                zIndex: 99998,
+                elevation: 99998, // For Android
+                position: "absolute",
+                width: "100%",
+                height: "100%",
+              }}
+            />
+            <BottomSheet
+              snapPoints={["75%", "95%"]}
+              handleIndicatorStyle={{
+                backgroundColor: theme.colors.border,
+                width: 40,
+              }}
+              backgroundStyle={{
+                backgroundColor: theme.colors.card,
+                borderRadius: 20,
+              }}
+              enablePanDownToClose
+              onClose={onClose}
+              style={{ zIndex: 99999, elevation: 99999 }}
+              containerStyle={{ zIndex: 99999, elevation: 99999 }}
             >
-              {/* Hero Image Section */}
-              <View className="relative">
-                <ScrollView
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  nestedScrollEnabled={true}
-                  style={{ height: SCREEN_HEIGHT * 0.35 }}
-                >
-                  {(currentData?.image_urls || []).map((imageUrl, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      onPress={() => {
-                        // Open viewer at tapped image index
-                        isViewerOpenRef.current = true;
-                        setSelectedImage(imageUrl);
-                        setSelectedImageIndex(index);
-                      }}
-                      style={{
-                        width: SCREEN_WIDTH,
-                        height: SCREEN_HEIGHT * 0.35,
-                      }}
-                    >
-                      <Image
-                        source={{ uri: imageUrl }}
+              <BottomSheetScrollView
+                contentContainerStyle={{ paddingBottom: 160 + insets.bottom }}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {/* Hero Image Section */}
+                <View className="relative">
+                  <ScrollView
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    nestedScrollEnabled={true}
+                    style={{ height: SCREEN_HEIGHT * 0.35 }}
+                  >
+                    {(currentData?.image_urls || []).map((imageUrl, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        onPress={() => {
+                          // Open viewer at tapped image index
+                          isViewerOpenRef.current = true;
+                          setSelectedImage(imageUrl);
+                          setSelectedImageIndex(index);
+                        }}
                         style={{
                           width: SCREEN_WIDTH,
                           height: SCREEN_HEIGHT * 0.35,
                         }}
-                        resizeMode="cover"
-                      />
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                      >
+                        <Image
+                          source={{ uri: imageUrl }}
+                          style={{
+                            width: SCREEN_WIDTH,
+                            height: SCREEN_HEIGHT * 0.35,
+                          }}
+                          resizeMode="cover"
+                        />
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
 
-                {/* Top Bar Overlay */}
-                <View className="absolute top-0 right-0 left-0 flex-row justify-between items-center p-4 pt-12">
-                  <TouchableOpacity
-                    onPress={onClose}
-                    className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
-                  >
-                    <ArrowLeft size={20} color="#000" />
-                  </TouchableOpacity>
+                  {/* Top Bar Overlay */}
+                  <View className="absolute top-0 right-0 left-0 flex-row justify-between items-center p-4 pt-12">
+                    <TouchableOpacity
+                      onPress={onClose}
+                      className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
+                    >
+                      <ArrowLeft size={20} color="#000" />
+                    </TouchableOpacity>
+                    <View className="flex-row items-center gap-2">
+                      <TouchableOpacity
+                        onPress={() => {
+                          setFlagOpen({
+                            open: true,
+                            eventId: isEventType ? currentData.id : "",
+                            locationId: isEventType ? "" : currentData.id,
+                          });
+                        }}
+                        className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
+                      >
+                        <Flag size={20} color={theme.colors.black} />
+                      </TouchableOpacity>
+                      {(currentData as any)?.source !== "ticketmaster" ? (
+                        <>
+                          <TouchableOpacity
+                            onPress={handleConfirm}
+                            className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
+                          >
+                            <Map size={20} color={theme.colors.primary} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={handleToggleBookmark}
+                            className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
+                          >
+                            <Bookmark
+                              size={20}
+                              color={theme.colors.warning}
+                              fill={
+                                isBookmarked
+                                  ? theme.colors.warning
+                                  : "transparent"
+                              }
+                            />
+                          </TouchableOpacity>
+                        </>
+                      ) : null}
+                    </View>
+                  </View>
+
+                  {/* Floating Stats - Show attendee count prominently for events */}
+                  {isEventType && attendeeCount > 0 && (
+                    <View className="absolute right-4 bottom-4">
+                      <View className="flex-row items-center px-3 py-2 bg-purple-600 rounded-full">
+                        <Users size={16} color="white" />
+                        <Text className="ml-1 font-bold text-white">
+                          {attendeeCount}
+                        </Text>
+                        <Text className="ml-1 text-xs text-white/90">
+                          going
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Joined Status Indicator */}
+                  {isEventType && isJoined && (
+                    <View className="absolute bottom-4 left-4">
+                      <View className="flex-row items-center px-3 py-2 bg-green-600 rounded-full">
+                        <UserCheck size={16} color="white" />
+                        <Text className="ml-1 text-xs font-bold text-white">
+                          You're Going
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Image Indicators */}
+                  {(currentData?.image_urls || []).length > 1 && (
+                    <View className="absolute right-0 left-0 bottom-4 flex-row justify-center">
+                      <View className="flex-row bg-black/30 px-3 py-1.5 rounded-full">
+                        {(currentData?.image_urls || []).map((_, index) => (
+                          <View
+                            key={index}
+                            className="w-2 h-2 rounded-full bg-white/70 mx-0.5"
+                          />
+                        ))}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Category Badge - Only show for valid categories */}
+                  {categoryName && categoryName !== "Place" && (
+                    <View className="absolute bottom-4 left-4">
+                      <View
+                        className="flex-row items-center px-4 py-2 rounded-full"
+                        style={{
+                          backgroundColor: isDarkMode
+                            ? "rgba(255,255,255,0.95)"
+                            : "rgba(255,255,255,0.95)",
+                        }}
+                      >
+                        <Tag size={14} color="#8B5CF6" />
+                        <Text
+                          className="ml-1 text-sm font-semibold"
+                          style={{ color: isDarkMode ? "#1F2937" : "#1F2937" }}
+                        >
+                          {categoryName}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
 
-                {/* Floating Stats - Show attendee count prominently for events */}
-                {isEventType && attendeeCount > 0 && (
-                  <View className="absolute right-4 bottom-4">
-                    <View className="flex-row items-center px-3 py-2 bg-purple-600 rounded-full">
-                      <Users size={16} color="white" />
-                      <Text className="ml-1 font-bold text-white">
-                        {attendeeCount}
-                      </Text>
-                      <Text className="ml-1 text-xs text-white/90">going</Text>
-                    </View>
-                  </View>
-                )}
+                {/* Content Section */}
+                <View className="px-6 pt-6">
+                  {/* Title */}
+                  <View className="mb-6">
+                    <Text
+                      className="mb-4 text-3xl font-bold"
+                      style={{ color: theme.colors.text }}
+                    >
+                      {currentData?.name}
+                    </Text>
 
-                {/* Joined Status Indicator */}
-                {isEventType && isJoined && (
-                  <View className="absolute bottom-4 left-4">
-                    <View className="flex-row items-center px-3 py-2 bg-green-600 rounded-full">
-                      <UserCheck size={16} color="white" />
-                      <Text className="ml-1 text-xs font-bold text-white">
-                        You're Going
-                      </Text>
-                    </View>
+                    {/* Interested Section - Only for Events */}
+                    {isEventType && (
+                      <View className="mb-4">
+                        <TouchableOpacity
+                          onPress={handleToggleInterest}
+                          activeOpacity={0.8}
+                          className="flex-row items-center justify-center px-6 py-3.5 rounded-2xl"
+                          style={{
+                            backgroundColor: isInterested
+                              ? isDarkMode
+                                ? "rgba(139, 92, 246, 0.2)"
+                                : "rgba(139, 92, 246, 0.15)"
+                              : isDarkMode
+                              ? "rgba(255, 255, 255, 0.1)"
+                              : "rgba(0, 0, 0, 0.05)",
+                            borderWidth: 2,
+                            borderColor: isInterested
+                              ? "#8B5CF6"
+                              : theme.colors.border,
+                            shadowColor: isInterested
+                              ? "#8B5CF6"
+                              : "transparent",
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: isInterested ? 0.3 : 0,
+                            shadowRadius: 8,
+                            elevation: isInterested ? 4 : 0,
+                          }}
+                        >
+                          {isInterested ? (
+                            <>
+                              <Sparkles
+                                size={22}
+                                color="#8B5CF6"
+                                fill="#8B5CF6"
+                                strokeWidth={2}
+                              />
+                              <Text
+                                className="ml-3 text-base font-bold"
+                                style={{
+                                  color: "#8B5CF6",
+                                }}
+                              >
+                                Interested
+                              </Text>
+                            </>
+                          ) : (
+                            <>
+                              <Heart
+                                size={22}
+                                color={theme.colors.text}
+                                fill="none"
+                                strokeWidth={2.5}
+                              />
+                              <Text
+                                className="ml-3 text-base font-semibold"
+                                style={{
+                                  color: theme.colors.text,
+                                }}
+                              >
+                                Mark as Interested
+                              </Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </View>
-                )}
 
-                {/* Image Indicators */}
+                  {/* Conditional Content Based on Type */}
+                  <UnifiedDetailsSheetContent
+                    data={currentData}
+                    isEventType={isEventType}
+                    isTicketmasterEvent={isTicketmasterEvent}
+                    isUserEvent={isUserEvent}
+                    isGoogleApiEvent={isGoogleApiEvent}
+                    isCreator={isCreator}
+                    isJoined={isJoined}
+                    hasTickets={hasTickets}
+                    attendeeCount={attendeeCount}
+                    attendeeProfiles={attendeeProfiles}
+                    locationEvents={locationEvents}
+                    loadingLocationEvents={loadingLocationEvents}
+                    nearbyData={nearbyData}
+                    onDataSelect={onDataSelect}
+                    onShowControler={onShowControler}
+                  />
+
+                  {/* Photo Gallery */}
+                  {currentData?.image_urls &&
+                    currentData.image_urls.length > 1 && (
+                      <View className="mb-6">
+                        <Text
+                          className="mb-3 text-lg font-bold"
+                          style={{ color: theme.colors.text }}
+                        >
+                          {isEventType ? "Activity Photos" : "Location Photos"}
+                        </Text>
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          nestedScrollEnabled={true}
+                        >
+                          <View className="flex-row gap-3">
+                            {currentData.image_urls
+                              .slice(1)
+                              .map((url: string, index: number) => (
+                                <TouchableOpacity
+                                  key={index}
+                                  onPress={() => {
+                                    setSelectedImage(url);
+                                    setSelectedImageIndex(index + 1);
+                                  }}
+                                  className="overflow-hidden w-32 h-32 rounded-xl"
+                                >
+                                  <Image
+                                    source={{ uri: url }}
+                                    className="w-full h-full"
+                                    resizeMode="cover"
+                                  />
+                                </TouchableOpacity>
+                              ))}
+                          </View>
+                        </ScrollView>
+                      </View>
+                    )}
+
+                  {/* Divider */}
+                  {similarItems.length > 0 && (
+                    <View
+                      className="mb-6 h-px"
+                      style={{ backgroundColor: theme.colors.border }}
+                    />
+                  )}
+                </View>
+              </BottomSheetScrollView>
+
+              {/* Fixed Bottom Actions */}
+              <UnifiedSheetButtons
+                data={currentData}
+                isEventType={isEventType}
+                loading={loading}
+                isJoined={isJoined}
+                hasTickets={hasTickets}
+                isCreator={isCreator}
+                onTicketPurchase={handleTicketPurchase}
+                onJoinEvent={handleJoinEvent}
+                onLeaveEvent={handleLeaveEvent}
+                onCreateOrbit={handleCreateOrbit}
+                onCreateEvent={handleCreateEvent}
+                onEdit={handleEdit}
+                onShare={handleShare}
+                onDelete={handleDelete}
+                from={from}
+              />
+            </BottomSheet>
+            {/* Enhanced Image Viewer Modal with Swiping */}
+            <Modal
+              visible={!!selectedImage}
+              transparent={true}
+              animationType="fade"
+              onRequestClose={() => {
+                // Close viewer and guard against late momentum events
+                isViewerOpenRef.current = false;
+                setSelectedImage(null);
+              }}
+              statusBarTranslucent={true}
+              presentationStyle="overFullScreen"
+            >
+              <View
+                className="flex-1"
+                {...panResponder.panHandlers}
+                style={{
+                  backgroundColor: isDarkMode
+                    ? "rgba(0,0,0,0.95)"
+                    : "rgba(0,0,0,0.95)",
+                  zIndex: 10000,
+                  elevation: 1000, // For Android
+                }}
+              >
+                {/* Top Controls */}
+                <View className="absolute top-0 right-0 left-0 z-10 flex-row justify-between items-center p-4 pt-12">
+                  <TouchableOpacity
+                    className="justify-center items-center w-10 h-10 rounded-full bg-white/20"
+                    onPress={() => {
+                      console.log("Closing image viewer");
+                      isViewerOpenRef.current = false;
+                      setSelectedImage(null);
+                    }}
+                  >
+                    <X size={24} color="white" />
+                  </TouchableOpacity>
+
+                  <View className="px-3 py-1 rounded-full bg-black/50">
+                    <Text className="text-sm text-white">
+                      {selectedImageIndex + 1} of{" "}
+                      {currentData?.image_urls?.length || 0}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Swipeable Image Gallery */}
+                <ScrollView
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  onMomentumScrollEnd={(event) => {
+                    // If viewer was just closed, ignore late momentum events
+                    if (!isViewerOpenRef.current) return;
+                    const newIndex = Math.round(
+                      event.nativeEvent.contentOffset.x / SCREEN_WIDTH
+                    );
+                    setSelectedImageIndex(newIndex);
+                  }}
+                  contentOffset={{
+                    x: Math.max(0, selectedImageIndex) * SCREEN_WIDTH,
+                    y: 0,
+                  }}
+                  style={{ flex: 1 }}
+                >
+                  {(currentData?.image_urls || []).map(
+                    (url: string, index: number) => (
+                      <View
+                        key={index}
+                        style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
+                        className="justify-center items-center"
+                      >
+                        <Image
+                          source={{ uri: url }}
+                          style={{
+                            width: SCREEN_WIDTH - 40,
+                            height: SCREEN_HEIGHT - 200,
+                          }}
+                          resizeMode="contain"
+                        />
+                      </View>
+                    )
+                  )}
+                </ScrollView>
+
+                {/* Bottom Navigation Dots */}
                 {(currentData?.image_urls || []).length > 1 && (
-                  <View className="absolute right-0 left-0 bottom-4 flex-row justify-center">
-                    <View className="flex-row bg-black/30 px-3 py-1.5 rounded-full">
+                  <View className="absolute right-0 left-0 bottom-20 flex-row justify-center">
+                    <View className="flex-row px-4 py-2 rounded-full bg-black/50">
                       {(currentData?.image_urls || []).map((_, index) => (
-                        <View
+                        <TouchableOpacity
                           key={index}
-                          className="w-2 h-2 rounded-full bg-white/70 mx-0.5"
+                          onPress={() => {
+                            // Jump to tapped dot and ensure viewer remains open
+                            isViewerOpenRef.current = true;
+                            setSelectedImageIndex(index);
+                            if (currentData?.image_urls?.[index]) {
+                              setSelectedImage(currentData.image_urls[index]);
+                            }
+                          }}
+                          className={`w-2 h-2 rounded-full mx-1 ${
+                            index === selectedImageIndex
+                              ? "bg-white"
+                              : "bg-white/50"
+                          }`}
                         />
                       ))}
                     </View>
                   </View>
                 )}
 
-                {/* Category Badge - Only show for valid categories */}
-                {categoryName && categoryName !== "Place" && (
-                  <View className="absolute bottom-4 left-4">
-                    <View
-                      className="flex-row items-center px-4 py-2 rounded-full"
-                      style={{
-                        backgroundColor: isDarkMode
-                          ? "rgba(255,255,255,0.95)"
-                          : "rgba(255,255,255,0.95)",
-                      }}
-                    >
-                      <Tag size={14} color="#8B5CF6" />
-                      <Text
-                        className="ml-1 text-sm font-semibold"
-                        style={{ color: isDarkMode ? "#1F2937" : "#1F2937" }}
-                      >
-                        {categoryName}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-              </View>
-
-              {/* Content Section */}
-              <View className="px-6 pt-6">
-                {/* Title */}
-                <Text
-                  className="mb-6 text-3xl font-bold"
-                  style={{ color: theme.colors.text }}
-                >
-                  {currentData?.name}
-                </Text>
-
-                {/* Conditional Content Based on Type */}
-                <UnifiedDetailsSheetContent
-                  data={currentData}
-                  isEventType={isEventType}
-                  isTicketmasterEvent={isTicketmasterEvent}
-                  isUserEvent={isUserEvent}
-                  isGoogleApiEvent={isGoogleApiEvent}
-                  isCreator={isCreator}
-                  isJoined={isJoined}
-                  hasTickets={hasTickets}
-                  attendeeCount={attendeeCount}
-                  attendeeProfiles={attendeeProfiles}
-                  locationEvents={locationEvents}
-                  loadingLocationEvents={loadingLocationEvents}
-                  nearbyData={nearbyData}
-                  onDataSelect={onDataSelect}
-                  onShowControler={onShowControler}
-                />
-
-                {/* Photo Gallery */}
-                {currentData?.image_urls &&
-                  currentData.image_urls.length > 1 && (
-                    <View className="mb-6">
-                      <Text
-                        className="mb-3 text-lg font-bold"
-                        style={{ color: theme.colors.text }}
-                      >
-                        {isEventType ? "Activity Photos" : "Location Photos"}
-                      </Text>
-                      <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        nestedScrollEnabled={true}
-                      >
-                        <View className="flex-row gap-3">
-                          {currentData.image_urls
-                            .slice(1)
-                            .map((url: string, index: number) => (
-                              <TouchableOpacity
-                                key={index}
-                                onPress={() => {
-                                  setSelectedImage(url);
-                                  setSelectedImageIndex(index + 1);
-                                }}
-                                className="overflow-hidden w-32 h-32 rounded-xl"
-                              >
-                                <Image
-                                  source={{ uri: url }}
-                                  className="w-full h-full"
-                                  resizeMode="cover"
-                                />
-                              </TouchableOpacity>
-                            ))}
-                        </View>
-                      </ScrollView>
-                    </View>
-                  )}
-
-                {/* Divider */}
-                {similarItems.length > 0 && (
-                  <View
-                    className="mb-6 h-px"
-                    style={{ backgroundColor: theme.colors.border }}
-                  />
-                )}
-              </View>
-            </BottomSheetScrollView>
-
-            {/* Fixed Bottom Actions */}
-            <UnifiedSheetButtons
-              data={currentData}
-              isEventType={isEventType}
-              loading={loading}
-              isJoined={isJoined}
-              hasTickets={hasTickets}
-              isCreator={isCreator}
-              onTicketPurchase={handleTicketPurchase}
-              onJoinEvent={handleJoinEvent}
-              onLeaveEvent={handleLeaveEvent}
-              onCreateOrbit={handleCreateOrbit}
-              onCreateEvent={handleCreateEvent}
-              onEdit={handleEdit}
-              onShare={handleShare}
-            />
-          </BottomSheet>
-
-          {/* Enhanced Image Viewer Modal with Swiping */}
-
-          <Modal
-            visible={!!selectedImage}
-            transparent={true}
-            animationType="fade"
-            onRequestClose={() => {
-              // Close viewer and guard against late momentum events
-              isViewerOpenRef.current = false;
-              setSelectedImage(null);
-            }}
-            statusBarTranslucent={true}
-            presentationStyle="overFullScreen"
-          >
-            <View
-              className="flex-1"
-              {...panResponder.panHandlers}
-              style={{
-                backgroundColor: isDarkMode
-                  ? "rgba(0,0,0,0.95)"
-                  : "rgba(0,0,0,0.95)",
-                zIndex: 10000,
-                elevation: 1000, // For Android
-              }}
-            >
-              {/* Top Controls */}
-              <View className="absolute top-0 right-0 left-0 z-10 flex-row justify-between items-center p-4 pt-12">
-                <TouchableOpacity
-                  className="justify-center items-center w-10 h-10 rounded-full bg-white/20"
-                  onPress={() => {
-                    console.log("Closing image viewer");
-                    isViewerOpenRef.current = false;
-                    setSelectedImage(null);
-                  }}
-                >
-                  <X size={24} color="white" />
-                </TouchableOpacity>
-
-                <View className="px-3 py-1 rounded-full bg-black/50">
-                  <Text className="text-sm text-white">
-                    {selectedImageIndex + 1} of{" "}
-                    {currentData?.image_urls?.length || 0}
+                {/* Swipe indicator hint */}
+                <View className="absolute right-0 left-0 bottom-4 items-center">
+                  <Text className="text-xs text-white/60">
+                    Swipe up or down to close
                   </Text>
                 </View>
               </View>
-
-              {/* Swipeable Image Gallery */}
-              <ScrollView
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={(event) => {
-                  // If viewer was just closed, ignore late momentum events
-                  if (!isViewerOpenRef.current) return;
-                  const newIndex = Math.round(
-                    event.nativeEvent.contentOffset.x / SCREEN_WIDTH
-                  );
-                  setSelectedImageIndex(newIndex);
-                }}
-                contentOffset={{
-                  x: Math.max(0, selectedImageIndex) * SCREEN_WIDTH,
-                  y: 0,
-                }}
-                style={{ flex: 1 }}
-              >
-                {(currentData?.image_urls || []).map(
-                  (url: string, index: number) => (
-                    <View
-                      key={index}
-                      style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
-                      className="justify-center items-center"
-                    >
-                      <Image
-                        source={{ uri: url }}
-                        style={{
-                          width: SCREEN_WIDTH - 40,
-                          height: SCREEN_HEIGHT - 200,
-                        }}
-                        resizeMode="contain"
-                      />
-                    </View>
-                  )
-                )}
-              </ScrollView>
-
-              {/* Bottom Navigation Dots */}
-              {(currentData?.image_urls || []).length > 1 && (
-                <View className="absolute right-0 left-0 bottom-20 flex-row justify-center">
-                  <View className="flex-row px-4 py-2 rounded-full bg-black/50">
-                    {(currentData?.image_urls || []).map((_, index) => (
-                      <TouchableOpacity
-                        key={index}
-                        onPress={() => {
-                          // Jump to tapped dot and ensure viewer remains open
-                          isViewerOpenRef.current = true;
-                          setSelectedImageIndex(index);
-                          if (currentData?.image_urls?.[index]) {
-                            setSelectedImage(currentData.image_urls[index]);
-                          }
-                        }}
-                        className={`w-2 h-2 rounded-full mx-1 ${
-                          index === selectedImageIndex
-                            ? "bg-white"
-                            : "bg-white/50"
-                        }`}
-                      />
-                    ))}
-                  </View>
-                </View>
-              )}
-
-              {/* Swipe indicator hint */}
-              <View className="absolute right-0 left-0 bottom-4 items-center">
-                <Text className="text-xs text-white/60">
-                  Swipe up or down to close
-                </Text>
-              </View>
-            </View>
-          </Modal>
-
-          {/* Location Event Details Sheet */}
-          {selectedLocationEvent && (
-            <UnifiedDetailsSheet
-              data={selectedLocationEvent}
-              isOpen={!!selectedLocationEvent}
-              onClose={() => setSelectedLocationEvent(null)}
-              nearbyData={nearbyData}
-              onDataSelect={onDataSelect}
-              onShowControler={onShowControler}
-              isEvent={true}
-              onShare={onShare} // Always treat location events as events
+            </Modal>
+            {detailData && (
+              <BookmarkCollectionsSheet
+                visible={isBookmarkSheetVisible}
+                onClose={() => setIsBookmarkSheetVisible(false)}
+                isBookmarked={isBookmarked}
+                primaryImage={primaryImage}
+                eventData={detailData}
+              />
+            )}
+            {/* Location Event Details Sheet */}
+            {selectedLocationEvent && (
+              <UnifiedDetailsSheet
+                data={selectedLocationEvent}
+                isOpen={!!selectedLocationEvent}
+                onClose={() => setSelectedLocationEvent(null)}
+                nearbyData={nearbyData}
+                onDataSelect={onDataSelect}
+                onShowControler={onShowControler}
+                isEvent={true}
+                onShare={onShare} // Always treat location events as events
+              />
+            )}
+          </View>
+          {eventLocation && (
+            <LocationChangeModal
+              isOpen={showLocationChangeModal}
+              onClose={() => setShowLocationChangeModal(false)}
+              onConfirm={handleLocationChangeConfirm}
+              eventLocation={eventLocation}
+              currentCenter={{
+                latitude:
+                  parseFloat(`${getCurrentMapCenter()?.latitude || "0"}`) || 0,
+                longitude:
+                  parseFloat(`${getCurrentMapCenter()?.longitude || "0"}`) || 0,
+              }}
+              distance={distance}
             />
           )}
-        </View>
-      </Modal>
+          <FlagContentModal
+            visible={flagOpen.open}
+            contentTitle={data.name}
+            variant="sheet"
+            onClose={() =>
+              setFlagOpen({ open: false, eventId: "", locationId: "" })
+            }
+            onSubmit={async ({ reason, explanation }) => {
+              const idToFlag = data.id;
+              const response = await createFlag({
+                reason,
+                explanation,
+                event_id: isEventType ? idToFlag : "",
+                static_location_id: isEventType ? "" : idToFlag,
+              });
+              if (response) {
+                setFlagOpen({ open: false, eventId: "", locationId: "" });
+                Toast.show({
+                  type: "success",
+                  text1: "Report submitted",
+                  text2: "Thank you for helping keep our community safe.",
+                  position: "top",
+                  visibilityTime: 3000,
+                  autoHide: true,
+                  topOffset: 50,
+                });
+              }
+            }}
+          />
+        </Modal>
+      </>
     );
   }
 );

@@ -9,6 +9,7 @@ interface LegendItem {
   color: string;
   label: string;
   description: string;
+  emoji: string;
 }
 
 const legendData: LegendItem[] = [
@@ -17,11 +18,13 @@ const legendData: LegendItem[] = [
     color: "#22C55E",
     label: "User Events",
     description: "Events created by community members",
+    emoji: "👥",
   },
   {
     color: "#EF4444",
     label: "Ticketmaster",
     description: "Official events from Ticketmaster",
+    emoji: "🎫",
   },
 
   // Event Categories
@@ -29,31 +32,37 @@ const legendData: LegendItem[] = [
     color: "#EC4899",
     label: "Music & Concerts",
     description: "Live music performances and concerts",
+    emoji: "🎵",
   },
   {
     color: "#F59E0B",
     label: "Food & Dining",
     description: "Restaurants, food events, and dining experiences",
+    emoji: "🍽️",
   },
   {
     color: "#10B981",
     label: "Sports & Fitness",
     description: "Athletic events, sports games, and fitness activities",
+    emoji: "⚽",
   },
   {
     color: "#6366F1",
     label: "Business & Networking",
     description: "Professional events and networking opportunities",
+    emoji: "💼",
   },
   {
     color: "#3B82F6",
     label: "Arts & Culture",
     description: "Museums, galleries, and cultural events",
+    emoji: "🎨",
   },
   {
     color: "#A855F7",
     label: "Nightlife & Parties",
     description: "Clubs, bars, and party events",
+    emoji: "🌙",
   },
 
   // Location Types
@@ -61,21 +70,25 @@ const legendData: LegendItem[] = [
     color: "#06B6D4",
     label: "Beaches",
     description: "Beach locations and waterfront areas",
+    emoji: "🏖️",
   },
   {
     color: "#16A34A",
     label: "Parks & Recreation",
     description: "Parks, hiking trails, and outdoor spaces",
+    emoji: "🌳",
   },
   {
     color: "#DC2626",
     label: "Gyms & Fitness",
     description: "Fitness centers and workout facilities",
+    emoji: "💪",
   },
   {
     color: "#6B7280",
     label: "Other Locations",
     description: "Various other points of interest",
+    emoji: "📍",
   },
 ];
 
@@ -91,7 +104,7 @@ export function MarkerLegend({ isOpen, onClose }: MarkerLegendProps) {
     <Sheet isOpen={isOpen} onClose={onClose}>
       <View
         style={[
-          { backgroundColor: theme.colors.background },
+          { backgroundColor: theme.colors.card },
           { flex: 1, padding: 20 },
         ]}
       >
@@ -157,12 +170,12 @@ export function MarkerLegend({ isOpen, onClose }: MarkerLegendProps) {
                   borderColor: theme.colors.border,
                 }}
               >
-                {/* Color Circle */}
+                {/* Color Circle with Emoji */}
                 <View
                   style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: 10,
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
                     backgroundColor: item.color,
                     marginRight: 12,
                     borderWidth: 2,
@@ -172,8 +185,12 @@ export function MarkerLegend({ isOpen, onClose }: MarkerLegendProps) {
                     shadowOpacity: 0.2,
                     shadowRadius: 2,
                     elevation: 2,
+                    justifyContent: "center",
+                    alignItems: "center",
                   }}
-                />
+                >
+                  <Text style={{ fontSize: 20 }}>{item.emoji}</Text>
+                </View>
 
                 {/* Label and Description */}
                 <View style={{ flex: 1 }}>
@@ -187,7 +204,7 @@ export function MarkerLegend({ isOpen, onClose }: MarkerLegendProps) {
                       },
                     ]}
                   >
-                    {item.label}
+                    {item.emoji} {item.label}
                   </Text>
                   <Text
                     style={[

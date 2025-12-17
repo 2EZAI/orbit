@@ -1,30 +1,18 @@
-import { Stack, usePathname } from "expo-router";
+import { Stack } from "expo-router";
+import { useEffect } from "react";
+import { ActivityIndicator, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Chat } from "stream-chat-expo";
 import { ChatThemeProvider } from "~/src/components/chat/ChatThemeProvider";
-import { useChat } from "~/src/lib/chat";
-import { View, Text, ActivityIndicator } from "react-native";
-import { useEffect } from "react";
-import { LiveLocationContextProvider } from "~/src/lib/LiveLocationContext";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "~/src/components/ThemeProvider";
+import { useChat } from "~/src/lib/chat";
+import { LiveLocationContextProvider } from "~/src/lib/LiveLocationContext";
 
 export default function ChatLayout() {
   const { client, isConnecting } = useChat();
   const { theme } = useTheme();
-  const pathname = usePathname();
 
   useEffect(() => {
-    // console.log("[ChatLayout] Route changed:", { pathname });
-  }, [pathname]);
-
-  useEffect(() => {
-    // console.log("[ChatLayout] Mounting with state:", {
-    //   hasClient: !!client,
-    //   clientState: client?.state,
-    //   clientWsConnection: client?.wsConnection?.isHealthy,
-    //   isConnecting,
-    // });
-
     // Only try to reconnect if we have a client but no healthy connection
     if (client && !client.wsConnection?.isHealthy && !isConnecting) {
       console.log("[ChatLayout] Attempting to reconnect unhealthy client");
@@ -97,10 +85,7 @@ export default function ChatLayout() {
                 name="channel/[id]"
                 options={{
                   title: "Chat",
-                  headerShown: true,
-                  headerTitleAlign: "center",
-                  headerBackTitle: "Chats",
-                  headerBackVisible: true,
+                  headerShown: false,
                 }}
               />
               <Stack.Screen
@@ -126,9 +111,21 @@ export default function ChatLayout() {
               <Stack.Screen
                 name="channel/[id]/settings"
                 options={{
+                  title: "Chat Settings",
                   headerShown: false,
-                  presentation: "modal",
-                  animation: "slide_from_right",
+                  headerTitleAlign: "center",
+
+                  headerBackVisible: true,
+                }}
+              />
+              <Stack.Screen
+                name="channel/[id]/media"
+                options={{
+                  title: "Chat Settings",
+                  headerShown: false,
+                  headerTitleAlign: "center",
+
+                  headerBackVisible: false,
                 }}
               />
             </Stack>

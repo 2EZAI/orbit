@@ -1,46 +1,42 @@
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Alert,
-  ScrollView,
-  TextInput,
-  Switch,
-  Modal,
-  FlatList,
-  Image,
-} from "react-native";
-import { useLocalSearchParams, useRouter, Stack, useFocusEffect } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useTheme } from "~/src/components/ThemeProvider";
-import { useChat } from "~/src/lib/chat";
+import * as ImagePicker from "expo-image-picker";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowLeft,
-  Users,
-  UserPlus,
-  Edit3,
-  Trash2,
-  Image as ImageIcon,
   Bell,
   BellOff,
-  Shield,
-  UserMinus,
-  LogOut,
-  Volume2,
-  VolumeX,
   Camera,
+  Edit3,
+  Image as ImageIcon,
+  LogOut,
+  Trash2,
+  UserMinus,
+  UserPlus,
+  Users,
+  X,
 } from "lucide-react-native";
-import { Button } from "~/src/components/ui/button";
-import { Card, CardContent } from "~/src/components/ui/card";
-import { Input } from "~/src/components/ui/input";
+import React, { useEffect, useState } from "react";
+import {
+  Alert,
+  FlatList,
+  Image,
+  Modal,
+  ScrollView,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useTheme } from "~/src/components/ThemeProvider";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "~/src/components/ui/avatar";
+import { Button } from "~/src/components/ui/button";
+import { Card, CardContent } from "~/src/components/ui/card";
+import { Input } from "~/src/components/ui/input";
+import { useChat } from "~/src/lib/chat";
 import { ImagePickerService } from "~/src/lib/imagePicker";
-import * as ImagePicker from "expo-image-picker";
 
 export default function ChatSettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -66,19 +62,23 @@ export default function ChatSettingsScreen() {
       setLoading(true);
       // Get the channel instance and refresh its data
       const newChannelInstance = client.channel("messaging", id);
-      
+
       // Watch the channel to get all data
       await newChannelInstance.watch();
-      
+
       // Query fresh member data to get updated count
       const membersResponse = await newChannelInstance.queryMembers({});
-      
+
       setChannelInstance(newChannelInstance);
       setChannel(newChannelInstance.data || {});
       setNewChannelName(newChannelInstance.data?.name || "");
-      setChannelImage(newChannelInstance.data?.image ? String(newChannelInstance.data.image) : null);
+      setChannelImage(
+        newChannelInstance.data?.image
+          ? String(newChannelInstance.data.image)
+          : null
+      );
       setIsMuted(newChannelInstance.muteStatus().muted);
-      
+
       // Use fresh member data from the query
       setMembers(membersResponse.members);
     } catch (error) {
@@ -106,19 +106,19 @@ export default function ChatSettingsScreen() {
     try {
       // Get current image to preserve it
       const currentImage = channel?.image || channelInstance.data?.image;
-      
+
       // Update the channel with both name and image to preserve image
-      await channelInstance.update({ 
+      await channelInstance.update({
         name: newChannelName.trim(),
-        ...(currentImage && { image: currentImage })
+        ...(currentImage && { image: currentImage }),
       });
-      
+
       // Update the UI immediately with the new data
       setChannel((prev: any) => ({
         ...prev,
-        name: newChannelName.trim()
+        name: newChannelName.trim(),
       }));
-      
+
       setShowNameModal(false);
       Alert.alert("Success", "Channel name updated successfully");
     } catch (error) {
@@ -129,7 +129,10 @@ export default function ChatSettingsScreen() {
 
   const handleChangeChannelImage = async () => {
     if (!isCurrentUserAdmin()) {
-      Alert.alert("Permission Denied", "Only admins can change the group photo");
+      Alert.alert(
+        "Permission Denied",
+        "Only admins can change the group photo"
+      );
       return;
     }
 
@@ -152,22 +155,22 @@ export default function ChatSettingsScreen() {
           // Store image URL in both local state and channel update
           const imageUrl = selectedImage.uri;
           setChannelImage(imageUrl);
-          
+
           // Get current name to preserve it
           const currentName = channel?.name || channelInstance.data?.name;
-          
+
           // Update the channel with both image and name to preserve name
-          await channelInstance.update({ 
+          await channelInstance.update({
             image: imageUrl,
-            ...(currentName && { name: currentName })
+            ...(currentName && { name: currentName }),
           });
-          
+
           // Update local state - preserve all existing data
           setChannel((prev: any) => ({
             ...prev,
-            image: imageUrl
+            image: imageUrl,
           }));
-          
+
           Alert.alert("Success", "Group photo updated successfully");
         }
       }
@@ -178,14 +181,14 @@ export default function ChatSettingsScreen() {
   };
 
   const handleToggleMute = async () => {
-    if (!channel) return;
+    if (!channelInstance) return;
 
     try {
       if (isMuted) {
-        await channel.unmute();
+        await channelInstance.unmute();
         setIsMuted(false);
       } else {
-        await channel.mute();
+        await channelInstance.mute();
         setIsMuted(true);
       }
     } catch (error) {
@@ -242,7 +245,7 @@ export default function ChatSettingsScreen() {
   };
 
   const handleRemoveMember = async (memberId: string) => {
-    if (!channel) return;
+    if (!channelInstance) return;
 
     Alert.alert(
       "Remove Member",
@@ -254,8 +257,8 @@ export default function ChatSettingsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await channel.removeMembers([memberId]);
-              const membersResponse = await channel.queryMembers({});
+              await channelInstance.removeMembers([memberId]);
+              const membersResponse = await channelInstance.queryMembers({});
               setMembers(membersResponse.members);
               Alert.alert("Success", "Member removed successfully");
             } catch (error) {
@@ -279,9 +282,9 @@ export default function ChatSettingsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              if (!channel || !client?.userID) return;
+              if (!channelInstance || !client?.userID) return;
 
-              await channel.removeMembers([client.userID]);
+              await channelInstance.removeMembers([client.userID]);
               router.back();
               router.back(); // Go back to channel list
               Alert.alert("Success", "You have left the chat");
@@ -294,7 +297,6 @@ export default function ChatSettingsScreen() {
       ]
     );
   };
-
 
   const getMemberDisplayName = (member: any) => {
     const user = member.user;
@@ -327,47 +329,50 @@ export default function ChatSettingsScreen() {
   const isCurrentUserAdmin = () => {
     if (!channel || !client?.userID) return false;
     const currentMember = members.find((m) => m.user_id === client.userID);
-    return currentMember?.role === "admin" || currentMember?.role === "owner" || currentMember?.role === "moderator";
+    return (
+      currentMember?.role === "admin" ||
+      currentMember?.role === "owner" ||
+      currentMember?.role === "moderator"
+    );
   };
 
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.card }}>
-      <Stack.Screen
-        options={{
-          headerShown: false,
-        }}
-      />
-
-      {/* Custom Header */}
+    <View
+      style={{ flex: 1, backgroundColor: theme.colors.card, paddingTop: 16 }}
+    >
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
-          padding: 16,
-          paddingTop: 8,
-          backgroundColor: theme.colors.card,
-          borderBottomWidth: 1,
-          borderBottomColor: theme.colors.border,
+          justifyContent: "space-between",
+          paddingHorizontal: 16,
         }}
       >
         <TouchableOpacity
-          onPress={() => router.back()}
-          style={{ marginRight: 16 }}
-        >
-          <ArrowLeft size={24} color={theme.colors.text} />
-        </TouchableOpacity>
-        <Text
           style={{
-            fontSize: 18,
-            fontWeight: "600",
-            color: theme.colors.text,
+            flexDirection: "row",
+            alignItems: "center",
+            paddingLeft: 8,
           }}
+          onPress={() => router.back()}
         >
-          Chat Settings
-        </Text>
-      </View>
+          <X size={24} color={theme.colors.primary} />
+        </TouchableOpacity>
+        <View style={{ alignItems: "center" }}>
+          <Text
+            style={{
+              fontSize: 17,
+              fontWeight: "600",
+              color: theme.colors.text,
+              textAlign: "center",
+            }}
+          >
+            Chat Settings
+          </Text>
+        </View>
 
+        <View style={{ flexDirection: "row", paddingRight: 8, gap: 12 }}></View>
+      </View>
       {loading ? (
         <View
           style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
@@ -383,10 +388,10 @@ export default function ChatSettingsScreen() {
           <Card
             style={{
               marginBottom: 16,
-              backgroundColor: theme.colors.background,
+              backgroundColor: theme.colors.card,
             }}
           >
-            <CardContent style={{ padding: 16 }}>
+            <CardContent style={{ padding: 16, paddingTop: 0 }}>
               <Text
                 style={{
                   fontSize: 18,
@@ -399,84 +404,24 @@ export default function ChatSettingsScreen() {
               </Text>
 
               {/* Channel Name */}
-              <View style={{ marginBottom: 16 }}>
-                <TouchableOpacity
-                  onPress={() => isCurrentUserAdmin() && setShowNameModal(true)}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: 12,
-                    backgroundColor: theme.colors.border,
-                    borderRadius: 8,
-                  }}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        color: theme.colors.text + "80",
-                        marginBottom: 4,
-                      }}
-                    >
-                      Chat Name
-                    </Text>
-                    <Text
-                      style={{
-                        fontSize: 16,
-                        color: theme.colors.text,
-                        fontWeight: "500",
-                      }}
-                    >
-{channel?.name || "Unnamed Chat"}
-                    </Text>
-                  </View>
-                  {isCurrentUserAdmin() && (
-                    <Edit3 size={20} color={theme.colors.text + "80"} />
-                  )}
-                </TouchableOpacity>
-              </View>
 
               {/* Channel Image - Only show for group chats */}
               {members.length > 2 && (
-                <View style={{ marginBottom: 16 }}>
-                  <TouchableOpacity
-                    onPress={handleChangeChannelImage}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: 12,
-                      backgroundColor: theme.colors.border,
-                      borderRadius: 8,
-                    }}
-                  >
-                    <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-                      <View style={{ marginRight: 12 }}>
-                        {channelImage || channel?.image ? (
-                          <Image
-                            source={{ uri: channelImage || channel?.image }}
-                            style={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: 20,
-                            }}
-                          />
-                        ) : (
-                          <View
-                            style={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: 20,
-                              backgroundColor: theme.colors.primary,
-                              justifyContent: "center",
-                              alignItems: "center",
-                            }}
-                          >
-                            <Camera size={20} color="white" />
-                          </View>
-                        )}
-                      </View>
+                <>
+                  <View style={{ marginBottom: 16 }}>
+                    <TouchableOpacity
+                      onPress={() =>
+                        isCurrentUserAdmin() && setShowNameModal(true)
+                      }
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: 12,
+                        backgroundColor: theme.colors.border,
+                        borderRadius: 8,
+                      }}
+                    >
                       <View style={{ flex: 1 }}>
                         <Text
                           style={{
@@ -485,7 +430,7 @@ export default function ChatSettingsScreen() {
                             marginBottom: 4,
                           }}
                         >
-                          Group Photo
+                          Chat Name
                         </Text>
                         <Text
                           style={{
@@ -494,15 +439,88 @@ export default function ChatSettingsScreen() {
                             fontWeight: "500",
                           }}
                         >
-{channelImage || channel?.image ? "Tap to change" : "Tap to add photo"}
+                          {channel?.name || "Unnamed Chat"}
                         </Text>
                       </View>
-                    </View>
-                    {isCurrentUserAdmin() && (
-                      <Camera size={20} color={theme.colors.text + "80"} />
-                    )}
-                  </TouchableOpacity>
-                </View>
+                      {isCurrentUserAdmin() && (
+                        <Edit3 size={20} color={theme.colors.text + "80"} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={{ marginBottom: 16 }}>
+                    <TouchableOpacity
+                      onPress={handleChangeChannelImage}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: 12,
+                        backgroundColor: theme.colors.border,
+                        borderRadius: 8,
+                      }}
+                    >
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          flex: 1,
+                        }}
+                      >
+                        <View style={{ marginRight: 12 }}>
+                          {channelImage || channel?.image ? (
+                            <Image
+                              source={{ uri: channelImage || channel?.image }}
+                              style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 20,
+                              }}
+                            />
+                          ) : (
+                            <View
+                              style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 20,
+                                backgroundColor: theme.colors.primary,
+                                justifyContent: "center",
+                                alignItems: "center",
+                              }}
+                            >
+                              <Camera size={20} color="white" />
+                            </View>
+                          )}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={{
+                              fontSize: 14,
+                              color: theme.colors.text + "80",
+                              marginBottom: 4,
+                            }}
+                          >
+                            Group Photo
+                          </Text>
+                          <Text
+                            style={{
+                              fontSize: 16,
+                              color: theme.colors.text,
+                              fontWeight: "500",
+                            }}
+                          >
+                            {channelImage || channel?.image
+                              ? "Tap to change"
+                              : "Tap to add photo"}
+                          </Text>
+                        </View>
+                      </View>
+                      {isCurrentUserAdmin() && (
+                        <Camera size={20} color={theme.colors.text + "80"} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </>
               )}
 
               {/* Members Count */}
@@ -541,7 +559,7 @@ export default function ChatSettingsScreen() {
           <Card
             style={{
               marginBottom: 16,
-              backgroundColor: theme.colors.background,
+              backgroundColor: theme.colors.card,
             }}
           >
             <CardContent style={{ padding: 16 }}>
@@ -598,7 +616,7 @@ export default function ChatSettingsScreen() {
               </View>
 
               {/* Add Members */}
-              {isCurrentUserAdmin() && (
+              {isCurrentUserAdmin() && members.length > 2 && (
                 <TouchableOpacity
                   onPress={() =>
                     router.push(`/(app)/(chat)/members/add?channelId=${id}`)
@@ -646,7 +664,7 @@ export default function ChatSettingsScreen() {
               </TouchableOpacity>
 
               {/* Leave Channel */}
-              {!isCurrentUserAdmin() && (
+              {!isCurrentUserAdmin() && members.length > 2 && (
                 <TouchableOpacity
                   onPress={handleLeaveChannel}
                   style={{
@@ -673,72 +691,98 @@ export default function ChatSettingsScreen() {
           </Card>
 
           {/* Danger Zone */}
-          {isCurrentUserAdmin() && (
-            <Card
-              style={{
-                marginBottom: 16,
-                backgroundColor: theme.colors.background,
-              }}
-            >
-              <CardContent style={{ padding: 16 }}>
-                <Text
-                  style={{
-                    fontSize: 18,
-                    fontWeight: "600",
-                    color: theme.colors.text,
-                    marginBottom: 16,
-                  }}
-                >
-                  Danger Zone
-                </Text>
 
-                <TouchableOpacity
-                  onPress={handleClearHistory}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    padding: 12,
-                    backgroundColor: theme.colors.notification + "20",
-                    borderRadius: 8,
-                    marginBottom: 12,
-                  }}
-                >
-                  <Trash2
-                    size={20}
-                    color={theme.colors.notification}
-                    style={{ marginRight: 12 }}
-                  />
-                  <Text
-                    style={{ fontSize: 16, color: theme.colors.notification }}
+          <Card
+            style={{
+              marginBottom: 16,
+              backgroundColor: theme.colors.card,
+            }}
+          >
+            <CardContent style={{ padding: 16 }}>
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: "600",
+                  color: theme.colors.text,
+                  marginBottom: 16,
+                }}
+              >
+                Danger Zone
+              </Text>
+              {isCurrentUserAdmin() && members.length > 2 ? (
+                <>
+                  <TouchableOpacity
+                    onPress={handleClearHistory}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      padding: 12,
+                      backgroundColor: theme.colors.notification + "20",
+                      borderRadius: 8,
+                      marginBottom: 12,
+                    }}
                   >
-                    Clear Chat History
-                  </Text>
-                </TouchableOpacity>
+                    <Trash2
+                      size={20}
+                      color={theme.colors.notification}
+                      style={{ marginRight: 12 }}
+                    />
+                    <Text
+                      style={{ fontSize: 16, color: theme.colors.notification }}
+                    >
+                      Clear Chat History
+                    </Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  onPress={handleDeleteChat}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    padding: 12,
-                    backgroundColor: theme.colors.notification + "20",
-                    borderRadius: 8,
-                  }}
-                >
-                  <Trash2
-                    size={20}
-                    color={theme.colors.notification}
-                    style={{ marginRight: 12 }}
-                  />
-                  <Text
-                    style={{ fontSize: 16, color: theme.colors.notification }}
+                  <TouchableOpacity
+                    onPress={handleDeleteChat}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      padding: 12,
+                      backgroundColor: theme.colors.notification + "20",
+                      borderRadius: 8,
+                    }}
                   >
-                    Delete Chat
-                  </Text>
-                </TouchableOpacity>
-              </CardContent>
-            </Card>
-          )}
+                    <Trash2
+                      size={20}
+                      color={theme.colors.notification}
+                      style={{ marginRight: 12 }}
+                    />
+                    <Text
+                      style={{ fontSize: 16, color: theme.colors.notification }}
+                    >
+                      Delete Chat
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    onPress={handleLeaveChannel}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      padding: 12,
+                      backgroundColor: theme.colors.notification + "20",
+                      borderRadius: 8,
+                    }}
+                  >
+                    <Trash2
+                      size={20}
+                      color={theme.colors.notification}
+                      style={{ marginRight: 12 }}
+                    />
+                    <Text
+                      style={{ fontSize: 16, color: theme.colors.notification }}
+                    >
+                      Delete Chat
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </CardContent>
+          </Card>
         </ScrollView>
       )}
 
@@ -791,7 +835,7 @@ export default function ChatSettingsScreen() {
               <Button
                 onPress={() => setShowNameModal(false)}
                 variant="outline"
-                style={{ 
+                style={{
                   flex: 1,
                   backgroundColor: theme.colors.card,
                 }}
@@ -860,10 +904,7 @@ export default function ChatSettingsScreen() {
                     if (item.user_id !== client?.userID) {
                       setShowMembersModal(false);
                       // Dismiss the modal and navigate to profile
-                      router.dismiss();
-                      setTimeout(() => {
-                        router.push(`/(app)/profile/${item.user_id}`);
-                      }, 1000);
+                      router.push(`/profile/${item.user_id}`);
                     }
                   }}
                   style={{
@@ -918,15 +959,12 @@ export default function ChatSettingsScreen() {
                     </Text>
                   </View>
 
-                  {item.user_id !== client?.userID && (
+                  {item.user_id !== client?.userID && members.length > 2 && (
                     <TouchableOpacity
                       onPress={() => handleRemoveMember(item.user_id)}
                       style={{ padding: 8 }}
                     >
-                      <UserMinus
-                        size={20}
-                        color={theme.colors.notification}
-                      />
+                      <UserMinus size={20} color={theme.colors.notification} />
                     </TouchableOpacity>
                   )}
                 </TouchableOpacity>
@@ -935,6 +973,6 @@ export default function ChatSettingsScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }

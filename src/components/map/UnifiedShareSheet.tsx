@@ -87,6 +87,7 @@ const UnifiedShareSheet: React.FC<IProps> = ({
             setSelectedProposal(proposal);
             setUiType("proposal-detail");
           }}
+          onProposalShare={onProposalShare}
         />
       )}
     </Sheet>

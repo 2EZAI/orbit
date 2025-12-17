@@ -1,20 +1,20 @@
+import { Clock, MapPin, Search, Users, X } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  View,
-  TouchableOpacity,
+  ActivityIndicator,
+  Dimensions,
   FlatList,
   Image,
-  TextInput,
-  StyleSheet,
-  Dimensions,
   Modal,
   SafeAreaView,
-  ActivityIndicator,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { Text } from "~/src/components/ui/text";
-import { X, Search, MapPin, Clock, Users } from "lucide-react-native";
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
+const { width: screenWidth } = Dimensions.get("window");
 
 interface SectionViewSheetProps {
   isOpen: boolean;
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: "bold",
-     lineHeight: 26,
+    lineHeight: 26,
     marginBottom: 4,
   },
   headerSubtitle: {

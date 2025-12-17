@@ -249,6 +249,8 @@ PODS:
     - ExpoModulesCore
   - ExpoContacts (14.0.5):
     - ExpoModulesCore
+  - ExpoDevice (7.0.3):
+    - ExpoModulesCore
   - ExpoDocumentPicker (13.0.2):
     - ExpoModulesCore
   - ExpoFileSystem (18.0.12):
@@ -270,6 +272,8 @@ PODS:
   - ExpoLinearGradient (14.0.2):
     - ExpoModulesCore
   - ExpoLinking (7.0.4):
+    - ExpoModulesCore
+  - ExpoLocalization (16.0.1):
     - ExpoModulesCore
   - ExpoLocation (18.0.5):
     - ExpoModulesCore
@@ -2258,6 +2262,29 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - RNSentry (7.5.0):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.01.01.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-hermes
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Sentry/HybridSDK (= 8.57.1)
+    - Yoga
   - RNSVG (15.8.0):
     - DoubleConversion
     - glog
@@ -2307,6 +2334,7 @@ PODS:
   - SDWebImageWebPCoder (0.8.5):
     - libwebp (~> 1.0)
     - SDWebImage/Core (~> 5.10)
+  - Sentry/HybridSDK (8.57.1)
   - SocketRocket (0.7.1)
   - stream-react-native-webrtc (125.4.1):
     - React-Core
@@ -2358,6 +2386,7 @@ DEPENDENCIES:
   - ExpoBlur (from `../node_modules/expo-blur/ios`)
   - ExpoClipboard (from `../node_modules/expo-clipboard/ios`)
   - ExpoContacts (from `../node_modules/expo-contacts/ios`)
+  - ExpoDevice (from `../node_modules/expo-device/ios`)
   - ExpoDocumentPicker (from `../node_modules/expo-document-picker/ios`)
   - ExpoFileSystem (from `../node_modules/expo-file-system/ios`)
   - ExpoFont (from `../node_modules/expo-font/ios`)
@@ -2368,6 +2397,7 @@ DEPENDENCIES:
   - ExpoKeepAwake (from `../node_modules/expo-keep-awake/ios`)
   - ExpoLinearGradient (from `../node_modules/expo-linear-gradient/ios`)
   - ExpoLinking (from `../node_modules/expo-linking/ios`)
+  - ExpoLocalization (from `../node_modules/expo-localization/ios`)
   - ExpoLocation (from `../node_modules/expo-location/ios`)
   - ExpoMediaLibrary (from `../node_modules/expo-media-library/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
@@ -2451,6 +2481,7 @@ DEPENDENCIES:
   - "rnmapbox-maps (from `../node_modules/@rnmapbox/maps`)"
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
+  - "RNSentry (from `../node_modules/@sentry/react-native`)"
   - RNSVG (from `../node_modules/react-native-svg`)
   - "stream-react-native-webrtc (from `../node_modules/@stream-io/react-native-webrtc`)"
   - "stream-video-react-native (from `../node_modules/@stream-io/video-react-native-sdk`)"
@@ -2472,6 +2503,7 @@ SPEC REPOS:
     - PromisesObjC
     - SDWebImage
     - SDWebImageWebPCoder
+    - Sentry
     - SocketRocket
     - StreamWebRTC
     - Turf
@@ -2517,6 +2549,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-clipboard/ios"
   ExpoContacts:
     :path: "../node_modules/expo-contacts/ios"
+  ExpoDevice:
+    :path: "../node_modules/expo-device/ios"
   ExpoDocumentPicker:
     :path: "../node_modules/expo-document-picker/ios"
   ExpoFileSystem:
@@ -2537,6 +2571,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-linear-gradient/ios"
   ExpoLinking:
     :path: "../node_modules/expo-linking/ios"
+  ExpoLocalization:
+    :path: "../node_modules/expo-localization/ios"
   ExpoLocation:
     :path: "../node_modules/expo-location/ios"
   ExpoMediaLibrary:
@@ -2700,6 +2736,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-reanimated"
   RNScreens:
     :path: "../node_modules/react-native-screens"
+  RNSentry:
+    :path: "../node_modules/@sentry/react-native"
   RNSVG:
     :path: "../node_modules/react-native-svg"
   stream-react-native-webrtc:
@@ -2732,6 +2770,7 @@ SPEC CHECKSUMS:
   ExpoBlur: 5327b09a58e04e4066dd95fe994d8ef5539a1f26
   ExpoClipboard: 5250b207b6d545f4e9aac5ea3c6e61c4f16d0aed
   ExpoContacts: 95526dcc8b50a65e61d569655f4cb05edb713cbb
+  ExpoDevice: cf7419343b6e060209aaadd596defb1b6320597f
   ExpoDocumentPicker: 2dcad7f93b938922cd6ebee90e9f36048b45ef82
   ExpoFileSystem: c8c19bf80d914c83dda3beb8569d7fb603be0970
   ExpoFont: 773955186469acc5108ff569712a2d243857475f
@@ -2742,6 +2781,7 @@ SPEC CHECKSUMS:
   ExpoKeepAwake: 2a5f15dd4964cba8002c9a36676319a3394c85c7
   ExpoLinearGradient: ee9efc5acb988b911320e964fab9b4cbdeb198c4
   ExpoLinking: a9e64f08d2bb4fc42e7441174f15cc535bb390ba
+  ExpoLocalization: e36b911e04d371c6c6624ef818e56229bf51c498
   ExpoLocation: a4b472b3cb2d42f1a3f3d7e2ec0e7a4db061ea22
   ExpoMediaLibrary: 87f214ba1275d4551b74e18de6206c36c5c1001b
   ExpoModulesCore: 0bcea8c26791a8f0aed1d4a961f1165e1fc657d4
@@ -2833,9 +2873,11 @@ SPEC CHECKSUMS:
   rnmapbox-maps: d184c8d3213acf4c97ec71fbbb6f9d4954552d80
   RNReanimated: 9ee6347ca0aa3cf78cae715455e781728ae142e2
   RNScreens: d022507f2b6d76c73335e9e35aedcf7bb2f791b0
+  RNSentry: 3f3a9491b71021fcd936c13b21a9ba3229678d10
   RNSVG: 536cd3c866c878faf72beaba166c8b02fe2b762b
   SDWebImage: a7f831e1a65eb5e285e3fb046a23fcfbf08e696d
   SDWebImageWebPCoder: 908b83b6adda48effe7667cd2b7f78c897e5111d
+  Sentry: ea4ca7cd1a46c77dcc8123804ce36d8f5603a841
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   stream-react-native-webrtc: f91f49985d356cdb3d8ca3a69ea679cf16feb8a7
   stream-video-react-native: d07dd3e727bda0bf5a22a38c3c7cda47f743a016

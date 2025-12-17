@@ -10,6 +10,7 @@ import {
   Sparkles,
   Users,
   Zap,
+  Send,
 } from "lucide-react-native";
 import { MotiView } from "moti";
 import React, { useRef, useState } from "react";
@@ -36,6 +37,7 @@ interface IProps {
   onAdd?: () => void;
   onShowEventDetails?: (proposal: IProposal) => void;
   onShowProposalDetail?: (proposal: IProposal) => void;
+  onProposalShare?: (proposal: IProposal) => void;
 }
 const ProposalSelectList: React.FC<IProps> = ({
   data,
@@ -44,6 +46,7 @@ const ProposalSelectList: React.FC<IProps> = ({
   onAdd = () => {},
   onShowProposalDetail,
   onShowEventDetails = () => {},
+  onProposalShare,
 }) => {
   const { theme, isDarkMode } = useTheme();
   const [selectedProposals, setSelectedProposals] = useState<string>("");
@@ -221,11 +224,28 @@ const ProposalSelectList: React.FC<IProps> = ({
                   </MotiView>
                 )}
 
-                {data && !isEventAlreadyAdded && (
-                  <ChevronRight
-                    size={20}
-                    color={isSelected ? "#8B5CF6" : theme.colors.text + "40"}
-                  />
+                {onProposalShare ? (
+                  !isSelected ? (
+                    <TouchableOpacity
+                      onPress={() => {
+                        onProposalShare(item);
+                      }}
+                    >
+                      <Send
+                        width={20}
+                        height={20}
+                        color={theme.colors.primary}
+                      />
+                    </TouchableOpacity>
+                  ) : null
+                ) : (
+                  data &&
+                  !isEventAlreadyAdded && (
+                    <ChevronRight
+                      size={20}
+                      color={isSelected ? "#8B5CF6" : theme.colors.text + "40"}
+                    />
+                  )
                 )}
               </View>
             </View>
@@ -316,7 +336,7 @@ const ProposalSelectList: React.FC<IProps> = ({
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container]}>
       {/* Premium Header with Gradient */}
       <MotiView
         from={{ opacity: 0, translateY: -20 }}
@@ -331,7 +351,7 @@ const ProposalSelectList: React.FC<IProps> = ({
         <LinearGradient
           colors={
             isDarkMode
-              ? ["rgba(0,0,0,0.8)", "rgba(0,0,0,0.4)"]
+              ? ["rgba(34,40,49,0.8)", "rgba(34,40,49,0.4)"]
               : ["rgba(255,255,255,0.9)", "rgba(255,255,255,0.6)"]
           }
           style={styles.headerGradient}

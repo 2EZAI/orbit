@@ -27,6 +27,7 @@ import {
 import { Text } from "~/src/components/ui/text";
 import { useAuth } from "~/src/lib/auth";
 import { useChat } from "~/src/lib/chat";
+import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 
 import { ArrowLeft } from "lucide-react-native";
 import ChatEventComponent from "~/src/components/chat/ChatEventComponent";
@@ -45,6 +46,7 @@ import { IProposal } from "~/hooks/useProposals";
 import UnifiedProposalSheet from "~/src/components/map/UnifiedProposalSheet";
 import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
 import * as Location from "expo-location";
+import { darkVideoTheme } from "../../../../src/lib/streamVideoTheme";
 
 // BULLETPROOF Message Component - ONLY renders polls, returns NULL for everything else
 // This forces Stream to use its default components for all non-poll messages
@@ -69,7 +71,6 @@ const CustomPostShareComponent = ({ message }: { message: any }) => {
   const postShareAttachment = message.attachments.find(
     (attachment: any) => attachment.type === "post_share"
   );
-
 
   if (!postShareAttachment || !postShareAttachment.post_data) {
     return null;
@@ -440,6 +441,7 @@ export default function ChannelScreen() {
   const { id } = useLocalSearchParams();
   const { from } = useLocalSearchParams();
   const { client } = useChat();
+  const { sendNotification } = useNotificationsApi();
   const router = useRouter();
   const [shareData, setShareData] = useState<{
     data: UnifiedData;
@@ -454,6 +456,7 @@ export default function ChannelScreen() {
   const [error, setError] = useState<string | null>(null);
   const [thread, setThread] = useState<any>(null);
   const [memberCount, setMemberCount] = useState<number>(0);
+  const [name, setName] = useState<string>("");
   const channelRef = useRef<ChannelType | null>(null);
   const { theme } = useTheme();
   const { user } = useUserData();
@@ -475,11 +478,12 @@ export default function ChannelScreen() {
   const [resultsModalOpen, setResultsModalOpen] = useState(false);
   const [resultsItems, setResultsItems] = useState<UnifiedData[]>([]);
   const [resultsQuery, setResultsQuery] = useState<string>("");
+  const originalSendRef = useRef<any>(null);
   const loadMorePayloadRef = useRef<any>(null);
   const modalChannelRef = useRef<any>(null);
 
   // Patch channel.sendMessage to append lat/lng for /event commands (web parity)
-  const originalSendRef = useRef<any>(null);
+
   useEffect(() => {
     if (!channel) return;
     if (!originalSendRef.current) {
@@ -488,6 +492,21 @@ export default function ChannelScreen() {
       channel.sendMessage = async (msg: any) => {
         try {
           const text: string | undefined = msg?.text?.trim();
+
+          // Send notification for regular messages (not /event commands)
+          if (text && !text.startsWith("/event") && !text.startsWith("/")) {
+            const channelName = channel.data?.name || channel.id;
+            const isGroup = Object.keys(channel.state.members || {}).length > 2;
+            const notificationType = isGroup
+              ? "new_group_message"
+              : "new_message";
+            sendNotification({
+              type: notificationType,
+              chatId: channel.id,
+              groupName: channelName,
+            });
+          }
+
           if (text && text.startsWith("/event")) {
             let augmentedText = text; // keep original text without lat/lng tokens
             let attachLat: number | undefined;
@@ -501,7 +520,8 @@ export default function ChannelScreen() {
               lng = lastKnown?.coords?.longitude;
 
               if (typeof lat !== "number" || typeof lng !== "number") {
-                const { status } = await Location.requestForegroundPermissionsAsync();
+                const { status } =
+                  await Location.requestForegroundPermissionsAsync();
                 if (status === "granted") {
                   const current = await Location.getCurrentPositionAsync({
                     accuracy: Location.Accuracy.Balanced,
@@ -520,14 +540,54 @@ export default function ChannelScreen() {
               }
             } catch {}
             try {
-              return await original({
+              // Send message - StreamChat will detect /event as command, but backend should handle it
+              const messagePayload: any = {
                 ...msg,
                 text: augmentedText,
-                ...(typeof attachLat === "number" && typeof attachLng === "number"
+                ...(typeof attachLat === "number" &&
+                typeof attachLng === "number"
                   ? { latitude: attachLat, longitude: attachLng }
                   : {}),
-              });
+              };
+
+              return await original(messagePayload);
             } catch (err: any) {
+              const errorMsg = err?.message || String(err);
+              // If StreamChat's custom command endpoint fails, send as regular message via channel's internal API
+              if (
+                errorMsg.includes("custom command") ||
+                errorMsg.includes("command endpoint")
+              ) {
+                console.log(
+                  "/event: Custom command endpoint failed, sending as regular message"
+                );
+                try {
+                  // Use channel's _client.sendMessage to bypass command detection
+                  const messageData: any = {
+                    text: augmentedText,
+                    ...(typeof attachLat === "number" &&
+                    typeof attachLng === "number"
+                      ? { latitude: attachLat, longitude: attachLng }
+                      : {}),
+                  };
+
+                  // Send directly via StreamChat API endpoint, bypassing command detection
+                  const channelId = channel.id;
+                  const channelType = channel.type;
+                  const response = await channel._client.post({
+                    url: `channels/${channelType}/${channelId}/message`,
+                    data: { message: messageData },
+                  });
+
+                  return response.message;
+                } catch (retryErr: any) {
+                  console.error(
+                    "/event send failed after retry:",
+                    retryErr?.message || retryErr
+                  );
+                  throw retryErr;
+                }
+              }
               console.error("/event send failed:", err?.message || err);
               throw err;
             }
@@ -688,20 +748,35 @@ export default function ChannelScreen() {
             name: ed.name,
             description: ed.description,
             image_urls: ed.image_urls || (ed.image_url ? [ed.image_url] : []),
-            start_datetime: ed.start_datetime || ed.startDate || new Date().toISOString(),
+            start_datetime:
+              ed.start_datetime || ed.startDate || new Date().toISOString(),
             venue_name: ed.venue_name || ed.location || ed.name,
             address: ed.address,
             city: ed.city,
             state: ed.state,
-            source: isLocation ? "location" : isTicketmaster ? "ticketmaster" : "event",
+            source: isLocation
+              ? "location"
+              : isTicketmaster
+              ? "ticketmaster"
+              : "event",
             is_ticketmaster: !!isTicketmaster,
           } as any;
         });
 
       // Detect Load More action from any attachment
       const loadMoreAction: any | undefined = cardAttachments
-        .find((att: any) => att.actions?.some((action: any) => typeof action.value === "string" && action.value.includes('"action":"load_more"')))
-        ?.actions?.find((action: any) => typeof action.value === "string" && action.value.includes('"action":"load_more"'));
+        .find((att: any) =>
+          att.actions?.some(
+            (action: any) =>
+              typeof action.value === "string" &&
+              action.value.includes('"action":"load_more"')
+          )
+        )
+        ?.actions?.find(
+          (action: any) =>
+            typeof action.value === "string" &&
+            action.value.includes('"action":"load_more"')
+        );
 
       const openResultsModal = () => {
         setResultsItems(items);
@@ -735,7 +810,9 @@ export default function ChannelScreen() {
 
       // Multiple results: show compact trigger that opens global modal list
       return (
-        <View style={{ width: "100%", paddingHorizontal: 12, paddingVertical: 6 }}>
+        <View
+          style={{ width: "100%", paddingHorizontal: 12, paddingVertical: 6 }}
+        >
           <TouchableOpacity
             onPress={openResultsModal}
             activeOpacity={0.8}
@@ -750,10 +827,10 @@ export default function ChannelScreen() {
             }}
           >
             <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
-              View {items.length} Results{message?.text ? ` for "${message.text}"` : ""}
+              View {items.length} Results
+              {message?.text ? ` for "${message.text}"` : ""}
             </Text>
           </TouchableOpacity>
-
         </View>
       );
     }
@@ -792,8 +869,6 @@ export default function ChannelScreen() {
   const handleChatSelect = async (channel: any) => {
     if (!channel) return;
     try {
-      console.log("handleChatSelect", chatShareSelection.event);
-      // Ensure channel is watched before sending
       await channel.watch();
       if (chatShareSelection.proposal) {
         const message = await channel.sendMessage({
@@ -985,6 +1060,14 @@ export default function ChannelScreen() {
       const updateMemberCount = async () => {
         try {
           const members = await channel.queryMembers({});
+          if (members.members.length === 2) {
+            const found = members.members.find(
+              (m) => m.user_id !== session?.user?.id
+            );
+            if (found) {
+              setName(found.user?.name || found.user?.username || "Chat");
+            }
+          }
           setMemberCount(members.members.length);
         } catch (error) {
           console.error("Error fetching members:", error);
@@ -1014,106 +1097,34 @@ export default function ChannelScreen() {
     }
   }, [channel]);
 
-  const hitNoificationApi = async (
-    typee: string,
-    chatId: string,
-    name: string
-  ) => {
-    if (!session) return;
-    try {
-      console.log("vcvc");
-      const reuestData = {
-        senderId: session.user.id,
-        type: typee,
-        data: {
-          chat_id: chatId,
-          group_name: name,
-        },
-      };
-      ///send notification
-      const response = await fetch(
-        `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.user.id}`,
-          },
-          body: JSON.stringify(reuestData),
-        }
-      );
-      // console.log("requestData", reuestData);
-
-      if (!response.ok) {
-        // console.log("error>",response);
-        throw new Error(await response.text());
-      }
-
-      const data_ = await response.json();
-      console.log("response>", data_);
-    } catch (e) {
-      console.log("error_catch>", e);
-    }
-  };
-
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
-      <Stack.Screen
-        options={{
-          headerTitle: () => (
-            <TouchableOpacity
-              style={{ alignItems: "center" }}
-              onPress={() => {
-                // Optional: Navigate to contact info on title tap (iOS behavior)
-                if (channel?.data?.name !== "Orbit App") {
-                  handleInfoPress();
-                }
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 17,
-                  fontWeight: "600",
-                  color: theme.colors.text,
-                  textAlign: "center",
-                }}
-              >
-                {channel?.data?.name || "Chat"}
-              </Text>
-              {channel?.data?.name !== "Orbit App" && (
-                <Text
-                  style={{
-                    fontSize: 13,
-                    color: theme.colors.text + "60",
-                    textAlign: "center",
-                    marginTop: 1,
-                  }}
-                >
-                  {memberCount} {memberCount === 1 ? "member" : "members"}
-                </Text>
-              )}
-            </TouchableOpacity>
-          ),
-          headerLeft: () => (
-            <TouchableOpacity
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                paddingLeft: 8,
-              }}
-              onPress={() => {
-                if (from === "home" || from === "social" || from === "map") {
-                  router.push({
-                    pathname: `/(app)/(notification)`,
-                    params: { from: from },
-                  });
-                } else {
-                  router.back();
-                }
-              }}
-            >
-              <ArrowLeft size={22} color={theme.colors.text} strokeWidth={2} />
-              {/*<Text
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <TouchableOpacity
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingLeft: 8,
+          }}
+          onPress={() => {
+            if (from === "home" || from === "social" || from === "map") {
+              router.push({
+                pathname: `/(app)/(notification)`,
+                params: { from: from },
+              });
+            } else {
+              router.back();
+            }
+          }}
+        >
+          <ArrowLeft size={22} color={theme.colors.text} strokeWidth={2} />
+          {/*<Text
                 style={{
                   fontSize: 17,
                   color: theme.colors.text,
@@ -1123,13 +1134,43 @@ export default function ChannelScreen() {
                 Messages
               </Text>
                */}
-            </TouchableOpacity>
-          ),
-          headerRight: () =>
-            channel?.data?.name !== "Orbit App" ? (
-              <View style={{ flexDirection: "row", paddingRight: 8, gap: 12 }}>
-                {/* Audio Call Button - HIDDEN during development */}
-                {/* 
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ alignItems: "center" }}
+          onPress={() => {
+            // Optional: Navigate to contact info on title tap (iOS behavior)
+            if (channel?.data?.name !== "Orbit App") {
+              handleInfoPress();
+            }
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 17,
+              fontWeight: "600",
+              color: theme.colors.text,
+              textAlign: "center",
+            }}
+          >
+            {name || channel?.data?.name || "Chat"}
+          </Text>
+          {channel?.data?.name !== "Orbit App" && (
+            <Text
+              style={{
+                fontSize: 13,
+                color: theme.colors.text + "60",
+                textAlign: "center",
+                marginTop: 1,
+              }}
+            >
+              {memberCount} {memberCount === 1 ? "member" : "members"}
+            </Text>
+          )}
+        </TouchableOpacity>
+        {channel?.data?.name !== "Orbit App" ? (
+          <View style={{ flexDirection: "row", paddingRight: 8, gap: 12 }}>
+            {/* Audio Call Button - HIDDEN during development */}
+            {/* 
                 <TouchableOpacity
                   onPress={handleAudioCall}
                   style={{ padding: 4 }}
@@ -1138,8 +1179,8 @@ export default function ChannelScreen() {
                 </TouchableOpacity>
                 */}
 
-                {/* Video Call Button - HIDDEN during development */}
-                {/* 
+            {/* Video Call Button - HIDDEN during development */}
+            {/* 
                 <TouchableOpacity
                   onPress={handleVideoCall}
                   style={{ padding: 4 }}
@@ -1148,24 +1189,13 @@ export default function ChannelScreen() {
                 </TouchableOpacity>
                 */}
 
-                {/* Settings Button */}
-                <TouchableOpacity
-                  onPress={handleInfoPress}
-                  style={{ padding: 4 }}
-                >
-                  <Info size={20} color={theme.colors.text} strokeWidth={2} />
-                </TouchableOpacity>
-              </View>
-            ) : null,
-          headerStyle: {
-            backgroundColor: theme.colors.card,
-          },
-          headerTintColor: theme.colors.text,
-          headerTitleAlign: "center",
-          headerBackVisible: false,
-          headerShadowVisible: false,
-        }}
-      />
+            {/* Settings Button */}
+            <TouchableOpacity onPress={handleInfoPress} style={{ padding: 4 }}>
+              <Info size={20} color={theme.colors.text} strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
+        ) : null}
+      </View>
 
       {/* Active Call Banner - HIDDEN during development */}
       {/* 
@@ -1193,7 +1223,7 @@ export default function ChannelScreen() {
       ) : channel ? (
         <Channel
           channel={channel}
-          keyboardVerticalOffset={90}
+          keyboardVerticalOffset={40}
           thread={thread}
           threadList={!!thread}
           Message={BulletproofMessage}
@@ -1210,22 +1240,28 @@ export default function ChannelScreen() {
                     flex: 1,
                     justifyContent: "flex-end", // align children to bottom
                     alignItems: "flex-start", // align to the left
-                    padding: 16,
+                    paddingHorizontal: 16,
+                    paddingBottom: 30,
                     backgroundColor: theme.colors.card,
                   }}
                 >
                   <View className="w-[80%] p-4 border bg-muted/50 border-border rounded-tl-3xl rounded-tr-3xl rounded-bl-none rounded-br-3xl">
                     <Text className="text-text">
-                      {" "}
                       {orbitMsg?.text || "No orbit message"}
                     </Text>
                   </View>
                 </View>
               ) : (
-                <>
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: theme.colors.card,
+                    paddingBottom: 30,
+                  }}
+                >
                   <MessageList onThreadSelect={setThread} />
                   <MessageInput />
-                </>
+                </View>
               )}
             </>
           )}
@@ -1314,8 +1350,17 @@ export default function ChannelScreen() {
         statusBarTranslucent={true}
         presentationStyle="overFullScreen"
       >
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}>
-          <TouchableOpacity style={{ flex: 1 }} onPress={() => setResultsModalOpen(false)} />
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.4)",
+            justifyContent: "flex-end",
+          }}
+        >
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            onPress={() => setResultsModalOpen(false)}
+          />
           <View
             style={{
               maxHeight: 560,
@@ -1324,8 +1369,20 @@ export default function ChannelScreen() {
               borderTopRightRadius: 16,
             }}
           >
-            <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
-              <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 16 }}>
+            <View
+              style={{
+                paddingHorizontal: 16,
+                paddingTop: 12,
+                paddingBottom: 8,
+              }}
+            >
+              <Text
+                style={{
+                  color: theme.colors.text,
+                  fontWeight: "700",
+                  fontSize: 16,
+                }}
+              >
                 Search Results
               </Text>
               {resultsQuery ? (
@@ -1372,8 +1429,28 @@ export default function ChannelScreen() {
                     if (!payload || !ch) return;
                     try {
                       const query = payload.query || "";
-                      const offset = payload.offset || 0;
-                      await ch.sendMessage({ text: `/event ${query} offset:${offset}` });
+                      try {
+                        await ch.sendMessage({
+                          text: `/event ${query}`,
+                        });
+                      } catch (err: any) {
+                        const errorMsg = err?.message || String(err);
+                        if (
+                          errorMsg.includes("custom command") ||
+                          errorMsg.includes("command endpoint")
+                        ) {
+                          // Retry with escaped command to bypass StreamChat's command detection
+                          const escapedText = `/event ${query}`.replace(
+                            /^\//,
+                            "/\u200B"
+                          );
+                          await ch.sendMessage({
+                            text: escapedText,
+                          });
+                        } else {
+                          throw err;
+                        }
+                      }
                       setResultsModalOpen(false);
                     } catch (e) {
                       console.log("Load more failed:", e);

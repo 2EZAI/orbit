@@ -25,7 +25,6 @@ const ChatEventComponent = ({
 }: ChatEventComponentProps) => {
   const { theme } = useTheme();
 
-  const { getEventDetails } = useEventDetails();
   const [data, setData] = useState<UnifiedData>();
   console.log(
     "ChatEventComponent message in ChatEventComponent>",

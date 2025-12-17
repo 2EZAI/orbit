@@ -1,25 +1,26 @@
-import React, { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
-import { View, TouchableOpacity, Pressable, Image } from "react-native";
 import {
-  Search,
-  Navigation2,
-  Plus,
-  Minus,
   Bell,
   Info,
   MapPin,
+  Minus,
+  Navigation2,
+  Plus,
+  Search,
 } from "lucide-react-native";
-import { useTheme } from "~/src/components/ThemeProvider";
-import { Text } from "~/src/components/ui/text";
+import React, { useMemo, useState } from "react";
+import { Image, Pressable, TouchableOpacity, View } from "react-native";
 import { Icon } from "react-native-elements";
 import { useNotificationsApi } from "~/hooks/useNotificationsApi";
-import { useUser } from "~/src/lib/UserProvider";
-import { SearchSheet } from "~/src/components/search/SearchSheet";
+import { FilterState, MarkerFilter } from "~/src/components/map/MarkerFilter";
 import { MarkerLegend } from "~/src/components/map/MarkerLegend";
-import { MarkerFilter, FilterState } from "~/src/components/map/MarkerFilter";
+import { SearchSheet } from "~/src/components/search/SearchSheet";
 import { LocationPreferencesModal } from "~/src/components/settings/LocationPreferencesModal";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { Text } from "~/src/components/ui/text";
 import { useAuth } from "~/src/lib/auth";
+import { useUser } from "~/src/lib/UserProvider";
+import NotificationBadge from "../ui/NotificationBadge";
 
 type TimeFrame = "Today" | "Week" | "Weekend";
 
@@ -69,17 +70,19 @@ export function MapControls({
     setIsSearchVisible(!isSearchVisible);
   };
 
-  useEffect(() => {
-    hitNotificationCount();
-  }, []);
+  const ICON_SIZE = 44;
+  const ICON_RADIUS = ICON_SIZE / 2;
 
-  useEffect(() => {
-    console.log("unReadCounta>>", unReadCount);
-  }, [unReadCount]);
-
-  const hitNotificationCount = async () => {
-    await fetchAllNoifications(1, 20);
-  };
+  const baseCircleStyle = useMemo(
+    () => ({
+      width: ICON_SIZE,
+      height: ICON_SIZE,
+      borderRadius: ICON_RADIUS,
+      justifyContent: "center" as const,
+      alignItems: "center" as const,
+    }),
+    [ICON_SIZE, ICON_RADIUS]
+  );
 
   return (
     <>
@@ -127,9 +130,7 @@ export function MapControls({
             <TouchableOpacity
               onPress={toggleSearch}
               style={{
-                width: 42,
-                height: 42,
-                borderRadius: 18,
+                ...baseCircleStyle,
                 borderWidth: 1.5,
                 borderColor: isDarkMode
                   ? "rgba(255,255,255,0.15)"
@@ -149,9 +150,7 @@ export function MapControls({
             <TouchableOpacity
               onPress={() => setIsFilterVisible(true)}
               style={{
-                width: 42,
-                height: 42,
-                borderRadius: 18,
+                ...baseCircleStyle,
                 borderWidth: 1.5,
                 borderColor: isDarkMode
                   ? "rgba(255,255,255,0.15)"
@@ -176,9 +175,7 @@ export function MapControls({
             <TouchableOpacity
               onPress={() => setIsLocationModalVisible(true)}
               style={{
-                width: 42,
-                height: 42,
-                borderRadius: 18,
+                ...baseCircleStyle,
                 borderWidth: 1.5,
                 borderColor:
                   user?.event_location_preference === 1
@@ -192,8 +189,6 @@ export function MapControls({
                     : isDarkMode
                     ? "rgba(255,255,255,0.08)"
                     : "rgba(255,255,255,0.9)",
-                justifyContent: "center",
-                alignItems: "center",
                 position: "relative",
               }}
               activeOpacity={0.7}
@@ -225,17 +220,7 @@ export function MapControls({
                   justifyContent: "center",
                   alignItems: "center",
                 }}
-              >
-                <Text
-                  style={{
-                    fontSize: 7,
-                    fontWeight: "700",
-                    color: "white",
-                  }}
-                >
-                  {user?.event_location_preference === 1 ? "O" : "C"}
-                </Text>
-              </View>
+              ></View>
             </TouchableOpacity>
           </View>
 
@@ -264,9 +249,7 @@ export function MapControls({
             <TouchableOpacity
               onPress={() => router.push("/(app)/(notification)")}
               style={{
-                width: 42,
-                height: 42,
-                borderRadius: 18,
+                ...baseCircleStyle,
                 backgroundColor: theme.colors.primary,
                 justifyContent: "center",
                 alignItems: "center",
@@ -283,34 +266,7 @@ export function MapControls({
               activeOpacity={0.8}
             >
               <Bell size={16} color="white" />
-              {!!(unReadCount && unReadCount > 0) && (
-                <View
-                  style={{
-                    position: "absolute",
-                    top: -6,
-                    right: -6,
-                    backgroundColor: "#ff3b30",
-                    borderRadius: 10,
-                    minWidth: 20,
-                    height: 20,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    borderWidth: 2,
-                    borderColor: "white",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: "white",
-                      fontSize: 9,
-                      fontWeight: "700",
-                      lineHeight: 12,
-                    }}
-                  >
-                    {unReadCount > 99 ? "99+" : String(unReadCount)}
-                  </Text>
-                </View>
-              )}
+              <NotificationBadge />
             </TouchableOpacity>
 
             {/* User Avatar */}
@@ -319,7 +275,7 @@ export function MapControls({
                 onPress={() => router.push("/(app)/(profile)")}
                 activeOpacity={0.8}
                 style={{
-                  borderRadius: 18,
+                  ...baseCircleStyle,
                   borderWidth: 2.5,
                   borderColor: theme.colors.primary,
                   shadowColor: theme.colors.primary,
@@ -336,9 +292,9 @@ export function MapControls({
                       : require("~/assets/favicon.png")
                   }
                   style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 18,
+                    width: ICON_SIZE,
+                    height: ICON_SIZE,
+                    borderRadius: ICON_RADIUS,
                   }}
                 />
               </TouchableOpacity>

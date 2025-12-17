@@ -20,9 +20,6 @@ import { Icon } from "react-native-elements";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useChatUnreadCount } from "~/hooks/useChatUnreadCount";
 
-import { WalkthroughComponent, startWalkthrough } from "react-native-wlkt";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
 // Define the tab routes in the requested order
 const TAB_ROUTES = [
   {
@@ -56,110 +53,6 @@ const TAB_ROUTES = [
     segment: "(map)",
   },
 ];
-const txt1 = `To Create Event Tap ➕ icon in the bottom bar.\n\nAdd the time,\ncategory,\nname,\nand other details.`;
-const txt2 = `To start a chat or group chat, tap the 💬 icon in the bottom bar.`;
-const txt3 = `To create a post, tap the 👤 icon on top right side.\n\n• Select users.\n• Click on the Create button.`;
-
-const tutorialScenario = [
-  {
-    component: "createevent",
-    tooltipOptions: {
-      tooltipComponent: ({ tooltipcntx }) => tutorialView(txt1, 0, tooltipcntx),
-    },
-    spotlightOptions: {
-      borderColor: "orange",
-      borderWidth: 2,
-    },
-  },
-  {
-    component: "createchat",
-    tooltipOptions: {
-      tooltipComponent: ({ tooltipcntx }) => tutorialView(txt2, 1, tooltipcntx),
-    },
-    spotlightOptions: {
-      borderColor: "orange",
-      borderWidth: 2,
-    },
-  },
-  {
-    component: "createpost",
-    tooltipOptions: {
-      tooltipComponent: ({ tooltipcntx }) => tutorialView(txt3, 2, tooltipcntx),
-    },
-    spotlightOptions: {
-      borderColor: "orange",
-      borderWidth: 2,
-    },
-  },
-];
-
-const tutorialView = (txt: string, position: number, componentId: string) => {
-  return (
-    <View
-      style={{
-        position: "absolute",
-        bottom: 0,
-        right: 0,
-        left: 0,
-        marginBottom: "14%",
-        marginHorizontal: 40, // replaces margingLeft + marginRight
-        backgroundColor: "white",
-        padding: 20,
-        borderRadius: 12,
-      }}
-    >
-      <Text style={{ color: "black", fontSize: 16, marginBottom: 12 }}>
-        {txt}
-      </Text>
-
-      {/* Buttons Row */}
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          marginTop: 10,
-        }}
-      >
-        <Text onPress={componentId.onSkip} style={{ color: "gray" }}></Text>
-        <Text
-          onPress={() => {
-            componentId.onNext();
-            if (position === 2) {
-              saveTutorialFinished();
-            }
-          }}
-          style={{ color: "blue", fontWeight: "bold" }}
-        >
-          {position < 2 ? "Next" : "Finish"}
-        </Text>
-      </View>
-    </View>
-  );
-};
-const getTutorialFinished = async () => {
-  try {
-    const value = await AsyncStorage.getItem("tutorial_finished");
-    if (value !== null) {
-      const parsedValue = JSON.parse(value);
-      console.log("Fetched value:", parsedValue);
-      return parsedValue;
-    } else {
-      console.log("No value found for tutorial_finished");
-      return null;
-    }
-  } catch (error) {
-    console.error("Error fetching tutorial_finished:", error);
-    return null;
-  }
-};
-const saveTutorialFinished = async () => {
-  try {
-    await AsyncStorage.setItem("tutorial_finished", JSON.stringify("1"));
-    console.log("Saved successfully");
-  } catch (error) {
-    // console.error("Error saving tutorial_finished:", error);
-  }
-};
 export default function TabBar() {
   const pathname = usePathname();
   const segments = useSegments();
@@ -189,16 +82,6 @@ export default function TabBar() {
   }, [currentActiveIndex, activeIndex, slideAnimation]);
 
   useEffect(() => {
-   
-     (async () => {
-    const tutorialCheck = await getTutorialFinished();
-    console.log('tutorialCheck:', tutorialCheck);
-    if (tutorialCheck === null) {
-      // Show tutorial
-        startWalkthrough({ scenario: tutorialScenario });
-    }
-  })();
-   
     const subscription = DeviceEventEmitter.addListener(
       "mapReload",
       (value) => {
@@ -282,144 +165,122 @@ export default function TabBar() {
           // Use segments to determine active state
           const isActive = segments.includes(tab.segment);
 
-          const Iconn = tab.icon;
-          const IconA = tab.iconAndroid;
+      const Iconn = tab.icon;
+      const IconA = tab.iconAndroid;
 
-      const TabButton=     (
-            <TouchableOpacity
-              key={tab.path}
+      return (
+        <TouchableOpacity
+          key={tab.path}
+          style={{
+            justifyContent: "center",
+            alignItems: "center",
+            flex: 1,
+            paddingVertical: 12,
+            paddingHorizontal: 8,
+            marginHorizontal: 2,
+            borderRadius: 16,
+            zIndex: 1, // Ensure icons are above the animated background
+            position: "relative",
+          }}
+          onPress={() => {
+            console.log("Navigating to:", tab.path);
+            console.log("Current pathname:", pathname);
+
+            // Check if we're already on this tab and it's the same tab being clicked
+            const isOnThisTab = segments.includes(tab.segment);
+            const isClickingSameTab = currentActiveIndex === index;
+            // Check if we're on a sub-page (not a main route)
+            const isOnSubPage =
+              pathname.includes("/post/") ||
+              pathname.includes("/channel/") ||
+              pathname.includes("/profile/") ||
+              (segments.length > 2 &&
+                pathname !== "/" &&
+                !pathname.endsWith("index"));
+
+            // If we're already on this tab and clicking the same tab and not on a sub-page, don't navigate
+            if (isOnThisTab && isClickingSameTab && !isOnSubPage) {
+              console.log(
+                "Already on main route of this tab, skipping navigation"
+              );
+              return;
+            }
+
+            // Special handling for create tab - determine where user is coming from
+            if (tab.segment === "(create)") {
+              let fromParam = "tab";
+              
+              // Determine the source based on current location
+              if (segments.includes("(home)")) {
+                fromParam = "home";
+              } else if (segments.includes("(social)")) {
+                fromParam = "social";
+              } else if (segments.includes("(map)")) {
+                fromParam = "map";
+              } else if (segments.includes("(chat)")) {
+                fromParam = "chat";
+              }
+              
+              console.log("🔍 [TabBar] Navigating to create from:", fromParam);
+              router.push({
+                pathname: tab.path,
+                params: { from: fromParam }
+              });
+            } else {
+              router.replace(tab.path);
+            }
+          }}
+        >
+          {Platform.OS === "ios" ? (
+            <Iconn
+              size={24}
+              color={isActive ? "white" : theme.colors.text}
+            />
+          ) : (
+            <Icon
+              name={IconA}
+              type="material-community"
+              size={24}
+              color={isActive ? "white" : theme.colors.text}
+            />
+          )}
+
+          {/* Notification Badge for Chat Tab */}
+          {tab.segment === "(chat)" && totalUnreadCount > 0 && (
+            <View
               style={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                backgroundColor: theme.colors.notification || "#FF3B30",
+                borderRadius: 10,
+                minWidth: 20,
+                height: 20,
                 justifyContent: "center",
                 alignItems: "center",
-                flex: 1,
-                paddingVertical: 12,
-                paddingHorizontal: 8,
-                marginHorizontal: 2,
-                borderRadius: 16,
-                zIndex: 1, // Ensure icons are above the animated background
-                position: "relative",
-              }}
-              onPress={() => {
-                console.log("Navigating to:", tab.path);
-                console.log("Current pathname:", pathname);
-
-                // Check if we're already on this tab and it's the same tab being clicked
-                const isOnThisTab = segments.includes(tab.segment);
-                const isClickingSameTab = currentActiveIndex === index;
-                // Check if we're on a sub-page (not a main route)
-                const isOnSubPage =
-                  pathname.includes("/post/") ||
-                  pathname.includes("/channel/") ||
-                  pathname.includes("/profile/") ||
-                  (segments.length > 2 &&
-                    pathname !== "/" &&
-                    !pathname.endsWith("index"));
-
-                // If we're already on this tab and clicking the same tab and not on a sub-page, don't navigate
-                if (isOnThisTab && isClickingSameTab && !isOnSubPage) {
-                  console.log(
-                    "Already on main route of this tab, skipping navigation"
-                  );
-                  return;
-                }
-
-                // Special handling for create tab - determine where user is coming from
-                if (tab.segment === "(create)") {
-                  let fromParam = "tab";
-                  
-                  // Determine the source based on current location
-                  if (segments.includes("(home)")) {
-                    fromParam = "home";
-                  } else if (segments.includes("(social)")) {
-                    fromParam = "social";
-                  } else if (segments.includes("(map)")) {
-                    fromParam = "map";
-                  } else if (segments.includes("(chat)")) {
-                    fromParam = "chat";
-                  }
-                  
-                  console.log("🔍 [TabBar] Navigating to create from:", fromParam);
-                  router.push({
-                    pathname: tab.path,
-                    params: { from: fromParam }
-                  });
-                } else {
-                  router.replace(tab.path);
-                }
+                borderWidth: 2,
+                borderColor: theme.colors.card,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.25,
+                shadowRadius: 4,
+                elevation: 4,
               }}
             >
-              {Platform.OS === "ios" ? (
-                <Iconn
-                  size={24}
-                  color={isActive ? "white" : theme.colors.text}
-                />
-              ) : (
-                <Icon
-                  name={IconA}
-                  type="material-community"
-                  size={24}
-                  color={isActive ? "white" : theme.colors.text}
-                />
-              )}
-
-              {/* Notification Badge for Chat Tab */}
-              {tab.segment === "(chat)" && totalUnreadCount > 0 && (
-                <View
-                  style={{
-                    position: "absolute",
-                    top: 8,
-                    right: 8,
-                    backgroundColor: theme.colors.notification || "#FF3B30",
-                    borderRadius: 10,
-                    minWidth: 20,
-                    height: 20,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    borderWidth: 2,
-                    borderColor: theme.colors.card,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.25,
-                    shadowRadius: 4,
-                    elevation: 4,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: "white",
-                      fontSize: 12,
-                      fontWeight: "bold",
-                      textAlign: "center",
-                    }}
-                  >
-                    {totalUnreadCount > 99 ? "99+" : String(totalUnreadCount)}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          );  // Only wrap with WalkthroughComponent at index 3
-          return index === 2 || index === 3 || index === 5 ? (
-            <WalkthroughComponent
-              id={
-                index === 2
-                  ?`createevent` 
-                  : index === 3
-                  ? `createchat`
-                  : `createpost`
-              }
-              key={
-                index === 2
-                  ? `createchat-${tab.path}`
-                  : index === 3
-                  ? `createevent-${tab.path}`
-                  : `createpost-${tab.path}`
-              }
-            >
-              {TabButton}
-            </WalkthroughComponent>
-          ) : (
-            TabButton
-          );
+              <Text
+                style={{
+                  color: "white",
+                  fontSize: 12,
+                  fontWeight: "bold",
+                  textAlign: "center",
+                }}
+              >
+                {totalUnreadCount > 99 ? "99+" : String(totalUnreadCount)}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      );
         })}
       </View>
     </View>

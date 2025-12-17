@@ -1,5 +1,5 @@
 import React, { useRef, useCallback } from "react";
-import { useMapCamera } from "~/src/hooks/useMapCamera";
+import { useMapCamera } from "~/hooks/useMapCamera";
 import {
   MapEvent,
   MapLocation,
@@ -22,21 +22,32 @@ interface MapEventHandlers {
   setHideCount: (hide: boolean) => void;
 }
 
-export function MapEventHandlers({ children, cameraRef }: MapEventHandlersProps) {
+export function MapEventHandlers({
+  children,
+  cameraRef,
+}: MapEventHandlersProps) {
   // Create a custom handleRecenter that uses the passed cameraRef
   const handleRecenter = useCallback(
     (location: {
       longitude: number | null | undefined;
       latitude: number | null | undefined;
     }) => {
-      console.log("🗺️ [MapEventHandlers] handleRecenter called with:", location);
-      console.log("🗺️ [MapEventHandlers] cameraRef.current:", !!cameraRef.current);
-      
+      console.log(
+        "🗺️ [MapEventHandlers] handleRecenter called with:",
+        location
+      );
+      console.log(
+        "🗺️ [MapEventHandlers] cameraRef.current:",
+        !!cameraRef.current
+      );
+
       if (!cameraRef.current) {
-        console.log("🗺️ [MapEventHandlers] Camera ref is null, cannot recenter");
+        console.log(
+          "🗺️ [MapEventHandlers] Camera ref is null, cannot recenter"
+        );
         return;
       }
-      
+
       const lng =
         typeof location?.longitude === "number" &&
         Number.isFinite(location.longitude)
@@ -47,14 +58,16 @@ export function MapEventHandlers({ children, cameraRef }: MapEventHandlersProps)
         Number.isFinite(location.latitude)
           ? location.latitude
           : null;
-          
+
       console.log("🗺️ [MapEventHandlers] Parsed coordinates:", { lng, lat });
-      
+
       if (lng == null || lat == null) {
-        console.log("🗺️ [MapEventHandlers] Invalid coordinates, cannot recenter");
+        console.log(
+          "🗺️ [MapEventHandlers] Invalid coordinates, cannot recenter"
+        );
         return;
       }
-      
+
       console.log("🗺️ [MapEventHandlers] Setting camera to:", [lng, lat]);
       try {
         cameraRef.current.setCamera({
@@ -277,7 +290,6 @@ export function MapEventHandlers({ children, cameraRef }: MapEventHandlersProps)
     },
     [cameraRef]
   );
-
 
   // Zoom level setter
   const setCurrentZoomLevel = useCallback((zoom: number) => {

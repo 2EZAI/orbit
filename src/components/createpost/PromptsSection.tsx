@@ -1,7 +1,7 @@
 import React from "react";
-import { View, TouchableOpacity ,ScrollView} from "react-native";
+import { View, TouchableOpacity, ScrollView } from "react-native";
 import { Text } from "~/src/components/ui/text";
-import { Category, Prompt } from "~/hooks/useMapEvents";
+import { Prompt } from "~/hooks/useMapEvents";
 import { useTheme } from "~/src/components/ThemeProvider";
 
 interface PromptsSectionProps {
@@ -16,30 +16,29 @@ export default function PromptsSection({
   setSelectedPrompts,
 }: PromptsSectionProps) {
   const { theme } = useTheme();
-console.log("typeof prompts:", typeof prompts);
-console.log("is array?", Array.isArray(prompts));
-console.log("prompts:", prompts);
+  console.log("typeof prompts:", typeof prompts);
+  console.log("is array?", Array.isArray(prompts));
+  console.log("prompts:", prompts);
 
-let parsedPrompts: Prompt[] = [];
+  let parsedPrompts: Prompt[] = [];
 
-if (typeof prompts === 'string') {
-  try {
-    const parsed = JSON.parse(prompts);
-    if (Array.isArray(parsed)) {
-      parsedPrompts = parsed;
+  if (typeof prompts === "string") {
+    try {
+      const parsed = JSON.parse(prompts);
+      if (Array.isArray(parsed)) {
+        parsedPrompts = parsed;
+      }
+    } catch (e) {
+      console.error("Invalid JSON passed to prompts", e);
     }
-  } catch (e) {
-    console.error("Invalid JSON passed to prompts", e);
+  } else if (Array.isArray(prompts)) {
+    parsedPrompts = prompts;
   }
-} else if (Array.isArray(prompts)) {
-  parsedPrompts = prompts;
-}
   if (!prompts || prompts.length === 0) {
     return null;
   }
 
   return (
-   
     <View
       style={{
         backgroundColor: theme.dark
@@ -82,41 +81,41 @@ if (typeof prompts === 'string') {
       </View>
 
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        {parsedPrompts?.length> 0 && parsedPrompts?.map((promptItem) => {
-          const isSelected = selectedPrompts?.id === promptItem?.id;
-          return (
-            <TouchableOpacity
-              key={promptItem.id}
-              onPress={() => {
-                setSelectedPrompts(promptItem);
-              }}
-              style={{
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-                borderRadius: 20,
-                borderWidth: 1,
-                backgroundColor: isSelected ? "#8B5CF6" : "transparent",
-                borderColor: isSelected
-                  ? "#8B5CF6"
-                  : theme.dark
-                  ? "rgba(139, 92, 246, 0.2)"
-                  : "rgba(139, 92, 246, 0.15)",
-              }}
-            >
-              <Text
+        {parsedPrompts?.length > 0 &&
+          parsedPrompts?.map((promptItem) => {
+            const isSelected = selectedPrompts?.id === promptItem?.id;
+            return (
+              <TouchableOpacity
+                key={promptItem.id}
+                onPress={() => {
+                  setSelectedPrompts(promptItem);
+                }}
                 style={{
-                  fontSize: 14,
-                  fontWeight: "500",
-                  color: isSelected ? "white" : theme.colors.text,
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  backgroundColor: isSelected ? "#8B5CF6" : "transparent",
+                  borderColor: isSelected
+                    ? "#8B5CF6"
+                    : theme.dark
+                    ? "rgba(139, 92, 246, 0.2)"
+                    : "rgba(139, 92, 246, 0.15)",
                 }}
               >
-                {promptItem.name}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: "500",
+                    color: isSelected ? "white" : theme.colors.text,
+                  }}
+                >
+                  {promptItem.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
       </View>
     </View>
-   
   );
 }

@@ -168,7 +168,7 @@ export function PasswordModal({ isOpen, onClose }: PasswordModalProps) {
               width: 32,
               height: 32,
               borderRadius: 16,
-              backgroundColor: theme.colors.card,
+              backgroundColor: theme.colors.background,
               alignItems: "center",
               justifyContent: "center",
             }}
@@ -193,7 +193,7 @@ export function PasswordModal({ isOpen, onClose }: PasswordModalProps) {
             </Text>
             <View
               style={{
-                backgroundColor: theme.colors.card,
+                backgroundColor: theme.colors.background,
                 borderRadius: 12,
                 borderWidth: 1,
                 borderColor: theme.colors.border,
@@ -246,7 +246,7 @@ export function PasswordModal({ isOpen, onClose }: PasswordModalProps) {
             </Text>
             <View
               style={{
-                backgroundColor: theme.colors.card,
+                backgroundColor: theme.colors.background,
                 borderRadius: 12,
                 borderWidth: 1,
                 borderColor: theme.colors.border,
@@ -314,7 +314,7 @@ export function PasswordModal({ isOpen, onClose }: PasswordModalProps) {
             </Text>
             <View
               style={{
-                backgroundColor: theme.colors.card,
+                backgroundColor: theme.colors.background,
                 borderRadius: 12,
                 borderWidth: 1,
                 borderColor: theme.colors.border,
@@ -386,7 +386,7 @@ export function PasswordModal({ isOpen, onClose }: PasswordModalProps) {
               flex: 1,
               paddingVertical: 14,
               borderRadius: 12,
-              backgroundColor: theme.colors.card,
+              backgroundColor: theme.colors.background,
               borderWidth: 1,
               borderColor: theme.colors.border,
               alignItems: "center",

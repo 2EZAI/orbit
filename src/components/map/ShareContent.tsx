@@ -14,6 +14,7 @@ import { useAuth } from "~/src/lib/auth";
 import { useChat } from "~/src/lib/chat";
 import { useTheme } from "../ThemeProvider";
 import { UnifiedData } from "./UnifiedDetailsSheet";
+import { captureError } from "~/src/lib/utils/sentry";
 import SuccessMessageModal from "../SuccessMessageModal";
 
 interface IProps {
@@ -123,19 +124,20 @@ const ShareContent: React.FC<IProps> = ({
           };
         case "ticketmaster":
           const ticketmasterData = data;
+          const tm: any = ticketmasterData as any;
           return {
             type: "ticketmaster_share",
-            event_id: ticketmasterData?.id || "",
+            event_id: tm?.id || "",
             event_data: {
-              id: ticketmasterData?.id,
-              name: ticketmasterData?.name,
-              description: ticketmasterData?.description,
-              image_urls: ticketmasterData?.image_urls,
-              start_datetime: ticketmasterData?.start_datetime,
-              venue_name: ticketmasterData?.venue_name,
-              address: ticketmasterData?.address,
-              city: ticketmasterData?.city,
-              state: ticketmasterData?.state,
+              id: tm?.id,
+              name: tm?.name,
+              description: tm?.description,
+              image_urls: tm?.image_urls,
+              start_datetime: tm?.start_datetime,
+              venue_name: tm?.venue_name,
+              address: tm?.address,
+              city: tm?.city,
+              state: tm?.state,
               source: "ticketmaster",
             },
           };
@@ -200,6 +202,14 @@ const ShareContent: React.FC<IProps> = ({
       }, 1000);
     } catch (error) {
       console.error("Error sharing to chat:", error);
+      captureError(error, {
+        operation: "share_to_chat",
+        extra: {
+          chatUserId: chatUser?.id,
+          dataId: data?.id,
+          source: data?.source,
+        },
+      });
     }
   };
 
@@ -230,6 +240,10 @@ const ShareContent: React.FC<IProps> = ({
       });
     } catch (error) {
       // Silent error handling for better UX
+      captureError(error, {
+        operation: "native_share",
+        extra: { dataId: currentData?.id, source: currentData?.source },
+      });
     } finally {
       setIsSharing(false);
     }

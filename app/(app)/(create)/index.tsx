@@ -105,7 +105,6 @@ export default function CreateEvent() {
 
   const [categoryList, setCategoryList] = useState<Partial<Category>>({});
   const [selectedPrompts, setSelectedPrompts] = useState<Partial<Prompt>>({});
-  const [showPrompts, setshowPrompts] = useState<boolean>(false);
   const [prompts, setPrompts] = useState<Partial<Prompt>>({});
 
   const { showActionSheetWithOptions } = useActionSheet();
@@ -340,17 +339,12 @@ export default function CreateEvent() {
     loadDraft().finally(() => setLoading(false));
   }, [params.eventId, params.locationId, params.draftId]); // Re-run when params change
 
-  // Debug: Log all params on mount
-  useEffect(() => {
-    console.log("🔍 [CreateEvent] All params received:", params);
-  }, []);
-
   const loadDraft = async () => {
     try {
       setDraftLoaded(true);
       // Debug: Log what parameters we received
       console.log("🔍 [CreateEvent] Received params:", params);
-
+      console.log("params======>", params);
       // Check if we're in EDIT MODE (editing existing event)
       if (params.editMode === "true" && params.eventId) {
         console.log(
@@ -798,9 +792,6 @@ export default function CreateEvent() {
   useEffect(() => {
     console.log("createevent_useEffect");
 
-    // Load existing draft on mount
-    loadDraft();
-
     // Handle router params
     if (params.categoryId && params.categoryName) {
       const simpleCategory = {
@@ -811,7 +802,6 @@ export default function CreateEvent() {
       setCategoryList(simpleCategory as Category);
       setSelectedTopics(params.categoryId as string);
       setSelectedTopicsName(params.categoryName as string);
-      setshowPrompts(true);
       if (params.prompts) {
         try {
           const raw = params.prompts;
@@ -1110,17 +1100,16 @@ export default function CreateEvent() {
 
               // Parse components
               const [month, day, year] = text.split("/");
-              const date = new Date(`${year}-${month}-${day}T00:00:00Z`); // UTC start of day
+              // Create date in local timezone at midnight local time
+              const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
 
               if (isNaN(date.getTime())) {
                 Alert.alert("Invalid Date", "Please enter a valid date");
                 return;
               }
 
-              // Convert to ISO string
-              const isoString = date.toISOString(); // e.g., 2025-08-09T00:00:00.000Z
-              console.log("ISO date>", isoString);
-              const dateObject = new Date(isoString);
+              console.log("Local date>", date);
+              const dateObject = date;
               // Set state
               if (isStart) {
                 setStartDate(dateObject);
@@ -1179,17 +1168,16 @@ export default function CreateEvent() {
 
     // Parse components
     const [month, day, year] = input.split("/");
-    const date = new Date(`${year}-${month}-${day}T00:00:00Z`); // UTC start of day
+    // Create date in local timezone at midnight local time
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
 
     if (isNaN(date.getTime())) {
       Alert.alert("Invalid Date", "Please enter a valid date");
       return;
     }
 
-    // Convert to ISO string
-    const isoString = date.toISOString(); // e.g., 2025-08-09T00:00:00.000Z
-    console.log("ISO date>", isoString);
-    const dateObject = new Date(isoString);
+    console.log("Local date>", date);
+    const dateObject = date;
     setInput("");
     setShowDateModal(false);
     // Set state
@@ -1202,26 +1190,38 @@ export default function CreateEvent() {
 
   const showTimePicker = (isStart: boolean) => {
     const currentDate = isStart ? startDate : endDate;
-    const hours = Array.from({ length: 24 }, (_, i) => {
-      const hour = i % 12 || 12;
-      const ampm = i < 12 ? "AM" : "PM";
-      return `${hour}:00 ${ampm}`;
+    // Build 30-minute slots across 24 hours => 48 options
+    const totalSlots = 24 * 2;
+    const timeLabels = Array.from({ length: totalSlots }, (_, i) => {
+      const hour24 = Math.floor(i / 2);
+      const minutes = i % 2 === 0 ? 0 : 30;
+      const hour12 = hour24 % 12 || 12;
+      const ampm = hour24 < 12 ? "AM" : "PM";
+      const mm = minutes === 0 ? "00" : "30";
+      return `${hour12}:${mm} ${ampm}`;
     });
 
-    const options = [...hours, "Cancel"];
+    const CANCEL_INDEX = totalSlots;
+    const options = [...timeLabels, "Cancel"];
 
     showActionSheetWithOptions(
       {
         options,
-        cancelButtonIndex: 24,
+        cancelButtonIndex: CANCEL_INDEX,
         title: `Select ${isStart ? "Start" : "End"} Time`,
       },
       (selectedIndex) => {
-        if (selectedIndex === undefined || selectedIndex === 24) return;
+        if (selectedIndex === undefined || selectedIndex === CANCEL_INDEX)
+          return;
+
+        const hour24 = Math.floor(selectedIndex / 2);
+        const minutes = selectedIndex % 2 === 0 ? 0 : 30;
 
         const newDate = new Date(currentDate);
-        newDate.setHours(selectedIndex);
-        newDate.setMinutes(0);
+        newDate.setHours(hour24);
+        newDate.setMinutes(minutes);
+        newDate.setSeconds(0);
+        newDate.setMilliseconds(0);
 
         if (isStart) {
           setStartDate(newDate);
@@ -1281,19 +1281,22 @@ export default function CreateEvent() {
       return;
     }
 
+    const apiUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+      query
+    )}.json?access_token=${
+      process.env.MAPBOX_ACCESS_TOKEN
+    }&country=US&types=address&autocomplete=true`;
+    
+
     try {
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-          query
-        )}.json?access_token=${
-          process.env.MAPBOX_ACCESS_TOKEN
-        }&country=US&types=address`
-      );
+      const response = await fetch(apiUrl);
       const data = await response.json();
+      
+      
       setSearchResults(data.features || []);
       setShowResults(true);
     } catch (error) {
-      console.error("Error searching address:", error);
+      console.error("❌ [AddressSearch] Error searching address:", error);
     }
   };
 
@@ -1312,20 +1315,46 @@ export default function CreateEvent() {
   };
 
   const handleAddressSelect = (feature: MapboxFeature) => {
+    console.log("📍 [AddressSelect] Selected feature:", {
+      id: feature.id,
+      text: feature.text,
+      place_name: feature.place_name,
+      properties: feature.properties,
+      context: feature.context,
+    });
+    
     const contextMap = new Map(
       feature.context?.map((item) => [item.id.split(".")[0], item.text])
     );
 
+    console.log("📍 [AddressSelect] Context map:", Array.from(contextMap.entries()));
+
+    // Extract the full street address from place_name (everything before the first comma)
+    // place_name format: "2280 Northeast 214th Street, Miami, FL, USA"
+    // We want: "2280 Northeast 214th Street"
+    let fullAddress = feature.text; // Default fallback
+    
+    if (feature.place_name) {
+      // Get the first part before the first comma (the street address)
+      const addressParts = feature.place_name.split(',');
+      fullAddress = addressParts[0].trim();
+      console.log("📍 [AddressSelect] Extracted address from place_name:", fullAddress);
+    } else if (feature.properties?.address) {
+      // Fallback: combine properties.address with text
+      fullAddress = `${feature.properties.address} ${feature.text}`;
+      console.log("📍 [AddressSelect] Combined address from properties:", fullAddress);
+    }
+
     const newLocationDetails = {
-      address1: feature.properties.address
-        ? `${feature.properties.address} ${feature.text}`
-        : feature.text,
+      address1: fullAddress,
       address2: "",
       city: contextMap.get("place") || "",
       state: contextMap.get("region") || "",
       zip: contextMap.get("postcode") || "",
       coordinates: feature.center,
     };
+
+    console.log("📍 [AddressSelect] Constructed location details:", newLocationDetails);
 
     setLocationDetails(newLocationDetails);
     setAddress1(newLocationDetails.address1);
@@ -1513,29 +1542,31 @@ export default function CreateEvent() {
           ...(eventID && { event_id: eventID }),
         };
 
-        console.log("🔧 [CreateEvent] State values when building eventData:", {
-          locationId,
-          locationType,
-          latitude,
-          longitude,
-          finalLatitude,
-          finalLongitude,
-          paramsLatitude: params.latitude,
-          paramsLongitude: params.longitude,
-          address: address1,
-        });
         //         if (eventID !== undefined) {
         //   eventData.event_id = eventID;
         // }
       }
-      console.log("eventData>>", eventData);
+      console.log("📤 [CreateEvent] Event data being sent to API:", eventData);
+      console.log("📤 [CreateEvent] Address being sent:", {
+        address: eventData.address,
+        address_line2: eventData.address_line2,
+        city: eventData.city,
+        state: eventData.state,
+        zip: eventData.zip,
+        locationDetails_address1: locationDetails.address1,
+        address1_state: address1,
+      });
 
       // Determine if we're updating or creating
       const isUpdating = isEditMode && editingEventId;
-      const apiUrl = isUpdating
-        ? `${process.env.BACKEND_MAP_URL}/api/events/${editingEventId}`
-        : `${process.env.BACKEND_MAP_URL}/api/events`;
-      const method = isUpdating ? "PUT" : "POST";
+      // Use POST for both create and update
+      const apiUrl = `${process.env.BACKEND_MAP_URL}/api/events`;
+      const method = "POST";
+
+      // Add event_id to body if updating
+      if (isUpdating) {
+        eventData.event_id = editingEventId;
+      }
 
       console.log(`${isUpdating ? "✏️ Updating" : "✨ Creating"} event:`, {
         method,
@@ -1552,14 +1583,41 @@ export default function CreateEvent() {
         body: JSON.stringify(eventData),
       });
 
+      // Get response text first (can only read body once)
+      const responseText = await response.text();
+
       if (!response.ok) {
-        const responseData = await response.json();
-        throw new Error(responseData.error || "Failed to create event");
+        // Try to parse as JSON, fallback to text if it fails
+        let errorMessage = "Failed to create event";
+        try {
+          const responseData = JSON.parse(responseText);
+          errorMessage =
+            responseData.error || responseData.message || errorMessage;
+        } catch (parseError) {
+          // If parsing fails, use the text response
+          errorMessage =
+            responseText || `HTTP ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
+
       if (!isEditMode) {
         await clearDraft();
       }
-      const event = await response.json();
+
+      // Parse successful response
+      let event;
+      try {
+        event = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("Error parsing response:", parseError);
+        console.error("Response text:", responseText.substring(0, 200));
+        throw new Error(
+          `Invalid response format from server: ${
+            parseError instanceof Error ? parseError.message : "Unknown error"
+          }`
+        );
+      }
       // console.log("event>>", event);
 
       Toast.show({

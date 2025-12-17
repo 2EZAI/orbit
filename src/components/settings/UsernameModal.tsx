@@ -199,7 +199,7 @@ export function UsernameModal({ isOpen, onClose }: UsernameModalProps) {
               width: 32,
               height: 32,
               borderRadius: 16,
-              backgroundColor: theme.colors.card,
+              backgroundColor: theme.colors.background,
               alignItems: "center",
               justifyContent: "center",
             }}
@@ -245,7 +245,7 @@ export function UsernameModal({ isOpen, onClose }: UsernameModalProps) {
           </Text>
           <View
             style={{
-              backgroundColor: theme.colors.card,
+              backgroundColor: theme.colors.background,
               borderRadius: 12,
               borderWidth: 1,
               borderColor: theme.colors.border,
@@ -362,7 +362,7 @@ export function UsernameModal({ isOpen, onClose }: UsernameModalProps) {
               flex: 1,
               paddingVertical: 14,
               borderRadius: 12,
-              backgroundColor: theme.colors.card,
+              backgroundColor: theme.colors.background,
               borderWidth: 1,
               borderColor: theme.colors.border,
               alignItems: "center",

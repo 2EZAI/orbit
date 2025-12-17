@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   TouchableOpacity,
@@ -22,7 +22,6 @@ import {
   MapPin,
   ArrowLeft,
   Calendar,
-  Plus,
 } from "lucide-react-native";
 import { ImagePickerService } from "~/src/lib/imagePicker";
 import * as ImagePicker from "expo-image-picker";
@@ -30,6 +29,7 @@ import { supabase } from "~/src/lib/supabase";
 import { useAuth } from "~/src/lib/auth";
 import { Stack } from "expo-router";
 import { useUser } from "~/src/lib/UserProvider";
+import { usePostRefresh } from "~/src/lib/postProvider";
 import {
   useSafeAreaInsets,
   SafeAreaView,
@@ -39,6 +39,7 @@ import { Icon } from "react-native-elements";
 import Toast from "react-native-toast-message";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { EventSelectionSheet } from "~/src/components/createpost/EventSelectionSheet";
+import { socialPostService } from "~/src/services/socialPostService";
 
 // Define missing types
 interface LocationDetails {
@@ -79,6 +80,8 @@ export default function CreatePost() {
   const { user } = useUser();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
+  const { setRefreshRequired } = usePostRefresh();
+
   const [content, setContent] = useState("");
   const [mediaFiles, setMediaFiles] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -301,65 +304,47 @@ export default function CreatePost() {
       return;
     }
 
+    if (!session?.access_token) {
+      Alert.alert("Error", "You must be logged in to create a post");
+      return;
+    }
+
     setLoading(true);
     try {
       const mediaUrls = await Promise.all(mediaFiles.map(uploadMedia));
 
-      let postData: {
-        user_id: string | undefined;
-        content: string;
-        media_urls: string[];
-        address?: string;
-        city?: string;
-        state?: string;
-        postal_code?: string;
-        event_id?: string;
-      } = {
-        user_id: session?.user.id,
+      // Prepare post data in format compatible with web API
+      const postData = {
         content: content.trim(),
         media_urls: mediaUrls,
+        address: locationDetails.address1 || undefined,
+        city: locationDetails.city || undefined,
+        state: locationDetails.state || undefined,
+        postal_code: locationDetails.zip || undefined,
+        event_id: selectedEvent?.id || undefined,
+        location: locationDetails.coordinates
+          ? { coordinates: locationDetails.coordinates }
+          : undefined,
       };
 
-      // Only add location if it's provided
-      if (locationDetails.address1) {
-        postData.address = locationDetails.address1;
-        postData.city = locationDetails.city;
-        postData.state = locationDetails.state;
-        postData.postal_code = locationDetails.zip;
-      }
-
-      // Only add event if selected
-      if (selectedEvent != null) {
-        postData.event_id = selectedEvent.id;
-      }
-
-      const response = await fetch(
-        `${process.env.BACKEND_MAP_URL}/api/posts/create`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token}`,
-          },
-          body: JSON.stringify(postData),
-        }
+      // Use web API via service
+      const response = await socialPostService.createPost(
+        postData,
+        session.access_token
       );
-
-      if (!response.ok) {
-        const responseData = await response.json();
-        throw new Error(responseData?.error || "Failed to create post");
-      }
 
       Toast.show({
         type: "success",
         text1: "Post Created!",
         text2: "Your post has been created successfully",
       });
-
+      setRefreshRequired(true);
       router.replace("/(app)/(social)");
     } catch (error) {
       console.error("Error creating post:", error);
-      Alert.alert("Error", "Failed to create post. Please try again.");
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to create post. Please try again.";
+      Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }

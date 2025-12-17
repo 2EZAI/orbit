@@ -1,53 +1,45 @@
-import React, { useState, useEffect } from "react";
-import { useRouter } from "expo-router";
-import {
-  View,
-  FlatList,
-  TouchableOpacity,
-  Image,
-  RefreshControl,
-  ActivityIndicator,
-  DeviceEventEmitter,
-  Alert,
-} from "react-native";
-import { supabase } from "~/src/lib/supabase";
-import { router ,useLocalSearchParams} from "expo-router";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
-import { Text } from "~/src/components/ui/text";
-import { Button } from "~/src/components/ui/button";
-import {
-  useNotificationsApi,
-  Notification,
-  NotificationResponse,
-} from "~/hooks/useNotificationsApi";
-import { FeedEventCard } from "~/src/components/feed/FeedEventCard";
-import { useChat } from "~/src/lib/chat";
-import { DefaultGenerics, StreamChat } from "stream-chat";
-import { useAuth } from "~/src/lib/auth";
-import { GestureDetector, Gesture } from "react-native-gesture-handler";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  runOnJS,
-} from "react-native-reanimated";
+import { router, useLocalSearchParams } from "expo-router";
 import {
   ArrowLeft,
-  Trash2,
+  Bell,
+  Calendar,
   Check,
   CheckCheck,
-  Bell,
-  MessageCircle,
   Heart,
-  Calendar,
-  Users,
+  MessageCircle,
+  Trash2,
   User,
 } from "lucide-react-native";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  DeviceEventEmitter,
+  FlatList,
+  RefreshControl,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { DefaultGenerics, StreamChat } from "stream-chat";
+import {
+  Notification,
+  NotificationResponse,
+  useNotificationsApi,
+} from "~/hooks/useNotificationsApi";
 import { useTheme } from "~/src/components/ThemeProvider";
+import { Text } from "~/src/components/ui/text";
+import { useAuth } from "~/src/lib/auth";
+import { useChat } from "~/src/lib/chat";
+import { supabase } from "~/src/lib/supabase";
 
 let clientLocal: StreamChat<DefaultGenerics> | null = null;
 
@@ -133,7 +125,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
           <TouchableOpacity
             onPress={() => onPress(item)}
             style={{
-              backgroundColor: theme.colors.card,
+              backgroundColor: theme.colors.background,
               borderRadius: 20,
               borderWidth: 2,
               borderColor: item.is_read
@@ -254,7 +246,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
                       height: 24,
                       borderRadius: 12,
                       backgroundColor: isDarkMode
-                        ? "rgba(156, 163, 175, 0.3)"
+                        ? "rgba(156, 163, 175, 0.2)"
                         : "rgba(107, 114, 128, 0.2)",
                       justifyContent: "center",
                       alignItems: "center",
@@ -324,25 +316,22 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
 
 export default function NotificationView() {
   const { theme, isDarkMode } = useTheme();
-  const {from} =  useLocalSearchParams();
+  const { from } = useLocalSearchParams();
 
   const { session } = useAuth();
   const { client } = useChat();
   const insets = useSafeAreaInsets();
   const PAGE_SIZE = 20;
   const [refreshing, setRefreshing] = useState<boolean>(false);
-  const [selectedEvent, setSelectedEvent] = useState<any>(null);
-  const [isEvent, setIsEvent] = useState(false);
   const { fetchAllNoifications, readNoifications } = useNotificationsApi();
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-    console.log('params:', from); 
-      
-  useEffect(() => {
+  console.log("params:", from);
 
+  useEffect(() => {
     loadNotifications();
   }, []);
 
@@ -515,7 +504,7 @@ export default function NotificationView() {
       item?.data?.type === "event_reminder_60" ||
       item?.data?.type === "event_reminder_5" ||
       item?.data?.type === "event_started" ||
-      item?.data?.type === "event_invite" 
+      item?.data?.type === "event_invite"
     ) {
       const eventId = item?.data.event_id;
       let isTicketmaster = item?.data?.is_ticketmaster ?? false;
@@ -533,7 +522,7 @@ export default function NotificationView() {
       console.log("user_id>", item?.data?.user_id);
       if (item?.data?.user_id) {
         router.push({
-          pathname: "/(app)/profile/[username]",
+          pathname: "/profile/[username]",
           params: { username: item.data.user_id },
         });
       }
@@ -596,7 +585,7 @@ export default function NotificationView() {
         params: {
           id: streamChannelId,
           name: groupName,
-          from:from,
+          from: from,
         },
       });
     }, 200);
@@ -779,20 +768,16 @@ export default function NotificationView() {
           >
             <TouchableOpacity
               onPress={() => {
-                if(from === 'home'){
-                  router.push('/(app)/(home)')
+                if (from === "home") {
+                  router.push("/(app)/(home)");
+                } else if (from === "social") {
+                  router.push("/(app)/(social)");
+                } else if (from === "map") {
+                  router.back();
+                } else {
+                  router.back();
                 }
-               else if(from === 'social'){
-                  router.push('/(app)/(social)')
-                }
-                else if(from === 'map'){
-                  router.back()
-                }
-                else{
-                router.back()
-                }
-                }
-              }
+              }}
               style={{
                 width: 40,
                 height: 40,
@@ -833,12 +818,14 @@ export default function NotificationView() {
               <View
                 style={{
                   backgroundColor: theme.colors.primary,
-                  borderRadius: 10,
-                  paddingHorizontal: 6,
-                  paddingVertical: 2,
+                  borderRadius: 12,
+                  width: 24,
+                  height: 24,
+
                   marginLeft: 8,
                   minWidth: 20,
                   alignItems: "center",
+                  justifyContent: "center",
                   shadowColor: theme.colors.primary,
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.3,

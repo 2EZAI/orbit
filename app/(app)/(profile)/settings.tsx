@@ -19,6 +19,7 @@ import {
   Clock,
   Image as ImageIcon,
   ExternalLink,
+  Bookmark,
 } from "lucide-react-native";
 import { IProposal } from "../../../hooks/useProposals";
 import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
@@ -39,6 +40,8 @@ import { Text } from "~/src/components/ui/text";
 import { supabase } from "~/src/lib/supabase";
 import { draftService } from "~/src/services/draftService";
 import { EventDraft } from "~/src/types/draftTypes";
+import { MapCacheService } from "~/src/services/mapCacheService";
+import { MapNavigationStorage } from "~/src/services/mapNavigationStorage";
 import { MotiView } from "moti";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
@@ -57,6 +60,9 @@ import { InterestsModal } from "~/src/components/settings/InterestsModal";
 import { LocationPreferencesModal } from "~/src/components/settings/LocationPreferencesModal";
 import { PrivacyModal } from "~/src/components/settings/PrivacyModal";
 import { SocialMediaSettings } from "~/src/components/settings/SocialMediaSettings";
+import GlassPressable from "~/src/components/ui/GlassPressable";
+import Payment from "~/assets/svg/Payment";
+import { PaymentSubscriptionModal } from "~/src/components/settings/PaymentSubscriptionModal.";
 
 interface SettingItemProps {
   icon: React.ReactNode;
@@ -73,64 +79,73 @@ function SettingItem({
   destructive = false,
   loading = false,
 }: SettingItemProps) {
-  const { theme } = useTheme();
+  const { theme, isDarkMode } = useTheme();
 
   return (
-    <TouchableOpacity
-      onPress={loading ? undefined : onPress}
+    <GlassPressable
       disabled={loading}
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 16,
-        paddingHorizontal: 20,
-        backgroundColor: theme.colors.card,
-        marginHorizontal: 16,
-        marginBottom: 8,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-      }}
+      onPress={loading ? undefined : onPress}
+      style={{ marginBottom: 8, marginHorizontal: 16 }}
     >
       <View
         style={{
-          width: 40,
-          height: 40,
-          borderRadius: 20,
-          backgroundColor: destructive
-            ? "#FF3B30" + "20"
-            : theme.colors.primary + "20",
+          flexDirection: "row",
           alignItems: "center",
-          justifyContent: "center",
-          marginRight: 16,
+          paddingVertical: 16,
+          paddingHorizontal: 20,
+          backgroundColor: isDarkMode
+            ? "rgba(255, 255, 255, 0.08)"
+            : "rgba(255, 255, 255, 0.9)",
+
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: theme.colors.border,
         }}
       >
-        {icon}
+        <View
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: destructive
+              ? theme.colors.notification + "20"
+              : theme.colors.primary + "20",
+            alignItems: "center",
+            justifyContent: "center",
+            marginRight: 16,
+          }}
+        >
+          {icon}
+        </View>
+
+        <Text
+          style={{
+            flex: 1,
+            fontSize: 16,
+            fontWeight: "600",
+            color: destructive ? theme.colors.notification : theme.colors.text,
+          }}
+        >
+          {title}
+        </Text>
+
+        {loading ? (
+          <ActivityIndicator
+            size="small"
+            color={
+              destructive ? theme.colors.notification : theme.colors.primary
+            }
+          />
+        ) : (
+          <ChevronRight
+            size={20}
+            color={
+              destructive ? theme.colors.notification : theme.colors.text + "60"
+            }
+          />
+        )}
       </View>
-
-      <Text
-        style={{
-          flex: 1,
-          fontSize: 16,
-          fontWeight: "600",
-          color: destructive ? "#FF3B30" : theme.colors.text,
-        }}
-      >
-        {title}
-      </Text>
-
-      {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={destructive ? "#FF3B30" : theme.colors.primary}
-        />
-      ) : (
-        <ChevronRight
-          size={20}
-          color={destructive ? "#FF3B30" : theme.colors.text + "60"}
-        />
-      )}
-    </TouchableOpacity>
+    </GlassPressable>
   );
 }
 
@@ -172,6 +187,7 @@ export default function SettingsScreen() {
   });
   // Modal states
   const [showPersonalInfo, setShowPersonalInfo] = useState(false);
+  const [showPaymentSubscription, setShowPaymentSubscription] = useState(false);
   const [showUsername, setShowUsername] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -216,8 +232,9 @@ export default function SettingsScreen() {
     try {
       console.log("Initiating logout...");
 
-      // Clear any navigation state first to prevent navigation errors
-      // router.dismissAll?.();
+      // Clear map caches so new user gets fresh data
+      await MapCacheService.clearCache();
+      await MapNavigationStorage.clear();
 
       // Sign out from Supabase
       await supabase.auth.signOut();
@@ -388,8 +405,15 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleBookmarkCollectionsPress = () => {
+    router.back();
+    router.push({
+      pathname: "/(app)/(bookmarks)",
+    });
+  };
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.card }}>
       {/* Header */}
       <View
         style={{
@@ -446,6 +470,11 @@ export default function SettingsScreen() {
           title="Update Personal Information"
           onPress={() => setShowPersonalInfo(true)}
         />
+        {/* <SettingItem
+          icon={<Payment width={24} height={24} fill={theme.colors.primary} />}
+          title="Payment & Subscriptions"
+          onPress={() => setShowPaymentSubscription(true)}
+        /> */}
         <SettingItem
           icon={<Edit3 size={20} color={theme.colors.primary} />}
           title="Update User Name"
@@ -499,19 +528,18 @@ export default function SettingsScreen() {
           title="Proposals"
           onPress={handleProposalsPress}
         />
+        <SectionHeader title="Bookmarks" />
+        <SettingItem
+          icon={<Bookmark size={20} color={theme.colors.primary} />}
+          title="Bookmark Collections"
+          onPress={handleBookmarkCollectionsPress}
+        />
         {/* Privacy & more */}
         <SectionHeader title="Privacy & more" />
         <SettingItem
-          icon={<LogOut size={20} color={theme.colors.primary} />}
-          title="Log Out"
-          onPress={handleLogout}
-          loading={isLoggingOut}
-        />
-        <SettingItem
-          icon={<Trash2 size={20} color="#FF3B30" />}
-          title="Delete My Account"
-          onPress={() => setShowDeleteAccount(true)}
-          destructive
+          icon={<FileText size={20} color={theme.colors.primary} />}
+          title="Import Contacts"
+          onPress={handleImportContacts}
         />
         <SettingItem
           icon={<ExternalLink size={20} color={theme.colors.primary} />}
@@ -531,10 +559,18 @@ export default function SettingsScreen() {
             )
           }
         />
+
         <SettingItem
-          icon={<FileText size={20} color={theme.colors.primary} />}
-          title="Import Contacts"
-          onPress={handleImportContacts}
+          icon={<LogOut size={20} color={theme.colors.notification} />}
+          title="Log Out"
+          onPress={handleLogout}
+          loading={isLoggingOut}
+          destructive
+        />
+        <SettingItem
+          icon={<Trash2 size={20} color={theme.colors.primary} />}
+          title="Delete My Account"
+          onPress={() => setShowDeleteAccount(true)}
         />
       </ScrollView>
 
@@ -543,7 +579,10 @@ export default function SettingsScreen() {
         isOpen={showPersonalInfo}
         onClose={() => setShowPersonalInfo(false)}
       />
-
+      <PaymentSubscriptionModal
+        isOpen={showPaymentSubscription}
+        onClose={() => setShowPaymentSubscription(false)}
+      />
       <UsernameModal
         isOpen={showUsername}
         onClose={() => setShowUsername(false)}
@@ -1057,7 +1096,7 @@ export default function SettingsScreen() {
         }}
         onSelectChat={handleChatSelect}
       />
-      
+
       {/* Social Media Settings Modal */}
       <SocialMediaSettings
         isOpen={showSocialMedia}

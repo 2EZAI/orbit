@@ -3,13 +3,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   Bell,
   Bookmark,
-  Calendar,
   Clock,
   Filter,
   MapPin,
   Search,
-  Sparkles,
-  Users,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -24,10 +21,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import type { Channel } from "stream-chat";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useIsFocused } from "@react-navigation/native";
+import type { Channel } from "stream-chat";
 import { useHomeFeed } from "~/hooks/useHomeFeed";
-import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { OptimizedImage } from "~/src/components/ui/optimized-image";
 import { Text } from "~/src/components/ui/text";
@@ -49,153 +46,22 @@ import { SectionViewSheet } from "~/src/components/SectionViewSheet";
 import { ScreenHeader } from "~/src/components/ui/screen-header";
 
 // Utils
+import { useEventDetails } from "~/hooks/useEventDetails";
 import {
   FilterState,
   generateDefaultFilters,
 } from "~/src/components/map/MarkerFilter";
 import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
+import { LocationPreferencesModal } from "~/src/components/settings/LocationPreferencesModal";
+import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
+import NotificationBadge from "~/src/components/ui/NotificationBadge";
 import { useAuth } from "~/src/lib/auth";
 import { handleSectionViewMore } from "~/src/lib/utils/sectionViewMore";
-import { useEventDetails } from "~/hooks/useEventDetails";
 import { IProposal } from "../../../hooks/useProposals";
-import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
+const { width: screenWidth } = Dimensions.get("window");
 const STORY_CARD_WIDTH = screenWidth * 0.8;
 const STORY_CARD_HEIGHT = 200;
-
-// Story Cards Component for Featured Content
-interface StoryCardProps {
-  item: any;
-  onPress: () => void;
-}
-
-const StoryCard = ({ item, onPress }: StoryCardProps) => {
-  const { theme } = useTheme();
-
-  const [saved, setSaved] = useState(false);
-
-  const isEvent = item.start_datetime || item.type === "event";
-  const imageUrl = item.image_urls?.[0] || item.image;
-  const attendeeCount = item.attendees || Math.floor(Math.random() * 50) + 10;
-
-  return (
-    <TouchableOpacity
-      style={styles.storyCard}
-      onPress={onPress}
-      activeOpacity={0.95}
-    >
-      {/* Background Image */}
-      <View style={styles.storyImageContainer}>
-        <OptimizedImage
-          uri={imageUrl}
-          width={STORY_CARD_WIDTH}
-          height={STORY_CARD_HEIGHT}
-          quality={90}
-          style={styles.storyBackgroundImage}
-          resizeMode="cover"
-        />
-
-        {/* Gradient Overlay */}
-        <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.7)"]}
-          style={styles.storyGradientOverlay}
-        />
-      </View>
-
-      {/* Top Badge */}
-      <View style={styles.storyTopActions}>
-        <View style={styles.storyCategoryBadge}>
-          <Sparkles size={10} color="#fff" />
-          <Text style={styles.storyCategoryText}>
-            {isEvent ? "Featured Event" : "Featured Place"}
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.storyActionButton}
-          onPress={() => setSaved(!saved)}
-        >
-          <Bookmark
-            size={16}
-            color={saved ? theme.colors.primary : "#fff"}
-            fill={saved ? theme.colors.primary : "transparent"}
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Bottom Content */}
-      <View style={styles.storyBottomContent}>
-        <Text style={styles.storyTitle} numberOfLines={1}>
-          {item.name || item.title}
-        </Text>
-
-        <View style={styles.storyMetaInfo}>
-          {isEvent && item.start_datetime && (
-            <View style={styles.storyMetaItem}>
-              <Calendar size={12} color="#fff" />
-              <Text style={styles.storyMetaText}>
-                {new Date(item.start_datetime).toLocaleDateString()}
-              </Text>
-            </View>
-          )}
-
-          <View style={styles.storyMetaItem}>
-            <Users size={12} color="#fff" />
-            <Text style={styles.storyMetaText}>{attendeeCount}</Text>
-          </View>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-};
-
-// Story Section Component
-const StorySection = ({
-  events,
-  onEventSelect,
-}: {
-  events: any[];
-  onEventSelect: (event: any) => void;
-}) => {
-  const { theme } = useTheme();
-
-  if (!events || events.length === 0) return null;
-
-  return (
-    <View style={styles.storySectionContainer}>
-      <View style={styles.storySectionHeader}>
-        <Text style={[styles.storySectionTitle, { color: theme.colors.text }]}>
-          ✨ Featured
-        </Text>
-        <Text
-          style={[
-            styles.storySectionSubtitle,
-            { color: theme.colors.text + "80" },
-          ]}
-        >
-          Don't miss these amazing events
-        </Text>
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.storyScrollContent}
-        snapToInterval={STORY_CARD_WIDTH + 15}
-        decelerationRate="fast"
-      >
-        {events.slice(0, 5).map((event, index) => (
-          <StoryCard
-            key={`story-${event.id}-${index}`}
-            item={event}
-            onPress={() => onEventSelect(event)}
-          />
-        ))}
-      </ScrollView>
-    </View>
-  );
-};
 
 // TikTok-Style Location Cards Component
 interface TikTokLocationCardProps {
@@ -208,7 +74,6 @@ const TikTokLocationCard = ({ item, onPress }: TikTokLocationCardProps) => {
   const [saved, setSaved] = useState(false);
 
   const imageUrl = item.image_urls?.[0] || item.image;
-  // const visitCount = Math.floor(Math.random() * 200) + 50;
 
   return (
     <TouchableOpacity
@@ -366,18 +231,20 @@ const TikTokLocationSection = ({
 };
 
 export default function Home() {
+  const isFocused = useIsFocused();
   const { theme, isDarkMode } = useTheme();
   const { user } = useUser();
   const { session } = useAuth();
   const router = useRouter();
+  const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
   const { eventId = null, eventType = null } = useLocalSearchParams<{
     eventId: string;
     eventType: string;
   }>();
-  const { fetchAllNoifications, unReadCount } = useNotificationsApi();
-  const { getEventDetails } = useEventDetails();
-  // Home feed data
-  const { data, loading, error, refetch } = useHomeFeed();
+
+  const { getItemDetails } = useEventDetails();
+  // Home feed data - only fetch when screen is focused
+  const { data, loading, error, refetch } = useHomeFeed(isFocused);
   const [shareData, setShareData] = useState<{
     data: UnifiedData;
     isEventType: boolean;
@@ -505,15 +372,14 @@ export default function Home() {
   };
   // Animation
   const scrollY = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    fetchAllNoifications(1, 20);
-  }, []);
   const handleDeepLinkEvent = async () => {
     console.log("handling deep link event>", eventId, eventType);
     if (!session) return;
     if (eventId && eventType) {
-      const result = await getEventDetails(eventId, eventType);
+      const result = await getItemDetails(
+        eventId,
+        eventType === "supabase" ? "database" : eventType
+      );
       handleEventSelect(result);
     }
   };
@@ -1289,29 +1155,7 @@ export default function Home() {
             });
           },
           backgroundColor: theme.colors.primary,
-          badge: !!(unReadCount && unReadCount > 0) ? (
-            <View
-              style={{
-                position: "absolute",
-                top: -4,
-                right: -4,
-                backgroundColor: "#ff3b30",
-                borderRadius: 10,
-                minWidth: 20,
-                height: 20,
-                justifyContent: "center",
-                alignItems: "center",
-                borderWidth: 2,
-                borderColor: "white",
-              }}
-            >
-              <Text
-                style={{ color: "white", fontSize: 12, fontWeight: "bold" }}
-              >
-                {unReadCount > 99 ? "99+" : String(unReadCount)}
-              </Text>
-            </View>
-          ) : undefined,
+          badge: <NotificationBadge />,
         },
         {
           icon: (
@@ -1344,29 +1188,7 @@ export default function Home() {
             });
           },
           backgroundColor: theme.colors.primary,
-          badge: !!(unReadCount && unReadCount > 0) ? (
-            <View
-              style={{
-                position: "absolute",
-                top: -4,
-                right: -4,
-                backgroundColor: "#ff3b30",
-                borderRadius: 10,
-                minWidth: 20,
-                height: 20,
-                justifyContent: "center",
-                alignItems: "center",
-                borderWidth: 2,
-                borderColor: "white",
-              }}
-            >
-              <Text
-                style={{ color: "white", fontSize: 12, fontWeight: "bold" }}
-              >
-                {unReadCount > 99 ? "99+" : String(unReadCount)}
-              </Text>
-            </View>
-          ) : undefined,
+          badge: <NotificationBadge />,
         },
       ];
     }
@@ -1540,6 +1362,7 @@ export default function Home() {
                 styles.searchPlaceholder,
                 { color: theme.colors.text + "80" },
               ]}
+              numberOfLines={1}
             >
               Search events, places, and people...
             </Text>
@@ -1553,6 +1376,78 @@ export default function Home() {
               <Filter size={16} color="white" />
             </TouchableOpacity>
           </TouchableOpacity>
+          <View
+            style={[
+              {
+                paddingVertical: 10,
+                paddingHorizontal: 11,
+                borderRadius: 10,
+                marginLeft: 5,
+                borderWidth: 1,
+                alignItems: "center",
+                justifyContent: "center",
+              },
+              {
+                backgroundColor: theme.colors.card,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              onPress={() => setIsLocationModalVisible(true)}
+              style={{
+                ...styles.filterButton,
+                width: 35,
+                height: 35,
+                borderRadius: 35,
+                borderWidth: 1.5,
+
+                borderColor:
+                  user?.event_location_preference === 1
+                    ? theme.colors.primary
+                    : isDarkMode
+                    ? "rgba(255,255,255,0.15)"
+                    : "rgba(0,0,0,0.12)",
+                backgroundColor:
+                  user?.event_location_preference === 1
+                    ? theme.colors.primary + "20"
+                    : isDarkMode
+                    ? "rgba(255,255,255,0.08)"
+                    : "rgba(255,255,255,0.9)",
+                position: "relative",
+              }}
+              activeOpacity={0.7}
+            >
+              <MapPin
+                size={16}
+                color={
+                  user?.event_location_preference === 1
+                    ? theme.colors.primary
+                    : theme.colors.text
+                }
+                strokeWidth={2.5}
+              />
+              {/* Subtle mode indicator */}
+              <View
+                style={{
+                  position: "absolute",
+                  bottom: -2,
+                  right: -2,
+                  width: 12,
+                  height: 12,
+                  borderRadius: 6,
+                  backgroundColor:
+                    user?.event_location_preference === 1
+                      ? theme.colors.primary
+                      : theme.colors.text + "80",
+                  borderWidth: 1.5,
+                  borderColor: theme.colors.card,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              ></View>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Quick Filter Chips */}
@@ -1562,58 +1457,58 @@ export default function Home() {
           contentContainerStyle={styles.quickFiltersContainer}
         >
           {[
-            "All",
-            "Today",
-            "This Weekend",
-            "Free",
-            "Music",
-            "Food",
-            "Outdoor",
-            "Art",
-          ].map((filter) => (
+            { label: "All", emoji: "📋" },
+            { label: "Today", emoji: "📅" },
+            { label: "This Weekend", emoji: "🎉" },
+            { label: "Free", emoji: "🆓" },
+            { label: "Music", emoji: "🎵" },
+            { label: "Food", emoji: "🍽️" },
+            { label: "Outdoor", emoji: "🌳" },
+            { label: "Art", emoji: "🎨" },
+          ].map(({ label, emoji }) => (
             <TouchableOpacity
-              key={filter}
+              key={label}
               style={[
                 styles.quickFilterChip,
                 {
                   backgroundColor:
-                    filter === activeQuickFilter
+                    label === activeQuickFilter
                       ? theme.colors.primary
                       : theme.colors.card,
                   borderColor:
-                    filter === activeQuickFilter
+                    label === activeQuickFilter
                       ? theme.colors.primary
                       : theme.colors.border,
                 },
               ]}
-              onPress={() => applyQuickFilter(filter)}
+              onPress={() => applyQuickFilter(label)}
             >
               <Text
                 style={[
                   styles.quickFilterText,
                   {
                     color:
-                      filter === activeQuickFilter
+                      label === activeQuickFilter
                         ? "white"
                         : theme.colors.text,
                   },
                 ]}
               >
-                {filter}
-                {filter !== "All" && (
+                {emoji} {label}
+                {label !== "All" && (
                   <Text
                     style={[
                       styles.filterCount,
                       {
                         color:
-                          filter === activeQuickFilter
+                          label === activeQuickFilter
                             ? "white"
                             : theme.colors.text + "60",
                       },
                     ]}
                   >
                     {" "}
-                    ({getQuickFilterCount(filter)})
+                    ({getQuickFilterCount(label)})
                   </Text>
                 )}
               </Text>
@@ -1708,6 +1603,7 @@ export default function Home() {
           }}
           onShowControler={() => {}}
           isEvent={!isSelectedItemLocation}
+          from="home"
         />
       )}
 
@@ -1761,6 +1657,10 @@ export default function Home() {
         }}
         onSelectChat={handleChatSelect}
       />
+      <LocationPreferencesModal
+        isOpen={isLocationModalVisible}
+        onClose={() => setIsLocationModalVisible(false)}
+      />
     </View>
   );
 }
@@ -1793,6 +1693,9 @@ const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: 20,
     paddingBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
   },
   searchBar: {
     flexDirection: "row",
@@ -1807,6 +1710,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    width: "85%",
   },
   searchPlaceholder: {
     flex: 1,

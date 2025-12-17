@@ -1,19 +1,13 @@
-import { useState, useEffect } from "react";
-import {
-  View,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-} from "react-native";
-import { Text } from "~/src/components/ui/text";
-import { Sheet } from "~/src/components/ui/sheet";
-import { Input } from "~/src/components/ui/input";
+import { Search, UserMinus, UserPlus, Users, X } from "lucide-react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, TouchableOpacity, View } from "react-native";
 import { MapEvent } from "~/hooks/useUnifiedMapData";
+import { Input } from "~/src/components/ui/input";
+import { Sheet } from "~/src/components/ui/sheet";
+import { Text } from "~/src/components/ui/text";
 import { useChat } from "~/src/lib/chat";
 import { supabase } from "~/src/lib/supabase";
 import { useUser } from "~/src/lib/UserProvider";
-import { X, Users, Search, UserPlus, UserMinus } from "lucide-react-native";
 
 interface User {
   id: string;

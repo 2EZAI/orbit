@@ -1,10 +1,15 @@
 import React from "react";
-import { ScrollView, TouchableOpacity, View, ActivityIndicator } from "react-native";
+import {
+  ScrollView,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+} from "react-native";
 import { Calendar, Users } from "lucide-react-native";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { OptimizedImage } from "~/src/components/ui/optimized-image";
-import { useSimilarItems } from "~/src/hooks/useSimilarItems";
+import { useSimilarItems } from "~/hooks/useSimilarItems";
 import { useUser } from "~/src/lib/UserProvider";
 
 interface EventSimilarSectionProps {
@@ -13,25 +18,40 @@ interface EventSimilarSectionProps {
   onDataSelect: (data: any) => void;
 }
 
-export function EventSimilarSection({ 
-  data, 
-  nearbyData, 
-  onDataSelect 
+export function EventSimilarSection({
+  data,
+  nearbyData,
+  onDataSelect,
 }: EventSimilarSectionProps) {
   const { theme, isDarkMode } = useTheme();
   const { userlocation } = useUser();
 
   // Use the similar items API like web app
   // Get coordinates from userlocation or fallback to event location coordinates
-  const userLat = userlocation?.latitude ? parseFloat(userlocation.latitude) : null;
-  const userLng = userlocation?.longitude ? parseFloat(userlocation.longitude) : null;
-  
-  // Use event's location coordinates as fallback if user location is not available
-  const latitude = (data.location?.coordinates?.[1] ? parseFloat(data.location.coordinates[1]) : null) || userLat;
-  const longitude = (data.location?.coordinates?.[0] ? parseFloat(data.location.coordinates[0]) : null) || userLng;
+  const userLat = userlocation?.latitude
+    ? parseFloat(userlocation.latitude)
+    : null;
+  const userLng = userlocation?.longitude
+    ? parseFloat(userlocation.longitude)
+    : null;
 
-  const { events: similarEvents, isLoading, error, hasResults } = useSimilarItems({
-    itemType: 'event',
+  // Use event's location coordinates as fallback if user location is not available
+  const latitude =
+    (data.location?.coordinates?.[1]
+      ? parseFloat(data.location.coordinates[1])
+      : null) || userLat;
+  const longitude =
+    (data.location?.coordinates?.[0]
+      ? parseFloat(data.location.coordinates[0])
+      : null) || userLng;
+
+  const {
+    events: similarEvents,
+    isLoading,
+    error,
+    hasResults,
+  } = useSimilarItems({
+    itemType: "event",
     itemId: data.id,
     category: data.categories?.[0]?.name || data.type, // Match web app exactly
     name: data.name,
@@ -39,7 +59,12 @@ export function EventSimilarSection({
     longitude: longitude || 0,
     limit: 5, // Match web app exactly
     proximityKm: 50, // Match web app exactly
-    enabled: !!data.id && !!latitude && !!longitude && latitude !== 0 && longitude !== 0,
+    enabled:
+      !!data.id &&
+      !!latitude &&
+      !!longitude &&
+      latitude !== 0 &&
+      longitude !== 0,
   });
 
   if (isLoading) {
@@ -62,16 +87,18 @@ export function EventSimilarSection({
   }
 
   if (error || !hasResults) {
-    console.log('❌ [EventSimilarSection] No similar events found, returning null');
+    console.log(
+      "❌ [EventSimilarSection] No similar events found, returning null"
+    );
     return null;
   }
 
   const formatDate = (date: string) => {
     try {
-      return new Date(date).toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
+      return new Date(date).toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
       });
     } catch (error) {
       return "";
@@ -89,7 +116,7 @@ export function EventSimilarSection({
           Similar Events
         </Text>
       </View>
-      
+
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -130,9 +157,7 @@ export function EventSimilarSection({
                   <Text
                     className="text-xs"
                     style={{
-                      color: isDarkMode
-                        ? "rgba(255,255,255,0.7)"
-                        : "#6B7280",
+                      color: isDarkMode ? "rgba(255,255,255,0.7)" : "#6B7280",
                     }}
                   >
                     {formatDate(item.start_datetime)}
@@ -154,5 +179,3 @@ export function EventSimilarSection({
     </View>
   );
 }
-
-

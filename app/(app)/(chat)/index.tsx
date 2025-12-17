@@ -1,51 +1,32 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import Constants from "expo-constants";
+import { useFocusEffect, useRouter } from "expo-router";
+import { BellOff, MessageCircle, Plus, Search, X } from "lucide-react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  View,
-  TouchableOpacity,
-  TextInput,
-  Animated,
   ActivityIndicator,
   RefreshControl,
-  Platform,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  ChannelList,
-  Channel as StreamChannel,
-  ChannelAvatar,
-  useTheme as useStreamTheme,
-  ChannelPreviewMessenger,
-} from "stream-chat-expo";
-import { useChat } from "~/src/lib/chat";
-import { useAuth } from "~/src/lib/auth";
-import { useRouter, useFocusEffect } from "expo-router";
-import Constants from "expo-constants";
 import type {
   Channel,
   ChannelFilters,
   ChannelSort,
   DefaultGenerics,
 } from "stream-chat";
-import {
-  Plus,
-  Search,
-  X,
-  Bell,
-  BellOff,
-  Trash2,
-  Users,
-  MessageCircle,
-  ArrowLeft,
-  Video,
-} from "lucide-react-native";
+import { ChannelAvatar, ChannelList } from "stream-chat-expo";
 import { useTheme } from "~/src/components/ThemeProvider";
-import { Text } from "~/src/components/ui/text";
 import { Button } from "~/src/components/ui/button";
 import { Card, CardContent } from "~/src/components/ui/card";
+import { Text } from "~/src/components/ui/text";
+import { useAuth } from "~/src/lib/auth";
+import { useChat } from "~/src/lib/chat";
 
-import type { ChannelPreviewMessengerProps } from "stream-chat-expo";
 import type { ChannelMemberResponse } from "stream-chat";
-import { Icon } from "react-native-elements";
+import type { ChannelPreviewMessengerProps } from "stream-chat-expo";
+import GlassPressable from "~/src/components/ui/GlassPressable";
 
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl;
 // console.log("[ChatList] Configured Backend URL:", BACKEND_URL);
@@ -95,6 +76,7 @@ const ModernSearchInput = ({
         style={{
           flexDirection: "row",
           alignItems: "center",
+
           backgroundColor: isDarkMode
             ? "rgba(255, 255, 255, 0.08)"
             : "rgba(255, 255, 255, 0.9)",
@@ -136,11 +118,21 @@ const ModernChannelPreview = (
   props: ChannelPreviewMessengerProps<DefaultGenerics>
 ) => {
   const { channel, onSelect } = props;
-  const { theme } = useTheme();
-
+  const { theme, isDarkMode } = useTheme();
+  const { session } = useAuth();
   const getChannelName = () => {
-    if (channel.data?.name) {
+    const members = Object.values(channel.state.members);
+
+    if (members.length === 2) {
+      const foundUser = members.find(
+        (m) => m.user?.id !== session?.user.id
+      )?.user;
+      console.log(foundUser);
+      return foundUser?.name || "Chat";
+    } else if (channel.data?.name) {
       return channel.data.name;
+    } else {
+      return "";
     }
 
     // Get other members (excluding current user)
@@ -251,16 +243,26 @@ const ModernChannelPreview = (
   const isMuted = channel.muteStatus().muted;
 
   return (
-    <TouchableOpacity onPress={() => onSelect?.(channel)} className="mx-4 mb-3">
+    <GlassPressable
+      onPress={() => onSelect?.(channel)}
+      baselineIntensity={28}
+      pressIntensity={44}
+      style={{ marginHorizontal: 5, marginBottom: 10 }}
+    >
       <Card
         style={{
           overflow: "hidden",
-          backgroundColor: theme.colors.border,
-          borderColor: theme.colors.border,
+          // Translucent to allow glass blur to show underlying content
+          backgroundColor: isDarkMode
+            ? "rgba(28,28,30,0.55)"
+            : "rgba(255,255,255,0.40)",
+          borderColor: isDarkMode
+            ? theme.colors.border + "60"
+            : theme.colors.border + "80",
           shadowColor: theme.colors.border,
           shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.1,
-          shadowRadius: 2,
+          shadowOpacity: 0.08,
+          shadowRadius: 4,
           elevation: 2,
         }}
       >
@@ -339,7 +341,7 @@ const ModernChannelPreview = (
           </View>
         </CardContent>
       </Card>
-    </TouchableOpacity>
+    </GlassPressable>
   );
 };
 

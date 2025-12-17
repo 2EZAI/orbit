@@ -13,7 +13,15 @@ import { useTheme } from "~/src/components/ThemeProvider";
 import { useAuth } from "~/src/lib/auth";
 import { useUser } from "~/src/lib/UserProvider";
 import { supabase } from "~/src/lib/supabase";
-import { X, Instagram, Twitter, Facebook, Linkedin, Camera, Link } from "lucide-react-native";
+import {
+  X,
+  Instagram,
+  Twitter,
+  Facebook,
+  Linkedin,
+  Camera,
+  Link,
+} from "lucide-react-native";
 import { MotiView } from "moti";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
@@ -83,11 +91,14 @@ const socialPlatforms: SocialPlatform[] = [
   },
 ];
 
-export function SocialMediaSettings({ isOpen, onClose }: SocialMediaSettingsProps) {
+export function SocialMediaSettings({
+  isOpen,
+  onClose,
+}: SocialMediaSettingsProps) {
   const { theme, isDarkMode } = useTheme();
   const { session } = useAuth();
   const { user, updateUser } = useUser();
-  
+
   const [socialData, setSocialData] = useState({
     instagram: "",
     twitter: "",
@@ -96,7 +107,7 @@ export function SocialMediaSettings({ isOpen, onClose }: SocialMediaSettingsProp
     tiktok: "",
     customLink: "",
   });
-  
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -160,7 +171,7 @@ export function SocialMediaSettings({ isOpen, onClose }: SocialMediaSettingsProp
   };
 
   const handleInputChange = (key: string, value: string) => {
-    setSocialData(prev => ({
+    setSocialData((prev) => ({
       ...prev,
       [key]: value,
     }));
@@ -214,7 +225,13 @@ export function SocialMediaSettings({ isOpen, onClose }: SocialMediaSettingsProp
             }}
           >
             {/* Header */}
-            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 24 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 24,
+              }}
+            >
               <View
                 style={{
                   width: 40,
@@ -270,7 +287,8 @@ export function SocialMediaSettings({ isOpen, onClose }: SocialMediaSettingsProp
             <ScrollView showsVerticalScrollIndicator={false}>
               {/* Social Media Platforms */}
               {socialPlatforms.map((platform, index) => {
-                const currentValue = socialData[platform.key as keyof typeof socialData];
+                const currentValue =
+                  socialData[platform.key as keyof typeof socialData];
                 const hasValue = currentValue && currentValue.trim() !== "";
 
                 return (
@@ -278,26 +296,32 @@ export function SocialMediaSettings({ isOpen, onClose }: SocialMediaSettingsProp
                     key={platform.key}
                     from={{ opacity: 0, translateX: -20 }}
                     animate={{ opacity: 1, translateX: 0 }}
-                    transition={{ 
-                      type: "timing", 
-                      duration: 300, 
-                      delay: index * 100 
+                    transition={{
+                      type: "timing",
+                      duration: 300,
+                      delay: index * 100,
                     }}
                     style={{
                       marginBottom: 16,
                       padding: 16,
-                      backgroundColor: hasValue 
-                        ? theme.colors.primary + "10" 
-                        : theme.colors.background,
+                      backgroundColor: hasValue
+                        ? theme.colors.primary + "10"
+                        : theme.colors.card,
                       borderRadius: 16,
                       borderWidth: 1,
-                      borderColor: hasValue 
-                        ? theme.colors.primary + "30" 
+                      borderColor: hasValue
+                        ? theme.colors.primary + "30"
                         : theme.colors.border,
                     }}
                   >
                     {/* Platform Header */}
-                    <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        marginBottom: 12,
+                      }}
+                    >
                       <LinearGradient
                         colors={platform.colors}
                         start={{ x: 0, y: 0 }}
@@ -370,7 +394,9 @@ export function SocialMediaSettings({ isOpen, onClose }: SocialMediaSettingsProp
                       </Text>
                       <TextInput
                         value={currentValue}
-                        onChangeText={(value) => handleInputChange(platform.key, value)}
+                        onChangeText={(value) =>
+                          handleInputChange(platform.key, value)
+                        }
                         placeholder={platform.placeholder}
                         placeholderTextColor={theme.colors.text + "40"}
                         style={{
@@ -388,10 +414,10 @@ export function SocialMediaSettings({ isOpen, onClose }: SocialMediaSettingsProp
               <MotiView
                 from={{ opacity: 0, translateX: -20 }}
                 animate={{ opacity: 1, translateX: 0 }}
-                transition={{ 
-                  type: "timing", 
-                  duration: 300, 
-                  delay: socialPlatforms.length * 100 
+                transition={{
+                  type: "timing",
+                  duration: 300,
+                  delay: socialPlatforms.length * 100,
                 }}
                 style={{
                   marginBottom: 24,
@@ -402,7 +428,13 @@ export function SocialMediaSettings({ isOpen, onClose }: SocialMediaSettingsProp
                   borderColor: theme.colors.primary + "30",
                 }}
               >
-                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginBottom: 12,
+                  }}
+                >
                   <View
                     style={{
                       width: 36,
@@ -449,10 +481,16 @@ export function SocialMediaSettings({ isOpen, onClose }: SocialMediaSettingsProp
                     height: 44,
                   }}
                 >
-                  <Link size={16} color={theme.colors.text + "60"} style={{ marginRight: 8 }} />
+                  <Link
+                    size={16}
+                    color={theme.colors.text + "60"}
+                    style={{ marginRight: 8 }}
+                  />
                   <TextInput
                     value={socialData.customLink}
-                    onChangeText={(value) => handleInputChange("customLink", value)}
+                    onChangeText={(value) =>
+                      handleInputChange("customLink", value)
+                    }
                     placeholder="https://yourwebsite.com"
                     placeholderTextColor={theme.colors.text + "40"}
                     style={{
@@ -469,10 +507,10 @@ export function SocialMediaSettings({ isOpen, onClose }: SocialMediaSettingsProp
             <MotiView
               from={{ opacity: 0, translateY: 20 }}
               animate={{ opacity: 1, translateY: 0 }}
-              transition={{ 
-                type: "timing", 
-                duration: 300, 
-                delay: (socialPlatforms.length + 1) * 100 
+              transition={{
+                type: "timing",
+                duration: 300,
+                delay: (socialPlatforms.length + 1) * 100,
               }}
             >
               <TouchableOpacity

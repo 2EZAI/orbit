@@ -1,19 +1,13 @@
 import BottomSheet, { BottomSheetFlatList } from "@gorhom/bottom-sheet";
-import { useEffect, useState, useCallback } from "react";
-import {
-  ActivityIndicator,
-  Modal,
-  View,
-  Image,
-  TouchableOpacity,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { useFollow, ChatUser } from "~/hooks/useFollow";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Modal, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ChatUser, useFollow } from "~/hooks/useFollow";
+import { useUserData } from "~/hooks/useUserData";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { Text } from "~/src/components/ui/text";
 import { UserAvatar } from "../ui/user-avatar";
-import { useUserData } from "~/hooks/useUserData";
 interface IProps {
   isOpen: boolean;
   onClose: () => void;
@@ -135,7 +129,7 @@ const FollowerSheet: React.FC<IProps> = ({ isOpen, onClose, userId }) => {
         <TouchableOpacity
           onPress={() => {
             onClose();
-            router.push(`/(app)/profile/${item.id}`);
+            router.push(`/profile/${item.id}`);
           }}
           style={{
             flexDirection: "row",

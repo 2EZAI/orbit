@@ -1,35 +1,31 @@
-import { useState, useEffect } from "react";
+import * as FileSystem from "expo-file-system";
+import * as ImagePicker from "expo-image-picker";
+import { router, useLocalSearchParams } from "expo-router";
+import { Camera, Check, Mail, Phone, User, X } from "lucide-react-native";
+import { useEffect, useMemo, useState } from "react";
 import {
-  View,
   ActivityIndicator,
-  TouchableOpacity,
-  StatusBar,
-  Dimensions,
+  Alert,
   Image,
+  KeyboardAvoidingView,
   Platform,
   ScrollView,
-  KeyboardAvoidingView,
-  Alert,
+  StatusBar,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { router } from "expo-router";
-import { supabase } from "~/src/lib/supabase";
-import { Text } from "~/src/components/ui/text";
-import { Input } from "~/src/components/ui/input";
-import { KeyboardAwareInput } from "~/src/components/ui/keyboard-aware-input";
-import { useUser } from "~/src/lib/UserProvider";
-import { Check, X, Camera, Mail, Phone, User } from "lucide-react-native";
-import { useDebouncedCallback } from "~/src/hooks/useDebounce";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
+import { useTheme } from "~/src/components/ThemeProvider";
+import { KeyboardAwareInput } from "~/src/components/ui/keyboard-aware-input";
+import { Text } from "~/src/components/ui/text";
+import { useDebouncedCallback } from "~/hooks/useDebounce";
+import { useKeyboardAware } from "~/hooks/useKeyboardAware";
 import { useAuth } from "~/src/lib/auth";
 import { useChat } from "~/src/lib/chat";
-import { useTheme } from "~/src/components/ThemeProvider";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useKeyboardAware } from "~/src/hooks/useKeyboardAware";
 import { ImagePickerService } from "~/src/lib/imagePicker";
-import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
-
-const { width, height } = Dimensions.get("window");
+import { supabase } from "~/src/lib/supabase";
+import { useUser } from "~/src/lib/UserProvider";
 
 // Function to convert base64 to Uint8Array for Supabase storage
 function decode(base64: string): Uint8Array {
@@ -50,15 +46,21 @@ export default function UsernameScreen() {
   const insets = useSafeAreaInsets();
   const { keyboardState, scrollViewRef, scrollToInput, ScrollToInputContext } =
     useKeyboardAware();
+  const params = useLocalSearchParams();
 
-  // Form state
+  // Form state - Initialize from URL params (Apple Sign In) or user data
   const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [firstName, setFirstName] = useState(
+    (params.firstName as string) || user?.first_name || ""
+  );
+  const [lastName, setLastName] = useState(
+    (params.lastName as string) || user?.last_name || ""
+  );
   const [phone, setPhone] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
-
+  const [isUserNameChecked, setIsUserNameChecked] = useState(false);
+  const [showValidation, setShowValidation] = useState(false);
   // Validation state
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
   const [isChecking, setIsChecking] = useState(false);
@@ -112,16 +114,15 @@ export default function UsernameScreen() {
       setIsAvailable(false);
     } finally {
       setIsChecking(false);
+      setIsUserNameChecked(true);
     }
   }, 500);
 
   const handleUsernameChange = (value: string) => {
     setUsername(value);
+
     if (value) {
       checkUsername(value);
-    } else {
-      setIsAvailable(null);
-      setError(null);
     }
   };
 
@@ -301,13 +302,12 @@ This platform helps you discover and join amazing events near you. Let's get sta
   };
 
   const handleContinue = async () => {
+    setShowValidation(true);
     if (!user || !username || !isAvailable || isSubmitting) return;
 
-    if ( !firstName || !lastName) {
+    if (!firstName || !lastName) {
       setShowValidationErrors(true);
-      setError(
-        "Please fill in all required fields"
-      );
+      setError("Please fill in all required fields");
       // Toast.show({
       //   type: "error",
       //   text1: "Missing Required Fields",
@@ -368,8 +368,9 @@ This platform helps you discover and join amazing events near you. Let's get sta
     // because createChat() should redirect away from this page
   };
 
-  const isFormValid =
-    firstName && lastName && username && isAvailable;
+  const isFormValid = useMemo(() => {
+    return firstName && lastName && username && isAvailable;
+  }, [firstName, lastName, username, isAvailable]);
 
   return (
     <KeyboardAvoidingView
@@ -594,14 +595,14 @@ This platform helps you discover and join amazing events near you. Let's get sta
                       fontSize: 16,
                       fontWeight: "600",
                       color:
-                        showValidationErrors && !firstName
+                        showValidationErrors && !firstName && showValidation
                           ? "#EF4444"
                           : theme.colors.text,
                       marginBottom: 12,
                     }}
                   >
                     First Name *
-                    {showValidationErrors && !firstName && (
+                    {showValidationErrors && !firstName && showValidation && (
                       <Text style={{ color: "#EF4444" }}> - Required</Text>
                     )}
                   </Text>
@@ -613,27 +614,30 @@ This platform helps you discover and join amazing events near you. Let's get sta
                         : "rgba(255, 255, 255, 0.9)",
                       borderRadius: 20,
                       borderWidth: 2,
-                      borderColor: firstName
-                        ? "#10B981"
-                        : showValidationErrors && !firstName
-                        ? "#EF4444"
-                        : theme.dark
-                        ? "rgba(139, 92, 246, 0.3)"
-                        : "rgba(139, 92, 246, 0.2)",
+                      borderColor:
+                        firstName && showValidation
+                          ? "#10B981"
+                          : showValidationErrors && !firstName && showValidation
+                          ? "#EF4444"
+                          : theme.dark
+                          ? "rgba(139, 92, 246, 0.3)"
+                          : "rgba(139, 92, 246, 0.2)",
                       paddingHorizontal: 20,
                       justifyContent: "center",
-                      shadowColor: firstName
-                        ? "#10B981"
-                        : showValidationErrors && !firstName
-                        ? "#EF4444"
-                        : firstName
-                        ? "#8B5CF6"
-                        : "transparent",
+                      shadowColor:
+                        firstName && showValidation
+                          ? "#10B981"
+                          : showValidationErrors && !firstName && showValidation
+                          ? "#EF4444"
+                          : firstName && showValidation
+                          ? "#8B5CF6"
+                          : "transparent",
                       shadowOffset: { width: 0, height: 4 },
                       shadowOpacity: 0.2,
                       shadowRadius: 12,
                       elevation:
-                        firstName || (showValidationErrors && !firstName)
+                        (firstName && showValidation) ||
+                        (showValidationErrors && !firstName && showValidation)
                           ? 6
                           : 0,
                     }}
@@ -667,14 +671,14 @@ This platform helps you discover and join amazing events near you. Let's get sta
                       fontSize: 16,
                       fontWeight: "600",
                       color:
-                        showValidationErrors && !lastName
+                        showValidationErrors && !lastName && showValidation
                           ? "#EF4444"
                           : theme.colors.text,
                       marginBottom: 12,
                     }}
                   >
                     Last Name *
-                    {showValidationErrors && !lastName && (
+                    {showValidationErrors && !lastName && showValidation && (
                       <Text style={{ color: "#EF4444" }}> - Required</Text>
                     )}
                   </Text>
@@ -686,27 +690,32 @@ This platform helps you discover and join amazing events near you. Let's get sta
                         : "rgba(255, 255, 255, 0.9)",
                       borderRadius: 20,
                       borderWidth: 2,
-                      borderColor: lastName
-                        ? "#10B981"
-                        : showValidationErrors && !lastName
-                        ? "#EF4444"
-                        : theme.dark
-                        ? "rgba(139, 92, 246, 0.3)"
-                        : "rgba(139, 92, 246, 0.2)",
+                      borderColor:
+                        lastName && showValidation
+                          ? "#10B981"
+                          : showValidationErrors && !lastName && showValidation
+                          ? "#EF4444"
+                          : theme.dark
+                          ? "rgba(139, 92, 246, 0.3)"
+                          : "rgba(139, 92, 246, 0.2)",
                       paddingHorizontal: 20,
                       justifyContent: "center",
-                      shadowColor: lastName
-                        ? "#10B981"
-                        : showValidationErrors && !lastName
-                        ? "#EF4444"
-                        : lastName
-                        ? "#8B5CF6"
-                        : "transparent",
+                      shadowColor:
+                        lastName && showValidation
+                          ? "#10B981"
+                          : showValidationErrors && !lastName && showValidation
+                          ? "#EF4444"
+                          : lastName && showValidation
+                          ? "#8B5CF6"
+                          : "transparent",
                       shadowOffset: { width: 0, height: 4 },
                       shadowOpacity: 0.2,
                       shadowRadius: 12,
                       elevation:
-                        lastName || (showValidationErrors && !lastName) ? 6 : 0,
+                        (lastName && showValidation) ||
+                        (showValidationErrors && !lastName && showValidation)
+                          ? 6
+                          : 0,
                     }}
                   >
                     <KeyboardAwareInput
@@ -878,28 +887,28 @@ This platform helps you discover and join amazing events near you. Let's get sta
                   borderRadius: 20,
                   borderWidth: 2,
                   borderColor:
-                    username && isAvailable
+                    username && isAvailable && isUserNameChecked
                       ? "#10B981"
-                      : username && isAvailable === false
+                      : username && isAvailable === false && isUserNameChecked
                       ? "#EF4444"
-                      : username
-                      ? "#8B5CF6"
-                      : theme.dark
+                      : // : username
+                      // ? "#8B5CF6"
+                      theme.dark
                       ? "rgba(139, 92, 246, 0.3)"
                       : "rgba(139, 92, 246, 0.2)",
                   paddingHorizontal: 20,
                   shadowColor:
-                    username && isAvailable
+                    username && isAvailable && isUserNameChecked
                       ? "#10B981"
                       : username && isAvailable === false
                       ? "#EF4444"
-                      : username
-                      ? "#8B5CF6"
-                      : "transparent",
+                      : // : username
+                        // ? "#8B5CF6"
+                        "transparent",
                   shadowOffset: { width: 0, height: 4 },
                   shadowOpacity: 0.2,
                   shadowRadius: 12,
-                  elevation: username ? 6 : 0,
+                  elevation: 6,
                 }}
               >
                 <Text
@@ -1024,7 +1033,7 @@ This platform helps you discover and join amazing events near you. Let's get sta
                 >
                   {!isFormValid
                     ? `Complete All Fields ${
-                         !firstName || !lastName
+                        !firstName || !lastName
                           ? "👤"
                           : !username || !isAvailable
                           ? "@"
@@ -1050,7 +1059,7 @@ This platform helps you discover and join amazing events near you. Let's get sta
                 {!firstName && "First Name"}
                 {!firstName && !lastName && ", "}
                 {!lastName && "Last Name"}
-                {( !firstName || !lastName) &&
+                {(!firstName || !lastName) &&
                   (!username || !isAvailable) &&
                   ", "}
                 {!username && "Username"}

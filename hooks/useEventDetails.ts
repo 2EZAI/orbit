@@ -35,7 +35,7 @@ export function useEventDetails() {
     }
 
     const response = await fetch(
-      `${process.env.VITE_BACKEND_API}/api/details`,
+      `https://orbit-web-backend.onrender.com/api/details`,
       {
         method: "POST",
         headers: {
@@ -69,7 +69,7 @@ export function useEventDetails() {
       return;
     }
     const response = await fetch(
-      `${process.env.VITE_BACKEND_API}/api/details`,
+      `https://orbit-web-backend.onrender.com/api/details`,
       {
         method: "POST",
         headers: {

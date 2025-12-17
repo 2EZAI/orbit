@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { View, ScrollView, TouchableOpacity } from "react-native";
+import { useLocalSearchParams } from "expo-router";
+import React, { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
-import { useRouter } from "expo-router";
-import { useLocalSearchParams } from "expo-router";
 import { AlertDialogs } from "~/src/components/ui/alertdialogs";
 
 export default function Webview() {
@@ -19,7 +17,7 @@ export default function Webview() {
   return (
     <SafeAreaView className="flex-1 bg-background">
       <WebView source={{ uri: external_url }} style={{ flex: 1 }} />
-     <AlertDialogs isvisible={isShowAlert} />
+      <AlertDialogs isvisible={isShowAlert} />
     </SafeAreaView>
   );
 }

@@ -1,31 +1,33 @@
 import { LinearGradient } from "expo-linear-gradient";
-import * as Location from "expo-location";
 import { useRouter } from "expo-router";
-import { Calendar, MapPin, Star, Users, X } from "lucide-react-native";
-import React, { useEffect, useMemo, useState } from "react";
+import { Calendar, Flag, MapPin, Star, Users, X } from "lucide-react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
+  Animated,
   DeviceEventEmitter,
-  Dimensions,
   Image,
+  PanResponder,
   ScrollView,
+  StyleSheet,
   TouchableOpacity,
   View,
-  PanResponder,
 } from "react-native";
+import { Dimensions } from "react-native";
+import Toast from "react-native-toast-message";
+import type { Channel } from "stream-chat";
+import { useEventJoinStatus } from "~/hooks/useEventJoinStatus";
+import { useFlagging } from "~/hooks/useFlagging";
+import { useJoinEvent } from "~/hooks/useJoinEvent";
+import { IProposal } from "~/hooks/useProposals";
 import { MapEvent, MapLocation } from "~/hooks/useUnifiedMapData";
-import { useUpdateEvents } from "~/hooks/useUpdateEvents";
 import { useAuth } from "~/src/lib/auth";
 import { formatDate, formatTime } from "~/src/lib/date";
+import { haptics } from "~/src/lib/haptics";
+import FlagContentModal from "../modals/FlagContentModal";
+import { ChatSelectionModal } from "../social/ChatSelectionModal";
 import { Text } from "../ui/text";
 import { UnifiedDetailsSheet } from "./UnifiedDetailsSheet";
-import { useEventJoinStatus } from "~/hooks/useEventJoinStatus";
-import { useJoinEvent } from "~/hooks/useJoinEvent";
-import { haptics } from "~/src/lib/haptics";
-import { IProposal } from "~/hooks/useProposals";
-import type { Channel } from "stream-chat";
 import UnifiedShareSheet from "./UnifiedShareSheet";
-import { ChatSelectionModal } from "../social/ChatSelectionModal";
 
 type UnifiedData = MapEvent | MapLocation;
 
@@ -38,8 +40,6 @@ interface UnifiedCardProps {
   treatAsEvent?: boolean; // Explicit prop to override type detection
   mapCenter?: [number, number] | null; // Current map center for location change detection
 }
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 // Type guards
 const isEvent = (data: UnifiedData): data is MapEvent => {
@@ -317,27 +317,19 @@ export const UnifiedCard = React.memo(
     treatAsEvent = true, // Default to true to maintain existing behavior
     mapCenter,
   }: UnifiedCardProps) => {
-    // Debug logging for UnifiedCard data
-    console.log("🎴 [UnifiedCard] Component rendered with data:", {
-      dataId: data?.id,
-      dataName: data?.name,
-      dataType: data?.type,
-      treatAsEvent,
-      timestamp: Date.now(),
-    });
-    const { UpdateEventStatus, fetchEventDetail, fetchLocationDetail } =
-      useUpdateEvents();
+
     const router = useRouter();
 
     const { session } = useAuth();
     const [showDetails, setShowDetails] = useState(false);
-    const currentIndex = nearbyData.findIndex((item) => item.id === data.id);
-    const [loading, setLoading] = useState(false); // Start with false since we have data
+    const [flagOpen, setFlagOpen] = useState({
+      open: false,
+      eventId: "",
+      locationId: "",
+    });
+
     const [detailData, setDetailData] = useState<any>(data); // Initialize with data immediately
-    const [userLocation, setUserLocation] = useState<{
-      latitude: number;
-      longitude: number;
-    } | null>(null);
+
     const [shareData, setShareData] = useState<{
       data: UnifiedData;
       isEventType: boolean;
@@ -353,13 +345,22 @@ export const UnifiedCard = React.memo(
       event: null,
       isEventType: false,
     });
+
+    // Track recently visited items to prevent cycling back
+    const visitedItemsRef = useRef<string[]>([]);
+    const swipeCountRef = useRef(0);
+    const lastSelectedIdRef = useRef<string | null>(null);
+    
+    // Animation values for glass shimmer effect
+    const shimmerPosition = useRef(new Animated.Value(-1)).current;
+    const shimmerOpacity = useRef(new Animated.Value(0)).current;
     const handleChatSelect = async (channel: Channel) => {
       if (!channel) return;
       try {
         // Ensure channel is watched before sending
         await channel.watch();
         if (chatShareSelection.proposal) {
-          const message = await channel.sendMessage({
+           await channel.sendMessage({
             text: "Check out this proposal!",
             type: "regular",
             data: {
@@ -432,6 +433,7 @@ export const UnifiedCard = React.memo(
         // You could show a toast or alert here
       }
     };
+    const { createFlag } = useFlagging();
     // NEW: Use the join event hooks (like web app)
     const { joinEvent, leaveEvent, isLoading: isJoining } = useJoinEvent();
 
@@ -449,27 +451,88 @@ export const UnifiedCard = React.memo(
       refetch: refetchJoinStatus,
     } = useEventJoinStatus(treatAsEvent ? data.id : undefined, createdById);
 
-    // Helper: Find nearest item in nearbyData (excluding current)
-    const findNearestItem = () => {
+    const findNearestItem = (swipeDirection: "left" | "right") => {
       const current = detailData || data;
       if (!current?.location?.coordinates) return null;
-      const [currLng, currLat] = current.location.coordinates;
-      let minDist = Infinity;
-      let nearest = null;
-      for (const item of nearbyData) {
-        if (item.id === current.id || !item?.location?.coordinates) continue;
-        const [lng, lat] = item.location.coordinates;
-        // Use Haversine formula for geographic distance
-        const dist = calculateDistance(currLat, currLng, lat, lng);
-        if (dist < minDist) {
-          minDist = dist;
-          nearest = item;
-        }
+      
+      const allAvailableItems = nearbyData.filter(
+        (item) =>
+          item.id !== current.id && item?.location?.coordinates
+      );
+      
+      if (allAvailableItems.length === 0) return null;
+      
+      // Filter out recently visited items (last 10 items to prevent cycling)
+      const availableItems = allAvailableItems.filter(
+        (item) => !visitedItemsRef.current.includes(item.id)
+      );
+      
+      // If we've visited most/all items, reset history but keep last selected excluded
+      if (availableItems.length === 0) {
+        // Reset history but exclude the last selected item
+        visitedItemsRef.current = [];
+        const itemsToChooseFrom = allAvailableItems.filter(
+          (item) => item.id !== lastSelectedIdRef.current
+        );
+        const items = itemsToChooseFrom.length > 0 ? itemsToChooseFrom : allAvailableItems;
+        const randomIndex = Math.floor(Math.random() * items.length);
+        const selected = items[randomIndex];
+        visitedItemsRef.current.push(selected.id);
+        lastSelectedIdRef.current = selected.id;
+        return selected;
       }
-      return nearest;
+      
+      // Always pick randomly from available items (not recently visited)
+      // This ensures variety and prevents cycling
+      const randomIndex = Math.floor(Math.random() * availableItems.length);
+      const selected = availableItems[randomIndex];
+      
+      if (selected) {
+        visitedItemsRef.current.push(selected.id);
+        // Keep history of last 10 items to prevent cycling
+        if (visitedItemsRef.current.length > 10) {
+          visitedItemsRef.current.shift();
+        }
+        lastSelectedIdRef.current = selected.id;
+      }
+      
+      return selected;
     };
 
-    // PanResponder for swipe gesture
+    // Trigger glass shimmer animation
+    const triggerShimmer = (direction: "left" | "right") => {
+      // Reset shimmer position based on direction
+      shimmerPosition.setValue(direction === "right" ? -1 : 1);
+      shimmerOpacity.setValue(0);
+      
+      // Animate shimmer across the card
+      Animated.parallel([
+        Animated.timing(shimmerPosition, {
+          toValue: direction === "right" ? 1 : -1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.sequence([
+          Animated.timing(shimmerOpacity, {
+            toValue: 0.8,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+          Animated.timing(shimmerOpacity, {
+            toValue: 0.8,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(shimmerOpacity, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start();
+    };
+
+    // PanResponder for swipe gesture with glass shimmer animation
     const panResponder = React.useMemo(
       () =>
         PanResponder.create({
@@ -480,17 +543,36 @@ export const UnifiedCard = React.memo(
             );
           },
           onPanResponderRelease: (_evt, gestureState) => {
-            if (Math.abs(gestureState.dx) > 40) {
-              // On swipe left or right, open nearest pin
-              const nearest = findNearestItem();
-              if (nearest) {
-                onDataSelect(nearest);
-              }
+            const swipeThreshold = 40;
+            const swipeDistance = Math.abs(gestureState.dx);
+            
+            if (swipeDistance > swipeThreshold) {
+              const swipeDirection = gestureState.dx > 0 ? "right" : "left";
+              
+              // Trigger glass shimmer effect
+              triggerShimmer(swipeDirection);
+              
+              // Small delay to let shimmer start, then select next item
+              setTimeout(() => {
+                const nearest = findNearestItem(swipeDirection);
+                if (nearest) {
+                  onDataSelect(nearest);
+                }
+              }, 100);
             }
           },
         }),
       [nearbyData, detailData, data]
     );
+    
+    // Reset visited items when data changes
+    useEffect(() => {
+      visitedItemsRef.current = [];
+      swipeCountRef.current = 0;
+      lastSelectedIdRef.current = null;
+      shimmerPosition.setValue(-1);
+      shimmerOpacity.setValue(0);
+    }, [data.id]);
     // Get theme colors and context based on data - ULTRA OPTIMIZED
     const theme = useMemo(
       () => getThemeColors(detailData || data),
@@ -521,46 +603,15 @@ export const UnifiedCard = React.memo(
       });
     }, []);
 
-    // REMOVED: Location fetching to make card render instantly
-    // Location will be fetched in background if needed
-
-    const getCurrentLocation = async () => {
-      try {
-        // Use cached location first for faster response
-        const lastKnownLocation = await Location.getLastKnownPositionAsync({
-          maxAge: 60000, // 1 minute cache
-        });
-
-        if (lastKnownLocation) {
-          setUserLocation({
-            latitude: lastKnownLocation.coords.latitude,
-            longitude: lastKnownLocation.coords.longitude,
-          });
-          return;
-        }
-
-        // Only request permission if we don't have cached location
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== "granted") {
-          console.log("Location permission denied");
-          return;
-        }
-
-        // Use faster location options
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced, // Faster than high accuracy
-        });
-        setUserLocation({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        });
-      } catch (error) {
-        console.error("Error getting location:", error);
-      }
-    };
-
     // REMOVED: Gesture handling and animations for better performance
-
+    const onUnAuth = () => {
+      Toast.show({
+        type: "info",
+        text1: "Please Log In",
+        text2: "You need to be logged in to perform this action.",
+      });
+      router.dismissAll();
+    };
     const handleContextAction = (action: string) => {
       switch (action) {
         case "join":
@@ -570,9 +621,17 @@ export const UnifiedCard = React.memo(
             (data as any)?.is_ticketmaster;
           if (isTicketmaster) {
             // For Ticketmaster events: "Buy Tickets" -> opens ticket purchase
+            if (!session) {
+              onUnAuth();
+              return;
+            }
             handleTicketPurchase();
           } else {
             // For user events: Join button -> turns into "Create Orbit"
+            if (!session) {
+              onUnAuth();
+              return;
+            }
             if (treatAsEvent && !isJoinedFromDB) {
               hitUpdateEventApi();
             }
@@ -584,14 +643,26 @@ export const UnifiedCard = React.memo(
         case "create":
           if (detailData?.source === "user" && isJoinedFromDB) {
             // For EVENTS: "Create Orbit" -> creates group chat
+            if (!session) {
+              onUnAuth();
+              return;
+            }
             handleCreateOrbit();
           } else {
             // For LOCATIONS: "Create Activity" -> goes to create activity page
+            if (!session) {
+              onUnAuth();
+              return;
+            }
             handleCreateEvent();
           }
           break;
         case "edit":
           // For EVENTS: "Edit Event" -> goes to edit event page
+          if (!session) {
+            onUnAuth();
+            return;
+          }
           if (treatAsEvent) {
             router.push({
               pathname: "/(app)/(create)",
@@ -797,6 +868,17 @@ export const UnifiedCard = React.memo(
         };
       }
     }, [detailData, data, treatAsEvent]); // Removed userLocation dependencies
+    
+    // Get screen width for shimmer animation
+    const screenWidth = Dimensions.get('window').width;
+    const cardWidth = screenWidth - 32; // Account for left/right padding (16 each)
+    
+    // Interpolate shimmer position for gradient (from -cardWidth to +cardWidth)
+    const shimmerTranslateX = shimmerPosition.interpolate({
+      inputRange: [-1, 1],
+      outputRange: [-cardWidth, cardWidth],
+    });
+
     return (
       <>
         <View
@@ -834,14 +916,70 @@ export const UnifiedCard = React.memo(
               }}
             />
 
-            {/* Close Button */}
-            <TouchableOpacity
-              className="absolute top-2 right-2 z-10 justify-center items-center w-8 h-8 rounded-full bg-black/30"
-              onPress={onClose}
+            {/* Glass Shimmer Effect */}
+            <Animated.View
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 0,
+                overflow: "hidden",
+                opacity: shimmerOpacity,
+              }}
+              pointerEvents="none"
             >
-              <X size={20} color="white" />
-            </TouchableOpacity>
+              <Animated.View
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  bottom: 0,
+                  width: "40%",
+                  transform: [{ translateX: shimmerTranslateX }],
+                }}
+              >
+                <LinearGradient
+                  colors={[
+                    "transparent",
+                    "rgba(255, 255, 255, 0.3)",
+                    "rgba(255, 255, 255, 0.5)",
+                    "rgba(255, 255, 255, 0.3)",
+                    "transparent",
+                  ]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{
+                    flex: 1,
+                    width: "100%",
+                  }}
+                />
+              </Animated.View>
+            </Animated.View>
 
+            {/* Close Button */}
+            <View
+              className="absolute top-2 right-2 z-10"
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+            >
+              <TouchableOpacity
+                className=" justify-center items-center w-8 h-8 rounded-full bg-black/30"
+                onPress={() => {
+                  setFlagOpen({
+                    open: true,
+                    eventId: treatAsEvent ? data.id : "",
+                    locationId: treatAsEvent ? "" : data.id,
+                  });
+                }}
+              >
+                <Flag size={20} color="#000" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                className=" justify-center items-center w-8 h-8 rounded-full bg-black/30"
+                onPress={onClose}
+              >
+                <X size={20} color="white" />
+              </TouchableOpacity>
+            </View>
             {/* Content */}
             <View className="p-4">
               {/* Header with Icon and Category */}
@@ -928,40 +1066,71 @@ export const UnifiedCard = React.memo(
 
               {/* Context-Aware Action Buttons */}
               <View className="flex-row gap-2">
-                {contextActions.map((action, index) =>
-                  (action.action === "join" || action.action === "create") &&
-                  !session ? null : (
-                    <TouchableOpacity
-                      key={index}
-                      className="flex-1 py-2 rounded-full"
-                      style={{
-                        backgroundColor:
-                          index === 0 ? "rgba(255,255,255,0.9)" : "#3B82F6", // Solid blue for action buttons
-                      }}
-                      onPress={() => handleContextAction(action.action)}
-                    >
-                      <View className="flex-row justify-center items-center">
-                        <Text
-                          className={`font-bold text-base ${
-                            index === 0 ? "text-black" : "text-white"
-                          }`}
-                        >
-                          {action.label}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  )
+                {contextActions.map(
+                  (action, index) =>
+                    (action.action === "join" ||
+                      action.action === "create" ||
+                      action.action === "details") && (
+                      <TouchableOpacity
+                        key={index}
+                        className="flex-1 py-2 rounded-full"
+                        style={[
+                          {
+                            backgroundColor:
+                              index === 0 ? "rgba(255,255,255,0.9)" : "#3B82F6", // Solid blue for action buttons
+                          },
+                          !session && action.action !== "details"
+                            ? styles.disabledButton
+                            : {},
+                        ]}
+                        onPress={() => handleContextAction(action.action)}
+                      >
+                        <View className="flex-row justify-center items-center">
+                          <Text
+                            className={`font-bold text-base ${
+                              index === 0 ? "text-black" : "text-white"
+                            }`}
+                          >
+                            {action.label}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    )
                 )}
               </View>
             </View>
           </View>
+          <FlagContentModal
+            visible={flagOpen.open}
+            contentTitle={data.name}
+            variant="sheet"
+            onClose={() =>
+              setFlagOpen({ open: false, eventId: "", locationId: "" })
+            }
+            onSubmit={async ({ reason, explanation }) => {
+              const isEventFlag = isEvent(data);
+              const idToFlag = data.id;
+              const response = await createFlag({
+                reason,
+                explanation,
+                event_id: isEventFlag ? idToFlag : "",
+                static_location_id: isEventFlag ? "" : idToFlag,
+              });
+              if (response) {
+                setFlagOpen({ open: false, eventId: "", locationId: "" });
+                Toast.show({
+                  type: "success",
+                  text1: "Report submitted",
+                  text2: "Thank you for helping keep our community safe.",
+                  position: "top",
+                  visibilityTime: 3000,
+                  autoHide: true,
+                  topOffset: 50,
+                });
+              } 
+            }}
+          />
         </View>
-
-        {loading && (
-          <View className="absolute top-0 right-0 bottom-0 left-0 justify-center items-center bg-black/20">
-            <ActivityIndicator size="large" color="#ffffff" />
-          </View>
-        )}
 
         {showDetails && (
           <UnifiedDetailsSheet
@@ -978,6 +1147,7 @@ export const UnifiedCard = React.memo(
             }}
           />
         )}
+
         {shareData && (
           <UnifiedShareSheet
             isOpen={!!shareData}
@@ -1033,3 +1203,9 @@ export const UnifiedCard = React.memo(
     );
   }
 );
+const styles = StyleSheet.create({
+  disabledButton: {
+    // backgroundColor: "#A9A9A9",
+    opacity: 0.6,
+  },
+});

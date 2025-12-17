@@ -263,7 +263,7 @@ export function PostDetailCard({
       <TouchableOpacity
         onPress={() => {
           router.push({
-            pathname: "/(app)/profile/[username]",
+            pathname: "/profile/[username]",
             params: { username: comment.user.id },
           });
         }}
@@ -282,7 +282,7 @@ export function PostDetailCard({
           <TouchableOpacity
             onPress={() => {
               router.push({
-                pathname: "/(app)/profile/[username]",
+                pathname: "/profile/[username]",
                 params: { username: comment.user.id },
               });
             }}
@@ -326,7 +326,7 @@ export function PostDetailCard({
             <TouchableOpacity
               onPress={() => {
                 if (post.user?.username) {
-                  router.push(`/(app)/profile/${post.user.id}`);
+                  router.push(`/profile/${post.user.id}`);
                 }
               }}
               className="flex-row flex-1 items-center"

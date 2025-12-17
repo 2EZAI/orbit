@@ -35,7 +35,7 @@ import { supabase } from "~/src/lib/supabase";
 import { useUser } from "~/src/lib/UserProvider";
 import Toast from "react-native-toast-message";
 import { SafeAreaView } from "react-native-safe-area-context";
-
+import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 import { useTheme } from "~/src/components/ThemeProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -54,6 +54,7 @@ interface PermissionState {
 export default function PermissionsScreen() {
   const { user } = useUser();
   const { session } = useAuth();
+  const { sendNotification } = useNotificationsApi();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -225,42 +226,12 @@ export default function PermissionsScreen() {
       updatePermissionState("contacts", { loading: false });
     }
   };
-  const allPermissionsGranted = Object.values(permissions).every(
-    (p) => p.granted || (p.key === "contacts" && !p.granted)
-  );
-
-  const hitNotificationApi = async (type: string) => {
-    if (!user || !session?.user?.id) return;
-    try {
-      const requestData = {
-        userId: user.id,
-        type: type,
-      };
-
-      const response = await fetch(
-        `${process.env.BACKEND_MAP_URL}/api/notifications/send`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.user.id}`,
-          },
-          body: JSON.stringify(requestData),
-        }
-      );
-      console.log("requestData", requestData);
-
-      if (!response.ok) {
-        console.log("error>", response);
-        throw new Error(await response.text());
-      }
-
-      const data_ = await response.json();
-      console.log("response>", data_);
-    } catch (e) {
-      console.log("error_catch>", e);
-    }
-  };
+  const allPermissionsGranted =
+    permissions.location.granted &&
+    permissions.camera.granted &&
+    permissions.photos.granted &&
+    permissions.notifications.granted &&
+    permissions.contacts.granted;
 
   const handleContinue = async () => {
     if (!user || isSubmitting) return;
@@ -277,7 +248,10 @@ export default function PermissionsScreen() {
       if (error) throw error;
 
       console.log("Permissions saved, navigating to app");
-      hitNotificationApi("welcome");
+      sendNotification({
+        type: "welcome",
+        userId: user.id,
+      });
       if (permissions.contacts.granted) {
         router.replace("/(app)/contacts");
       } else {
@@ -551,7 +525,7 @@ export default function PermissionsScreen() {
                 ? "✅ All permissions granted!"
                 : `${
                     Object.values(permissions).filter((p) => p.granted).length
-                  }/4 permissions granted`}
+                  }/5 permissions granted`}
             </Text>
             <Text
               style={{
@@ -563,7 +537,7 @@ export default function PermissionsScreen() {
             >
               {allPermissionsGranted
                 ? "You're all set to explore the cosmos!"
-                : "Grant permissions to unlock all features"}
+                : "You can enable permissions to unlock all features. You can change this anytime in Settings."}
             </Text>
             {!allPermissionsGranted && (
               <Text
@@ -692,19 +666,10 @@ export default function PermissionsScreen() {
         {/* Continue Button */}
         <TouchableOpacity
           onPress={handleContinue}
-          disabled={
-            !permissions.camera.granted ||
-            !permissions.location.granted ||
-            !permissions.location.granted ||
-            !permissions.photos.granted ||
-            isSubmitting
-          }
+          disabled={isSubmitting}
           style={{
             height: 64,
-            backgroundColor:
-              allPermissionsGranted && !isSubmitting
-                ? "#8B5CF6"
-                : theme.colors.text + "33",
+            backgroundColor: theme.colors.primary,
             borderRadius: 20,
             justifyContent: "center",
             alignItems: "center",
@@ -723,14 +688,10 @@ export default function PermissionsScreen() {
               style={{
                 fontSize: 20,
                 fontWeight: "800",
-                color: allPermissionsGranted
-                  ? "white"
-                  : theme.colors.text + "66",
+                color: "white",
               }}
             >
-              {allPermissionsGranted
-                ? "Launch Into Orbit! 🚀"
-                : "Grant All Permissions"}
+              {"Continue"}
             </Text>
           )}
         </TouchableOpacity>

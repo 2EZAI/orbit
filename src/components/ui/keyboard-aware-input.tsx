@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import { View, ViewStyle, TextStyle } from "react-native";
 import { Input } from "~/src/components/ui/input";
-import { useScrollToInput } from "~/src/hooks/useKeyboardAware";
+import { useScrollToInput } from "~/hooks/useKeyboardAware";
 
 interface KeyboardAwareInputProps {
   value: string;

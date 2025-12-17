@@ -1,5 +1,6 @@
 import { format } from "date-fns";
-import { router } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { set } from "lodash";
 import {
   Bell,
   Heart,
@@ -8,10 +9,9 @@ import {
   Plus,
   Send,
 } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   FlatList,
   Image,
   RefreshControl,
@@ -22,6 +22,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { Channel } from "stream-chat";
+import { FlagReason, useFlagging } from "~/hooks/useFlagging";
 import { useNotificationsApi } from "~/hooks/useNotificationsApi";
 import { IProposal } from "~/hooks/useProposals";
 import {
@@ -29,16 +30,22 @@ import {
   UnifiedDetailsSheet,
 } from "~/src/components/map/UnifiedDetailsSheet";
 import UnifiedShareSheet from "~/src/components/map/UnifiedShareSheet";
+import FlagContentModal, {
+  Flags,
+} from "~/src/components/modals/FlagContentModal";
 import { ChatSelectionModal } from "~/src/components/social/ChatSelectionModal";
+import { PostMenuDropdown } from "~/src/components/social/PostMenuDropdown";
 import { SocialEventCard } from "~/src/components/social/SocialEventCard";
 import { useTheme } from "~/src/components/ThemeProvider";
+import NotificationBadge from "~/src/components/ui/NotificationBadge";
 import { ScreenHeader } from "~/src/components/ui/screen-header";
 import { Text } from "~/src/components/ui/text";
 import { UserAvatar } from "~/src/components/ui/user-avatar";
 import { useAuth } from "~/src/lib/auth";
 import { useChat } from "~/src/lib/chat";
-import { supabase } from "~/src/lib/supabase";
+import { usePostRefresh } from "~/src/lib/postProvider";
 import { useUser } from "~/src/lib/UserProvider";
+import { socialPostService } from "~/src/services/socialPostService";
 
 interface Post {
   id: string;
@@ -61,8 +68,6 @@ interface Post {
   isLiked?: boolean;
 }
 
-const { width: screenWidth } = Dimensions.get("window");
-
 const ImageGallery = ({
   images,
   postId,
@@ -72,8 +77,6 @@ const ImageGallery = ({
   postId: string;
   event?: any;
 }) => {
-  const { theme, isDarkMode } = useTheme();
-
   const handleImagePress = () => {
     router.push({
       pathname: `/post/${postId}`,
@@ -116,15 +119,18 @@ const ImageGallery = ({
 export default function SocialFeed() {
   const { session } = useAuth();
   const { user } = useUser();
+  const { refreshRequired = false } = useLocalSearchParams();
   const { theme, isDarkMode } = useTheme();
-  const { fetchAllNoifications, unReadCount } = useNotificationsApi();
+  const { sendNotification } = useNotificationsApi();
   const { client } = useChat();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [isScrolled, setIsScrolled] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const { setRefreshRequired, isRefreshRequired } = usePostRefresh();
   const [shareData, setShareData] = useState<{
     data: UnifiedData;
     isEventType: boolean;
@@ -146,110 +152,158 @@ export default function SocialFeed() {
   const [selectedPostForShare, setSelectedPostForShare] = useState<Post | null>(
     null
   );
-
+  const [flagOpen, setFlagOpen] = useState({
+    open: false,
+    id: "",
+  });
   const PAGE_SIZE = 20;
 
-  useEffect(() => {
-    fetchAllNoifications(1, 20);
-  }, []);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const { createFlag } = useFlagging();
+  const isLoadingRef = useRef(false);
+  const loadPostsRef = useRef<((isRefresh?: boolean) => Promise<void>) | null>(
+    null
+  );
 
-  const loadPosts = async (isRefresh = false) => {
-    if (loading || (!hasMore && !isRefresh)) {
+  const handleFlagPost = async ({
+    reason,
+    explanation,
+  }: {
+    reason: string;
+    explanation: string;
+  }) => {
+    console.log("🚩 [SocialFeed] Starting flag post process", {
+      postId: flagOpen.id,
+      reason,
+      hasExplanation: !!explanation,
+    });
+
+    if (!flagOpen.id) {
+      console.error("❌ [SocialFeed] No post ID provided for flagging");
       return;
     }
 
-    const currentPage = isRefresh ? 1 : page;
-
-    if (isRefresh) {
-      setPage(1);
-      setHasMore(true);
+    if (!session?.access_token) {
+      console.error("❌ [SocialFeed] No access token available for flagging");
+      return;
     }
 
-    setLoading(true);
-
     try {
-      const response = await fetch(
-        `${process.env.BACKEND_MAP_URL}/api/posts/all?page=${currentPage}&limit=${PAGE_SIZE}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token}`,
-          },
-        }
-      );
+      console.log("🚩 [SocialFeed] Calling createFlag API", {
+        post_id: flagOpen.id,
+        reason,
+      });
 
-      if (!response.ok) {
-        setLoading(false);
-        setRefreshing(false);
-        setHasMore(false);
-        throw new Error(await response.text());
+      const result = await createFlag({
+        reason: reason as FlagReason,
+        explanation: explanation.trim(),
+        post_id: flagOpen.id,
+      });
+
+      console.log("✅ [SocialFeed] Flag created successfully", { result });
+      if (result) {
+        await loadPosts(true);
+        setFlagOpen({ open: false, id: "" });
       }
-
-      const response_ = await response.json();
-      const postsData = response_?.data;
-      // console.log("postsData>",postsData);
-      const transformedPosts =
-        postsData?.map((post: any) => ({
-          id: post.id,
-          content: post.content,
-          media_urls: post.media_urls || [],
-          created_at: post.created_at,
-          address: post.address,
-          city: post.city,
-          state: post.state,
-          like_count: Math.max(0, post?.likes?.count || 0),
-          comment_count: Math.max(0, post?.comments?.count || 0),
-          user: post.created_by || {
-            id: post.id,
-            username: post.username,
-            avatar_url: post.avatar_url,
-            first_name: post.first_name,
-            last_name: post.last_name,
-          },
-          event: post.event,
-          isLiked: false,
-        })) || [];
-
-      // Check which posts are liked by the current user
-      if (session?.user?.id) {
-        try {
-          const { data: likedPosts } = await supabase
-            .from("post_likes")
-            .select("post_id")
-            .eq("user_id", session.user.id);
-
-          const likedPostIds = new Set(likedPosts?.map((p) => p.post_id) || []);
-          transformedPosts.forEach((post: Post) => {
-            post.isLiked = likedPostIds.has(post.id);
-          });
-        } catch (error) {
-          console.error("Error checking likes:", error);
-        }
-      }
-
-      if (transformedPosts.length === 0) {
-        setHasMore(false);
-      } else {
-        if (isRefresh) {
-          setPosts(transformedPosts);
-        } else {
-          setPosts((prev) => [...prev, ...transformedPosts]);
-        }
-        setPage((prev) => prev + 1);
-      }
+      // Refresh posts after flagging
     } catch (error) {
-      console.error("Error fetching posts:", error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+      console.error("❌ [SocialFeed] Error flagging post:", error);
+      if (error instanceof Error) {
+        console.error("❌ [SocialFeed] Error message:", error.message);
+        console.error("❌ [SocialFeed] Error stack:", error.stack);
+      }
+      // Re-throw to let FlagContentModal handle the error display
+      throw error;
     }
   };
 
+  const loadPosts = useCallback(
+    async (isRefresh = false) => {
+      if (isLoadingRef.current || (!hasMore && !isRefresh)) {
+        return;
+      }
+
+      const currentPage = isRefresh ? 1 : page;
+
+      if (isRefresh) {
+        setPage(1);
+        setHasMore(true);
+        setNextCursor(null);
+      }
+
+      isLoadingRef.current = true;
+      setLoading(true);
+
+      try {
+        const response = await socialPostService.fetchPosts({
+          cursor: isRefresh ? undefined : nextCursor || undefined,
+          page: isRefresh ? 1 : currentPage, // Fallback for backward compatibility
+          limit: PAGE_SIZE,
+          authToken: session?.access_token,
+        });
+
+        const postsData = response.feed_items || [];
+        const transformedPosts = socialPostService.transformPostsToMobileFormat(
+          postsData.filter((item) => item.type === "post") as any[]
+        );
+
+        // Update pagination cursor
+        if (response.pagination?.next_cursor) {
+          setNextCursor(response.pagination.next_cursor);
+          setHasMore(response.pagination.has_more);
+        } else {
+          // Fallback to page-based pagination
+          if (transformedPosts.length === 0) {
+            setHasMore(false);
+          } else {
+            setHasMore(true);
+            setPage((prev) => prev + 1);
+          }
+        }
+        if (transformedPosts.length === 0) {
+          setHasMore(false);
+        } else {
+          if (isRefresh) {
+            setPosts(transformedPosts);
+          } else {
+            // Deduplicate posts by ID to prevent duplicate key errors
+            setPosts((prev) => {
+              const existingIds = new Set(prev.map((p) => p.id));
+              const newPosts = transformedPosts.filter(
+                (p) => !existingIds.has(p.id)
+              );
+              return [...prev, ...newPosts];
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching posts:", error);
+        setHasMore(false);
+      } finally {
+        isLoadingRef.current = false;
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [hasMore, page, nextCursor, session?.access_token]
+  );
+
+  // Store loadPosts in ref to keep stable reference for useFocusEffect
+  loadPostsRef.current = loadPosts;
+
   useEffect(() => {
     loadPosts(true);
-  }, []);
+  }, []); // Only run on mount
 
+  useFocusEffect(
+    useCallback(() => {
+      if (isRefreshRequired && loadPostsRef.current) {
+        // Set to false immediately to prevent multiple calls
+        setRefreshRequired(false);
+        loadPostsRef.current(true);
+      }
+    }, [isRefreshRequired, setRefreshRequired])
+  );
   const onRefresh = () => {
     setRefreshing(true);
     setPage(1);
@@ -259,51 +313,44 @@ export default function SocialFeed() {
   };
 
   const toggleLike = async (postId: string) => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.id || !session?.access_token) return;
 
     try {
       const post = posts.find((p) => p.id === postId);
       if (!post) return;
 
       if (post.isLiked) {
-        const { error } = await supabase
-          .from("post_likes")
-          .delete()
-          .eq("post_id", postId)
-          .eq("user_id", session.user.id);
-
-        if (!error) {
-          setPosts((prevPosts) =>
-            prevPosts.map((p) =>
-              p.id === postId
-                ? {
-                    ...p,
-                    like_count: Math.max(0, p.like_count - 1),
-                    isLiked: false,
-                  }
-                : p
-            )
-          );
-        }
+        await socialPostService.unlikePost(postId, session.access_token);
+        setPosts((prevPosts) =>
+          prevPosts.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  like_count: Math.max(0, p.like_count - 1),
+                  isLiked: false,
+                }
+              : p
+          )
+        );
       } else {
-        const { error } = await supabase.from("post_likes").insert({
-          post_id: postId,
-          user_id: session.user.id,
+        await socialPostService.likePost(postId, session.access_token);
+        setPosts((prevPosts) =>
+          prevPosts.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  like_count: Math.max(0, p.like_count + 1),
+                  isLiked: true,
+                }
+              : p
+          )
+        );
+        // Send notification when liking
+        sendNotification({
+          type: "like",
+          userId: post.user.id,
+          postId: postId,
         });
-
-        if (!error) {
-          setPosts((prevPosts) =>
-            prevPosts.map((p) =>
-              p.id === postId
-                ? {
-                    ...p,
-                    like_count: Math.max(0, p.like_count + 1),
-                    isLiked: true,
-                  }
-                : p
-            )
-          );
-        }
       }
     } catch (error) {
       console.error("Error toggling like:", error);
@@ -344,8 +391,8 @@ export default function SocialFeed() {
 
       console.log("Post shared successfully:", message);
 
-      // Navigate to the chat
-      router.push(`/(app)/(chat)/channel/${channel.id}`);
+      // Don't navigate to chat - stay on social feed
+      // router.push(`/(app)/(chat)/channel/${channel.id}`);
     } catch (error) {
       console.error("Error sharing post:", error);
       // You could show a toast or alert here
@@ -371,7 +418,7 @@ export default function SocialFeed() {
             onPress={() => {
               if (post.user?.id) {
                 router.push({
-                  pathname: `/(app)/profile/${post.user.id}`,
+                  pathname: `/profile/${post.user.id}`,
                   params: { from: "social" },
                 });
               }
@@ -412,13 +459,11 @@ export default function SocialFeed() {
               </Text>
             </View>
           </TouchableOpacity>
-
-          {/*  <TouchableOpacity className="p-2">
-            <MoreHorizontal
-              size={20}
-              color={isDarkMode ? "#9CA3AF" : "#6B7280"}
-            />
-          </TouchableOpacity>*/}
+          <PostMenuDropdown
+            postId={post.id}
+            isOwner={post.user.id === session?.user.id}
+            onReport={(postId) => setFlagOpen({ open: true, id: postId })}
+          />
         </View>
 
         {/* Post Content */}
@@ -522,7 +567,7 @@ export default function SocialFeed() {
                       : "#6B7280",
                   }}
                 >
-                  {post.like_count}
+                  {post.like_count > 0 ? post.like_count : "0"}
                 </Text>
               </TouchableOpacity>
 
@@ -545,7 +590,7 @@ export default function SocialFeed() {
                   className="ml-2 text-sm font-medium"
                   style={{ color: isDarkMode ? "#9CA3AF" : "#6B7280" }}
                 >
-                  {post.comment_count}
+                  {post.comment_count > 0 ? post.comment_count : "0"}
                 </Text>
               </TouchableOpacity>
 
@@ -669,36 +714,7 @@ export default function SocialFeed() {
                 });
               },
               backgroundColor: theme.colors.primary,
-              badge: true ? (
-                <View
-                  style={{
-                    position: "absolute",
-                    top: -4,
-                    right: -6,
-                    backgroundColor: "#ff3b30",
-                    width: 18,
-                    height: 18,
-                    borderRadius: 9,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    borderWidth: 2,
-                    borderColor: "white",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: "white",
-                      fontSize: 10,
-                      fontWeight: "800",
-                      textAlign: "center",
-                      includeFontPadding: false,
-                      lineHeight: 10,
-                    }}
-                  >
-                    {unReadCount > 99 ? "9" : String(unReadCount || 5)[0]}
-                  </Text>
-                </View>
-              ) : undefined,
+              badge: <NotificationBadge />,
             },
             {
               icon: (
@@ -757,36 +773,7 @@ export default function SocialFeed() {
               });
             },
             backgroundColor: theme.colors.primary,
-            badge: true ? (
-              <View
-                style={{
-                  position: "absolute",
-                  top: -4,
-                  right: -6,
-                  backgroundColor: "#ff3b30",
-                  width: 18,
-                  height: 18,
-                  borderRadius: 9,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  borderWidth: 2,
-                  borderColor: "white",
-                }}
-              >
-                <Text
-                  style={{
-                    color: "white",
-                    fontSize: 10,
-                    fontWeight: "800",
-                    textAlign: "center",
-                    includeFontPadding: false,
-                    lineHeight: 10,
-                  }}
-                >
-                  {unReadCount > 99 ? "9" : String(unReadCount || 5)[0]}
-                </Text>
-              </View>
-            ) : undefined,
+            badge: <NotificationBadge />,
           },
           {
             icon: (
@@ -813,7 +800,12 @@ export default function SocialFeed() {
       <FlatList
         data={posts}
         renderItem={renderPost}
-        keyExtractor={(item) => item.id}
+        onScroll={() => setIsScrolled(true)}
+        keyExtractor={(item, index) => {
+          // Ensure unique keys - use index as fallback if ID is missing or duplicate
+          const key = item.id || `post-${index}`;
+          return key;
+        }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -823,7 +815,7 @@ export default function SocialFeed() {
           />
         }
         onEndReached={() => {
-          if (hasMore && !loading) {
+          if (hasMore && !loading && isScrolled) {
             loadPosts();
           }
         }}
@@ -877,6 +869,7 @@ export default function SocialFeed() {
           }}
           onShowControler={() => {}}
           isEvent={!isSelectedItemLocation}
+          from="social"
         />
       )}
       {shareData && (
@@ -953,6 +946,13 @@ export default function SocialFeed() {
         }}
         onSelectChat={handleSelectChat}
         // postId={selectedPostForShare?.id || ""}
+      />
+      <FlagContentModal
+        visible={flagOpen.open}
+        contentTitle={"Post"}
+        variant="sheet"
+        onClose={() => setFlagOpen({ open: false, id: "" })}
+        onSubmit={handleFlagPost}
       />
     </SafeAreaView>
   );

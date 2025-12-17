@@ -1,6 +1,12 @@
 import { router } from "expo-router";
 import { Calendar, MapPin, Search, Users, X } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Image,
@@ -8,12 +14,15 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { useUser } from "~/src/lib/UserProvider";
-import { useRealtimeSearch } from "../../hooks/useSearch";
-import { useAuth } from "../../lib/auth";
-import { EventResult, LocationResult, searchService, UserResult } from "../../services/searchService";
+import { useRealtimeSearch } from "../../../hooks/useSearch";
+import {
+  EventResult,
+  LocationResult,
+  UserResult,
+} from "../../services/searchService";
 import { useTheme } from "../ThemeProvider";
 import { Input } from "../ui/input";
 import { OptimizedImage } from "../ui/optimized-image";
@@ -37,55 +46,53 @@ export function SearchSheet({
   onShowControler,
 }: SearchSheetProps) {
   const { theme } = useTheme();
-  const { session } = useAuth();
   const { user, userlocation } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<TabType>("users");
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
 
   // Get user location coordinates for search
   const userLocation = useMemo(() => {
     if (!user) return undefined;
-    
+
     let coordinates = undefined;
-    
+
     // First try: If user prefers orbit mode and has saved coordinates
     if (user.event_location_preference === 1 && userlocation) {
       coordinates = {
-        latitude: userlocation.latitude != null ? parseFloat(userlocation.latitude) : NaN,
-        longitude: userlocation.longitude != null ? parseFloat(userlocation.longitude) : NaN,
+        latitude:
+          userlocation.latitude != null
+            ? parseFloat(userlocation.latitude)
+            : NaN,
+        longitude:
+          userlocation.longitude != null
+            ? parseFloat(userlocation.longitude)
+            : NaN,
       };
-      
-      if (Number.isFinite(coordinates.latitude) && Number.isFinite(coordinates.longitude)) {
+
+      if (
+        Number.isFinite(coordinates.latitude) &&
+        Number.isFinite(coordinates.longitude)
+      ) {
         return coordinates;
       }
     }
-    
+
     return undefined;
   }, [user, userlocation]);
 
-  // Update search service auth token
-  useEffect(() => {
-    if (session?.access_token) {
-      searchService.setAuthToken(session.access_token);
-    }
-  }, [session?.access_token]);
-
   // Use the new search hook
-  const { 
-    results, 
-    isLoading, 
-    error, 
-    totalResults, 
-    hasResults 
-  } = useRealtimeSearch(searchQuery, userLocation, {
-    radius: 100, // 100km radius (matches web app)
-    limit: 10, // 10 results per category (matches web app)
-    debounceMs: 300,
-    enabled: isOpen,
-  });
+  const { results, isLoading, hasResults } = useRealtimeSearch(
+    searchQuery,
+    userLocation,
+    {
+      radius: 100, // 100km radius (matches web app)
+      limit: 10, // 10 results per category (matches web app)
+      debounceMs: 300,
+      enabled: isOpen,
+    }
+  );
 
   // Tab configuration
   const tabs = [
@@ -100,7 +107,6 @@ export function SearchSheet({
       setSearchQuery("");
       setActiveTab("users");
       setIsExpanded(false);
-      setIsFocused(false);
       // Focus search input after a brief delay
       setTimeout(() => searchInputRef.current?.focus(), 100);
     }
@@ -124,14 +130,15 @@ export function SearchSheet({
     setSearchQuery(query);
   }, []);
 
-
-
   // Handle result selection
   const handleSelectResult = (
     result: UserResult | EventResult | LocationResult,
     type: "user" | "event" | "location"
   ) => {
-    console.log("🔍 [SearchSheet] handleSelectResult called:", { type, result });
+    console.log("🔍 [SearchSheet] handleSelectResult called:", {
+      type,
+      result,
+    });
 
     // Call controller first if it exists
     if (onShowControler && typeof onShowControler === "function") {
@@ -147,14 +154,14 @@ export function SearchSheet({
     switch (type) {
       case "user":
         console.log("🔍 [SearchSheet] Navigating to user profile:", result.id);
-        router.push(`/(app)/profile/${result.id}`);
+        router.push(`/profile/${result.id}`);
         break;
       case "event":
         const event = result as EventResult;
         // Check if we have valid coordinates
         const eventLat = event.location?.coordinates?.[1];
         const eventLng = event.location?.coordinates?.[0];
-        
+
         if (!eventLat || !eventLng || isNaN(eventLat) || isNaN(eventLng)) {
           return;
         }
@@ -170,7 +177,11 @@ export function SearchSheet({
             venue_name: event.venue_name || "",
             description: event.description || "",
             type: event.type || "event",
-            created_by: typeof event.created_by === 'string' ? event.created_by : JSON.stringify(event.created_by || {}),
+            image_urls: event.image_urls ? JSON.stringify(event.image_urls) : "",
+            created_by:
+              typeof event.created_by === "string"
+                ? event.created_by
+                : JSON.stringify(event.created_by || {}),
           },
         });
         break;
@@ -235,7 +246,7 @@ export function SearchSheet({
   // Result count for tabs
   const getTabCount = (tabId: TabType) => {
     if (!results) return 0;
-    
+
     switch (tabId) {
       case "events":
         return results.events.length;
@@ -279,14 +290,6 @@ export function SearchSheet({
               }
               value={searchQuery}
               onChangeText={handleSearchQueryChange}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => {
-                // Only set focus to false if there's no search query
-                // This prevents premature collapse while user is still searching
-                if (searchQuery.length === 0) {
-                  setIsFocused(false);
-                }
-              }}
               placeholderTextColor={theme.colors.text + "80"}
               style={{
                 backgroundColor: theme.colors.card,
@@ -299,7 +302,6 @@ export function SearchSheet({
             <TouchableOpacity
               onPress={() => {
                 setSearchQuery("");
-                setIsFocused(false);
                 searchInputRef.current?.blur();
               }}
               style={{

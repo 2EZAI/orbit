@@ -62,7 +62,7 @@ export const Sheet: React.FC<SheetProps> = ({
 
   const dynamicStyles = {
     content: {
-      backgroundColor: theme.colors.background,
+      backgroundColor: theme.colors.card,
       borderTopLeftRadius: fullScreen ? 0 : 24,
       borderTopRightRadius: fullScreen ? 0 : 24,
       paddingTop: fullScreen ? 0 : 8,
@@ -105,17 +105,23 @@ export const Sheet: React.FC<SheetProps> = ({
           {!fullScreen && (
             <View style={[styles.handle, dynamicStyles.handle]} />
           )}
-          {isScrollable?<ScrollView
-            style={[
-              styles.scrollView,
-              { backgroundColor: theme.colors.background },
-            ]}
-            bounces={true}
-            showsVerticalScrollIndicator={true}
-            contentContainerStyle={{ backgroundColor: theme.colors.background }}
-          >
-            {children}
-          </ScrollView>:children}
+          {isScrollable ? (
+            <ScrollView
+              style={[
+                styles.scrollView,
+                { backgroundColor: theme.colors.card },
+              ]}
+              bounces={true}
+              showsVerticalScrollIndicator={true}
+              contentContainerStyle={{
+                backgroundColor: theme.colors.card,
+              }}
+            >
+              {children}
+            </ScrollView>
+          ) : (
+            children
+          )}
         </Animated.View>
       </View>
     </Modal>
