@@ -35,26 +35,40 @@ struct CreateEventIntent: AppIntent {
             throw IntentError.authenticationRequired
         }
         
-        // Get backend URL from Info.plist or hardcode
-        let backendURL = "https://orbit-map-backend-c2b17aebdb75.herokuapp.com"
+        // Use web backend URL (matches latest codebase)
+        let backendURL = "https://orbit-web-backend.onrender.com"
         
-        // Prepare event data
+        // Prepare event data matching latest create event format
         var eventData: [String: Any] = [
             "name": eventName,
             "description": description,
-            "type": "Default"
+            "type": "Default",
+            "is_private": false
         ]
         
+        // Add location details if provided
         if let location = location {
             eventData["address"] = location
+            // Try to parse city/state from location string if possible
+            // For now, just set address and let backend handle geocoding
         }
         
+        // Add date/time if provided
         if let date = date {
             eventData["start_datetime"] = ISO8601DateFormatter().string(from: date)
+            // Set end_datetime to 2 hours after start if not specified
+            let endDate = date.addingTimeInterval(2 * 60 * 60) // 2 hours
+            eventData["end_datetime"] = ISO8601DateFormatter().string(from: endDate)
+        } else {
+            // Default to current time if no date provided
+            let now = Date()
+            eventData["start_datetime"] = ISO8601DateFormatter().string(from: now)
+            let endDate = now.addingTimeInterval(2 * 60 * 60) // 2 hours
+            eventData["end_datetime"] = ISO8601DateFormatter().string(from: endDate)
         }
         
-        // Create event via API
-        let url = URL(string: "\(backendURL)/api/events/create")!
+        // Create event via API (using latest endpoint format)
+        let url = URL(string: "\(backendURL)/api/events")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -65,14 +79,34 @@ struct CreateEventIntent: AppIntent {
             
             let (data, response) = try await URLSession.shared.data(for: request)
             
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200...299).contains(httpResponse.statusCode) else {
-                throw IntentError.apiError("Failed to create event")
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw IntentError.apiError("Invalid response from server")
             }
             
-            let message = "Event '\(eventName)' created successfully!"
-            return .result(value: message)
+            if (200...299).contains(httpResponse.statusCode) {
+                // Try to parse response to get event details
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let eventName = json["name"] as? String {
+                    let message = "Event '\(eventName)' created successfully!"
+                    return .result(value: message)
+                } else {
+                    let message = "Event '\(eventName)' created successfully!"
+                    return .result(value: message)
+                }
+            } else {
+                // Try to get error message from response
+                let errorMessage: String
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let error = json["error"] as? String ?? json["message"] as? String {
+                    errorMessage = error
+                } else {
+                    errorMessage = "Failed to create event (HTTP \(httpResponse.statusCode))"
+                }
+                throw IntentError.apiError(errorMessage)
+            }
             
+        } catch let error as IntentError {
+            throw error
         } catch {
             throw IntentError.apiError("Error creating event: \(error.localizedDescription)")
         }
@@ -104,8 +138,8 @@ struct SearchEventsIntent: AppIntent {
     }
     
     func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        // Get current location or use provided location
-        let backendURL = "https://orbit-map-backend-c2b17aebdb75.herokuapp.com"
+        // Use web backend URL (matches latest codebase)
+        let backendURL = "https://orbit-web-backend.onrender.com"
         
         // This would typically get user's current location
         // For now, use a default location if none provided
@@ -120,7 +154,8 @@ struct SearchEventsIntent: AppIntent {
         let body: [String: Any] = [
             "latitude": latitude,
             "longitude": longitude,
-            "category": query
+            "category": query,
+            "timeRange": "today"  // Default to today's events
         ]
         
         do {
@@ -128,20 +163,36 @@ struct SearchEventsIntent: AppIntent {
             
             let (data, response) = try await URLSession.shared.data(for: request)
             
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200...299).contains(httpResponse.statusCode),
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let events = json["events"] as? [[String: Any]] else {
-                throw IntentError.apiError("Failed to search events")
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw IntentError.apiError("Invalid response from server")
             }
             
-            let eventNames = events.prefix(5).compactMap { $0["name"] as? String }
-            let result = eventNames.isEmpty 
-                ? "No events found for '\(query)'"
-                : "Found \(events.count) events. Here are some: \(eventNames.joined(separator: ", "))"
+            if (200...299).contains(httpResponse.statusCode) {
+                guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let events = json["events"] as? [[String: Any]] else {
+                    throw IntentError.apiError("Failed to parse search results")
+                }
+                
+                let eventNames = events.prefix(5).compactMap { $0["name"] as? String }
+                let result = eventNames.isEmpty 
+                    ? "No events found for '\(query)'"
+                    : "Found \(events.count) events. Here are some: \(eventNames.joined(separator: ", "))"
+                
+                return .result(value: result)
+            } else {
+                // Try to get error message from response
+                let errorMessage: String
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let error = json["error"] as? String ?? json["message"] as? String {
+                    errorMessage = error
+                } else {
+                    errorMessage = "Failed to search events (HTTP \(httpResponse.statusCode))"
+                }
+                throw IntentError.apiError(errorMessage)
+            }
             
-            return .result(value: result)
-            
+        } catch let error as IntentError {
+            throw error
         } catch {
             throw IntentError.apiError("Error searching events: \(error.localizedDescription)")
         }
