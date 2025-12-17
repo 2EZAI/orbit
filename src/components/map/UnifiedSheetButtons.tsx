@@ -352,7 +352,7 @@ export function UnifiedSheetButtons({
               className="items-center py-4 bg-purple-600 rounded-2xl"
             >
               <Text className="text-lg font-semibold text-white">
-                Create Event
+                Create Activity
               </Text>
             </TouchableOpacity>
 
