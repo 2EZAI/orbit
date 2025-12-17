@@ -16,7 +16,7 @@ export const createStreamChatTheme = (themeColors: {
       accent_green: themeColors.primary,
       accent_red: themeColors.notification,
       black: themeColors.text,
-      blue_alice: themeColors.card,
+      blue_alice: themeColors.background,
       border: themeColors.border,
       grey: themeColors.text + "80",
       grey_gainsboro: themeColors.border,
@@ -27,7 +27,7 @@ export const createStreamChatTheme = (themeColors: {
       transparent: "transparent",
       white: themeColors.card,
       white_smoke: themeColors.background,
-      white_snow: themeColors.card,
+      white_snow: themeColors.background,
     },
     messageList: {
       container: {
@@ -63,7 +63,89 @@ export const createStreamChatTheme = (themeColors: {
         backgroundColor: themeColors.card,
       },
     },
-    // Poll theming removed temporarily - let Stream handle default styling
-    // The polls should work with just colors and global theme
+    poll: {
+      createContent: {
+        addComment: {
+          title: {
+            color: themeColors.text,
+          },
+          wrapper: {
+            backgroundColor: themeColors.background,
+            paddingHorizontal: 16,
+          },
+        },
+        anonymousPoll: {
+          title: {
+            color: themeColors.text,
+          },
+          wrapper: {
+            backgroundColor: themeColors.background,
+            paddingHorizontal: 16,
+          },
+        },
+        multipleAnswers: {
+          wrapper: {
+            backgroundColor: themeColors.background,
+          },
+          title: {
+            color: themeColors.text,
+          },
+        },
+        pollOptions: {
+          addOption: {
+            text: {
+              marginTop: 16,
+              color: themeColors.primary,
+            },
+          },
+          container: {
+            backgroundColor: themeColors.card,
+          },
+          optionStyle: {
+            wrapper: {
+              backgroundColor: themeColors.background,
+            },
+            input: {
+              color: themeColors.background,
+            },
+          },
+        },
+        suggestOption: {
+          wrapper: {
+            backgroundColor: themeColors.background,
+          },
+          title: {
+            color: themeColors.text,
+          },
+        },
+        headerContainer: {
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingHorizontal: 16,
+          paddingVertical: 10,
+          borderBottomWidth: 1,
+          borderBottomColor: themeColors.border,
+        },
+
+        maxVotes: {
+          input: {
+            color: themeColors.text,
+          },
+          wrapper: {
+            backgroundColor: themeColors.background,
+            paddingHorizontal: 16,
+          },
+        },
+        name: {
+          input: {
+            color: themeColors.text,
+            backgroundColor: themeColors.background,
+          },
+          title: {
+            color: themeColors.text,
+          },
+        },
+      },
+    },
   };
 };
