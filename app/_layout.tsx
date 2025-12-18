@@ -172,27 +172,27 @@ function RootLayoutContent() {
     }
 
     // Handle Quick Action shortcuts
-    if (parsed.hostname === "create-event") {
+    if (parsed.path === "create-event") {
       router.navigate("/(app)/(create)");
       return true;
     }
 
-    if (parsed.hostname === "create-post") {
+    if (parsed.path === "create-post") {
       router.navigate("/(app)/post/create");
       return true;
     }
 
-    if (parsed.hostname === "dms") {
+    if (parsed.path === "dms") {
       router.navigate("/(app)/(chat)");
       return true;
     }
 
-    if (parsed.hostname === "view-tickets") {
+    if (parsed.path === "view-tickets") {
       router.navigate("/(app)/(home)");
       return true;
     }
 
-    if (parsed.hostname === "view-notifications") {
+    if (parsed.path === "view-notifications") {
       router.navigate("/(app)/(notification)");
       return true;
     }
