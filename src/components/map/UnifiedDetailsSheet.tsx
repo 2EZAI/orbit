@@ -37,6 +37,7 @@ import { Text } from "~/src/components/ui/text";
 import { haptics } from "~/src/lib/haptics";
 import { useAuth } from "~/src/lib/auth";
 import { eventService } from "~/src/services/eventService";
+import { useBookmark } from "~/hooks/useBookmark";
 import FlagContentModal from "../modals/FlagContentModal";
 import { BookmarkCollectionsSheet } from "./BookmarkCollectionsSheet";
 import { UnifiedDetailsSheetContent } from "./UnifiedDetailsSheetContent";
@@ -164,6 +165,7 @@ export const UnifiedDetailsSheet = React.memo(
     const [distance, setDistance] = useState(0);
     const { createFlag } = useFlagging();
     const { session } = useAuth();
+    const { isEventBookmarked, isStaticLocationBookmarked, getBookmarks, deleteBookmark } = useBookmark();
 
     // Interest state - fetched from GET /api/events/:id/interest endpoint
     const [isInterested, setIsInterested] = useState<boolean>(false);
@@ -224,6 +226,31 @@ export const UnifiedDetailsSheet = React.memo(
       setIsBookmarkSheetVisible(false);
     }, [data?.id]);
 
+    // Check bookmark status when data changes
+    useEffect(() => {
+      const checkBookmarkStatus = async () => {
+        if (!session?.access_token || !data?.id) {
+          setIsBookmarked(false);
+          return;
+        }
+
+        try {
+          let bookmarked = false;
+          if (isEventType) {
+            bookmarked = await isEventBookmarked(data.id);
+          } else {
+            bookmarked = await isStaticLocationBookmarked(data.id);
+          }
+          setIsBookmarked(bookmarked);
+        } catch (error) {
+          console.error("Error checking bookmark status:", error);
+          setIsBookmarked(false);
+        }
+      };
+
+      checkBookmarkStatus();
+    }, [data?.id, isEventType, session?.access_token]);
+
     // Location events are now handled by the useLocationEvents hook above
 
     // PanResponder for swipe to close modal
@@ -254,9 +281,66 @@ export const UnifiedDetailsSheet = React.memo(
       onShare(currentData, isEventType);
     };
 
-    const handleToggleBookmark = () => {
+    const handleToggleBookmark = async () => {
       haptics.light();
-      setIsBookmarkSheetVisible(true);
+      
+      // If already bookmarked, remove from all collections
+      if (isBookmarked) {
+        try {
+          // Get all bookmarks for this item
+          const query = isEventType
+            ? { location_type: "event" as const, event_id: data.id }
+            : { location_type: "static_location" as const, static_location_id: data.id };
+          
+          const { bookmarks } = await getBookmarks(query);
+          
+          // Delete all bookmarks for this item
+          for (const bookmark of bookmarks) {
+            await deleteBookmark(bookmark.id);
+          }
+          
+          // Re-check status after deletion and update icon
+          const bookmarked = isEventType
+            ? await isEventBookmarked(data.id)
+            : await isStaticLocationBookmarked(data.id);
+          setIsBookmarked(bookmarked);
+        } catch (error) {
+          console.error("Error removing bookmark:", error);
+          // Re-check status even on error
+          try {
+            const bookmarked = isEventType
+              ? await isEventBookmarked(data.id)
+              : await isStaticLocationBookmarked(data.id);
+            setIsBookmarked(bookmarked);
+          } catch (checkError) {
+            console.error("Error checking bookmark status:", checkError);
+          }
+        }
+      } else {
+        // Open collection selection sheet
+        setIsBookmarkSheetVisible(true);
+      }
+    };
+
+    // Re-check bookmark status when sheet closes
+    const handleBookmarkSheetClose = async () => {
+      setIsBookmarkSheetVisible(false);
+      
+      // Re-check bookmark status after sheet closes (in case bookmark was added)
+      if (session?.access_token && data?.id) {
+        try {
+          const bookmarked = isEventType
+            ? await isEventBookmarked(data.id)
+            : await isStaticLocationBookmarked(data.id);
+          setIsBookmarked(bookmarked);
+        } catch (error) {
+          console.error("Error checking bookmark status after sheet close:", error);
+        }
+      }
+    };
+
+    const handleBookmarkAdded = () => {
+      setIsBookmarked(true);
     };
 
     const handleTicketPurchase = () => {
@@ -1039,7 +1123,7 @@ export const UnifiedDetailsSheet = React.memo(
                         }}
                         className="justify-center items-center w-10 h-10 rounded-full shadow-lg bg-white/90"
                       >
-                        <Flag size={20} color={theme.colors.black} />
+                        <Flag size={20} color="#000" />
                       </TouchableOpacity>
                       {(currentData as any)?.source !== "ticketmaster" ? (
                         <>
@@ -1055,10 +1139,10 @@ export const UnifiedDetailsSheet = React.memo(
                           >
                             <Bookmark
                               size={20}
-                              color={theme.colors.warning}
+                              color="#F59E0B"
                               fill={
                                 isBookmarked
-                                  ? theme.colors.warning
+                                  ? "#F59E0B"
                                   : "transparent"
                               }
                             />
@@ -1419,10 +1503,11 @@ export const UnifiedDetailsSheet = React.memo(
             {detailData && (
               <BookmarkCollectionsSheet
                 visible={isBookmarkSheetVisible}
-                onClose={() => setIsBookmarkSheetVisible(false)}
+                onClose={handleBookmarkSheetClose}
                 isBookmarked={isBookmarked}
                 primaryImage={primaryImage}
                 eventData={detailData}
+                onBookmarkAdded={handleBookmarkAdded}
               />
             )}
             {/* Location Event Details Sheet */}
