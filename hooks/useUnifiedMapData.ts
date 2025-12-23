@@ -564,13 +564,6 @@ export function useUnifiedMapData({
           });
         };
 
-        // Create clusters in parallel for better performance
-        console.log(
-          `[UnifiedMapData] 🚀 Creating clusters in parallel for ${
-            validEvents?.length || 0
-          } events and ${validLocations?.length || 0} locations`
-        );
-
         // Run all clustering operations in parallel
         const [
           eventClusters,
@@ -608,9 +601,10 @@ export function useUnifiedMapData({
         console.log(
           `[UnifiedMapData] ⚡ Created ${eventClusters.length} event clusters and ${locationClusters.length} location clusters`
         );
-        console.log(
+        console
+          .log
           // `[UnifiedMapData] 📊 Time-based clusters: ${nowEventClusters.length} now, ${todayEventClusters.length} today, ${tomorrowEventClusters.length} tomorrow`
-        );
+          ();
       } catch (error) {
         console.error("[UnifiedMapData] Error processing clusters:", error);
       }
@@ -645,18 +639,22 @@ export function useUnifiedMapData({
       }
 
       // Check if cache expired - allow refetch even if data exists
-      const cacheExpired = cacheLoadTimeRef.current 
-        ? Date.now() - cacheLoadTimeRef.current >= 10 * 60 * 1000 
+      const cacheExpired = cacheLoadTimeRef.current
+        ? Date.now() - cacheLoadTimeRef.current >= 10 * 60 * 1000
         : false;
 
       // Skip if we already have data (from immediate cache load) - unless cache expired
       if ((events.length > 0 || locations.length > 0) && !cacheExpired) {
-        console.log("[UnifiedMapData] ⚠️ Data already exists, skipping fetch (likely from cache)");
+        console.log(
+          "[UnifiedMapData] ⚠️ Data already exists, skipping fetch (likely from cache)"
+        );
         return;
       }
-      
+
       if (cacheExpired || isBackgroundRefetch) {
-        console.log("[UnifiedMapData] 🔄 Cache expired, refetching data in background (no loader)");
+        console.log(
+          "[UnifiedMapData] 🔄 Cache expired, refetching data in background (no loader)"
+        );
       }
 
       // Start loading - but skip loader for background refetches
@@ -796,7 +794,7 @@ export function useUnifiedMapData({
           0,
           Math.min(validLocations.length, MAX_MARKERS - limitedEvents.length)
         );
-        
+
         // Save to persistent cache (after limiting) - only if session exists
         if (session) {
           await MapCacheService.saveCachedData(
@@ -880,7 +878,16 @@ export function useUnifiedMapData({
         }
       }
     },
-    [session, radius, validateData, filterEventsByTime, createClusters, isFocused, events.length, locations.length]
+    [
+      session,
+      radius,
+      validateData,
+      filterEventsByTime,
+      createClusters,
+      isFocused,
+      events.length,
+      locations.length,
+    ]
   );
 
   // ============================================================================
@@ -1036,73 +1043,83 @@ export function useUnifiedMapData({
   // EFFECTS
   // ============================================================================
 
-    // IMMEDIATE: Load cache synchronously on mount for instant pins (only if session exists)
-    useEffect(() => {
-      // Don't load cache if no session (user logged out)
-      if (!session) {
-        return;
-      }
-      
-      const loadCacheImmediately = async () => {
-        const cachedData = await MapCacheService.getCachedData();
-        if (cachedData) {
-          const cacheAge = Date.now() - cachedData.timestamp;
-          const isCacheFresh = cacheAge < 10 * 60 * 1000; // 10 minutes
-          
-          if (isCacheFresh) {
-            console.log("[UnifiedMapData] ⚡ IMMEDIATE: Loading cached data for instant pins");
-            console.log(`[UnifiedMapData] Cache age: ${Math.round(cacheAge / 1000)}s`);
-            
-            // Update state with cached data IMMEDIATELY (synchronously)
-            setEvents(cachedData.events);
-            setLocations(cachedData.locations);
-            
-            // Process clusters from cached data
-            const nowEvents = filterEventsByTime(cachedData.events, "today");
-            const todayEvents = filterEventsByTime(cachedData.events, "today");
-            const tomorrowEvents = filterEventsByTime(cachedData.events, "weekend");
-            
-            setEventsNow(nowEvents);
-            setEventsToday(todayEvents);
-            setEventsTomorrow(tomorrowEvents);
-            
-            // Process clusters
-            await processClusters(
-              cachedData.events,
-              cachedData.locations,
-              nowEvents,
-              todayEvents,
-              tomorrowEvents
-            );
-            
-            setIsLoading(false);
-            setIsLoadingComplete(true);
-            
-            // Track when cache was loaded for expiry checking
-            cacheLoadTimeRef.current = cachedData.timestamp;
-            
-            console.log("[UnifiedMapData] ✅ IMMEDIATE: Cached data loaded, pins should appear instantly");
-          }
+  // IMMEDIATE: Load cache synchronously on mount for instant pins (only if session exists)
+  useEffect(() => {
+    // Don't load cache if no session (user logged out)
+    // if (!session) {
+    //   return;
+    // }
+
+    const loadCacheImmediately = async () => {
+      const cachedData = await MapCacheService.getCachedData();
+      if (cachedData) {
+        const cacheAge = Date.now() - cachedData.timestamp;
+        const isCacheFresh = cacheAge < 10 * 60 * 1000; // 10 minutes
+
+        if (isCacheFresh) {
+          console.log(
+            "[UnifiedMapData] ⚡ IMMEDIATE: Loading cached data for instant pins"
+          );
+          console.log(
+            `[UnifiedMapData] Cache age: ${Math.round(cacheAge / 1000)}s`
+          );
+
+          // Update state with cached data IMMEDIATELY (synchronously)
+          setEvents(cachedData.events);
+          setLocations(cachedData.locations);
+
+          // Process clusters from cached data
+          const nowEvents = filterEventsByTime(cachedData.events, "today");
+          const todayEvents = filterEventsByTime(cachedData.events, "today");
+          const tomorrowEvents = filterEventsByTime(
+            cachedData.events,
+            "weekend"
+          );
+
+          setEventsNow(nowEvents);
+          setEventsToday(todayEvents);
+          setEventsTomorrow(tomorrowEvents);
+
+          // Process clusters
+          await processClusters(
+            cachedData.events,
+            cachedData.locations,
+            nowEvents,
+            todayEvents,
+            tomorrowEvents
+          );
+
+          setIsLoading(false);
+          setIsLoadingComplete(true);
+
+          // Track when cache was loaded for expiry checking
+          cacheLoadTimeRef.current = cachedData.timestamp;
+
+          console.log(
+            "[UnifiedMapData] ✅ IMMEDIATE: Cached data loaded, pins should appear instantly"
+          );
         }
-      };
-      
-      // Load cache immediately on mount
-      loadCacheImmediately();
-    }, [session]); // Re-run when session changes
+      }
+    };
+
+    // Load cache immediately on mount
+    loadCacheImmediately();
+  }, [session]); // Re-run when session changes
 
   // CRITICAL FIX: SINGLE API CALL ON MOUNT - PREVENT MULTIPLE CALLS
   const hasInitializedRef = useRef(false);
 
-
   useEffect(() => {
     // Skip if no session
-    if (!session) {
-      return;
-    }
-    
+    // if (!session) {
+    //   return;
+    // }
+
     // Only fetch if screen is focused
     if (!isFocused) {
-      console.log("[UnifiedMapData] ⚠️ Screen not focused, skipping initial fetch");
+      console.log(
+        "[UnifiedMapData] ⚠️ Screen not focused, skipping initial fetch"
+      );
       return;
     }
 
@@ -1110,36 +1127,45 @@ export function useUnifiedMapData({
     if (events.length > 0 || locations.length > 0) {
       // Only log if we haven't initialized yet (meaning data came from immediate cache load)
       if (!hasInitializedRef.current && session) {
-        console.log("[UnifiedMapData] ✅ Data already loaded (from cache), skipping API call");
+        console.log(
+          "[UnifiedMapData] ✅ Data already loaded (from cache), skipping API call"
+        );
       }
       // If hasInitializedRef is true, data was just loaded from API, so don't log anything
       return;
     }
-    
+
     // Allow API call even without session (for browsing), but only once
-    if (
-      center[0] !== 0 &&
-      center[1] !== 0 &&
-      !hasInitializedRef.current
-    ) {
+    if (center[0] !== 0 && center[1] !== 0 && !hasInitializedRef.current) {
       if (session) {
-        console.log("[UnifiedMapData] 🚀 SINGLE API CALL (ONCE ONLY) - Authenticated");
+        console.log(
+          "[UnifiedMapData] 🚀 SINGLE API CALL (ONCE ONLY) - Authenticated"
+        );
       } else {
-        console.log("[UnifiedMapData] 🚀 SINGLE API CALL (ONCE ONLY) - Browsing (no session)");
+        console.log(
+          "[UnifiedMapData] 🚀 SINGLE API CALL (ONCE ONLY) - Browsing (no session)"
+        );
       }
       hasInitializedRef.current = true;
       fetchUnifiedData(center);
     }
-  }, [session, center, fetchUnifiedData, events.length, locations.length, isFocused]);
+  }, [
+    session,
+    center,
+    fetchUnifiedData,
+    events.length,
+    locations.length,
+    isFocused,
+  ]);
 
   // REMOVED: Duplicate useEffect that was causing refetches
 
   // Auto-refetch when cache expires (10 minutes) - runs in background
   useEffect(() => {
-    if (!session) {
-      console.log("[UnifiedMapData] 🔍 Auto-refetch: No session, skipping");
-      return;
-    }
+    // if (!session) {
+    //   console.log("[UnifiedMapData] 🔍 Auto-refetch: No session, skipping");
+    //   return;
+    // }
 
     const CACHE_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
     const CHECK_INTERVAL = 10 * 1000; // Check every 10 seconds
@@ -1151,34 +1177,50 @@ export function useUnifiedMapData({
         console.log("[UnifiedMapData] 🔍 Auto-refetch: Component unmounted");
         return;
       }
-      
+
       if (isLoadingRef.current) {
-        console.log("[UnifiedMapData] 🔍 Auto-refetch: Already loading, skipping");
+        console.log(
+          "[UnifiedMapData] 🔍 Auto-refetch: Already loading, skipping"
+        );
         return;
       }
-      
+
       if (!cacheLoadTimeRef.current) {
-        console.log("[UnifiedMapData] 🔍 Auto-refetch: No cache timestamp set yet");
+        console.log(
+          "[UnifiedMapData] 🔍 Auto-refetch: No cache timestamp set yet"
+        );
         return;
       }
-      
+
       const cacheAge = Date.now() - cacheLoadTimeRef.current;
       const cacheExpired = cacheAge >= CACHE_EXPIRY_MS;
-      
-      console.log(`[UnifiedMapData] 🔍 Auto-refetch: Checking cache - age: ${Math.round(cacheAge / 1000)}s, expired: ${cacheExpired}`);
-      
+
+      console.log(
+        `[UnifiedMapData] 🔍 Auto-refetch: Checking cache - age: ${Math.round(
+          cacheAge / 1000
+        )}s, expired: ${cacheExpired}`
+      );
+
       if (cacheExpired) {
         // Cache expired, refetch data in background
-        console.log("[UnifiedMapData] ⏰ Cache expired (age: " + Math.round(cacheAge / 1000) + "s), auto-refetching in background");
+        console.log(
+          "[UnifiedMapData] ⏰ Cache expired (age: " +
+            Math.round(cacheAge / 1000) +
+            "s), auto-refetching in background"
+        );
         cacheLoadTimeRef.current = null; // Clear cache timestamp
         hasInitializedRef.current = false; // Allow refetch
-        
+
         if (center && center[0] !== 0 && center[1] !== 0) {
           // Refetch in background without blocking UI (no loader)
-          console.log("[UnifiedMapData] 🚀 Triggering background refetch (no loader)...");
+          console.log(
+            "[UnifiedMapData] 🚀 Triggering background refetch (no loader)..."
+          );
           fetchUnifiedData(center, true); // Pass true to indicate background refetch
         } else {
-          console.log("[UnifiedMapData] ⚠️ Cannot refetch - invalid center coordinates");
+          console.log(
+            "[UnifiedMapData] ⚠️ Cannot refetch - invalid center coordinates"
+          );
         }
       }
     };
@@ -1191,16 +1233,21 @@ export function useUnifiedMapData({
 
     // Then set up interval to check every 10 seconds
     const intervalId = setInterval(checkCacheExpiry, CHECK_INTERVAL);
-    
+
     // Also set up a timeout for when cache should expire
     if (cacheLoadTimeRef.current) {
-      const remainingCacheTime = CACHE_EXPIRY_MS - (Date.now() - cacheLoadTimeRef.current);
+      const remainingCacheTime =
+        CACHE_EXPIRY_MS - (Date.now() - cacheLoadTimeRef.current);
       if (remainingCacheTime > 0 && remainingCacheTime < CACHE_EXPIRY_MS) {
-        console.log(`[UnifiedMapData] 🔍 Auto-refetch: Will check expiry in ${Math.round(remainingCacheTime / 1000)}s`);
+        console.log(
+          `[UnifiedMapData] 🔍 Auto-refetch: Will check expiry in ${Math.round(
+            remainingCacheTime / 1000
+          )}s`
+        );
         const timeoutId = setTimeout(() => {
           checkCacheExpiry();
         }, remainingCacheTime);
-        
+
         return () => {
           clearInterval(intervalId);
           clearTimeout(initialCheck);
