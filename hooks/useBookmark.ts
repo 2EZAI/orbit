@@ -464,11 +464,6 @@ export function useBookmark(): UseBookmarkReturn {
       const data = await handleJsonResponse<ApiItemResponse<LocationBookmark>>(
         response
       );
-      Toast.show({
-        type: "success",
-        text1: "Saved",
-        text2: data.message || "Bookmark created successfully.",
-      });
       return data.data;
     } finally {
       setLoading(false);
@@ -566,10 +561,6 @@ export function useBookmark(): UseBookmarkReturn {
       await handleJsonResponse<{ success: boolean; message?: string }>(
         response
       );
-      Toast.show({
-        type: "success",
-        text1: "Removed from saved",
-      });
       return true;
     } finally {
       setLoading(false);
