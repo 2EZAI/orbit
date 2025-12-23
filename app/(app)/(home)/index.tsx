@@ -1174,7 +1174,10 @@ export default function Home() {
               }}
             />
           ),
-          onPress: () => router.push("/(app)/(profile)"),
+          onPress: () => router.push({
+            pathname: "/(app)/(profile)",
+            params: { from: "home" },
+          }),
         },
       ];
     } else {

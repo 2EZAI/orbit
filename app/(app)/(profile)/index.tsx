@@ -1,6 +1,8 @@
 import React from "react";
+import { useLocalSearchParams } from "expo-router";
 import { UnifiedProfilePage } from "~/src/components/profile/UnifiedProfilePage";
 
 export default function Profile() {
-  return <UnifiedProfilePage />;
+  const { from } = useLocalSearchParams<{ from?: string }>();
+  return <UnifiedProfilePage from={from} />;
 }
