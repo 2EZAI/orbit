@@ -27,11 +27,12 @@ interface BookmarkCollectionsSheetProps {
   isBookmarked: boolean;
   primaryImage?: string | null;
   eventData: UnifiedData;
+  onBookmarkAdded?: () => void;
 }
 
 export const BookmarkCollectionsSheet: React.FC<
   BookmarkCollectionsSheetProps
-> = ({ visible, onClose, isBookmarked, primaryImage, eventData }) => {
+> = ({ visible, onClose, isBookmarked, primaryImage, eventData, onBookmarkAdded }) => {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { createFolder, getFolders, createBookmark } = useBookmark();
@@ -93,11 +94,26 @@ export const BookmarkCollectionsSheet: React.FC<
     }
 
     try {
-      onClose();
       await createBookmark(payload);
-    } catch (error) {
+      // Notify parent that bookmark was added
+      if (onBookmarkAdded) {
+        onBookmarkAdded();
+      }
+      // Close sheet after successful bookmark creation
+      onClose();
+    } catch (error: any) {
       // Error toasts are handled inside useBookmark
       console.error("Error creating bookmark:", error);
+      
+      // If bookmark already exists, still notify parent and close sheet
+      // This handles the case where bookmark was added but icon didn't update
+      if (error?.message?.includes("already exists") || error?.message?.includes("Bookmark already")) {
+        if (onBookmarkAdded) {
+          onBookmarkAdded();
+        }
+        onClose();
+      }
+      // For other errors, don't close sheet so user can try again
     }
   };
 
