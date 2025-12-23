@@ -177,7 +177,9 @@ export function SearchSheet({
             venue_name: event.venue_name || "",
             description: event.description || "",
             type: event.type || "event",
-            image_urls: event.image_urls ? JSON.stringify(event.image_urls) : "",
+            image_urls: event.image_urls
+              ? JSON.stringify(event.image_urls)
+              : "",
             created_by:
               typeof event.created_by === "string"
                 ? event.created_by
@@ -263,7 +265,7 @@ export function SearchSheet({
     <Sheet isOpen={isOpen} onClose={onClose} fullScreen={isExpanded}>
       <View
         style={{
-          backgroundColor: theme.colors.background,
+          backgroundColor: theme.colors.card,
           flex: 1,
           paddingTop: isExpanded ? 50 : 20,
         }}
@@ -277,7 +279,7 @@ export function SearchSheet({
             paddingBottom: 16,
             borderBottomWidth: 1,
             borderBottomColor: theme.colors.border,
-            backgroundColor: theme.colors.background,
+            backgroundColor: theme.colors.card,
           }}
         >
           <View style={{ flex: 1 }}>
@@ -776,6 +778,7 @@ export function SearchSheet({
                           numberOfLines={1}
                         >
                           {user.name}
+                          {console.log(user)}
                         </Text>
                         {user.username && (
                           <Text
